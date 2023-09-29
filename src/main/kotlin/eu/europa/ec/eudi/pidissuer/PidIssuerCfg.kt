@@ -18,6 +18,8 @@ package eu.europa.ec.eudi.pidissuer
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
+import eu.europa.ec.eudi.pidissuer.domain.Scope
+import eu.europa.ec.eudi.pidissuer.domain.pid.PidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
 import eu.europa.ec.eudi.pidissuer.port.input.RequestCredentialsOffer
@@ -27,6 +29,8 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.Ordered
+import org.springframework.core.annotation.Order
 import org.springframework.core.env.Environment
 import org.springframework.http.codec.ServerCodecConfigurer
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
@@ -36,6 +40,7 @@ import org.springframework.security.config.annotation.web.reactive.EnableWebFlux
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.config.web.server.invoke
 import org.springframework.security.web.server.SecurityWebFilterChain
+import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher
 import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.reactive.config.WebFluxConfigurer
 import org.springframework.web.reactive.function.server.RouterFunction
@@ -98,19 +103,31 @@ class PidIssuerContext(private val environment: Environment) {
 @EnableWebFluxSecurity
 class SecurityCfg {
 
+    @Order(Ordered.HIGHEST_PRECEDENCE)
     @Bean
-    fun springSecurityFilterChain(http: ServerHttpSecurity): SecurityWebFilterChain {
+    fun protectedApi(http: ServerHttpSecurity): SecurityWebFilterChain {
         return http {
             authorizeExchange {
+                authorize(WalletApi.CREDENTIAL_ENDPOINT, hasAuthority(PidMsoMdocV1.scope!!.toSpring()))
                 authorize(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, permitAll)
                 authorize(IssuerApi.CREDENTIALS_OFFER, permitAll)
-//                authorize("/log-in", permitAll)
-//                authorize("/", permitAll)
-//                authorize("/css/**", permitAll)
-//                authorize("/user/**", hasAuthority("ROLE_USER"))
+            }
+
+            oauth2ResourceServer {
+                opaqueToken {}
             }
         }
     }
+
+    /**
+     * This is Spring naming convention
+     * A prefix of SCOPE_xyz will grant a SimpleAuthority(xyz)
+     * if there is a scope xyz
+     *
+     * Note that on the OAUTH2 server we set xyz as te scope
+     * and not SCOPE_xyz
+     */
+    private fun Scope.toSpring() = "SCOPE_$value"
 }
 
 @Configuration
