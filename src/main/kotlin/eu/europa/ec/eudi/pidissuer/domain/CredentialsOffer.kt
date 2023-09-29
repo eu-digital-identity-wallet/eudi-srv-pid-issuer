@@ -15,4 +15,41 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
-class CredentialsOffer()
+import arrow.core.Ior
+import java.time.Duration
+
+/**
+ * A
+ */
+sealed interface CredentialOffer
+
+@JvmInline
+value class CredentialOfferByScope(val value: Scope) : CredentialOffer
+data class AuthorizationCodeGrant(val issuerState: String? = null)
+
+@JvmInline
+value class PreAuthorizedCode(val value: String)
+data class PreAuthorizedCodeGrant(
+    val preAuthorizedCode: PreAuthorizedCode,
+    val userPinRequired: Boolean = false,
+    val interval: Duration,
+)
+typealias Grants = Ior<AuthorizationCodeGrant, PreAuthorizedCodeGrant>
+
+data class CredentialsOffer(
+    val credentialIssuer: CredentialIssuerId,
+    val grants: Grants,
+    val credentials: List<CredentialOffer>,
+) {
+    companion object {
+        fun single(
+            credentialIssuer: CredentialIssuerId,
+            grants: Grants,
+            credentialOffer: CredentialOffer,
+        ): CredentialsOffer = CredentialsOffer(
+            credentialIssuer,
+            grants,
+            listOf(credentialOffer),
+        )
+    }
+}

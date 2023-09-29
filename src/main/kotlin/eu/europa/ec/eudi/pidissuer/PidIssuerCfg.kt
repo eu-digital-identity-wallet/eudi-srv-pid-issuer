@@ -23,10 +23,14 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
 import eu.europa.ec.eudi.pidissuer.port.input.RequestCredentialsOffer
 import eu.europa.ec.eudi.pidissuer.port.out.cfg.GetCredentialIssuerContext
 import eu.europa.ec.eudi.pidissuer.port.out.cfg.GetCredentialIssuerContextFromEnv
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.env.Environment
 import org.springframework.http.codec.ServerCodecConfigurer
+import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
+import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
@@ -76,7 +80,8 @@ class PidIssuerContext(private val environment: Environment) {
         GetCredentialIssuerMetaData(getCredentialIssuerContext)
 
     @Bean
-    fun requestCredentialsOffer() = RequestCredentialsOffer()
+    fun requestCredentialsOffer(getCredentialIssuerContext: GetCredentialIssuerContext) =
+        RequestCredentialsOffer(getCredentialIssuerContext)
 
     @Bean
     fun issueCredential() = IssueCredential()
@@ -98,11 +103,25 @@ class SecurityCfg {
         return http {
             authorizeExchange {
                 authorize(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, permitAll)
+                authorize(IssuerApi.CREDENTIALS_OFFER, permitAll)
 //                authorize("/log-in", permitAll)
 //                authorize("/", permitAll)
 //                authorize("/css/**", permitAll)
 //                authorize("/user/**", hasAuthority("ROLE_USER"))
             }
         }
+    }
+}
+
+@Configuration
+class JsonConfiguration : WebFluxConfigurer {
+    @OptIn(ExperimentalSerializationApi::class)
+    override fun configureHttpMessageCodecs(configurer: ServerCodecConfigurer) {
+        val json = Json {
+            explicitNulls = false
+            ignoreUnknownKeys = true
+        }
+        configurer.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
+        configurer.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
     }
 }

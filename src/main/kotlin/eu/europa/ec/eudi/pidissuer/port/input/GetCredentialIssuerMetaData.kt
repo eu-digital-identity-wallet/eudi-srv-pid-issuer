@@ -56,6 +56,13 @@ data class CredentialIssuerMetaDataTO(
     }
 }
 
+class GetCredentialIssuerMetaData(
+    val getCredentialIssuerContext: GetCredentialIssuerContext,
+) {
+    suspend operator fun invoke(): CredentialIssuerMetaDataTO =
+        getCredentialIssuerContext().metaData.run(CredentialIssuerMetaDataTO::fromDomain)
+}
+
 @OptIn(ExperimentalSerializationApi::class)
 private fun credentialMetaDataJson(d: CredentialMetaData): JsonObject = buildJsonObject {
     put("format", d.format.value)
@@ -127,11 +134,4 @@ private fun credentialMetaDataJson(d: CredentialMetaData): JsonObject = buildJso
 
         is SdJwtVcMetaData -> TODO()
     }
-}
-
-class GetCredentialIssuerMetaData(
-    val getCredentialIssuerContext: GetCredentialIssuerContext,
-) {
-    suspend operator fun invoke(): CredentialIssuerMetaDataTO =
-        getCredentialIssuerContext().metaData.run(CredentialIssuerMetaDataTO::fromDomain)
 }

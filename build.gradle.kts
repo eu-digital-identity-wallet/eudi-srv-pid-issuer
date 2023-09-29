@@ -20,14 +20,21 @@ repositories {
 
 dependencies {
     val kotlinxSerializationVersion = "1.6.0"
+    val arrowVersion = "1.2.0"
 
-    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server") {
+        because("PID Issuer acts like a OAUTH2 resource server")
+    }
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
+    implementation("io.arrow-kt:arrow-core:$arrowVersion") {
+        because("Functional programming support")
+    }
+    implementation("io.arrow-kt:arrow-fx-coroutines:$arrowVersion")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.projectreactor:reactor-test")
 }
@@ -41,7 +48,8 @@ kotlin {
 }
 tasks.withType<KotlinCompile>().configureEach {
     kotlinOptions {
-        freeCompilerArgs = freeCompilerArgs + "-Xcontext-receivers"
+        freeCompilerArgs += "-Xcontext-receivers"
+        freeCompilerArgs += "-Xjsr305=strict"
     }
 }
 testing {
@@ -66,13 +74,6 @@ spotless {
         ktlint(ktlintVersion)
     }
 }
-
-// tasks.withType<KotlinCompile> {
-// 	kotlinOptions {
-// 		freeCompilerArgs += "-Xjsr305=strict"
-// 		jvmTarget = "17"
-// 	}
-// }
 
 // tasks.withType<Test> {
 // 	useJUnitPlatform()

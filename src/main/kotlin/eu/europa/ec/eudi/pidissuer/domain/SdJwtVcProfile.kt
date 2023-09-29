@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
-private const val SJ_JWT_VC_FORMAT = "sd-jwt-vc"
+const val SJ_JWT_VC_FORMAT = "sd-jwt-vc"
 
 data class SdJwtVcMetaData(
     override val scope: Scope? = null,

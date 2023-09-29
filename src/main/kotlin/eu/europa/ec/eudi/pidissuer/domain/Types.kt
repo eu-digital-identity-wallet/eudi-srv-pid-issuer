@@ -51,10 +51,8 @@ value class Format(val value: String)
 typealias CredentialIssuerId = HttpsUrl
 
 data class ImageUrl(val url: HttpsUrl, val alternativeText: String? = null)
-
 data class DisplayName(val name: String, val locale: Locale)
 typealias Color = String
-
 data class CredentialDisplay(
     val name: DisplayName,
     val logo: ImageUrl? = null,
@@ -64,8 +62,6 @@ data class CredentialDisplay(
 )
 
 typealias Display = Map<Locale, String>
-
-fun Display.empty(): Display = emptyMap()
 
 /**
  * Identify how the Credential is bound to the identifier

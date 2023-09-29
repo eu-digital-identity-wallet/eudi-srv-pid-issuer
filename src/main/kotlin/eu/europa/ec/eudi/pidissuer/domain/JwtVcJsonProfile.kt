@@ -17,12 +17,17 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import com.nimbusds.jose.JWSAlgorithm
 
-private const val JWT_VS_JSON_FORMAT = "jwt_vc_json"
+//
+// Credential MetaData
+//
+
+const val JWT_VS_JSON_FORMAT = "jwt_vc_json"
 
 /**
  * W3C VC signed as a JWT, not using JSON-LD (jwt_vc_json)
  */
 data class JwtVcJsonMetaData(
+    val id: String,
     override val scope: Scope? = null,
     val cryptographicSuitesSupported: List<JWSAlgorithm>,
     override val display: List<CredentialDisplay>,
@@ -33,4 +38,10 @@ data class JwtVcJsonMetaData(
     override val format: Format = Format(JWT_VS_JSON_FORMAT)
 }
 
-object Dummy2
+//
+// Credential Offer
+//
+
+data class JwtVcJsonCredentialOffer(
+    val type: List<String>,
+) : CredentialOffer

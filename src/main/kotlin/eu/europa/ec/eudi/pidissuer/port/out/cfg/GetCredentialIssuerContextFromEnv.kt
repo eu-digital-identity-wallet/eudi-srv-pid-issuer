@@ -15,10 +15,10 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.cfg
 
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerContext
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
+import eu.europa.ec.eudi.pidissuer.domain.pid.PidMsoMdocV1
 import org.springframework.core.env.Environment
 import java.time.Clock
 

@@ -15,11 +15,10 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
+import arrow.core.raise.either
 import eu.europa.ec.eudi.pidissuer.port.input.RequestCredentialsOffer
 import org.springframework.http.MediaType
-import org.springframework.web.reactive.function.server.ServerRequest
-import org.springframework.web.reactive.function.server.ServerResponse
-import org.springframework.web.reactive.function.server.coRouter
+import org.springframework.web.reactive.function.server.*
 
 class IssuerApi(private val requestCredentialsOffer: RequestCredentialsOffer) {
     val route = coRouter {
@@ -28,10 +27,20 @@ class IssuerApi(private val requestCredentialsOffer: RequestCredentialsOffer) {
             contentType(MediaType.APPLICATION_JSON) and accept(MediaType.APPLICATION_JSON),
             this@IssuerApi::handleRequestCredentialsOffer,
         )
+
+        // TODO This is dummy. Remove it
+        GET(
+            CREDENTIALS_OFFER,
+            accept(MediaType.APPLICATION_JSON),
+            this@IssuerApi::handleRequestCredentialsOffer,
+        )
     }
 
     private suspend fun handleRequestCredentialsOffer(req: ServerRequest): ServerResponse {
-        TODO()
+        return either { requestCredentialsOffer() }.fold(
+            ifLeft = { _ -> ServerResponse.badRequest().buildAndAwait() },
+            ifRight = { ServerResponse.ok().json().bodyValueAndAwait(it) },
+        )
     }
 
     companion object {

@@ -17,10 +17,13 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import com.nimbusds.jose.JWSAlgorithm
 
+//
+// Credential MetaData
+//
 typealias MsoDocType = String
 typealias MsoNameSpace = String
 data class MsoMdocAttribute<out V>(val name: String, val value: V)
-private const val MSO_MDOC_FORMAT = "mso_mdoc"
+const val MSO_MDOC_FORMAT = "mso_mdoc"
 data class MsoAttribute(val name: String, val display: Display = emptyMap())
 typealias MsoClaims = Map<MsoNameSpace, List<MsoAttribute>>
 
@@ -39,6 +42,12 @@ data class MsoMdocMetaData(
 
     override val format: Format = Format(MSO_MDOC_FORMAT)
 }
+
+//
+// Credential Offer
+//
+
+data class MsoMdocCredentialOffer(val docType: MsoDocType) : CredentialOffer
 
 data class MsoMdoc(
     val docType: MsoDocType,
