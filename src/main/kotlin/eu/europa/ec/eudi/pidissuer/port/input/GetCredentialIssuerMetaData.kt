@@ -36,32 +36,30 @@ data class CredentialIssuerMetaDataTO(
         emptyList(),
     @SerialName("require_credential_response_encryption") val requireCredentialResponseEncryption: Boolean = false,
     @Required @SerialName("credentials_supported") val credentialsSupported: List<JsonObject>,
-) {
-    companion object {
-        fun fromDomain(m: CredentialIssuerMetaData): CredentialIssuerMetaDataTO = CredentialIssuerMetaDataTO(
-            credentialIssuer = m.id.externalForm,
-            authorizationServer = m.authorizationServer.externalForm,
-            credentialEndpoint = m.credentialEndPoint.externalForm,
-            batchCredentialEndpoint = m.batchCredentialEndpoint?.externalForm,
-            deferredCredentialEndpoint = m.deferredCredentialEndpoint?.externalForm,
-            credentialResponseEncryptionAlgValuesSupported = m.credentialResponseEncryption.fold(emptyList()) {
-                it.algorithmsSupported.map { it.toJSONString() }
-            },
-            credentialResponseEncryptionEncValuesSupported = m.credentialResponseEncryption.fold(emptyList()) {
-                it.encryptionMethods.map { it.toJSONString() }
-            },
-            requireCredentialResponseEncryption = m.credentialResponseEncryption.fold(false) { _ -> true },
-            credentialsSupported = m.credentialsSupported.map { credentialMetaDataJson(it) },
-        )
-    }
-}
+)
 
 class GetCredentialIssuerMetaData(
     val getCredentialIssuerContext: GetCredentialIssuerContext,
 ) {
     suspend operator fun invoke(): CredentialIssuerMetaDataTO =
-        getCredentialIssuerContext().metaData.run(CredentialIssuerMetaDataTO::fromDomain)
+        getCredentialIssuerContext().metaData.run { this.toTransferObject() }
 }
+
+private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDataTO = CredentialIssuerMetaDataTO(
+    credentialIssuer = id.externalForm,
+    authorizationServer = authorizationServer.externalForm,
+    credentialEndpoint = credentialEndPoint.externalForm,
+    batchCredentialEndpoint = batchCredentialEndpoint?.externalForm,
+    deferredCredentialEndpoint = deferredCredentialEndpoint?.externalForm,
+    credentialResponseEncryptionAlgValuesSupported = credentialResponseEncryption.fold(emptyList()) { required ->
+        required.algorithmsSupported.map { it.toJSONString() }
+    },
+    credentialResponseEncryptionEncValuesSupported = credentialResponseEncryption.fold(emptyList()) { required ->
+        required.encryptionMethods.map { it.toJSONString() }
+    },
+    requireCredentialResponseEncryption = credentialResponseEncryption.fold(false) { _ -> true },
+    credentialsSupported = credentialsSupported.map { credentialMetaDataJson(it) },
+)
 
 @OptIn(ExperimentalSerializationApi::class)
 private fun credentialMetaDataJson(d: CredentialMetaData): JsonObject = buildJsonObject {
@@ -86,52 +84,53 @@ private fun credentialMetaDataJson(d: CredentialMetaData): JsonObject = buildJso
     }
     when (d) {
         is JwtVcJsonMetaData -> TODO()
-        is MsoMdocMetaData -> {
-            put("doctype", d.docType)
-            if (d.display.isNotEmpty()) {
-                putJsonArray("display") {
-                    addAll(
-                        d.display.map { cd ->
-                            buildJsonObject {
-                                put("name", cd.name.name)
-                                put("locale", cd.name.locale.toString())
-                                cd.logo?.let { logo ->
-                                    putJsonObject("logo") {
-                                        put("url", logo.url.externalForm)
-                                        logo.alternativeText?.let { put("alt_text", it) }
-                                    }
-                                }
-                                cd.textColor?.let { put("text_color", it) }
-                                cd.backgroundColor?.let { put("background_color", it) }
-                            }
-                        },
-                    )
-                }
-            }
-            putJsonObject("claims") {
-                d.msoClaims.forEach { (nameSpace, attributes) ->
-                    putJsonObject(nameSpace) {
-                        attributes.forEach { attribute ->
-                            putJsonObject(attribute.name) {
-                                if (attribute.display.isNotEmpty()) {
-                                    putJsonArray("display") {
-                                        attribute.display.forEach { (locale, value) ->
-                                            add(
-                                                buildJsonObject {
-                                                    put("name", value)
-                                                    put("locale", locale.toString())
-                                                },
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
+        is MsoMdocMetaData -> d.toTransferObject(this)
         is SdJwtVcMetaData -> TODO()
     }
 }
+
+@OptIn(ExperimentalSerializationApi::class)
+internal val MsoMdocMetaData.toTransferObject: JsonObjectBuilder.() -> Unit
+    get() = {
+        put("doctype", docType)
+        if (display.isNotEmpty()) {
+            putJsonArray("display") {
+                addAll(display.map { it.toTransferObject() })
+            }
+        }
+        putJsonObject("claims") {
+            msoClaims.forEach { (nameSpace, attributes) ->
+                putJsonObject(nameSpace) {
+                    attributes.forEach { attribute -> attribute.toTransferObject(this) }
+                }
+            }
+        }
+    }
+internal fun CredentialDisplay.toTransferObject(): JsonObject = buildJsonObject {
+    put("name", name.name)
+    put("locale", name.locale.toString())
+    logo?.let { logo ->
+        putJsonObject("logo") {
+            put("url", logo.url.externalForm)
+            logo.alternativeText?.let { put("alt_text", it) }
+        }
+    }
+    textColor?.let { put("text_color", it) }
+    backgroundColor?.let { put("background_color", it) }
+}
+internal val MsoAttribute.toTransferObject: JsonObjectBuilder.() -> Unit
+    get() = {
+        putJsonObject(name) {
+            if (display.isNotEmpty()) {
+                put("display", display.toTransferObject())
+            }
+        }
+    }
+
+internal fun Display.toTransferObject(): JsonArray =
+    map { (locale, value) ->
+        buildJsonObject {
+            put("name", value)
+            put("locale", locale.toString())
+        }
+    }.run { JsonArray(this) }

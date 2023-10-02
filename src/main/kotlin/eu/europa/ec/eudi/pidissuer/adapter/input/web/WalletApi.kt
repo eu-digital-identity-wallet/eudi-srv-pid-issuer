@@ -32,7 +32,7 @@ class WalletApi(private val issueCredential: IssueCredential) {
         GET(
             CREDENTIAL_ENDPOINT,
             contentType(MediaType.APPLICATION_JSON) and accept(MediaType.APPLICATION_JSON),
-            this@WalletApi::helloHolder
+            this@WalletApi::helloHolder,
 
         )
     }
@@ -42,15 +42,13 @@ class WalletApi(private val issueCredential: IssueCredential) {
     }
 
     private suspend fun helloHolder(req: ServerRequest): ServerResponse {
-       // Fixme Implement hello holder
+        // Fixme Implement hello holder
         // Here we need to call the UserInfo EndPoint of the OAUTH server
         // In order to get back the user details
         // https://docs.spring.io/spring-security/reference/reactive/oauth2/resource-server/opaque-token.html#webflux-oauth2resourceserver-opaque-userinfo
         // This means that pid-issuer will act as a OAUTH2 client
 
-
-
-      TODO()
+        TODO()
     }
     companion object {
         const val CREDENTIAL_ENDPOINT = "/wallet/credentialEndpoint"
