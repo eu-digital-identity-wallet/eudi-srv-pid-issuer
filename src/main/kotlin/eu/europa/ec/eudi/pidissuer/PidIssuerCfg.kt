@@ -61,7 +61,7 @@ class PidIssuerContext(private val environment: Environment) {
 
     @Bean
     fun route(walletApi: WalletApi, issuerApi: IssuerApi, metaDataApi: MetaDataApi): RouterFunction<*> =
-        metaDataApi.route.and(issuerApi.route)
+        metaDataApi.route.and(issuerApi.route).and(walletApi.route)
 
     //
     // End Points
