@@ -1,0 +1,47 @@
+{
+  "realm" : "pid-issuer-realm",
+  "users" : [ {
+    "id" : "57711c26-f0d4-46ad-9bb4-add519025b3d",
+    "createdTimestamp" : 1696267174283,
+    "username" : "babis",
+    "enabled" : true,
+    "totp" : false,
+    "emailVerified" : false,
+    "firstName" : "Babis",
+    "lastName" : "Routis",
+    "attributes" : {
+      "postal_code" : [ "15235" ],
+      "street" : [ "Ethnikis Antistaseos" ]
+    },
+    "credentials" : [ {
+      "id" : "988d2628-7b7c-468a-aef4-416fa5bc76bb",
+      "type" : "password",
+      "userLabel" : "My password",
+      "createdDate" : 1696267200830,
+      "secretData" : "{\"value\":\"MTmpXxXbxjN7Ckj37tZEhuCzFkC6KjjUaZUnnc55nQo=\",\"salt\":\"4Fd5FLOSfE52BT3EGjSfTw==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
+    } ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-pid-issuer-realm", "eid-holder-natural-person" ],
+    "notBefore" : 0,
+    "groups" : [ ]
+  }, {
+    "id" : "2444bae3-92f9-4cf1-aad2-5163c709e5b0",
+    "createdTimestamp" : 1696266816614,
+    "username" : "service-account-pid-issuer-srv",
+    "enabled" : true,
+    "totp" : false,
+    "emailVerified" : false,
+    "serviceAccountClientId" : "pid-issuer-srv",
+    "credentials" : [ ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-pid-issuer-realm" ],
+    "clientRoles" : {
+      "pid-issuer-srv" : [ "uma_protection" ]
+    },
+    "notBefore" : 0,
+    "groups" : [ ]
+  } ]
+}

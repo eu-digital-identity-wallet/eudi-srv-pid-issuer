@@ -16,10 +16,11 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
+import kotlinx.coroutines.reactor.awaitSingle
 import org.springframework.http.MediaType
-import org.springframework.web.reactive.function.server.ServerRequest
-import org.springframework.web.reactive.function.server.ServerResponse
-import org.springframework.web.reactive.function.server.coRouter
+import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthentication
+import org.springframework.security.oauth2.server.resource.introspection.OAuth2IntrospectionAuthenticatedPrincipal
+import org.springframework.web.reactive.function.server.*
 
 class WalletApi(private val issueCredential: IssueCredential) {
 
@@ -42,13 +43,16 @@ class WalletApi(private val issueCredential: IssueCredential) {
     }
 
     private suspend fun helloHolder(req: ServerRequest): ServerResponse {
-        // Fixme Implement hello holder
-        // Here we need to call the UserInfo EndPoint of the OAUTH server
-        // In order to get back the user details
-        // https://docs.spring.io/spring-security/reference/reactive/oauth2/resource-server/opaque-token.html#webflux-oauth2resourceserver-opaque-userinfo
-        // This means that pid-issuer will act as a OAUTH2 client
+        val principal: OAuth2IntrospectionAuthenticatedPrincipal = req
+            .principal()
+            .awaitSingle()
+            .run {
+                require(this is BearerTokenAuthentication)
+                require(principal is OAuth2IntrospectionAuthenticatedPrincipal)
+                principal as OAuth2IntrospectionAuthenticatedPrincipal
+            }
 
-        TODO()
+        return ServerResponse.ok().json().bodyValueAndAwait(principal.claims)
     }
     companion object {
         const val CREDENTIAL_ENDPOINT = "/wallet/credentialEndpoint"

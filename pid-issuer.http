@@ -1,0 +1,51 @@
+### Get Issuer MetaData
+
+GET {{issuer_publicUrl}}/.well-known/openid-credential-issuer
+
+### Get sample credentilas offer
+
+GET  {{issuer_publicUrl}}/issuer/credentialsOffer
+
+<> 2023-10-03T103112.200.json
+
+### Get OAUTH2 server MetaData
+
+GET {{issuer_authorizationServer}}/.well-known/openid-configuration
+Accept: application/json
+
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+    });
+    client.global.set("token_endpoint", response.body.token_endpoint);
+    client.global.set("userinfo_endpoint", response.body.userinfo_endpoint);
+%}
+
+### Login (Resource owner grant)
+
+POST {{token_endpoint}}
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&username={{user_username}}&password={{user_password}}&scope={{request_scope}}&client_id={{user_client_id}}
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+    });
+    client.global.set("id_token", response.body.id_token);
+    client.global.set("access_token", response.body.access_token);
+%}
+
+### Get userinfo data from OAUTH2 server
+
+GET {{userinfo_endpoint}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{access_token}}
+
+
+### Get userinfo from Issuer
+
+GET {{issuer_publicUrl}}/wallet/credentialEndpoint
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{access_token}}

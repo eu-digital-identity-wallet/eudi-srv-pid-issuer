@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  idp:
+    image: quay.io/keycloak/keycloak:22.0.3
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_HEALTH_ENABLED=true
+      - KC_METRICS_ENABLED=true
+    ports:
+      - "8180:8180"
+    volumes:
+      - ./keycloack/realm:/opt/keycloak/data/import:ro
+    command:
+      - start-dev --http-port=8180 --import-realm
