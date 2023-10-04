@@ -17,12 +17,18 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
 import kotlinx.coroutines.reactor.awaitSingle
+import kotlinx.serialization.json.JsonObject
 import org.springframework.http.MediaType
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthentication
 import org.springframework.security.oauth2.server.resource.introspection.OAuth2IntrospectionAuthenticatedPrincipal
+import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.reactive.function.client.awaitBody
 import org.springframework.web.reactive.function.server.*
+import java.net.URL
 
-class WalletApi(private val issueCredential: IssueCredential) {
+class WalletApi(
+    private val issueCredential: IssueCredential,
+    private val authorizationServerUserInfoEndPoint: URL) {
 
     val route = coRouter {
         POST(
@@ -43,16 +49,14 @@ class WalletApi(private val issueCredential: IssueCredential) {
     }
 
     private suspend fun helloHolder(req: ServerRequest): ServerResponse {
-        val principal: OAuth2IntrospectionAuthenticatedPrincipal = req
-            .principal()
-            .awaitSingle()
-            .run {
-                require(this is BearerTokenAuthentication)
-                require(principal is OAuth2IntrospectionAuthenticatedPrincipal)
-                principal as OAuth2IntrospectionAuthenticatedPrincipal
-            }
 
-        return ServerResponse.ok().json().bodyValueAndAwait(principal.claims)
+        val webClient: WebClient = WebClient.create(authorizationServerUserInfoEndPoint.toString())
+        val userInfo = webClient.get().accept(MediaType.APPLICATION_JSON)
+            .header("Authorization", req.headers().header("Authorization")[0])
+            .retrieve()
+            .awaitBody<JsonObject>()
+
+        return ServerResponse.ok().json().bodyValueAndAwait(userInfo)
     }
     companion object {
         const val CREDENTIAL_ENDPOINT = "/wallet/credentialEndpoint"

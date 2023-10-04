@@ -43,6 +43,7 @@ import org.springframework.security.web.server.SecurityWebFilterChain
 import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.reactive.config.WebFluxConfigurer
 import org.springframework.web.reactive.function.server.RouterFunction
+import java.net.URL
 
 @Configuration
 @EnableWebFlux
@@ -74,7 +75,8 @@ class PidIssuerContext(private val environment: Environment) {
     fun issuerApi(requestCredentialsOffer: RequestCredentialsOffer): IssuerApi = IssuerApi(requestCredentialsOffer)
 
     @Bean
-    fun walletApi(issueCredential: IssueCredential): WalletApi = WalletApi(issueCredential)
+    fun walletApi(issueCredential: IssueCredential): WalletApi =
+        WalletApi(issueCredential, environment.getRequiredProperty("issuer.authorizationServer.userinfo", URL::class.java))
 
     //
     // In Ports (use cases)
