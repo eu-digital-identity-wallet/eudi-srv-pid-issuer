@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
+import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidDataFromAuthServer
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.domain.pid.PidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
@@ -25,6 +26,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
 import eu.europa.ec.eudi.pidissuer.port.input.RequestCredentialsOffer
 import eu.europa.ec.eudi.pidissuer.port.out.cfg.GetCredentialIssuerContext
 import eu.europa.ec.eudi.pidissuer.port.out.cfg.GetCredentialIssuerContextFromEnv
+import eu.europa.ec.eudi.pidissuer.port.out.pid.GetPidData
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import org.springframework.context.annotation.Bean
@@ -32,6 +34,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
 import org.springframework.core.env.Environment
+import org.springframework.core.env.getRequiredProperty
 import org.springframework.http.codec.ServerCodecConfigurer
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
 import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
@@ -76,7 +79,7 @@ class PidIssuerContext(private val environment: Environment) {
 
     @Bean
     fun walletApi(issueCredential: IssueCredential): WalletApi =
-        WalletApi(issueCredential, environment.getRequiredProperty("issuer.authorizationServer.userinfo", URL::class.java))
+        WalletApi(issueCredential)
 
     //
     // In Ports (use cases)
@@ -90,7 +93,8 @@ class PidIssuerContext(private val environment: Environment) {
         RequestCredentialsOffer(getCredentialIssuerContext)
 
     @Bean
-    fun issueCredential() = IssueCredential()
+    fun issueCredential(getPidData: GetPidData) =
+        IssueCredential(getPidData)
 
     //
     // Adapters (out ports)
@@ -98,6 +102,12 @@ class PidIssuerContext(private val environment: Environment) {
     @Bean
     fun getCredentialIssuerContext(): GetCredentialIssuerContext =
         GetCredentialIssuerContextFromEnv(environment)
+
+    @Bean
+    fun getPidData(): GetPidData {
+        val userinfoEndpoint =  environment.getRequiredProperty<URL>("issuer.authorizationServer.userinfo")
+        return GetPidDataFromAuthServer(userinfoEndpoint)
+    }
 }
 
 @Configuration

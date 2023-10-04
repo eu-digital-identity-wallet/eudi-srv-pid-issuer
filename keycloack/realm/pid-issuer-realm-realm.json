@@ -262,6 +262,7 @@
         "attributes" : { }
       } ],
       "security-admin-console" : [ ],
+      "eudiw" : [ ],
       "admin-cli" : [ ],
       "account-console" : [ ],
       "broker" : [ {
@@ -367,7 +368,7 @@
   "otpPolicyLookAheadWindow" : 1,
   "otpPolicyPeriod" : 30,
   "otpPolicyCodeReusable" : false,
-  "otpSupportedApplications" : [ "totpAppGoogleName", "totpAppMicrosoftAuthenticatorName", "totpAppFreeOTPName" ],
+  "otpSupportedApplications" : [ "totpAppMicrosoftAuthenticatorName", "totpAppFreeOTPName", "totpAppGoogleName" ],
   "webAuthnPolicyRpEntityName" : "keycloak",
   "webAuthnPolicySignatureAlgorithms" : [ "ES256" ],
   "webAuthnPolicyRpId" : "",
@@ -389,6 +390,9 @@
   "webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister" : false,
   "webAuthnPolicyPasswordlessAcceptableAaguids" : [ ],
   "scopeMappings" : [ {
+    "clientScope" : "eu.europa.ec.eudiw.pid_sd-jwt-vc",
+    "roles" : [ "eid-holder-natural-person" ]
+  }, {
     "clientScope" : "eu.europa.ec.eudiw.pid_mso_mdoc",
     "roles" : [ "eid-holder-natural-person" ]
   } ],
@@ -524,6 +528,51 @@
     "defaultClientScopes" : [ "web-origins", "roles" ],
     "optionalClientScopes" : [ ]
   }, {
+    "id" : "39017805-7617-4e45-ba0a-2b6ea2c9f068",
+    "clientId" : "eudiw",
+    "name" : "EUDI Wallet",
+    "description" : "",
+    "rootUrl" : "",
+    "adminUrl" : "",
+    "baseUrl" : "",
+    "surrogateAuthRequired" : false,
+    "enabled" : true,
+    "alwaysDisplayInConsole" : true,
+    "clientAuthenticatorType" : "client-secret",
+    "redirectUris" : [ "", "urn:ietf:wg:oauth:2.0:oob" ],
+    "webOrigins" : [ "/*" ],
+    "notBefore" : 0,
+    "bearerOnly" : false,
+    "consentRequired" : false,
+    "standardFlowEnabled" : true,
+    "implicitFlowEnabled" : false,
+    "directAccessGrantsEnabled" : false,
+    "serviceAccountsEnabled" : false,
+    "publicClient" : true,
+    "frontchannelLogout" : true,
+    "protocol" : "openid-connect",
+    "attributes" : {
+      "oauth2.device.authorization.grant.enabled" : "false",
+      "access.token.signed.response.alg" : "ES256",
+      "backchannel.logout.revoke.offline.tokens" : "false",
+      "use.refresh.tokens" : "true",
+      "oidc.ciba.grant.enabled" : "false",
+      "id.token.signed.response.alg" : "ES256",
+      "backchannel.logout.session.required" : "true",
+      "client_credentials.use_refresh_token" : "false",
+      "tls.client.certificate.bound.access.tokens" : "false",
+      "require.pushed.authorization.requests" : "true",
+      "acr.loa.map" : "{}",
+      "display.on.consent.screen" : "false",
+      "pkce.code.challenge.method" : "S256",
+      "token.response.type.bearer.lower-case" : "false"
+    },
+    "authenticationFlowBindingOverrides" : { },
+    "fullScopeAllowed" : true,
+    "nodeReRegistrationTimeout" : -1,
+    "defaultClientScopes" : [ "web-origins" ],
+    "optionalClientScopes" : [ "eu.europa.ec.eudiw.pid_sd-jwt-vc", "eu.europa.ec.eudiw.pid_mso_mdoc" ]
+  }, {
     "id" : "bde36dee-e6d6-4112-b540-23748761a95d",
     "clientId" : "pid-issuer-srv",
     "name" : "PID Issuer service",
@@ -604,8 +653,8 @@
         "jsonType.label" : "String"
       }
     } ],
-    "defaultClientScopes" : [ "web-origins", "roles" ],
-    "optionalClientScopes" : [ ],
+    "defaultClientScopes" : [ "web-origins" ],
+    "optionalClientScopes" : [ "roles" ],
     "authorizationSettings" : {
       "allowRemoteResourceManagement" : false,
       "policyEnforcementMode" : "ENFORCING",
@@ -617,11 +666,6 @@
         "attributes" : { },
         "_id" : "fbece2f9-1ab1-4a79-8558-3e4c338f9ad4",
         "uris" : [ "/wallet/credentialEndpoint" ],
-        "scopes" : [ {
-          "name" : "eu.europa.ec.eudiw.pid_sd-jwt-vc"
-        }, {
-          "name" : "eu.europa.ec.eudiw.pid_mso_mdoc"
-        } ],
         "icon_uri" : ""
       } ],
       "policies" : [ {
@@ -642,11 +686,11 @@
         "logic" : "POSITIVE",
         "decisionStrategy" : "UNANIMOUS",
         "config" : {
-          "clients" : "[\"wallet-dev\"]"
+          "clients" : "[\"wallet-dev\",\"eudiw\"]"
         }
       }, {
         "id" : "9eaf93d6-db90-44de-a926-f6a04a614fe4",
-        "name" : "eu.europa.ec.eudiw.pid_mso_mdoc client scope required",
+        "name" : "pid_mso_mdoc scope required",
         "description" : "",
         "type" : "client-scope",
         "logic" : "POSITIVE",
@@ -655,30 +699,19 @@
           "clientScopes" : "[{\"id\":\"eu.europa.ec.eudiw.pid_mso_mdoc\",\"required\":true}]"
         }
       }, {
-        "id" : "e411c24d-b791-4eca-9ed9-9475a70bb47a",
-        "name" : "Permission to issue PID in mso_mdoc format",
+        "id" : "35dbd004-02b7-46b4-a6ba-3fb7e64851bc",
+        "name" : "issue-pid-mso-mdoc",
         "description" : "",
-        "type" : "scope",
+        "type" : "resource",
         "logic" : "POSITIVE",
         "decisionStrategy" : "UNANIMOUS",
         "config" : {
-          "defaultResourceType" : "urn:pid-issuer-srv:resources:wallet",
+          "defaultResourceType" : "",
           "resources" : "[\"credentialEndpoint\"]",
-          "scopes" : "[\"eu.europa.ec.eudiw.pid_mso_mdoc\"]",
-          "applyPolicies" : "[\"Accessed via wallet-dev or wallet client\",\"User must be a natural person with eID\",\"eu.europa.ec.eudiw.pid_mso_mdoc client scope required\"]"
+          "applyPolicies" : "[\"Accessed via wallet-dev or wallet client\",\"User must be a natural person with eID\",\"pid_mso_mdoc scope required\"]"
         }
       } ],
-      "scopes" : [ {
-        "id" : "e5436537-8581-428f-a6fa-6cca1097c569",
-        "name" : "eu.europa.ec.eudiw.pid_mso_mdoc",
-        "iconUri" : "",
-        "displayName" : "PID in mso_mdoc format"
-      }, {
-        "id" : "8f7c63e5-c435-461f-91ce-f3cf58ca6383",
-        "name" : "eu.europa.ec.eudiw.pid_sd-jwt-vc",
-        "iconUri" : "",
-        "displayName" : "PID in sd-jwt-vc format"
-      } ],
+      "scopes" : [ ],
       "decisionStrategy" : "UNANIMOUS"
     }
   }, {
@@ -790,8 +823,8 @@
     "authenticationFlowBindingOverrides" : { },
     "fullScopeAllowed" : true,
     "nodeReRegistrationTimeout" : -1,
-    "defaultClientScopes" : [ "web-origins", "roles" ],
-    "optionalClientScopes" : [ "eu.europa.ec.eudiw.pid_mso_mdoc" ]
+    "defaultClientScopes" : [ "web-origins" ],
+    "optionalClientScopes" : [ "roles", "eu.europa.ec.eudiw.pid_sd-jwt-vc", "eu.europa.ec.eudiw.pid_mso_mdoc" ]
   } ],
   "clientScopes" : [ {
     "id" : "e9cc185e-f5b1-4f0e-bac9-8e8c9af49c8f",
@@ -812,6 +845,34 @@
         "single" : "false",
         "attribute.nameformat" : "Basic",
         "attribute.name" : "Role"
+      }
+    } ]
+  }, {
+    "id" : "bdff440b-4dbe-4020-8003-3e4bb8bb40b2",
+    "name" : "eu.europa.ec.eudiw.pid_sd-jwt-vc",
+    "description" : "",
+    "protocol" : "openid-connect",
+    "attributes" : {
+      "include.in.token.scope" : "true",
+      "display.on.consent.screen" : "true",
+      "gui.order" : "",
+      "consent.screen.text" : "Do you consent to issue PID in SD_JWT_VC?"
+    },
+    "protocolMappers" : [ {
+      "id" : "dd814354-73ad-4526-a610-3cf73bfdaf02",
+      "name" : "profile",
+      "protocol" : "openid-connect",
+      "protocolMapper" : "oidc-usermodel-attribute-mapper",
+      "consentRequired" : false,
+      "config" : {
+        "aggregate.attrs" : "false",
+        "userinfo.token.claim" : "true",
+        "multivalued" : "false",
+        "user.attribute" : "profile",
+        "id.token.claim" : "false",
+        "access.token.claim" : "false",
+        "claim.name" : "profile",
+        "jsonType.label" : "String"
       }
     } ]
   }, {
@@ -1051,7 +1112,7 @@
     } ]
   } ],
   "defaultDefaultClientScopes" : [ "web-origins" ],
-  "defaultOptionalClientScopes" : [ "eu.europa.ec.eudiw.pid_mso_mdoc" ],
+  "defaultOptionalClientScopes" : [ "eu.europa.ec.eudiw.pid_mso_mdoc", "eu.europa.ec.eudiw.pid_sd-jwt-vc" ],
   "browserSecurityHeaders" : {
     "contentSecurityPolicyReportOnly" : "",
     "xContentTypeOptions" : "nosniff",

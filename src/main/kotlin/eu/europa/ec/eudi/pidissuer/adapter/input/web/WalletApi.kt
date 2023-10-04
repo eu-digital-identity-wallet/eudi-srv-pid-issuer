@@ -25,7 +25,7 @@ import java.net.URL
 
 class WalletApi(
     private val issueCredential: IssueCredential,
-    private val authorizationServerUserInfoEndPoint: URL,
+
 ) {
 
     val route = coRouter {
@@ -47,13 +47,13 @@ class WalletApi(
     }
 
     private suspend fun helloHolder(req: ServerRequest): ServerResponse {
-        val webClient: WebClient = WebClient.create(authorizationServerUserInfoEndPoint.toString())
-        val userInfo = webClient.get().accept(MediaType.APPLICATION_JSON)
-            .header("Authorization", req.headers().header("Authorization")[0])
-            .retrieve()
-            .awaitBody<JsonObject>()
+        val authHeader = req.headers().header("Authorization")
+        require(authHeader.isNotEmpty())
+        val accessToken = authHeader[0]
+        val pid = issueCredential(accessToken)
+        return ServerResponse.ok().json().bodyValueAndAwait(pid)
 
-        return ServerResponse.ok().json().bodyValueAndAwait(userInfo)
+
     }
     companion object {
         const val CREDENTIAL_ENDPOINT = "/wallet/credentialEndpoint"
