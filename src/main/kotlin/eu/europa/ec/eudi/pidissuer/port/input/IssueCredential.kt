@@ -20,9 +20,9 @@ import eu.europa.ec.eudi.pidissuer.domain.pid.Pid
 import eu.europa.ec.eudi.pidissuer.port.out.pid.GetPidData
 
 class IssueCredential(
-    private val getPidData: GetPidData
+    private val getPidData: GetPidData,
 ) {
-    suspend operator fun invoke(accessToken: String): Result<Pid> = result{
+    suspend operator fun invoke(accessToken: String): Result<Pid> = result {
         getPidData(accessToken) ?: error("Cannot map PID")
     }
 }

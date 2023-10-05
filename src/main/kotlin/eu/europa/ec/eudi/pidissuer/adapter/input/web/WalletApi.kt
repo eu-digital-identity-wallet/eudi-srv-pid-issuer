@@ -16,12 +16,8 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
-import kotlinx.serialization.json.JsonObject
 import org.springframework.http.MediaType
-import org.springframework.web.reactive.function.client.WebClient
-import org.springframework.web.reactive.function.client.awaitBody
 import org.springframework.web.reactive.function.server.*
-import java.net.URL
 
 class WalletApi(
     private val issueCredential: IssueCredential,
@@ -52,8 +48,6 @@ class WalletApi(
         val accessToken = authHeader[0]
         val pid = issueCredential(accessToken)
         return ServerResponse.ok().json().bodyValueAndAwait(pid)
-
-
     }
     companion object {
         const val CREDENTIAL_ENDPOINT = "/wallet/credentialEndpoint"

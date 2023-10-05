@@ -1,14 +1,16 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.springframework.boot.gradle.tasks.bundling.BootBuildImage
+import kotlin.jvm.optionals.getOrNull
 
 plugins {
-    id("org.jetbrains.dokka") version "1.8.20"
-    id("org.springframework.boot") version "3.1.4"
-    id("io.spring.dependency-management") version "1.1.3"
-    kotlin("jvm") version "1.9.0"
-    kotlin("plugin.spring") version "1.9.0"
-    kotlin("plugin.serialization") version "1.9.0"
-    id("com.diffplug.spotless") version "6.20.0"
+    base
+    alias(libs.plugins.dokka)
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.plugin.spring)
+    alias(libs.plugins.kotlin.plugin.serialization)
+    alias(libs.plugins.spotless)
 }
 
 group = "eu.europa.ec.eudi"
@@ -19,9 +21,6 @@ repositories {
 }
 
 dependencies {
-    val kotlinxSerializationVersion = "1.6.0"
-    val arrowVersion = "1.2.0"
-
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server") {
         because("PID Issuer acts like a OAUTH2 resource server")
     }
@@ -30,11 +29,11 @@ dependencies {
     implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
-    implementation("io.arrow-kt:arrow-core:$arrowVersion") {
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.arrow.core) {
         because("Functional programming support")
     }
-    implementation("io.arrow-kt:arrow-fx-coroutines:$arrowVersion")
+    implementation(libs.arrow.fx.coroutines)
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.projectreactor:reactor-test")
 }
@@ -44,7 +43,16 @@ java {
 }
 
 kotlin {
-    jvmToolchain(17)
+
+    val versionCatalog: VersionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
+    jvmToolchain {
+        val javaVersion: String = versionCatalog
+            .findVersion("java")
+            .getOrNull()
+            ?.requiredVersion
+            ?: throw GradleException("Version 'java' is not specified in the version catalog")
+        languageVersion.set(JavaLanguageVersion.of(javaVersion))
+    }
 }
 tasks.withType<KotlinCompile>().configureEach {
     kotlinOptions {

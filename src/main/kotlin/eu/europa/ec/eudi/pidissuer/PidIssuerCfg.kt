@@ -105,7 +105,7 @@ class PidIssuerContext(private val environment: Environment) {
 
     @Bean
     fun getPidData(): GetPidData {
-        val userinfoEndpoint =  environment.getRequiredProperty<URL>("issuer.authorizationServer.userinfo")
+        val userinfoEndpoint = environment.getRequiredProperty<URL>("issuer.authorizationServer.userinfo")
         return GetPidDataFromAuthServer(userinfoEndpoint)
     }
 }
