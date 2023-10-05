@@ -15,6 +15,7 @@ plugins {
 
 group = "eu.europa.ec.eudi"
 version = "0.0.1-SNAPSHOT"
+val nimbusSdkVersion = "10.15"
 
 repositories {
     mavenCentral()
@@ -36,6 +37,8 @@ dependencies {
     implementation(libs.arrow.fx.coroutines)
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.projectreactor:reactor-test")
+    testImplementation("com.nimbusds:oauth2-oidc-sdk:$nimbusSdkVersion")
+
 }
 
 java {
