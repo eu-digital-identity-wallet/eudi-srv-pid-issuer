@@ -41,21 +41,26 @@ dependencies {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
+    val javaVersion = getVersionFromCatalog("java")
+    sourceCompatibility = JavaVersion.toVersion(javaVersion)
 }
 
 kotlin {
 
-    val versionCatalog: VersionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
     jvmToolchain {
-        val javaVersion: String = versionCatalog
-            .findVersion("java")
-            .getOrNull()
-            ?.requiredVersion
-            ?: throw GradleException("Version 'java' is not specified in the version catalog")
+        val javaVersion = getVersionFromCatalog("java")
         languageVersion.set(JavaLanguageVersion.of(javaVersion))
     }
 }
+fun getVersionFromCatalog(lookup: String): String {
+    val versionCatalog: VersionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
+    return versionCatalog
+        .findVersion(lookup)
+        .getOrNull()
+        ?.requiredVersion
+        ?: throw GradleException("Version '$lookup' is not specified in the version catalog")
+}
+
 tasks.withType<KotlinCompile>().configureEach {
     kotlinOptions {
         freeCompilerArgs += "-Xcontext-receivers"
@@ -74,8 +79,8 @@ tasks.named<BootBuildImage>("bootBuildImage") {
     imageName.set("$group/${project.name}")
 }
 
-val ktlintVersion = "0.50.0"
 spotless {
+    val ktlintVersion = getVersionFromCatalog("ktlintVersion")
     kotlin {
         ktlint(ktlintVersion)
         licenseHeaderFile("FileHeader.txt")
