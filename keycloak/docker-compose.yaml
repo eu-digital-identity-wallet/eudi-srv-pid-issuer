@@ -46,13 +46,16 @@ services:
       - KEYCLOAK_ADMIN_PASSWORD=password
       - JAVA_OPTS_APPEND=-Dkeycloak.profile.feature.upload_scripts=enabled
       - PRINT_ENV=true
-#    ports:
-#      - "0.0.0.0:8080:8080"
-#      - "0.0.0.0:8443:8443"
+    healthcheck:
+      test: "bash /opt/keycloak/health-check.sh"
+      interval: 5s
+      timeout: 10s
+      retries: 12
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
+      - ./keycloak-extra/health-check.sh:/opt/keycloak/health-check.sh
       - ./keycloak-extra/etc/pki/ca-trust/extracted/java/cacerts:/etc/pki/ca-trust/extracted/java/cacerts
       - ./keycloak-realms/:/opt/keycloak/data/import
       - ./realm/:/opt/keycloak/data/import
@@ -65,6 +68,9 @@ services:
     ports:
       - "443:443"
       - "80:80"
+    depends_on:
+      keycloak:
+        condition: service_healthy
     volumes:
       - ./haproxy/haproxy.conf:/usr/local/etc/haproxy/haproxy.cfg
       - ./haproxy/certs/:/etc/ssl/certs/
