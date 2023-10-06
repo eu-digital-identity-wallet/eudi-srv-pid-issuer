@@ -1,8 +1,8 @@
-version: '3'
+version: '3.8'
 
 volumes:
   postgres_data:
-      driver: local
+    driver: local
 
 networks:
   default:
@@ -10,56 +10,58 @@ networks:
 
 services:
   postgres:
-      image: postgres
-      container_name: postgres
-      volumes:
-        - postgres_data:/var/lib/postgresql/data
-      networks:
-        - default
-      ports:
-        - "0.0.0.0:5432:5432"
-      environment:
-        POSTGRES_DB: keycloak
-        POSTGRES_USER: keycloak
-        POSTGRES_PASSWORD: password
+    image: postgres:15-alpine
+    container_name: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - default
+    ports:
+      - "0.0.0.0:5432:5432"
+    healthcheck:
+      test: "exit 0"
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
 
   keycloak:
-      image: quay.io/keycloak/keycloak:nightly
-      container_name: keycloak
-      entrypoint:
-        - "/opt/keycloak/bin/kc.sh"
-        - "start"
-        - "--http-port=8080"
-        - "--hostname-url=https://keycloak.local"
-        - "--proxy=edge"
-        - "--health-enabled=true"
-        - "--import-realm "
-      environment:
-        KC_DB: "postgres"
-        KC_DB_URL: "jdbc:postgresql://postgres:5432/keycloak"
-        KC_DATABASE: "keycloak"
-        KC_DB_USERNAME: "keycloak"
-        KC_DB_PASSWORD: "password"
-        KEYCLOAK_ADMIN: "admin"
-        KEYCLOAK_ADMIN_PASSWORD: "password"
-        JAVA_OPTS_APPEND: "-Dkeycloak.profile.feature.upload_scripts=enabled"
-        PRINT_ENV: true
-      ports:
-        - "0.0.0.0:8080:8080"
-        - "0.0.0.0:8443:8443"
-      depends_on:
-        - postgres
-      volumes:
-        - ./keycloak-extra/etc/pki/ca-trust/extracted/java/cacerts:/etc/pki/ca-trust/extracted/java/cacerts
-        - ./keycloak-realms/:/opt/keycloak/data/import
-      networks:
-        - default
+    image: quay.io/keycloak/keycloak:nightly
+    container_name: keycloak
+    command:
+      - start
+      - --import-realm
+      - --http-port=8080
+      - --hostname-url=https://keycloak.local
+      - --proxy=edge
+    environment:
+      - KC_HEALTH_ENABLED=true
+      - KC_METRICS_ENABLED=true
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak
+      - KC_DATABASE=keycloak
+      - KC_DB_USERNAME=keycloak
+      - KC_DB_PASSWORD=password
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=password
+      - JAVA_OPTS_APPEND=-Dkeycloak.profile.feature.upload_scripts=enabled
+      - PRINT_ENV=true
+#    ports:
+#      - "0.0.0.0:8080:8080"
+#      - "0.0.0.0:8443:8443"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./keycloak-extra/etc/pki/ca-trust/extracted/java/cacerts:/etc/pki/ca-trust/extracted/java/cacerts
+      - ./keycloak-realms/:/opt/keycloak/data/import
+      - ./realm/:/opt/keycloak/data/import
+    networks:
+      - default
 
   haproxy:
     image: haproxy:2.8.3
     container_name: haproxy
-    depends_on:
-      - keycloak
     ports:
       - "443:443"
       - "80:80"
