@@ -3,7 +3,7 @@
 ## Summary
 
 Implementation of a credential issuing service, according to
-[OpenId4VCI - draft13](https://openid.bitbucket.io/connect/openid-4-verifiable-credential-issuance-1_0.html)
+[OpenId4VCI - draft13](https://openid.github.io/OpenID4VCI/openid-4-verifiable-credential-issuance-wg-draft.html)
 
 ## Endpoints
 
