@@ -2,6 +2,13 @@
 
 GET {{issuer_publicUrl}}/.well-known/openid-credential-issuer
 
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+    });
+    client.global.set("issuer_authorizationServer", response.body.authorization_server);
+%}
+
 ### Get sample credentilas offer
 
 GET  {{issuer_publicUrl}}/issuer/credentialsOffer
