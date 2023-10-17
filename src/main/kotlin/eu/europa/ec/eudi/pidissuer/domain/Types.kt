@@ -62,6 +62,12 @@ data class CredentialDisplay(
 )
 
 typealias Display = Map<Locale, String>
+data class AttributeDetails(
+    val name: String,
+    val mandatory: Boolean = false,
+    val valueType: String? = null,
+    val display: Display = emptyMap(),
+)
 
 /**
  * Identify how the Credential is bound to the identifier

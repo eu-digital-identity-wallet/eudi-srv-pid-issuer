@@ -119,6 +119,7 @@ private fun CredentialOffer.toTransferObject(): JsonElement {
         is CredentialOfferByScope -> toTransferObject()
         is JwtVcJsonCredentialOffer -> toTransferObject()
         is MsoMdocCredentialOffer -> toTransferObject()
+        is SdJwtVcCredentialOffer -> TODO("Implement")
     }
 }
 

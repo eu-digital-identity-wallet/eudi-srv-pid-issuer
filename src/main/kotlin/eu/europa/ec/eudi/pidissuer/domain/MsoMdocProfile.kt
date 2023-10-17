@@ -32,8 +32,7 @@ data class MsoMdocAttribute<out V>(val name: MsoMdocAttributeName, val value: V)
 
 const val MSO_MDOC_FORMAT = "mso_mdoc"
 
-data class MsoAttribute(val name: MsoMdocAttributeName, val display: Display = emptyMap())
-typealias MsoClaims = Map<MsoNameSpace, List<MsoAttribute>>
+typealias MsoClaims = Map<MsoNameSpace, List<AttributeDetails>>
 
 /**
  * @param docType string identifying the credential type as defined in ISO.18013-5.

@@ -123,9 +123,11 @@ internal fun CredentialDisplay.toTransferObject(): JsonObject = buildJsonObject 
     backgroundColor?.let { put("background_color", it) }
 }
 
-internal val MsoAttribute.toTransferObject: JsonObjectBuilder.() -> Unit
+internal val AttributeDetails.toTransferObject: JsonObjectBuilder.() -> Unit
     get() = {
         putJsonObject(name) {
+            put("mandatory", mandatory)
+            valueType?.let { put("value_type", it) }
             if (display.isNotEmpty()) {
                 put("display", display.toTransferObject())
             }

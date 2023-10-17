@@ -20,64 +20,20 @@ import arrow.core.raise.either
 import arrow.core.raise.ensure
 import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
-import java.util.*
 
-private const val PID_DOCTYPE = "eu.europa.ec.eudiw.pid"
-val PisMsoMdocScope: Scope = Scope("${PID_DOCTYPE}_mso_mdoc")
+val PisMsoMdocScope: Scope = Scope("${PID_DOCTYPE}_$MSO_MDOC_FORMAT")
 
 val PidMsoMdocV1: MsoMdocMetaData = MsoMdocMetaData(
     docType = pidDocType(1),
-    display = listOf(
-        CredentialDisplay(
-            name = DisplayName("PID", Locale.ENGLISH),
-            logo = ImageUrl(
-                url = HttpsUrl.of("https://examplestate.com/public/mdl.png")!!,
-                alternativeText = "A square figure of a PID",
-            ),
-        ),
-    ),
-    msoClaims = buildMap {
-        put(
-            pidNameSpace(1),
-            listOf(
-                MsoAttribute(
-                    name = "family_name",
-                    display = mapOf(Locale.ENGLISH to "Current Family Name"),
-                ),
-                MsoAttribute(
-                    name = "given_name",
-                    display = mapOf(Locale.ENGLISH to "Current First Names"),
-                ),
-                MsoAttribute(
-                    name = "birth_date",
-                    display = mapOf(Locale.ENGLISH to "Date of Birth"),
-                ),
-                MsoAttribute(
-                    name = "age_over_18",
-                    display = mapOf(Locale.ENGLISH to "Adult or minor"),
-                ),
-                MsoAttribute(
-                    name = "age_birth_year",
-                ),
-                MsoAttribute(
-                    name = "unique_id",
-                    display = mapOf(Locale.ENGLISH to "Unique Identifier"),
-                ),
-            ),
-        )
-    },
+    display = pidDisplay,
+    msoClaims = mapOf(pidNameSpace(1) to pidAttributes),
     cryptographicSuitesSupported = listOf(
         JWSAlgorithm.ES256,
         JWSAlgorithm.ES384,
         JWSAlgorithm.ES512,
     ),
     scope = PisMsoMdocScope,
-
 )
-
-private fun pidDocType(v: Int?): String =
-    if (v == null) PID_DOCTYPE
-    else "$PID_DOCTYPE.$v"
 
 private fun pidDomesticNameSpace(v: Int?, countryCode: String): MsoNameSpace =
     if (v == null) "$PID_DOCTYPE.$countryCode"

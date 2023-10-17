@@ -15,14 +15,29 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
-const val SJ_JWT_VC_FORMAT = "sd-jwt-vc"
+/**
+ * @see https://vcstuff.github.io/oid4vc-haip-sd-jwt-vc/draft-oid4vc-haip-sd-jwt-vc.html#name-format-identifier
+ */
+const val SJ_JWT_VC_FORMAT = "vc+sd-jwt"
 
+@JvmInline
+value class SdJwtVcType(val value: String)
+
+/**
+ * @param type As defined in https://datatracker.ietf.org/doc/html/draft-ietf-oauth-sd-jwt-vc-00#type-claim
+ */
 data class SdJwtVcMetaData(
+    val type: SdJwtVcType,
     override val scope: Scope? = null,
     override val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod> = emptyList(),
     override val display: List<CredentialDisplay>,
+    val claims: List<AttributeDetails>,
 ) : CredentialMetaData {
     override val format: Format = Format(SJ_JWT_VC_FORMAT)
 }
 
-object Dummy
+//
+// Credential Offer
+//
+
+data class SdJwtVcCredentialOffer(val type: SdJwtVcType) : CredentialOffer
