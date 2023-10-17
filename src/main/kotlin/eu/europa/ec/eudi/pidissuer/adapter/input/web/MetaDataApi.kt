@@ -15,7 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
+import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
+import kotlinx.serialization.json.*
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.server.*
 
@@ -32,9 +34,7 @@ class MetaDataApi(
     }
 
     private suspend fun handleGetClientIssuerMetaData(req: ServerRequest): ServerResponse =
-        getCredentialIssuerMetaData().run {
-            ServerResponse.ok().json().bodyValueAndAwait(this)
-        }
+        getCredentialIssuerMetaData().let { metaData -> ServerResponse.ok().json().bodyValueAndAwait(metaData) }
 
     companion object {
         const val WELL_KNOWN_OPENID_CREDENTIAL_ISSUER = "/.well-known/openid-credential-issuer"

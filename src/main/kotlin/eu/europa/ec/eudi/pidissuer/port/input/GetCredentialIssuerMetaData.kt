@@ -17,14 +17,24 @@ package eu.europa.ec.eudi.pidissuer.port.input
 
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.out.cfg.GetCredentialIssuerContext
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 
+class GetCredentialIssuerMetaData(
+    val getCredentialIssuerContext: GetCredentialIssuerContext,
+) {
+    suspend operator fun invoke(): CredentialIssuerMetaDataTO =
+        coroutineScope {
+            getCredentialIssuerContext().metaData.toTransferObject()
+        }
+}
+
 @Serializable
-data class CredentialIssuerMetaDataTO(
+public data class CredentialIssuerMetaDataTO(
     @Required @SerialName("credential_issuer") val credentialIssuer: String,
     @SerialName("authorization_server") val authorizationServer: String? = null,
     @Required @SerialName("credential_endpoint") val credentialEndpoint: String,
@@ -37,13 +47,6 @@ data class CredentialIssuerMetaDataTO(
     @SerialName("require_credential_response_encryption") val requireCredentialResponseEncryption: Boolean = false,
     @Required @SerialName("credentials_supported") val credentialsSupported: List<JsonObject>,
 )
-
-class GetCredentialIssuerMetaData(
-    val getCredentialIssuerContext: GetCredentialIssuerContext,
-) {
-    suspend operator fun invoke(): CredentialIssuerMetaDataTO =
-        getCredentialIssuerContext().metaData.run { this.toTransferObject() }
-}
 
 private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDataTO = CredentialIssuerMetaDataTO(
     credentialIssuer = id.externalForm,
@@ -106,6 +109,7 @@ internal val MsoMdocMetaData.toTransferObject: JsonObjectBuilder.() -> Unit
             }
         }
     }
+
 internal fun CredentialDisplay.toTransferObject(): JsonObject = buildJsonObject {
     put("name", name.name)
     put("locale", name.locale.toString())
@@ -118,6 +122,7 @@ internal fun CredentialDisplay.toTransferObject(): JsonObject = buildJsonObject 
     textColor?.let { put("text_color", it) }
     backgroundColor?.let { put("background_color", it) }
 }
+
 internal val MsoAttribute.toTransferObject: JsonObjectBuilder.() -> Unit
     get() = {
         putJsonObject(name) {

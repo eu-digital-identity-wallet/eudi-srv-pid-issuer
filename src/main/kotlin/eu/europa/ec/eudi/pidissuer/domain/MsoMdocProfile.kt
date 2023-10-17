@@ -15,6 +15,10 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import arrow.core.Either
+import arrow.core.raise.either
+import arrow.core.raise.ensure
+import arrow.core.raise.ensureNotNull
 import com.nimbusds.jose.JWSAlgorithm
 
 //
@@ -22,16 +26,20 @@ import com.nimbusds.jose.JWSAlgorithm
 //
 typealias MsoDocType = String
 typealias MsoNameSpace = String
-data class MsoMdocAttribute<out V>(val name: String, val value: V)
+typealias MsoMdocAttributeName = String
+
+data class MsoMdocAttribute<out V>(val name: MsoMdocAttributeName, val value: V)
+
 const val MSO_MDOC_FORMAT = "mso_mdoc"
-data class MsoAttribute(val name: String, val display: Display = emptyMap())
+
+data class MsoAttribute(val name: MsoMdocAttributeName, val display: Display = emptyMap())
 typealias MsoClaims = Map<MsoNameSpace, List<MsoAttribute>>
 
 /**
  * @param docType string identifying the credential type as defined in ISO.18013-5.
  */
 data class MsoMdocMetaData(
-    val docType: String,
+    val docType: MsoDocType,
     val cryptographicSuitesSupported: List<JWSAlgorithm>,
     override val scope: Scope? = null,
     override val display: List<CredentialDisplay> = emptyList(),
@@ -53,3 +61,27 @@ data class MsoMdoc(
     val docType: MsoDocType,
     val attributes: Map<MsoNameSpace, MsoMdocAttribute<Any>>,
 )
+
+//
+// Credential Request
+//
+data class MsmMdocCredentialRequest(
+    val docType: MsoDocType,
+    val claims: Map<MsoNameSpace, List<MsoMdocAttributeName>> = emptyMap(),
+) : CredentialRequestFormat
+
+fun MsmMdocCredentialRequest.validate(meta: MsoMdocMetaData): Either<String, Unit> = either {
+    ensure(docType == meta.docType) { "doctype is $docType but was expecting ${meta.docType}" }
+    if (meta.msoClaims.isEmpty()) {
+        ensure(claims.isEmpty()) { "Requested claims should be empty. " }
+    } else {
+        val expectedAttributeNames = meta.msoClaims.mapValues { kv -> kv.value.map { it.name } }
+        claims.forEach { (namespace, attributes) ->
+            val expectedAttributeNamesForNamespace = expectedAttributeNames[namespace]
+            ensureNotNull(expectedAttributeNamesForNamespace) { "Unexpected namespace $namespace" }
+            attributes.forEach { attr ->
+                ensure(expectedAttributeNamesForNamespace.contains(attr)) { "Unexpected attribute $attr for namespace $namespace" }
+            }
+        }
+    }
+}

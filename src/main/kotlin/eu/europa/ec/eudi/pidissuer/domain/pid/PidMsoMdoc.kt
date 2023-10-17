@@ -15,6 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain.pid
 
+import arrow.core.Either
+import arrow.core.raise.either
+import arrow.core.raise.ensure
 import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import java.util.*
@@ -81,3 +84,9 @@ private fun pidDomesticNameSpace(v: Int?, countryCode: String): MsoNameSpace =
     else "$PID_DOCTYPE.$countryCode.$v"
 
 private fun pidNameSpace(v: Int?): MsoNameSpace = pidDocType(v)
+
+fun MsmMdocCredentialRequest.validatePidMsoMdocV1(): Either<String, Unit> = either {
+    ensure(docType == PidMsoMdocV1.docType) { "doctype is $docType but was expecting ${PidMsoMdocV1.docType}" }
+    claims.forEach {
+    }
+}

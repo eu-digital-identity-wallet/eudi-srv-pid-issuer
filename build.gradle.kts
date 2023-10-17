@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.springframework.boot.gradle.tasks.bundling.BootBuildImage
+import java.net.URI
 import kotlin.jvm.optionals.getOrNull
 
 plugins {
@@ -19,6 +20,12 @@ val nimbusSdkVersion = "10.15"
 
 repositories {
     mavenCentral()
+    maven {
+        url = URI.create("https://s01.oss.sonatype.org/content/repositories/snapshots/")
+        this.mavenContent {
+            snapshotsOnly()
+        }
+    }
 }
 
 dependencies {

@@ -22,6 +22,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidDataFromAuthServer
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.domain.pid.PidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
+import eu.europa.ec.eudi.pidissuer.port.input.HelloHolder
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
 import eu.europa.ec.eudi.pidissuer.port.input.RequestCredentialsOffer
 import eu.europa.ec.eudi.pidissuer.port.out.cfg.GetCredentialIssuerContext
@@ -78,8 +79,8 @@ class PidIssuerContext(private val environment: Environment) {
     fun issuerApi(requestCredentialsOffer: RequestCredentialsOffer): IssuerApi = IssuerApi(requestCredentialsOffer)
 
     @Bean
-    fun walletApi(issueCredential: IssueCredential): WalletApi =
-        WalletApi(issueCredential)
+    fun walletApi(issueCredential: IssueCredential, helloHolder: HelloHolder): WalletApi =
+        WalletApi(issueCredential, helloHolder)
 
     //
     // In Ports (use cases)
@@ -95,6 +96,10 @@ class PidIssuerContext(private val environment: Environment) {
     @Bean
     fun issueCredential(getPidData: GetPidData) =
         IssueCredential(getPidData)
+
+    @Bean
+    fun helloHolder(getPidData: GetPidData) =
+        HelloHolder(getPidData)
 
     //
     // Adapters (out ports)

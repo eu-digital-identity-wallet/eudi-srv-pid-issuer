@@ -15,12 +15,14 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
+import eu.europa.ec.eudi.pidissuer.port.input.HelloHolder
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.server.*
 
 class WalletApi(
     private val issueCredential: IssueCredential,
+    private val helloHolder: HelloHolder,
 
 ) {
 
@@ -33,7 +35,7 @@ class WalletApi(
         GET(
             CREDENTIAL_ENDPOINT,
             contentType(MediaType.APPLICATION_JSON) and accept(MediaType.APPLICATION_JSON),
-            this@WalletApi::helloHolder,
+            this@WalletApi::handleHelloHolder,
 
         )
     }
@@ -42,12 +44,15 @@ class WalletApi(
         TODO()
     }
 
-    private suspend fun helloHolder(req: ServerRequest): ServerResponse {
+    private suspend fun handleHelloHolder(req: ServerRequest): ServerResponse {
         val authHeader = req.headers().header("Authorization")
-        require(authHeader.isNotEmpty())
+        require(authHeader.isNotEmpty()) { "An access token is required" }
         val accessToken = authHeader[0]
-        val pid = issueCredential(accessToken)
-        return ServerResponse.ok().json().bodyValueAndAwait(pid)
+        return helloHolder(accessToken).fold(ifLeft = {
+            ServerResponse.notFound().buildAndAwait()
+        }, ifRight = { pid ->
+            ServerResponse.ok().json().bodyValueAndAwait(pid)
+        })
     }
     companion object {
         const val CREDENTIAL_ENDPOINT = "/wallet/credentialEndpoint"
