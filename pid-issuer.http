@@ -1,3 +1,15 @@
+### Get Isusuer JWK Set
+
+
+GET {{issuer_publicUrl}}/.well-known/jwks.json
+
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+    });
+    client.global.set("keys", response.body.keys);
+%}
+
 ### Get Issuer MetaData
 
 GET {{issuer_publicUrl}}/.well-known/openid-credential-issuer

@@ -13,10 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.out.cfg
+package eu.europa.ec.eudi.pidissuer.port.input
 
-import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerContext
+import com.nimbusds.jose.jwk.JWKSet
+import eu.europa.ec.eudi.pidissuer.port.out.cfg.GetCredentialIssuerContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 
-interface GetCredentialIssuerContext {
-    suspend operator fun invoke(): CredentialIssuerContext
+class GetJwkSet(
+    val getCredentialIssuerContext: GetCredentialIssuerContext,
+) {
+    suspend operator fun invoke(): JsonObject =
+        JWKSet(getCredentialIssuerContext().sdJwtVcSigningKey.toPublicJWK()).toJson()
 }
+
+internal fun JWKSet.toJson() = Json.parseToJsonElement(toString(true)).jsonObject

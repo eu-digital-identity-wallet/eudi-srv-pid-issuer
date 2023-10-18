@@ -15,9 +15,11 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import com.nimbusds.jose.jwk.RSAKey
 import java.time.Clock
 
 data class CredentialIssuerContext(
     val metaData: CredentialIssuerMetaData,
     val clock: Clock,
+    val sdJwtVcSigningKey: RSAKey,
 )

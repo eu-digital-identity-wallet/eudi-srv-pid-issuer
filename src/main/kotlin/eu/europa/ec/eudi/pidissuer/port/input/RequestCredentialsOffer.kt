@@ -73,7 +73,7 @@ class RequestCredentialsOffer(
         )
     }
 
-    fun dummyOffer(): CredentialsOffer {
+    suspend fun dummyOffer(): CredentialsOffer {
         val ctx = getCredentialIssuerContext()
         val p = ctx.metaData.credentialsSupported.filterIsInstance<MsoMdocMetaData>()
             .find { it.docType == PidMsoMdocV1.docType }!!

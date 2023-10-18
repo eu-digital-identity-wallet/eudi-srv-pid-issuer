@@ -18,15 +18,12 @@ package eu.europa.ec.eudi.pidissuer
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
+import eu.europa.ec.eudi.pidissuer.adapter.out.cfg.GetCredentialIssuerContextFromEnv
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidDataFromAuthServer
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.domain.pid.PidMsoMdocV1
-import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
-import eu.europa.ec.eudi.pidissuer.port.input.HelloHolder
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
-import eu.europa.ec.eudi.pidissuer.port.input.RequestCredentialsOffer
+import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.cfg.GetCredentialIssuerContext
-import eu.europa.ec.eudi.pidissuer.port.out.cfg.GetCredentialIssuerContextFromEnv
 import eu.europa.ec.eudi.pidissuer.port.out.pid.GetPidData
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -72,8 +69,8 @@ class PidIssuerContext(private val environment: Environment) {
     // End Points
     //
     @Bean
-    fun genericApi(getCredentialIssuerMetaData: GetCredentialIssuerMetaData) =
-        MetaDataApi(getCredentialIssuerMetaData)
+    fun genericApi(getCredentialIssuerMetaData: GetCredentialIssuerMetaData, getJwkSet: GetJwkSet) =
+        MetaDataApi(getCredentialIssuerMetaData, getJwkSet)
 
     @Bean
     fun issuerApi(requestCredentialsOffer: RequestCredentialsOffer): IssuerApi = IssuerApi(requestCredentialsOffer)
@@ -113,6 +110,10 @@ class PidIssuerContext(private val environment: Environment) {
         val userinfoEndpoint = environment.getRequiredProperty<URL>("issuer.authorizationServer.userinfo")
         return GetPidDataFromAuthServer(userinfoEndpoint)
     }
+
+    @Bean
+    fun getJwkSet(getCredentialIssuerContext: GetCredentialIssuerContext): GetJwkSet =
+        GetJwkSet(getCredentialIssuerContext)
 }
 
 @Configuration
@@ -126,6 +127,7 @@ class SecurityCfg {
             authorizeExchange {
                 authorize(WalletApi.CREDENTIAL_ENDPOINT, hasAuthority(PidMsoMdocV1.scope!!.toSpring()))
                 authorize(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, permitAll)
+                authorize(MetaDataApi.WELL_KNOWN_JWKS, permitAll)
                 authorize(IssuerApi.CREDENTIALS_OFFER, permitAll)
             }
 
