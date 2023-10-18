@@ -42,6 +42,4 @@ data class JwtVcJsonMetaData(
 // Credential Offer
 //
 
-data class JwtVcJsonCredentialOffer(
-    val type: List<String>,
-) : CredentialOffer
+object DummyJwtVc

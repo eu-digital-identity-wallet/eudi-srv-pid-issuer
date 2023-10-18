@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
-import arrow.core.raise.either
 import eu.europa.ec.eudi.pidissuer.port.input.RequestCredentialsOffer
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.server.*
@@ -37,7 +36,7 @@ class IssuerApi(private val requestCredentialsOffer: RequestCredentialsOffer) {
     }
 
     private suspend fun handleRequestCredentialsOffer(req: ServerRequest): ServerResponse {
-        return either { requestCredentialsOffer() }.fold(
+        return requestCredentialsOffer().fold(
             ifLeft = { _ -> ServerResponse.badRequest().buildAndAwait() },
             ifRight = { ServerResponse.ok().json().bodyValueAndAwait(it) },
         )

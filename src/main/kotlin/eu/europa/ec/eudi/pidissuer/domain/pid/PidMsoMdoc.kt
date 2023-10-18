@@ -28,9 +28,7 @@ val PidMsoMdocV1: MsoMdocMetaData = MsoMdocMetaData(
     display = pidDisplay,
     msoClaims = mapOf(pidNameSpace(1) to pidAttributes),
     cryptographicSuitesSupported = listOf(
-        JWSAlgorithm.ES256,
-        JWSAlgorithm.ES384,
-        JWSAlgorithm.ES512,
+        JWSAlgorithm.ES256K,
     ),
     scope = PisMsoMdocScope,
 )

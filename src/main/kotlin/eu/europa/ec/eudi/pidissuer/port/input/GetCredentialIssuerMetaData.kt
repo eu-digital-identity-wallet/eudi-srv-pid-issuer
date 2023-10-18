@@ -87,20 +87,21 @@ private fun credentialMetaDataJson(d: CredentialMetaData): JsonObject = buildJso
     }
     when (d) {
         is JwtVcJsonMetaData -> TODO()
-        is MsoMdocMetaData -> d.toTransferObject(this)
-        is SdJwtVcMetaData -> TODO()
+        is MsoMdocMetaData -> d.toTransferObject(false)(this)
+        is SdJwtVcMetaData -> d.toTransferObject(false)(this)
     }
 }
 
 @OptIn(ExperimentalSerializationApi::class)
-internal val MsoMdocMetaData.toTransferObject: JsonObjectBuilder.() -> Unit
-    get() = {
-        put("doctype", docType)
+internal fun MsoMdocMetaData.toTransferObject(isOffer: Boolean): JsonObjectBuilder.() -> Unit = {
+    put("doctype", docType)
+    if (!isOffer) {
         if (display.isNotEmpty()) {
             putJsonArray("display") {
                 addAll(display.map { it.toTransferObject() })
             }
         }
+
         putJsonObject("claims") {
             msoClaims.forEach { (nameSpace, attributes) ->
                 putJsonObject(nameSpace) {
@@ -109,6 +110,26 @@ internal val MsoMdocMetaData.toTransferObject: JsonObjectBuilder.() -> Unit
             }
         }
     }
+}
+
+@OptIn(ExperimentalSerializationApi::class)
+internal fun SdJwtVcMetaData.toTransferObject(isOffer: Boolean): JsonObjectBuilder.() -> Unit = {
+    if (!isOffer) {
+        if (display.isNotEmpty()) {
+            putJsonArray("display") {
+                addAll(display.map { it.toTransferObject() })
+            }
+        }
+    }
+    putJsonObject("credential_definition") {
+        put("type", type.value)
+        if (!isOffer) {
+            putJsonObject("claims") {
+                claims.forEach { attribute -> attribute.toTransferObject(this) }
+            }
+        }
+    }
+}
 
 internal fun CredentialDisplay.toTransferObject(): JsonObject = buildJsonObject {
     put("name", name.name)

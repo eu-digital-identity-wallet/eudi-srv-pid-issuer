@@ -22,6 +22,7 @@ import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerContext
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import eu.europa.ec.eudi.pidissuer.domain.pid.PidMsoMdocV1
+import eu.europa.ec.eudi.pidissuer.domain.pid.PidSdJwtVcV1
 import eu.europa.ec.eudi.pidissuer.port.out.cfg.GetCredentialIssuerContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -53,7 +54,7 @@ private fun Environment.credentialIssuerMetaData(): CredentialIssuerMetaData {
         id = issuerPublicUrl,
         credentialEndPoint = getRequiredProperty("issuer.publicUrl").run { HttpsUrl.unsafe(this + "/wallet/credentialEndpoint") },
         authorizationServer = authorizationServer,
-        credentialsSupported = listOf(PidMsoMdocV1),
+        credentialsSupported = listOf(PidMsoMdocV1, PidSdJwtVcV1),
     )
 }
 

@@ -51,17 +51,6 @@ data class MsoMdocMetaData(
 }
 
 //
-// Credential Offer
-//
-
-data class MsoMdocCredentialOffer(val docType: MsoDocType) : CredentialOffer
-
-data class MsoMdoc(
-    val docType: MsoDocType,
-    val attributes: Map<MsoNameSpace, MsoMdocAttribute<Any>>,
-)
-
-//
 // Credential Request
 //
 data class MsmMdocCredentialRequest(

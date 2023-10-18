@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain.pid
 
+import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 
 val PisSdjwtVcScope: Scope = Scope("${PID_DOCTYPE}_${SJ_JWT_VC_FORMAT}")
@@ -26,5 +27,8 @@ val PidSdJwtVcV1: SdJwtVcMetaData = SdJwtVcMetaData(
     cryptographicBindingMethodsSupported = listOf(
         CryptographicBindingMethod.Jwk,
     ),
-    scope = PisMsoMdocScope,
+    cryptographicSuitesSupported = listOf(
+        JWSAlgorithm.ES256K,
+    ),
+    scope = PisSdjwtVcScope,
 )

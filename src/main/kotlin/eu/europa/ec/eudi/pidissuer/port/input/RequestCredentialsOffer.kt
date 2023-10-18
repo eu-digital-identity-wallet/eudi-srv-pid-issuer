@@ -15,13 +15,17 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
+import arrow.core.Either
 import arrow.core.leftIor
-import arrow.core.raise.Raise
+import arrow.core.right
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.domain.pid.PidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.port.out.cfg.GetCredentialIssuerContext
 import kotlinx.serialization.*
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -64,23 +68,24 @@ class RequestCredentialsOffer(
     private val getCredentialIssuerContext: GetCredentialIssuerContext,
 ) {
 
-    context(Raise<RequestCredentialsOfferError>)
-    suspend operator fun invoke(): CredentialsOfferRequestedTO {
+    suspend operator fun invoke(): Either<RequestCredentialsOfferError, CredentialsOfferRequestedTO> {
         val credentialsOffer = dummyOffer().toTransferObject()
         return CredentialsOfferRequestedTO(
             credentialsOffer = credentialsOffer,
             uri = credentialsOffer.toURI(null).toString(),
-        )
+        ).right()
     }
 
     suspend fun dummyOffer(): CredentialsOffer {
         val ctx = getCredentialIssuerContext()
-        val p = ctx.metaData.credentialsSupported.filterIsInstance<MsoMdocMetaData>()
+        val metaData = ctx.metaData.credentialsSupported.filterIsInstance<MsoMdocMetaData>()
             .find { it.docType == PidMsoMdocV1.docType }!!
-        return CredentialsOffer.single(
+        val credentialOffer = metaData.scope?.let { CredentialOffer.ByScope(it) }
+            ?: CredentialOffer.ByMetaData(metaData)
+        return CredentialsOffer(
             credentialIssuer = ctx.metaData.id,
             grants = AuthorizationCodeGrant().leftIor(),
-            credentialOffer = MsoMdocCredentialOffer(p.docType),
+            credentials = listOf(credentialOffer),
         )
     }
 }
@@ -102,26 +107,23 @@ private fun Grants.toTransferObject(): GrantsTO {
     )
 }
 
-@OptIn(ExperimentalSerializationApi::class)
-private fun CredentialOffer.toTransferObject(): JsonElement {
-    fun CredentialOfferByScope.toTransferObject() = JsonPrimitive(value.value)
-    fun MsoMdocCredentialOffer.toTransferObject() = buildJsonObject {
-        put("format", MSO_MDOC_FORMAT)
-        put("doctype", docType)
-    }
+private fun CredentialOffer.toTransferObject(): JsonElement =
+    when (this) {
+        is CredentialOffer.ByScope -> buildJsonObject {
+            val scope = this@toTransferObject.value
+            put("scope", scope.value)
+        }
 
-    @OptIn(ExperimentalSerializationApi::class)
-    fun JwtVcJsonCredentialOffer.toTransferObject() = buildJsonObject {
-        put("format", JWT_VS_JSON_FORMAT)
-        putJsonArray("type") { addAll(type) }
+        is CredentialOffer.ByMetaData -> buildJsonObject {
+            val metaData = this@toTransferObject.value
+            put("format", metaData.format.value)
+            when (metaData) {
+                is JwtVcJsonMetaData -> TODO()
+                is MsoMdocMetaData -> metaData.toTransferObject(true)(this)
+                is SdJwtVcMetaData -> metaData.toTransferObject(true)(this)
+            }
+        }
     }
-    return when (this) {
-        is CredentialOfferByScope -> toTransferObject()
-        is JwtVcJsonCredentialOffer -> toTransferObject()
-        is MsoMdocCredentialOffer -> toTransferObject()
-        is SdJwtVcCredentialOffer -> TODO("Implement")
-    }
-}
 
 internal fun CredentialsOffer.toTransferObject(): CredentialsOfferTO = CredentialsOfferTO(
     credentialIssuer = credentialIssuer.externalForm,
@@ -132,14 +134,8 @@ internal fun CredentialsOffer.toTransferObject(): CredentialsOfferTO = Credentia
 @OptIn(ExperimentalSerializationApi::class)
 private val jsonSupport = Json { explicitNulls = false }
 
-internal fun CredentialsOfferTO.toURI(scheme: String?): URI {
-    val json: String = jsonSupport.encodeToString(this)
-    return URI.create(
-        "${scheme ?: ""}/credential_offer?credential_offer=${
-            URLEncoder.encode(
-                json,
-                StandardCharsets.UTF_8,
-            )
-        }",
-    )
-}
+internal fun CredentialsOfferTO.toURI(scheme: String?): URI =
+    jsonSupport.encodeToString(this).run {
+        val jsonUrlEncoded = URLEncoder.encode(this, StandardCharsets.UTF_8)
+        URI.create("${scheme ?: ""}/credential_offer?credential_offer=$jsonUrlEncoded")
+    }

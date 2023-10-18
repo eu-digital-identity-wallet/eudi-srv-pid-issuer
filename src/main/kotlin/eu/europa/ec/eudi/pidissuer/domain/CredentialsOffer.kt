@@ -21,10 +21,12 @@ import java.time.Duration
 /**
  * A
  */
-sealed interface CredentialOffer
+sealed interface CredentialOffer {
+    @JvmInline
+    value class ByScope(val value: Scope) : CredentialOffer
+    data class ByMetaData(val value: CredentialMetaData) : CredentialOffer
+}
 
-@JvmInline
-value class CredentialOfferByScope(val value: Scope) : CredentialOffer
 data class AuthorizationCodeGrant(val issuerState: String? = null)
 
 @JvmInline

@@ -15,6 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import com.nimbusds.jose.JWSAlgorithm
+
 /**
  * @see https://vcstuff.github.io/oid4vc-haip-sd-jwt-vc/draft-oid4vc-haip-sd-jwt-vc.html#name-format-identifier
  */
@@ -29,6 +31,7 @@ value class SdJwtVcType(val value: String)
 data class SdJwtVcMetaData(
     val type: SdJwtVcType,
     override val scope: Scope? = null,
+    val cryptographicSuitesSupported: List<JWSAlgorithm>,
     override val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod> = emptyList(),
     override val display: List<CredentialDisplay>,
     val claims: List<AttributeDetails>,
@@ -40,4 +43,4 @@ data class SdJwtVcMetaData(
 // Credential Offer
 //
 
-data class SdJwtVcCredentialOffer(val type: SdJwtVcType) : CredentialOffer
+object DummySdJwtVc
