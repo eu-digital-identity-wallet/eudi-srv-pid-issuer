@@ -39,7 +39,7 @@ private fun pidDomesticNameSpace(v: Int?, countryCode: String): MsoNameSpace =
 
 private fun pidNameSpace(v: Int?): MsoNameSpace = pidDocType(v)
 
-fun MsmMdocCredentialRequest.validatePidMsoMdocV1(): Either<String, Unit> = either {
+fun MsoMdocCredentialRequest.validatePidMsoMdocV1(): Either<String, Unit> = either {
     ensure(docType == PidMsoMdocV1.docType) { "doctype is $docType but was expecting ${PidMsoMdocV1.docType}" }
     claims.forEach {
     }

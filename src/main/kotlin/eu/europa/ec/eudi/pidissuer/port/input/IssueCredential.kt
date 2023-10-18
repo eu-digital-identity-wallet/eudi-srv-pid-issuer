@@ -16,62 +16,49 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.Either
-import arrow.core.raise.either
-import arrow.core.raise.ensure
-import arrow.core.raise.result
-import eu.europa.ec.eudi.pidissuer.domain.CredentialRequest
-import eu.europa.ec.eudi.pidissuer.domain.MsmMdocCredentialRequest
-import eu.europa.ec.eudi.pidissuer.domain.pid.Pid
-import eu.europa.ec.eudi.pidissuer.domain.pid.PidMsoMdocV1
-import eu.europa.ec.eudi.pidissuer.domain.validate
+import arrow.core.left
 import eu.europa.ec.eudi.pidissuer.port.out.pid.GetPidData
+import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 @Serializable
 enum class ProofTypeTO {
-    @SerialName(
-        "jwt",
-    )
+    @SerialName("jwt")
     JWT,
 
-    @SerialName(
-        "cwt",
-    )
+    @SerialName("cwt")
     CWT,
 }
 
 @Serializable
 data class ProofTo(
-    @SerialName("proof_type") val type: ProofTypeTO,
+    @SerialName("proof_type") @Required val type: ProofTypeTO,
     val jwt: String? = null,
     val cwt: String? = null,
 )
 
-// Fields for MSO MDOC profile
+/**
+ * Errors that might be raised while trying to issue a credential.
+ */
+sealed interface IssueCredentialError {
 
-typealias MsoMdocClaimsTO = JsonObject
+    /**
+     * Indicates the requested credential format is not invalid.
+     */
+    data class InvalidCredentialFormat(val format: String?) : IssueCredentialError
+}
 
-@Serializable
-class CredentialRequestTO(
-    val format: String,
-    val proof: ProofTo? = null,
-    // @SerialName("credential_encryption_jwk") val credentialEncryptionJwk: JWK? = null,
-    @SerialName("doctype") val msoMdocDoctype: String? = null,
+class IssueCredential(getPidData: GetPidData) {
 
-)
+    private val issueMsoMdocCredential = IssueMsoMdocCredential(getPidData)
 
-class IssueCredential(
-    private val getPidData: GetPidData,
-) {
-    suspend operator fun invoke(accessToken: String, request: JsonObject): Result<Pid> = result {
-        getPidData(accessToken) ?: error("Cannot map PID")
-    }
-
-    fun validateForPidMsoMdoc(credentialRequest: CredentialRequest): Either<String, Unit> = either {
-        val format = credentialRequest.format
-        ensure(format is MsmMdocCredentialRequest) { "Not related to MsoMdoc" }
-        format.validate(PidMsoMdocV1).bind()
-    }
+    suspend operator fun invoke(accessToken: String, request: JsonObject): Either<IssueCredentialError, String> =
+        when (val format = (request["format"] as? JsonPrimitive)?.contentOrNull) {
+            MsoMdocFormat -> issueMsoMdocCredential(accessToken, request)
+            else -> IssueCredentialError.InvalidCredentialFormat(format).left()
+        }
 }

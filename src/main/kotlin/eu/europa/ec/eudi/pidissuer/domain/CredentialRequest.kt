@@ -21,8 +21,23 @@ import arrow.core.raise.ensure
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jwt.JWT
 
-sealed interface Proof
+/**
+ * Proof of possession.
+ */
+sealed interface Proof {
+
+    /**
+     * Proof of possession using a JWT.
+     */
+    data class Jwt(val jwt: JWT) : Proof
+
+    /**
+     * Proof of possession using a CWT.
+     */
+    data class Cwt(val cwt: String) : Proof
+}
 
 sealed interface RequestedCredentialResponseEncryption {
 
@@ -58,7 +73,7 @@ data class CredentialRequest(
 
 fun CredentialRequest.validate(meta: CredentialMetaData): Either<String, Unit> = either {
     when (format) {
-        is MsmMdocCredentialRequest -> {
+        is MsoMdocCredentialRequest -> {
             ensure(meta is MsoMdocMetaData) { "Wrong metadata" }
             format.validate(meta).bind()
         }

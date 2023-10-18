@@ -39,7 +39,7 @@ class OtherTest {
         return CredentialsOffer.single(
             credentialIssuer = HttpsUrl.Companion.of("https://example.com")!!,
             grants = AuthorizationCodeGrant().leftIor(),
-            credentialOffer = MsoMdocCredentialOffer(p.docType),
+            credentialOffer = CredentialOffer.ByMetaData(MsoMdocMetaData(p.docType, emptyList())),
         )
     }
 }

@@ -53,12 +53,12 @@ data class MsoMdocMetaData(
 //
 // Credential Request
 //
-data class MsmMdocCredentialRequest(
+data class MsoMdocCredentialRequest(
     val docType: MsoDocType,
     val claims: Map<MsoNameSpace, List<MsoMdocAttributeName>> = emptyMap(),
 ) : CredentialRequestFormat
 
-fun MsmMdocCredentialRequest.validate(meta: MsoMdocMetaData): Either<String, Unit> = either {
+fun MsoMdocCredentialRequest.validate(meta: MsoMdocMetaData): Either<String, Unit> = either {
     ensure(docType == meta.docType) { "doctype is $docType but was expecting ${meta.docType}" }
     if (meta.msoClaims.isEmpty()) {
         ensure(claims.isEmpty()) { "Requested claims should be empty. " }
