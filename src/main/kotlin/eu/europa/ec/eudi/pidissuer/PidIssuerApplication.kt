@@ -15,12 +15,126 @@
  */
 package eu.europa.ec.eudi.pidissuer
 
+import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
+import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
+import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
+import eu.europa.ec.eudi.pidissuer.adapter.out.cfg.GetCredentialIssuerContextFromEnv
+import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidDataFromAuthServer
+import eu.europa.ec.eudi.pidissuer.domain.Scope
+import eu.europa.ec.eudi.pidissuer.domain.pid.PidMsoMdocV1
+import eu.europa.ec.eudi.pidissuer.domain.pid.PidSdJwtVcV1
+import eu.europa.ec.eudi.pidissuer.port.input.*
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
+import org.springframework.context.ApplicationContextInitializer
+import org.springframework.context.support.BeanDefinitionDsl
+import org.springframework.context.support.GenericApplicationContext
+import org.springframework.context.support.beans
+import org.springframework.core.env.getRequiredProperty
+import org.springframework.http.codec.ServerCodecConfigurer
+import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
+import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
+import org.springframework.security.config.web.server.ServerHttpSecurity
+import org.springframework.security.config.web.server.invoke
+import org.springframework.web.reactive.config.EnableWebFlux
+import org.springframework.web.reactive.config.WebFluxConfigurer
+import java.net.URL
+
+val beans = beans {
+
+    //
+    // Routes
+    //
+    bean {
+        val metaDataApi = MetaDataApi(ref(), ref())
+        val walletApi = WalletApi(ref(), ref())
+        val issuerApi = IssuerApi(ref())
+        metaDataApi.route.and(issuerApi.route).and(walletApi.route)
+    }
+
+    //
+    // Security
+    //
+    bean {
+
+        /*
+         * This is Spring naming convention
+         * A prefix of SCOPE_xyz will grant a SimpleAuthority(xyz)
+         * if there is a scope xyz
+         *
+         * Note that on the OAUTH2 server we set xyz as te scope
+         * and not SCOPE_xyz
+         */
+        fun Scope.toSpring() = "SCOPE_$value"
+        // TODO
+        //  Consider retrieving scopes from GetCredentialIssuerMetaData
+        val supportedScopes = listOf(PidMsoMdocV1.scope, PidSdJwtVcV1.scope)
+            .mapNotNull { it?.toSpring() }
+        val http = ref<ServerHttpSecurity>()
+        http {
+            authorizeExchange {
+                authorize(WalletApi.CREDENTIAL_ENDPOINT, hasAnyAuthority(*supportedScopes.toTypedArray()))
+                authorize(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, permitAll)
+                authorize(MetaDataApi.WELL_KNOWN_JWKS, permitAll)
+                authorize(IssuerApi.CREDENTIALS_OFFER, permitAll)
+            }
+
+            oauth2ResourceServer {
+                opaqueToken {}
+            }
+        }
+    }
+
+    //
+    // In Ports (use cases)
+    //
+    bean(::GetCredentialIssuerMetaData)
+    bean(::RequestCredentialsOffer)
+    bean(::IssueCredential)
+    bean(::HelloHolder)
+
+    //
+    // Adapters (out ports)
+    //
+    bean { GetCredentialIssuerContextFromEnv(env) }
+    bean {
+        val userinfoEndpoint = env.getRequiredProperty<URL>("issuer.authorizationServer.userinfo")
+        GetPidDataFromAuthServer(userinfoEndpoint)
+    }
+    bean(::GetJwkSet)
+
+    //
+    // Other
+    //
+    bean {
+        object : WebFluxConfigurer {
+            @OptIn(ExperimentalSerializationApi::class)
+            override fun configureHttpMessageCodecs(configurer: ServerCodecConfigurer) {
+                val json = Json {
+                    explicitNulls = false
+                    ignoreUnknownKeys = true
+                }
+                configurer.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
+                configurer.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
+                configurer.defaultCodecs().enableLoggingRequestDetails(true)
+            }
+        }
+    }
+}
+
+fun BeanDefinitionDsl.initializer(): ApplicationContextInitializer<GenericApplicationContext> =
+    ApplicationContextInitializer<GenericApplicationContext> { initialize(it) }
 
 @SpringBootApplication
+@EnableWebFlux
+@EnableWebFluxSecurity
 class PidIssuerApplication
 
 fun main(args: Array<String>) {
-    runApplication<PidIssuerApplication>(*args)
+    runApplication<PidIssuerApplication>(*args) {
+        addInitializers(beans.initializer())
+    }
 }
