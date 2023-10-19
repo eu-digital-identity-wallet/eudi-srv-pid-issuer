@@ -29,6 +29,7 @@ import com.nimbusds.openid.connect.sdk.UserInfoRequest
 import com.nimbusds.openid.connect.sdk.UserInfoResponse
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderConfigurationRequest
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -36,6 +37,7 @@ import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.web.reactive.function.client.WebClient
 import java.net.URI
 
+@Disabled
 class KeycloakOauthClient {
 
     companion object {
