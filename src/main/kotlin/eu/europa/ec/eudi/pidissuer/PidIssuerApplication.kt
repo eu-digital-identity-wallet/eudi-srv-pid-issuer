@@ -37,7 +37,6 @@ import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.support.BeanDefinitionDsl
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.context.support.beans
-import org.springframework.core.env.Environment
 import org.springframework.core.env.getRequiredProperty
 import org.springframework.http.codec.ServerCodecConfigurer
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
@@ -51,19 +50,6 @@ import java.net.URL
 import java.time.Clock
 import java.util.*
 
-private fun Environment.clock(): Clock = Clock.systemDefaultZone()
-private fun Environment.credentialIssuerMetaData(): CredentialIssuerMetaData {
-    val issuerPublicUrl = getRequiredProperty("issuer.publicUrl").run { HttpsUrl.unsafe(this) }
-    val authorizationServer = getRequiredProperty("issuer.authorizationServer").run { HttpsUrl.unsafe(this) }
-    return CredentialIssuerMetaData(
-        id = issuerPublicUrl,
-        credentialEndPoint = getRequiredProperty("issuer.publicUrl").run { HttpsUrl.unsafe(this + "/wallet/credentialEndpoint") },
-        authorizationServer = authorizationServer,
-        credentialsSupported = listOf(PidMsoMdocV1, PidSdJwtVcV1),
-    )
-}
-
-private fun Environment.sdJwtVcSigningKey(): RSAKey = rsaJwk(clock())
 private fun rsaJwk(clock: Clock): RSAKey =
     RSAKeyGenerator(2048)
         .keyUse(KeyUse.SIGNATURE) // indicate the intended use of the key (optional)
@@ -72,6 +58,44 @@ private fun rsaJwk(clock: Clock): RSAKey =
         .generate()
 
 val beans = beans {
+
+    val supportedCredentials = listOf(PidMsoMdocV1, PidSdJwtVcV1)
+
+    bean {
+        val clock = Clock.systemDefaultZone()
+        val sdJwtVcSigningKey = rsaJwk(clock)
+        val issuerPublicUrl = env.getRequiredProperty("issuer.publicUrl").run { HttpsUrl.unsafe(this) }
+        val authorizationServer = env.getRequiredProperty("issuer.authorizationServer").run { HttpsUrl.unsafe(this) }
+        val credentialIssuerMetaData = CredentialIssuerMetaData(
+            id = issuerPublicUrl,
+            credentialEndPoint = env.getRequiredProperty("issuer.publicUrl")
+                .run { HttpsUrl.unsafe(this + "/wallet/credentialEndpoint") },
+            authorizationServer = authorizationServer,
+            credentialsSupported = supportedCredentials,
+        )
+        CredentialIssuerContext(
+            metaData = credentialIssuerMetaData,
+            clock = clock,
+            sdJwtVcSigningKey = sdJwtVcSigningKey,
+        )
+    }
+
+    //
+    // Adapters (out ports)
+    //
+    bean {
+        val userinfoEndpoint = env.getRequiredProperty<URL>("issuer.authorizationServer.userinfo")
+        GetPidDataFromAuthServer(userinfoEndpoint)
+    }
+    bean(::GetJwkSet)
+
+    //
+    // In Ports (use cases)
+    //
+    bean(::GetCredentialIssuerMetaData)
+    bean(::RequestCredentialsOffer)
+    bean(::IssueCredential)
+    bean(::HelloHolder)
 
     //
     // Routes
@@ -97,14 +121,11 @@ val beans = beans {
          * and not SCOPE_xyz
          */
         fun Scope.toSpring() = "SCOPE_$value"
-        // TODO
-        //  Consider retrieving scopes from GetCredentialIssuerMetaData
-        val supportedScopes = listOf(PidMsoMdocV1.scope, PidSdJwtVcV1.scope)
-            .mapNotNull { it?.toSpring() }
+        val supportedScopes = supportedCredentials.mapNotNull { it.scope?.toSpring() }.toTypedArray()
         val http = ref<ServerHttpSecurity>()
         http {
             authorizeExchange {
-                authorize(WalletApi.CREDENTIAL_ENDPOINT, hasAnyAuthority(*supportedScopes.toTypedArray()))
+                authorize(WalletApi.CREDENTIAL_ENDPOINT, hasAnyAuthority(*supportedScopes))
                 authorize(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, permitAll)
                 authorize(MetaDataApi.WELL_KNOWN_JWKS, permitAll)
                 authorize(IssuerApi.CREDENTIALS_OFFER, permitAll)
@@ -115,23 +136,6 @@ val beans = beans {
             }
         }
     }
-
-    //
-    // In Ports (use cases)
-    //
-    bean(::GetCredentialIssuerMetaData)
-    bean(::RequestCredentialsOffer)
-    bean(::IssueCredential)
-    bean(::HelloHolder)
-
-    //
-    // Adapters (out ports)
-    //
-    bean {
-        val userinfoEndpoint = env.getRequiredProperty<URL>("issuer.authorizationServer.userinfo")
-        GetPidDataFromAuthServer(userinfoEndpoint)
-    }
-    bean(::GetJwkSet)
 
     //
     // Other
@@ -149,16 +153,6 @@ val beans = beans {
                 configurer.defaultCodecs().enableLoggingRequestDetails(true)
             }
         }
-    }
-
-    bean {
-        val sdJwtVcSigningKey = env.sdJwtVcSigningKey()
-        val credentialIssuerMetaData = env.credentialIssuerMetaData()
-        CredentialIssuerContext(
-            metaData = credentialIssuerMetaData,
-            clock = env.clock(),
-            sdJwtVcSigningKey = sdJwtVcSigningKey,
-        )
     }
 }
 
