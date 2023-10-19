@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.port.out.cfg.GetCredentialIssuerContext
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Required
@@ -25,11 +24,11 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 
 class GetCredentialIssuerMetaData(
-    val getCredentialIssuerContext: GetCredentialIssuerContext,
+    val credentialIssuerContext: CredentialIssuerContext,
 ) {
     suspend operator fun invoke(): CredentialIssuerMetaDataTO =
         coroutineScope {
-            getCredentialIssuerContext().metaData.toTransferObject()
+            credentialIssuerContext.metaData.toTransferObject()
         }
 }
 

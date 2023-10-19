@@ -20,7 +20,6 @@ import arrow.core.leftIor
 import arrow.core.right
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.domain.pid.PidMsoMdocV1
-import eu.europa.ec.eudi.pidissuer.port.out.cfg.GetCredentialIssuerContext
 import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -65,7 +64,7 @@ sealed interface RequestCredentialsOfferError {
 }
 
 class RequestCredentialsOffer(
-    private val getCredentialIssuerContext: GetCredentialIssuerContext,
+    private val credentialIssuerContext: CredentialIssuerContext,
 ) {
 
     suspend operator fun invoke(): Either<RequestCredentialsOfferError, CredentialsOfferRequestedTO> {
@@ -77,13 +76,15 @@ class RequestCredentialsOffer(
     }
 
     suspend fun dummyOffer(): CredentialsOffer {
-        val ctx = getCredentialIssuerContext()
-        val metaData = ctx.metaData.credentialsSupported.filterIsInstance<MsoMdocMetaData>()
+        val metaData = credentialIssuerContext
+            .metaData
+            .credentialsSupported
+            .filterIsInstance<MsoMdocMetaData>()
             .find { it.docType == PidMsoMdocV1.docType }!!
         val credentialOffer = metaData.scope?.let { CredentialOffer.ByScope(it) }
             ?: CredentialOffer.ByMetaData(metaData)
         return CredentialsOffer(
-            credentialIssuer = ctx.metaData.id,
+            credentialIssuer = credentialIssuerContext.metaData.id,
             grants = AuthorizationCodeGrant().leftIor(),
             credentials = listOf(credentialOffer),
         )

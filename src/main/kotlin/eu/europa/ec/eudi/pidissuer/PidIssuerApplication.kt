@@ -15,11 +15,16 @@
  */
 package eu.europa.ec.eudi.pidissuer
 
+import com.nimbusds.jose.jwk.KeyUse
+import com.nimbusds.jose.jwk.RSAKey
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
-import eu.europa.ec.eudi.pidissuer.adapter.out.cfg.GetCredentialIssuerContextFromEnv
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidDataFromAuthServer
+import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerContext
+import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
+import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.domain.pid.PidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.pid.PidSdJwtVcV1
@@ -32,6 +37,7 @@ import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.support.BeanDefinitionDsl
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.context.support.beans
+import org.springframework.core.env.Environment
 import org.springframework.core.env.getRequiredProperty
 import org.springframework.http.codec.ServerCodecConfigurer
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
@@ -42,6 +48,28 @@ import org.springframework.security.config.web.server.invoke
 import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.reactive.config.WebFluxConfigurer
 import java.net.URL
+import java.time.Clock
+import java.util.*
+
+private fun Environment.clock(): Clock = Clock.systemDefaultZone()
+private fun Environment.credentialIssuerMetaData(): CredentialIssuerMetaData {
+    val issuerPublicUrl = getRequiredProperty("issuer.publicUrl").run { HttpsUrl.unsafe(this) }
+    val authorizationServer = getRequiredProperty("issuer.authorizationServer").run { HttpsUrl.unsafe(this) }
+    return CredentialIssuerMetaData(
+        id = issuerPublicUrl,
+        credentialEndPoint = getRequiredProperty("issuer.publicUrl").run { HttpsUrl.unsafe(this + "/wallet/credentialEndpoint") },
+        authorizationServer = authorizationServer,
+        credentialsSupported = listOf(PidMsoMdocV1, PidSdJwtVcV1),
+    )
+}
+
+private fun Environment.sdJwtVcSigningKey(): RSAKey = rsaJwk(clock())
+private fun rsaJwk(clock: Clock): RSAKey =
+    RSAKeyGenerator(2048)
+        .keyUse(KeyUse.SIGNATURE) // indicate the intended use of the key (optional)
+        .keyID(UUID.randomUUID().toString()) // give the key a unique ID (optional)
+        .issueTime(Date.from(clock.instant())) // issued-at timestamp (optional)
+        .generate()
 
 val beans = beans {
 
@@ -99,7 +127,6 @@ val beans = beans {
     //
     // Adapters (out ports)
     //
-    bean { GetCredentialIssuerContextFromEnv(env) }
     bean {
         val userinfoEndpoint = env.getRequiredProperty<URL>("issuer.authorizationServer.userinfo")
         GetPidDataFromAuthServer(userinfoEndpoint)
@@ -122,6 +149,16 @@ val beans = beans {
                 configurer.defaultCodecs().enableLoggingRequestDetails(true)
             }
         }
+    }
+
+    bean {
+        val sdJwtVcSigningKey = env.sdJwtVcSigningKey()
+        val credentialIssuerMetaData = env.credentialIssuerMetaData()
+        CredentialIssuerContext(
+            metaData = credentialIssuerMetaData,
+            clock = env.clock(),
+            sdJwtVcSigningKey = sdJwtVcSigningKey,
+        )
     }
 }
 
