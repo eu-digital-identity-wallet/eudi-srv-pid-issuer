@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.domain
 import arrow.core.Either
 import arrow.core.raise.either
 import arrow.core.raise.ensure
+import arrow.core.raise.ensureNotNull
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.JWK
@@ -61,6 +62,37 @@ sealed interface RequestedCredentialResponseEncryption {
         val encryptionAlgorithm: JWEAlgorithm,
         val encryptionMethod: EncryptionMethod = EncryptionMethod.A256GCM,
     ) : RequestedCredentialResponseEncryption
+
+    companion object {
+        operator fun invoke(
+            encryptionKey: String?,
+            encryptionAlgorithm: String?,
+            encryptionMethod: String?,
+        ): Either<Throwable, RequestedCredentialResponseEncryption> = either {
+            if (encryptionKey == null && encryptionAlgorithm == null && encryptionMethod == null) NotRequired
+            else {
+                ensureNotNull(encryptionKey) { IllegalArgumentException("Missing encryption key") }
+                ensureNotNull(encryptionAlgorithm) { IllegalArgumentException("Missing encryption algorithm") }
+                required(encryptionKey, encryptionAlgorithm, encryptionMethod).bind()
+            }
+        }
+
+        fun required(
+            encryptionKey: String,
+            encryptionAlgorithm: String,
+            encryptionMethod: String?,
+        ): Either<Throwable, Required> = either {
+            val credentialResponseEncryptionKey = Either.catch { JWK.parse(encryptionKey) }.bind()
+            val credentialResponseEncryptionAlgorithm = Either.catch { JWEAlgorithm.parse(encryptionAlgorithm) }.bind()
+            val credentialResponseEncryptionMethod =
+                encryptionMethod?.let { Either.catch { EncryptionMethod.parse(it) }.bind() } ?: EncryptionMethod.A256GCM
+            Required(
+                credentialResponseEncryptionKey,
+                credentialResponseEncryptionAlgorithm,
+                credentialResponseEncryptionMethod,
+            )
+        }
+    }
 }
 
 sealed interface CredentialRequestFormat
@@ -77,8 +109,9 @@ fun CredentialRequest.validate(meta: CredentialMetaData): Either<String, Unit> =
             ensure(meta is MsoMdocMetaData) { "Wrong metadata" }
             format.validate(meta).bind()
         }
+
         is SdJwtVcCredentialRequest -> {
-            ensure(meta is SdJwtVcMetaData) {"Wrong metadata"}
+            ensure(meta is SdJwtVcMetaData) { "Wrong metadata" }
             format.validate(meta)
         }
     }

@@ -47,7 +47,7 @@ data class SdJwtVcMetaData(
 //
 data class SdJwtVcCredentialRequest(
     val type: SdJwtVcType,
-    val claims: List<AttributeDetails> = emptyList()
+    val claims: List<AttributeDetails> = emptyList(),
 ) : CredentialRequestFormat
 
 fun SdJwtVcCredentialRequest.validate(meta: SdJwtVcMetaData): Either<String, Unit> = either {

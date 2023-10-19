@@ -17,13 +17,20 @@ package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.Either
 import arrow.core.left
+import arrow.core.raise.Raise
+import arrow.core.raise.either
+import arrow.core.raise.ensureNotNull
+import arrow.core.raise.withError
+import com.nimbusds.jwt.JWT
+import com.nimbusds.jwt.JWTParser
+import eu.europa.ec.eudi.pidissuer.domain.Proof
+import eu.europa.ec.eudi.pidissuer.domain.RequestedCredentialResponseEncryption
 import eu.europa.ec.eudi.pidissuer.port.out.pid.GetPidData
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.*
 
 @Serializable
 enum class ProofTypeTO {
@@ -47,9 +54,56 @@ data class ProofTo(
 sealed interface IssueCredentialError {
 
     /**
-     * Indicates the requested credential format is not invalid.
+     * Indicates a credential request contained an invalid 'format'.
      */
-    data class InvalidCredentialFormat(val format: String?) : IssueCredentialError
+    data class InvalidFormat(val format: String?) : IssueCredentialError
+
+    /**
+     * Indicates a credential request could not be parsed.
+     */
+    data class NonParsableCredentialRequest(val error: Throwable) : IssueCredentialError
+
+    /**
+     * Indicates a credential request contained invalid 'claims'.
+     */
+    data object InvalidClaims : IssueCredentialError
+
+    /**
+     * Indicates a credential request contained an invalid 'jwt' proof.
+     */
+    data class InvalidJwtProof(val error: Throwable) : IssueCredentialError {
+
+        companion object {
+
+            /**
+             * Creates a new [InvalidJwtProof] that contains
+             * an [IllegalArgumentException] with the provided [error].
+             */
+            operator fun invoke(error: String): InvalidJwtProof =
+                InvalidJwtProof(IllegalArgumentException(error))
+        }
+    }
+
+    /**
+     * Indicates a credential request contained an invalid 'cwt' proof.
+     */
+    data class InvalidCwtProof(val error: Throwable) : IssueCredentialError {
+
+        companion object {
+
+            /**
+             * Creates a new [InvalidCwtProof] that contains
+             * an [IllegalArgumentException] with the provided [error].
+             */
+            operator fun invoke(error: String): InvalidCwtProof =
+                InvalidCwtProof(IllegalArgumentException(error))
+        }
+    }
+
+    /**
+     * Indicates a credential request contained contains an invalid 'credential_response_encryption_alg'.
+     */
+    data class InvalidCredentialResponseEncryption(val error: Throwable) : IssueCredentialError
 }
 
 class IssueCredential(getPidData: GetPidData) {
@@ -59,6 +113,54 @@ class IssueCredential(getPidData: GetPidData) {
     suspend operator fun invoke(accessToken: String, request: JsonObject): Either<IssueCredentialError, String> =
         when (val format = (request["format"] as? JsonPrimitive)?.contentOrNull) {
             MsoMdocFormat -> issueMsoMdocCredential(accessToken, request)
-            else -> IssueCredentialError.InvalidCredentialFormat(format).left()
+            else -> IssueCredentialError.InvalidFormat(format).left()
         }
 }
+
+/**
+ * Gets the [Proof] that corresponds to this [MsoMdocCredentialRequestTo].
+ * In case of an error an [IssueCredentialError] is raised in the current [Raise] context.
+ */
+context(Raise<IssueCredentialError>)
+fun ProofTo.toDomain(): Proof = either {
+    when (type) {
+        ProofTypeTO.JWT -> {
+            ensureNotNull(jwt) { IssueCredentialError.InvalidJwtProof("Missing JWT") }
+            withError<IssueCredentialError, Throwable, Proof>({ t -> IssueCredentialError.InvalidJwtProof(t) }) {
+                val signedJwt: JWT = Either.catch { JWTParser.parse(jwt) }.bind()
+                Proof.Jwt(signedJwt)
+            }
+        }
+
+        ProofTypeTO.CWT -> {
+            ensureNotNull(cwt) { IssueCredentialError.InvalidCwtProof("Missing CWT") }
+            Proof.Cwt(cwt)
+        }
+    }
+}.bind()
+
+/**
+ * Gets the [RequestedCredentialResponseEncryption] that corresponds to this [MsoMdocCredentialRequestTo].
+ * In case of an error an [IssueMsoMdocCredentialError] is raised in the current [Raise] context.
+ */
+context(Raise<IssueCredentialError.InvalidCredentialResponseEncryption>)
+fun credentialResponseEncryption(
+    encryptionKey: JsonObject?,
+    encryptionAlgorithm: String?,
+    encryptionMethod: String?,
+): RequestedCredentialResponseEncryption =
+    withError({ t -> IssueCredentialError.InvalidCredentialResponseEncryption(t) }) {
+        RequestedCredentialResponseEncryption(
+            encryptionKey?.let { Json.encodeToString(it) },
+            encryptionAlgorithm,
+            encryptionMethod,
+        ).bind()
+    }
+
+/**
+ * Tries to parse a [JsonObject] to a [MsoMdocCredentialRequestTo]. In case of failure
+ * an [IssueCredentialError.NonParsableCredentialRequest] error is raised in the current [Raise] context.
+ */
+inline fun <reified T> JsonObject.toDomain(): Either<IssueCredentialError.NonParsableCredentialRequest, T> =
+    Either.catch { Json.decodeFromJsonElement<T>(this) }
+        .mapLeft { IssueCredentialError.NonParsableCredentialRequest(it) }
