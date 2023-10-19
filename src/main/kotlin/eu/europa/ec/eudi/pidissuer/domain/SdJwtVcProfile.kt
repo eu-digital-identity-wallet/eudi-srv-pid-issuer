@@ -15,6 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import arrow.core.Either
+import arrow.core.raise.either
+import arrow.core.raise.ensure
 import com.nimbusds.jose.JWSAlgorithm
 
 /**
@@ -42,5 +45,19 @@ data class SdJwtVcMetaData(
 //
 // Credential Offer
 //
+data class SdJwtVcCredentialRequest(
+    val type: SdJwtVcType,
+    val claims: List<AttributeDetails> = emptyList()
+) : CredentialRequestFormat
 
-object DummySdJwtVc
+fun SdJwtVcCredentialRequest.validate(meta: SdJwtVcMetaData): Either<String, Unit> = either {
+    ensure(type == meta.type) { "doctype is $type but was expecting ${meta.type}" }
+    if (meta.claims.isEmpty()) {
+        ensure(claims.isEmpty()) { "Requested claims should be empty. " }
+    } else {
+        val expectedAttributeNames = meta.claims.map { it.name }
+        claims.forEach { attr ->
+            ensure(expectedAttributeNames.contains(attr.name)) { "Unexpected attribute $attr" }
+        }
+    }
+}

@@ -77,5 +77,9 @@ fun CredentialRequest.validate(meta: CredentialMetaData): Either<String, Unit> =
             ensure(meta is MsoMdocMetaData) { "Wrong metadata" }
             format.validate(meta).bind()
         }
+        is SdJwtVcCredentialRequest -> {
+            ensure(meta is SdJwtVcMetaData) {"Wrong metadata"}
+            format.validate(meta)
+        }
     }
 }
