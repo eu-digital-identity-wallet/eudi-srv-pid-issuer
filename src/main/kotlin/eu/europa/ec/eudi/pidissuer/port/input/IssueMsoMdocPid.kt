@@ -20,7 +20,7 @@ import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.raise.withError
 import eu.europa.ec.eudi.pidissuer.domain.CredentialRequest
-import eu.europa.ec.eudi.pidissuer.domain.MsoMdocCredentialRequest
+import eu.europa.ec.eudi.pidissuer.domain.MsoMdocCredentialRequestFormat
 import eu.europa.ec.eudi.pidissuer.domain.MsoMdocMetaData
 import eu.europa.ec.eudi.pidissuer.domain.validate
 import eu.europa.ec.eudi.pidissuer.port.out.pid.GetPidData
@@ -35,11 +35,11 @@ class IssueMsoMdocPid(private val getPidData: GetPidData, private val pidMeta: M
         TODO()
     }
 
-    private fun isPidMsoMdocRequest(request: CredentialRequest): Either<IssueCredentialError, MsoMdocCredentialRequest> =
+    private fun isPidMsoMdocRequest(request: CredentialRequest): Either<IssueCredentialError, MsoMdocCredentialRequestFormat> =
         either {
             val requestFormat = request.format
             withError({ error -> IssueCredentialError.InvalidFormat(error) }) {
-                ensure(requestFormat is MsoMdocCredentialRequest) { "Unexpected format" }
+                ensure(requestFormat is MsoMdocCredentialRequestFormat) { "Unexpected format" }
                 requestFormat.validate(pidMeta).bind()
                 requestFormat
             }

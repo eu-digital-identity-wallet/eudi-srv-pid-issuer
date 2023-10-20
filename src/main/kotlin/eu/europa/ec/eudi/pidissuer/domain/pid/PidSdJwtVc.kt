@@ -18,7 +18,7 @@ package eu.europa.ec.eudi.pidissuer.domain.pid
 import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 
-val PisSdjwtVcScope: Scope = Scope("${PID_DOCTYPE}_${SJ_JWT_VC_FORMAT}")
+val PisSdjwtVcScope: Scope = Scope("${PID_DOCTYPE}_${SD_JWT_VC_FORMAT}")
 
 val PidSdJwtVcV1: SdJwtVcMetaData = SdJwtVcMetaData(
     type = SdJwtVcType(pidDocType(1)),

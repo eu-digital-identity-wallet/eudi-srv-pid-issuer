@@ -23,7 +23,7 @@ import com.nimbusds.jose.JWSAlgorithm
 /**
  * @see https://vcstuff.github.io/oid4vc-haip-sd-jwt-vc/draft-oid4vc-haip-sd-jwt-vc.html#name-format-identifier
  */
-const val SJ_JWT_VC_FORMAT = "vc+sd-jwt"
+const val SD_JWT_VC_FORMAT = "vc+sd-jwt"
 
 @JvmInline
 value class SdJwtVcType(val value: String)
@@ -39,7 +39,7 @@ data class SdJwtVcMetaData(
     override val display: List<CredentialDisplay>,
     val claims: List<AttributeDetails>,
 ) : CredentialMetaData {
-    override val format: Format = Format(SJ_JWT_VC_FORMAT)
+    override val format: Format = Format(SD_JWT_VC_FORMAT)
 }
 
 //

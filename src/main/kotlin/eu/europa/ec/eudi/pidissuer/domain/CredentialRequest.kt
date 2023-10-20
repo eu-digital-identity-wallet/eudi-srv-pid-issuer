@@ -23,6 +23,7 @@ import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.JWT
+import kotlinx.serialization.json.JsonObject
 
 /**
  * Proof of possession.
@@ -105,7 +106,7 @@ data class CredentialRequest(
 
 fun CredentialRequest.validate(meta: CredentialMetaData): Either<String, Unit> = either {
     when (format) {
-        is MsoMdocCredentialRequest -> {
+        is MsoMdocCredentialRequestFormat -> {
             ensure(meta is MsoMdocMetaData) { "Wrong metadata" }
             format.validate(meta).bind()
         }
@@ -116,3 +117,10 @@ fun CredentialRequest.validate(meta: CredentialMetaData): Either<String, Unit> =
         }
     }
 }
+
+sealed interface IssuedCredential {
+    data class Jwt(val jwt: JWT): IssuedCredential
+    data class Json(val jsonObject: JsonObject): IssuedCredential
+}
+
+

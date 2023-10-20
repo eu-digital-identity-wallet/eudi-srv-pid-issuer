@@ -16,66 +16,45 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.Either
-import arrow.core.flatMap
-import arrow.core.left
-import arrow.core.raise.either
-import arrow.core.raise.ensure
-import arrow.core.raise.ensureNotNull
+import arrow.core.raise.*
 import com.nimbusds.jwt.JWTParser
 import eu.europa.ec.eudi.pidissuer.domain.*
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import eu.europa.ec.eudi.pidissuer.port.input.CredentialRequestTO.MsoMdoc
+import eu.europa.ec.eudi.pidissuer.port.input.CredentialRequestTO.SdJwtVc
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidCredentialResponseEncryption
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.SdJwtVcError
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 
 /**
  * Tries to parse a [JsonObject] as a [CredentialRequest].
  */
-fun parseCredentialRequest(request: JsonObject): Either<IssueCredentialError, CredentialRequest> =
-    when (val format = (request["format"] as? JsonPrimitive)?.contentOrNull) {
-        MSO_MDOC_FORMAT -> parseMsoMdocCredentialRequest(request)
-        else -> IssueCredentialError.InvalidFormat(format).left()
-    }
+fun CredentialRequestTO.toDomain(): Either<IssueCredentialError, CredentialRequest> = either {
+
+    val proof = proof?.toDomain()?.bind()
+    val credentialResponseEncryption = credentialResponseEncryption.toDomain().bind()
+    val credentialRequestFormat: CredentialRequestFormat = when (this@toDomain) {
+        is MsoMdoc -> parseMsoMdocCredentialRequest(this@toDomain)
+        is SdJwtVc -> credentialDefinition.toDomain()
+    }.bind()
+    CredentialRequest(credentialRequestFormat, proof, credentialResponseEncryption)
+}
+
 
 /**
- * Tries to parse a [JsonObject] as a [CredentialRequest] that contains an [MsoMdocCredentialRequest].
+ * Tries to parse a [JsonObject] as a [CredentialRequest] that contains an [MsoMdocCredentialRequestFormat].
  */
-private fun parseMsoMdocCredentialRequest(request: JsonObject): Either<IssueCredentialError, CredentialRequest> {
-    /**
-     * Transfer object for an MsoMdoc credential request.
-     */
-    @Serializable
-    data class MsoMdocCredentialRequestTo(
-        @Required val format: String,
-        @SerialName("doctype") @Required val docType: String,
-        val claims: Map<String, Map<String, JsonObject>>? = null,
-        val proof: ProofTo? = null,
-        @SerialName("credential_encryption_jwk") val credentialResponseEncryptionKey: JsonObject? = null,
-        @SerialName("credential_response_encryption_alg") val credentialResponseEncryptionAlgorithm: String? = null,
-        @SerialName("credential_response_encryption_enc") val credentialResponseEncryptionMethod: String? = null,
-    )
-
-    return either {
-        fun MsoMdocCredentialRequestTo.getMsoMdocCredentialRequest() = either {
+private fun parseMsoMdocCredentialRequest(credentialRequestTo: MsoMdoc): Either<IssueCredentialError, MsoMdocCredentialRequestFormat> =
+    either {
+        fun MsoMdoc.getMsoMdocCredentialRequest() = either {
             ensure(docType.isNotBlank()) { IssueCredentialError.IssueMsoMdocCredentialError.InvalidDocType(docType) }
-            MsoMdocCredentialRequest(
+            MsoMdocCredentialRequestFormat(
                 docType,
                 (claims ?: emptyMap()).mapValues { (_, v) -> v.map { it.key } },
             )
         }
-
-        val credentialRequestTo = request.toDomain<MsoMdocCredentialRequestTo>().bind()
-        val msoMdocCredentialRequest = credentialRequestTo.getMsoMdocCredentialRequest().bind()
-        val proof = credentialRequestTo.proof?.toDomain()?.bind()
-        val credentialResponseEncryption = credentialResponseEncryption(
-            credentialRequestTo.credentialResponseEncryptionKey,
-            credentialRequestTo.credentialResponseEncryptionAlgorithm,
-            credentialRequestTo.credentialResponseEncryptionMethod,
-        ).bind()
-        CredentialRequest(msoMdocCredentialRequest, proof, credentialResponseEncryption)
+        credentialRequestTo.getMsoMdocCredentialRequest().bind()
     }
-}
 
 /**
  * Gets the [Proof] that corresponds to this [ProofTo].
@@ -97,27 +76,36 @@ private fun ProofTo.toDomain(): Either<IssueCredentialError, Proof> = either {
     }
 }
 
+
+private fun SdJwtVcCredentialDefinition.toDomain(): Either<SdJwtVcError.UnsupportedType, SdJwtVcCredentialRequest> =
+    either {
+        ensure(type.isNotBlank()) { SdJwtVcError.UnsupportedType(type) }
+        SdJwtVcCredentialRequest(SdJwtVcType(type), emptyList())
+    }
+
 /**
  * Gets the [RequestedCredentialResponseEncryption] that corresponds to the provided values.
  */
-private fun credentialResponseEncryption(
-    encryptionKey: JsonObject?,
-    encryptionAlgorithm: String?,
-    encryptionMethod: String?,
-): Either<IssueCredentialError.InvalidCredentialResponseEncryption, RequestedCredentialResponseEncryption> =
-    Either.catch { encryptionKey?.let { Json.encodeToString(it) } }
-        .flatMap {
+private fun CredentialResponseEncryptionTO.toDomain(): Either<InvalidCredentialResponseEncryption, RequestedCredentialResponseEncryption> =
+    either {
+        withError({ t: Throwable -> InvalidCredentialResponseEncryption(t) }) {
+            val encryptionKey = credentialResponseEncryptionKey?.let { Json.encodeToString(it) }
             RequestedCredentialResponseEncryption(
-                it,
-                encryptionAlgorithm,
-                encryptionMethod,
-            )
-        }.mapLeft { IssueCredentialError.InvalidCredentialResponseEncryption(it) }
+                encryptionKey,
+                credentialResponseEncryptionAlgorithm,
+                credentialResponseEncryptionMethod,
+            ).bind()
+        }
+    }
 
 /**
  * Tries to parse a [JsonObject] to a [T]. In case of failure an [IssueCredentialError.NonParsableCredentialRequest]
  * is returned.
  */
-private inline fun <reified T> JsonObject.toDomain(): Either<IssueCredentialError.NonParsableCredentialRequest, T> =
-    Either.catch { Json.decodeFromJsonElement<T>(this) }
-        .mapLeft { IssueCredentialError.NonParsableCredentialRequest(it) }
+private inline fun <reified T> JsonObject.toTO(): Either<IssueCredentialError.NonParsableCredentialRequest, T> =
+    either {
+        catch({ Json.decodeFromJsonElement<T>(this@toTO) }) { t: Throwable ->
+            raise(IssueCredentialError.NonParsableCredentialRequest(t))
+        }
+    }
+

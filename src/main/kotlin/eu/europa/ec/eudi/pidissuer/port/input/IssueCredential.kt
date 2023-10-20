@@ -17,11 +17,23 @@ package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.Either
 import arrow.core.raise.either
+import eu.europa.ec.eudi.pidissuer.domain.MSO_MDOC_FORMAT
+import eu.europa.ec.eudi.pidissuer.domain.SD_JWT_VC_FORMAT
 import eu.europa.ec.eudi.pidissuer.port.out.pid.GetPidData
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonClassDiscriminator
 import kotlinx.serialization.json.JsonObject
+
+@Serializable
+enum class FormatTO {
+    @SerialName(MSO_MDOC_FORMAT)
+    MsoMdoc,
+    @SerialName(SD_JWT_VC_FORMAT)
+    SdJwtVc,
+}
 
 @Serializable
 enum class ProofTypeTO {
@@ -38,6 +50,70 @@ data class ProofTo(
     val jwt: String? = null,
     val cwt: String? = null,
 )
+
+interface CredentialResponseEncryptionTO {
+    val credentialResponseEncryptionKey: JsonObject?
+    val credentialResponseEncryptionAlgorithm: String?
+    val credentialResponseEncryptionMethod: String?
+}
+
+@Serializable
+data class SdJwtVcCredentialDefinition(@Required val type: String, val claims: Map<String, JsonObject>? = null)
+
+@OptIn(ExperimentalSerializationApi::class)
+@Serializable
+@JsonClassDiscriminator("format")
+sealed interface CredentialRequestTO {
+
+    @Required
+    val format: FormatTO
+    val proof: ProofTo?
+
+    @SerialName("credential_encryption_jwk")
+    val credentialResponseEncryptionKey: JsonObject?
+
+    @SerialName("credential_response_encryption_alg")
+    val credentialResponseEncryptionAlgorithm: String?
+
+    @SerialName("credential_response_encryption_enc")
+    val credentialResponseEncryptionMethod: String?
+    val credentialResponseEncryption
+        get() = object : CredentialResponseEncryptionTO {
+            val self = this@CredentialRequestTO
+            override val credentialResponseEncryptionKey = self.credentialResponseEncryptionKey
+            override val credentialResponseEncryptionAlgorithm = self.credentialResponseEncryptionAlgorithm
+            override val credentialResponseEncryptionMethod = self.credentialResponseEncryptionMethod
+        }
+
+    /**
+     * Transfer object for an MsoMdoc credential request.
+     */
+    @Serializable
+    @SerialName(MSO_MDOC_FORMAT)
+    data class MsoMdoc(
+        @SerialName("doctype") @Required val docType: String,
+        val claims: Map<String, Map<String, JsonObject>>? = null,
+        override val proof: ProofTo? = null,
+        @SerialName("credential_encryption_jwk") override val credentialResponseEncryptionKey: JsonObject? = null,
+        @SerialName("credential_response_encryption_alg") override val credentialResponseEncryptionAlgorithm: String? = null,
+        @SerialName("credential_response_encryption_enc") override val credentialResponseEncryptionMethod: String? = null,
+    ) : CredentialRequestTO {
+        override val format: FormatTO = FormatTO.MsoMdoc
+    }
+
+    @Serializable
+    @SerialName(SD_JWT_VC_FORMAT)
+    data class SdJwtVc(
+        @Required @SerialName("credential_definition") val credentialDefinition: SdJwtVcCredentialDefinition,
+        override val proof: ProofTo? = null,
+        @SerialName("credential_encryption_jwk") override val credentialResponseEncryptionKey: JsonObject? = null,
+        @SerialName("credential_response_encryption_alg") override val credentialResponseEncryptionAlgorithm: String? = null,
+        @SerialName("credential_response_encryption_enc") override val credentialResponseEncryptionMethod: String? = null,
+    ) : CredentialRequestTO {
+        override val format: FormatTO = FormatTO.SdJwtVc
+    }
+}
+
 
 /**
  * Errors that might be raised while trying to issue a credential.
@@ -106,14 +182,26 @@ sealed interface IssueCredentialError {
          */
         data class InvalidDocType(val docType: String) : IssueMsoMdocCredentialError
     }
+
+    sealed interface SdJwtVcError : IssueCredentialError {
+        /**
+         * Indicates a credential request contained an invalid 'docType'.
+         */
+        data class UnsupportedType(val type: String) : SdJwtVcError
+    }
 }
 
 class IssueCredential(getPidData: GetPidData) {
 
-    suspend operator fun invoke(accessToken: String, request: JsonObject): Either<IssueCredentialError, String> =
+    suspend operator fun invoke(
+        accessToken: String,
+        credentialRequest: CredentialRequestTO
+    ): Either<IssueCredentialError, String> =
         either {
-            val credentialRequest = parseCredentialRequest(request).bind()
+            credentialRequest.toDomain().bind()
 
             TODO()
         }
 }
+
+
