@@ -16,12 +16,11 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.Either
+import arrow.core.flatMap
 import arrow.core.left
-import arrow.core.raise.Raise
 import arrow.core.raise.either
+import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
-import arrow.core.raise.withError
-import com.nimbusds.jwt.JWT
 import com.nimbusds.jwt.JWTParser
 import eu.europa.ec.eudi.pidissuer.domain.*
 import kotlinx.serialization.Required
@@ -30,14 +29,18 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 
-private typealias ClaimsTo = Map<String, Map<String, JsonObject>>
-
+/**
+ * Tries to parse a [JsonObject] as a [CredentialRequest].
+ */
 fun parseCredentialRequest(request: JsonObject): Either<IssueCredentialError, CredentialRequest> =
     when (val format = (request["format"] as? JsonPrimitive)?.contentOrNull) {
         MSO_MDOC_FORMAT -> parseMsoMdocCredentialRequest(request)
         else -> IssueCredentialError.InvalidFormat(format).left()
     }
 
+/**
+ * Tries to parse a [JsonObject] as a [CredentialRequest] that contains an [MsoMdocCredentialRequest].
+ */
 private fun parseMsoMdocCredentialRequest(request: JsonObject): Either<IssueCredentialError, CredentialRequest> {
     /**
      * Transfer object for an MsoMdoc credential request.
@@ -46,7 +49,7 @@ private fun parseMsoMdocCredentialRequest(request: JsonObject): Either<IssueCred
     data class MsoMdocCredentialRequestTo(
         @Required val format: String,
         @SerialName("doctype") @Required val docType: String,
-        val claims: ClaimsTo? = null,
+        val claims: Map<String, Map<String, JsonObject>>? = null,
         val proof: ProofTo? = null,
         @SerialName("credential_encryption_jwk") val credentialResponseEncryptionKey: JsonObject? = null,
         @SerialName("credential_response_encryption_alg") val credentialResponseEncryptionAlgorithm: String? = null,
@@ -54,38 +57,37 @@ private fun parseMsoMdocCredentialRequest(request: JsonObject): Either<IssueCred
     )
 
     return either {
-        fun MsoMdocCredentialRequestTo.getMsoMdocCredentialRequest(): MsoMdocCredentialRequest = error {
+        fun MsoMdocCredentialRequestTo.getMsoMdocCredentialRequest() = either {
+            ensure(docType.isNotBlank()) { IssueCredentialError.IssueMsoMdocCredentialError.InvalidDocType(docType) }
             MsoMdocCredentialRequest(
-                ensureNotNull(docType) { IssueCredentialError.IssueMsoMdocCredentialError.InvalidDocType(docType) },
+                docType,
                 (claims ?: emptyMap()).mapValues { (_, v) -> v.map { it.key } },
             )
         }
 
         val credentialRequestTo = request.toDomain<MsoMdocCredentialRequestTo>().bind()
-        val msoMdocCredentialRequest = credentialRequestTo.getMsoMdocCredentialRequest()
-        val proof = credentialRequestTo.proof?.toDomain()
+        val msoMdocCredentialRequest = credentialRequestTo.getMsoMdocCredentialRequest().bind()
+        val proof = credentialRequestTo.proof?.toDomain()?.bind()
         val credentialResponseEncryption = credentialResponseEncryption(
             credentialRequestTo.credentialResponseEncryptionKey,
             credentialRequestTo.credentialResponseEncryptionAlgorithm,
             credentialRequestTo.credentialResponseEncryptionMethod,
-        )
+        ).bind()
         CredentialRequest(msoMdocCredentialRequest, proof, credentialResponseEncryption)
     }
 }
 
 /**
- * Gets the [Proof] that corresponds to this [MsoMdocCredentialRequestTo].
- * In case of an error an [IssueCredentialError] is raised in the current [Raise] context.
+ * Gets the [Proof] that corresponds to this [ProofTo].
  */
-context(Raise<IssueCredentialError>)
-fun ProofTo.toDomain(): Proof = either {
+private fun ProofTo.toDomain(): Either<IssueCredentialError, Proof> = either {
     when (type) {
         ProofTypeTO.JWT -> {
             ensureNotNull(jwt) { IssueCredentialError.InvalidJwtProof("Missing JWT") }
-            withError<IssueCredentialError, Throwable, Proof>({ t -> IssueCredentialError.InvalidJwtProof(t) }) {
-                val signedJwt: JWT = Either.catch { JWTParser.parse(jwt) }.bind()
-                Proof.Jwt(signedJwt)
-            }
+            Either.catch { JWTParser.parse(jwt) }
+                .map { Proof.Jwt(it) }
+                .mapLeft { IssueCredentialError.InvalidJwtProof(it) }
+                .bind()
         }
 
         ProofTypeTO.CWT -> {
@@ -93,29 +95,28 @@ fun ProofTo.toDomain(): Proof = either {
             Proof.Cwt(cwt)
         }
     }
-}.bind()
+}
 
 /**
- * Gets the [RequestedCredentialResponseEncryption] that corresponds to this [MsoMdocCredentialRequestTo].
- * In case of an error an [IssueMsoMdocCredentialError] is raised in the current [Raise] context.
+ * Gets the [RequestedCredentialResponseEncryption] that corresponds to the provided values.
  */
-context(Raise<IssueCredentialError.InvalidCredentialResponseEncryption>)
 private fun credentialResponseEncryption(
     encryptionKey: JsonObject?,
     encryptionAlgorithm: String?,
     encryptionMethod: String?,
-): RequestedCredentialResponseEncryption =
-    withError({ t -> IssueCredentialError.InvalidCredentialResponseEncryption(t) }) {
-        RequestedCredentialResponseEncryption(
-            encryptionKey?.let { Json.encodeToString(it) },
-            encryptionAlgorithm,
-            encryptionMethod,
-        ).bind()
-    }
+): Either<IssueCredentialError.InvalidCredentialResponseEncryption, RequestedCredentialResponseEncryption> =
+    Either.catch { encryptionKey?.let { Json.encodeToString(it) } }
+        .flatMap {
+            RequestedCredentialResponseEncryption(
+                it,
+                encryptionAlgorithm,
+                encryptionMethod,
+            )
+        }.mapLeft { IssueCredentialError.InvalidCredentialResponseEncryption(it) }
 
 /**
- * Tries to parse a [JsonObject] to a [MsoMdocCredentialRequestTo]. In case of failure
- * an [IssueCredentialError.NonParsableCredentialRequest] error is raised in the current [Raise] context.
+ * Tries to parse a [JsonObject] to a [T]. In case of failure an [IssueCredentialError.NonParsableCredentialRequest]
+ * is returned.
  */
 private inline fun <reified T> JsonObject.toDomain(): Either<IssueCredentialError.NonParsableCredentialRequest, T> =
     Either.catch { Json.decodeFromJsonElement<T>(this) }
