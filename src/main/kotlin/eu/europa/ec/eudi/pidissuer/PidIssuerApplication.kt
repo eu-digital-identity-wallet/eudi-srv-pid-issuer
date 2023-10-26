@@ -26,6 +26,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProofWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.*
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenCNonce
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -36,16 +37,20 @@ import org.springframework.context.support.BeanDefinitionDsl
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.context.support.beans
 import org.springframework.core.env.getRequiredProperty
+import org.springframework.http.HttpStatus
 import org.springframework.http.codec.ServerCodecConfigurer
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
 import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.config.web.server.invoke
+import org.springframework.security.web.server.authentication.HttpStatusServerEntryPoint
 import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.reactive.config.WebFluxConfigurer
 import java.net.URL
 import java.time.Clock
+import java.time.Duration
+import java.util.*
 
 val beans = beans {
 
@@ -80,7 +85,6 @@ val beans = beans {
         CredentialIssuerContext(
             metaData = credentialIssuerMetaData,
             clock = clock,
-
             issuingServices = issuingServices,
         )
     }
@@ -93,7 +97,12 @@ val beans = beans {
         GetPidDataFromAuthServer(userinfoEndpoint)
     }
     bean(::GetJwkSet)
-    bean { InMemoryCNonceRepository() }
+    bean {
+        GenCNonce { accessToken, clock ->
+            CNonce(accessToken, UUID.randomUUID().toString(), clock.instant(), Duration.ofMinutes(5L))
+        }
+    }
+    bean(::InMemoryCNonceRepository)
 
     //
     // In Ports (use cases)
@@ -139,6 +148,19 @@ val beans = beans {
                 authorize(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, permitAll)
                 authorize(MetaDataApi.WELL_KNOWN_JWKS, permitAll)
                 authorize(IssuerApi.CREDENTIALS_OFFER, permitAll)
+                authorize(anyExchange, denyAll)
+            }
+
+            csrf {
+                disable()
+            }
+
+            cors {
+                disable()
+            }
+
+            exceptionHandling {
+                authenticationEntryPoint = HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED)
             }
 
             oauth2ResourceServer {

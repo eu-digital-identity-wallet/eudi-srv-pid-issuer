@@ -25,6 +25,6 @@ interface LoadCNonceByAccessToken {
     suspend operator fun invoke(accessToken: String, clock: Clock): CNonce? =
         this(accessToken)
             ?.takeIf {
-                (it.activatedAt + it.expiresIn) < clock.instant()
+                (it.activatedAt + it.expiresIn) > clock.instant()
             }
 }
