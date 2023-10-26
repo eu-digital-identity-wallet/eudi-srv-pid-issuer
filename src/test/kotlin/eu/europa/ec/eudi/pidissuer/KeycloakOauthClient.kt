@@ -44,7 +44,7 @@ class KeycloakOauthClient {
         val issuerURI = URI("http://localhost:8180/realms/pid-issuer-realm")
 
         // a public client:
-        val clientID = ClientID("pid-issuer-srv")
+        val clientID = ClientID("idp-issuer-srv")
 
         // with redirect URI:
         // val clientRedirectURI = URI.create("http://eudiw/oidc-callback")

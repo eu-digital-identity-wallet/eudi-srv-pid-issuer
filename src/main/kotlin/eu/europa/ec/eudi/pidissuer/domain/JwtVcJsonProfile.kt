@@ -15,7 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import arrow.core.NonEmptySet
 import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 
 //
 // Credential MetaData
@@ -29,7 +31,7 @@ const val JWT_VS_JSON_FORMAT = "jwt_vc_json"
 data class JwtVcJsonMetaData(
     val id: String,
     override val scope: Scope? = null,
-    val cryptographicSuitesSupported: List<JWSAlgorithm>,
+    val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>,
     override val display: List<CredentialDisplay>,
 ) : CredentialMetaData {
     override val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod>
@@ -43,3 +45,9 @@ data class JwtVcJsonMetaData(
 //
 
 object DummyJwtVc
+
+/**
+ * A W3C VC signed as a JWT, not using JSON-LD, Issued Credential.
+ */
+@JvmInline
+value class JwtVcIssuedCredential(val credential: NimbusSignedJWT)

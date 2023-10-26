@@ -13,18 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.domain.pid
+package eu.europa.ec.eudi.pidissuer.domain
 
-import arrow.core.nonEmptySetOf
-import com.nimbusds.jose.JWSAlgorithm
-import eu.europa.ec.eudi.pidissuer.domain.*
+import java.time.Duration
+import java.time.Instant
 
-val PidSdJwtVcScope: Scope = Scope("${PID_DOCTYPE}_${SD_JWT_VC_FORMAT.value}")
-
-val PidSdJwtVcV1: SdJwtVcMetaData = SdJwtVcMetaData(
-    type = SdJwtVcType(pidDocType(1)),
-    display = pidDisplay,
-    claims = pidAttributes,
-    cryptographicBindingMethodsSupported = listOf(CryptographicBindingMethod.Jwk(nonEmptySetOf(JWSAlgorithm.ES256K))),
-    scope = PidSdJwtVcScope,
+data class CNonce(
+    val accessToken: String,
+    val nonce: String,
+    val activatedAt: Instant,
+    val expiresIn: Duration,
 )

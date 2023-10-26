@@ -58,7 +58,6 @@ services:
       - ./keycloak-extra/health-check.sh:/opt/keycloak/health-check.sh
       - ./keycloak-extra/etc/pki/ca-trust/extracted/java/cacerts:/etc/pki/ca-trust/extracted/java/cacerts
       - ./keycloak-realms/:/opt/keycloak/data/import
-      - ./realm/:/opt/keycloak/data/import
     networks:
       - default
 

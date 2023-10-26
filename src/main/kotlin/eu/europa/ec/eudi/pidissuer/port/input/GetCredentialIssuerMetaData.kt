@@ -77,7 +77,7 @@ private fun credentialMetaDataJson(d: CredentialMetaData): JsonObject = buildJso
                     is CryptographicBindingMethod.CoseKey -> method.cryptographicSuitesSupported.map { it.name }
                     is CryptographicBindingMethod.DidAnyMethod -> method.cryptographicSuitesSupported.map { it.name }
                     is CryptographicBindingMethod.DidMethod -> method.cryptographicSuitesSupported.map { it.name }
-                    CryptographicBindingMethod.Jwk -> emptyList()
+                    is CryptographicBindingMethod.Jwk -> method.cryptographicSuitesSupported.map { it.name }
                     is CryptographicBindingMethod.Mso -> method.cryptographicSuitesSupported.map { it.name }
                     is CryptographicBindingMethod.Other -> method.cryptographicSuitesSupported
                 }

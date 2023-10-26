@@ -17,6 +17,10 @@ package eu.europa.ec.eudi.pidissuer.port.input
 
 import com.nimbusds.jose.jwk.JWKSet
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -24,8 +28,11 @@ import kotlinx.serialization.json.jsonObject
 class GetJwkSet(
     val credentialIssuerContext: CredentialIssuerContext,
 ) {
-    suspend operator fun invoke(): JsonObject =
-        JWKSet(credentialIssuerContext.sdJwtVcSigningKey.toPublicJWK()).toJson()
+    suspend operator fun invoke(): JsonObject = coroutineScope {
+        withContext(Dispatchers.IO) {
+            async { JWKSet(credentialIssuerContext.sdJwtVcSigningKey.toPublicJWK()).toJson() }.await()
+        }
+    }
 }
 
 internal fun JWKSet.toJson() = Json.parseToJsonElement(toString(true)).jsonObject

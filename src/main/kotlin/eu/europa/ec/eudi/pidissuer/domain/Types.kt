@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import arrow.core.NonEmptySet
 import com.nimbusds.jose.JWSAlgorithm
 import java.net.MalformedURLException
 import java.net.URL
@@ -53,6 +54,7 @@ typealias CredentialIssuerId = HttpsUrl
 data class ImageUrl(val url: HttpsUrl, val alternativeText: String? = null)
 data class DisplayName(val name: String, val locale: Locale)
 typealias Color = String
+
 data class CredentialDisplay(
     val name: DisplayName,
     val logo: ImageUrl? = null,
@@ -62,6 +64,7 @@ data class CredentialDisplay(
 )
 
 typealias Display = Map<Locale, String>
+
 data class AttributeDetails(
     val name: String,
     val mandatory: Boolean = false,
@@ -78,23 +81,22 @@ sealed interface CryptographicBindingMethod {
     /**
      * Support for keys in JWK format RFC7517
      */
-    data object Jwk : CryptographicBindingMethod
+    data class Jwk(val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>) : CryptographicBindingMethod
 
     /**
      * Support for keys expressed as a COSE Key object
      */
-    data class CoseKey(val cryptographicSuitesSupported: List<JWSAlgorithm>) : CryptographicBindingMethod
-    data class Mso(val cryptographicSuitesSupported: List<JWSAlgorithm>) : CryptographicBindingMethod
+    data class CoseKey(val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>) : CryptographicBindingMethod
+    data class Mso(val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>) : CryptographicBindingMethod
     data class DidMethod(
         val didMethod: String,
-        val cryptographicSuitesSupported: List<JWSAlgorithm>,
-    ) :
-        CryptographicBindingMethod
+        val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>,
+    ) : CryptographicBindingMethod
 
-    data class DidAnyMethod(val cryptographicSuitesSupported: List<JWSAlgorithm>) : CryptographicBindingMethod
+    data class DidAnyMethod(val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>) : CryptographicBindingMethod
     data class Other(
         val methodName: String,
-        val cryptographicSuitesSupported: List<String>,
+        val cryptographicSuitesSupported: NonEmptySet<String>,
     ) : CryptographicBindingMethod
 }
 
@@ -117,3 +119,8 @@ sealed interface CredentialMetaData {
     val display: List<CredentialDisplay>
     val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod>
 }
+
+data class AuthorizationContext(
+    val accessToken: String,
+    val scopes: NonEmptySet<Scope>,
+)

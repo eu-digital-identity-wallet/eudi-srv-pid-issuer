@@ -15,33 +15,55 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
-import arrow.core.Either
-import arrow.core.raise.either
-import arrow.core.raise.ensure
-import arrow.core.raise.withError
-import eu.europa.ec.eudi.pidissuer.domain.CredentialRequest
-import eu.europa.ec.eudi.pidissuer.domain.MsoMdocCredentialRequestFormat
-import eu.europa.ec.eudi.pidissuer.domain.MsoMdocMetaData
-import eu.europa.ec.eudi.pidissuer.domain.validate
+import arrow.core.raise.Raise
+import arrow.core.raise.ensureNotNull
+import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.domain.pid.*
 import eu.europa.ec.eudi.pidissuer.port.out.pid.GetPidData
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.cbor.Cbor
+import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 /**
  * Service for issuing PID MsoMdoc credential
  */
-class IssueMsoMdocPid(private val getPidData: GetPidData, private val pidMeta: MsoMdocMetaData) {
-    suspend operator fun invoke(request: CredentialRequest): Either<IssueCredentialError, String> = either {
-        val requestedFormat = isPidMsoMdocRequest(request).bind()
+class IssueMsoMdocPid(
+    private val getPidData: GetPidData,
+) : IssueSpecificCredential(PidMsoMdocV1) {
 
-        TODO()
+    context(Raise<Err>) override suspend fun invoke(
+        authorizationContext: AuthorizationContext,
+        request: CredentialRequest,
+        expectedCNonce: CNonce,
+    ): CredentialResponse<JsonElement> = coroutineScope {
+        val pidDataDeffered = async { getPidData(authorizationContext.accessToken) }
+        val pidData = pidDataDeffered.await()
+        ensureNotNull(pidData) { Err.Unexpected("Cannot obtain PID data") }
+        val cbor = cbor(pidData)
+        CredentialResponse.Issued(cbor.toJson())
     }
-
-    private fun isPidMsoMdocRequest(request: CredentialRequest): Either<IssueCredentialError, MsoMdocCredentialRequestFormat> =
-        either {
-            val requestFormat = request.format
-            withError({ error -> IssueCredentialError.InvalidFormat(error) }) {
-                ensure(requestFormat is MsoMdocCredentialRequestFormat) { "Unexpected format" }
-                requestFormat.validate(pidMeta).bind()
-                requestFormat
-            }
-        }
 }
+
+private fun cbor(pid: Pid): MsoMdocIssuedCredential {
+    @Serializable
+    data class DummyPidCbor(
+        val familyName: String,
+        val givenName: String,
+    )
+    val dummy = DummyPidCbor(
+        pid.familyName.value,
+        pid.givenName.value,
+
+    )
+    val cbor = Cbor.encodeToByteArray(dummy)
+    return MsoMdocIssuedCredential(cbor)
+}
+
+@OptIn(ExperimentalEncodingApi::class)
+private fun MsoMdocIssuedCredential.toJson(): JsonPrimitive = JsonPrimitive(Base64.UrlSafe.encode(credential))

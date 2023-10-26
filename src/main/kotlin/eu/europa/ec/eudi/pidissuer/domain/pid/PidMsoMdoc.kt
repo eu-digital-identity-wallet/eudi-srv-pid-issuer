@@ -16,21 +16,20 @@
 package eu.europa.ec.eudi.pidissuer.domain.pid
 
 import arrow.core.Either
+import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 
-val PisMsoMdocScope: Scope = Scope("${PID_DOCTYPE}_$MSO_MDOC_FORMAT")
+val PidMsoMdocScope: Scope = Scope("${PID_DOCTYPE}_${MSO_MDOC_FORMAT.value}")
 
 val PidMsoMdocV1: MsoMdocMetaData = MsoMdocMetaData(
     docType = pidDocType(1),
     display = pidDisplay,
     msoClaims = mapOf(pidNameSpace(1) to pidAttributes),
-    cryptographicSuitesSupported = listOf(
-        JWSAlgorithm.ES256K,
-    ),
-    scope = PisMsoMdocScope,
+    cryptographicSuitesSupported = nonEmptySetOf(JWSAlgorithm.ES256K),
+    scope = PidMsoMdocScope,
 )
 
 private fun pidDomesticNameSpace(v: Int?, countryCode: String): MsoNameSpace =
@@ -39,7 +38,7 @@ private fun pidDomesticNameSpace(v: Int?, countryCode: String): MsoNameSpace =
 
 private fun pidNameSpace(v: Int?): MsoNameSpace = pidDocType(v)
 
-fun MsoMdocCredentialRequestFormat.validatePidMsoMdocV1(): Either<String, Unit> = either {
+fun MsoMdocCredentialRequest.validatePidMsoMdocV1(): Either<String, Unit> = either {
     ensure(docType == PidMsoMdocV1.docType) { "doctype is $docType but was expecting ${PidMsoMdocV1.docType}" }
     claims.forEach {
     }

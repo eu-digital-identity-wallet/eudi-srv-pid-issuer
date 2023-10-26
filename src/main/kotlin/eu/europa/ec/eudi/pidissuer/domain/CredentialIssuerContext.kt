@@ -22,4 +22,5 @@ data class CredentialIssuerContext(
     val metaData: CredentialIssuerMetaData,
     val clock: Clock,
     val sdJwtVcSigningKey: RSAKey,
+    val issuingServices: List<IssueSpecificCredential>,
 )

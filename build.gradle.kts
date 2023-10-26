@@ -16,7 +16,6 @@ plugins {
 
 group = "eu.europa.ec.eudi"
 version = "0.0.1-SNAPSHOT"
-val nimbusSdkVersion = "10.15"
 
 repositories {
     mavenCentral()
@@ -38,14 +37,17 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.serialization.cbor) {
+        because("To serialize PID in CBOR. Experimental")
+    }
     implementation(libs.arrow.core) {
         because("Functional programming support")
     }
     implementation(libs.arrow.fx.coroutines)
+    implementation(libs.nimbus.jose.jwt)
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.projectreactor:reactor-test")
-    testImplementation("com.nimbusds:oauth2-oidc-sdk:$nimbusSdkVersion")
-    implementation(libs.nimbus.jose.jwt)
+    testImplementation(libs.nimbus.oauth2)
 }
 
 java {

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.pid
+package eu.europa.ec.eudi.pidissuer.adapter.out.idp
 
 import eu.europa.ec.eudi.pidissuer.domain.pid.FamilyName
 import eu.europa.ec.eudi.pidissuer.domain.pid.GivenName
@@ -34,12 +34,12 @@ import java.time.LocalDate
 class GetPidDataFromAuthServer(
     private val authorizationServerUserInfoEndPoint: URL,
 ) : GetPidData {
-    val log = LoggerFactory.getLogger(GetPidDataFromAuthServer::class.java)
+    private val log = LoggerFactory.getLogger(GetPidDataFromAuthServer::class.java)
     override suspend fun invoke(accessToken: String): Pid? {
         log.info("Trying to get PID Data from userinfo endpoint ...")
         val webClient: WebClient = WebClient.create(authorizationServerUserInfoEndPoint.toString())
         val userInfo = webClient.get().accept(MediaType.APPLICATION_JSON)
-            .header("Authorization", accessToken)
+            .headers { it.setBearerAuth(accessToken) }
             .retrieve()
             .awaitBody<JsonObject>()
         if (log.isInfoEnabled) {

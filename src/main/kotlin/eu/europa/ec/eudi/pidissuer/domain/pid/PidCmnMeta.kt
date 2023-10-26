@@ -66,7 +66,7 @@ val pidAttributes = listOf(
     ),
     AttributeDetails(name = "family_name_birth"),
     AttributeDetails(name = "given_name_birth"),
-    AttributeDetails(name = "birth_plase"),
+    AttributeDetails(name = "birth_place"),
     AttributeDetails(name = "birth_country"),
     AttributeDetails(name = "birth_state"),
     AttributeDetails(name = "birth_city"),

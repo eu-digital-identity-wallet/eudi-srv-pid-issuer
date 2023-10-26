@@ -42,16 +42,4 @@ data class CredentialsOffer(
     val credentialIssuer: CredentialIssuerId,
     val grants: Grants,
     val credentials: List<CredentialOffer>,
-) {
-    companion object {
-        fun single(
-            credentialIssuer: CredentialIssuerId,
-            grants: Grants,
-            credentialOffer: CredentialOffer,
-        ): CredentialsOffer = CredentialsOffer(
-            credentialIssuer,
-            grants,
-            listOf(credentialOffer),
-        )
-    }
-}
+)

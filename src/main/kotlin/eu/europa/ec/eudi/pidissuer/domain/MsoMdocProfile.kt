@@ -15,8 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
-import arrow.core.Either
-import arrow.core.raise.either
+import arrow.core.NonEmptySet
+import arrow.core.raise.Raise
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import com.nimbusds.jose.JWSAlgorithm
@@ -30,7 +30,8 @@ typealias MsoMdocAttributeName = String
 
 data class MsoMdocAttribute<out V>(val name: MsoMdocAttributeName, val value: V)
 
-const val MSO_MDOC_FORMAT = "mso_mdoc"
+const val MSO_MDOC_FORMAT_VALUE = "mso_mdoc"
+val MSO_MDOC_FORMAT = Format(MSO_MDOC_FORMAT_VALUE)
 
 typealias MsoClaims = Map<MsoNameSpace, List<AttributeDetails>>
 
@@ -39,7 +40,7 @@ typealias MsoClaims = Map<MsoNameSpace, List<AttributeDetails>>
  */
 data class MsoMdocMetaData(
     val docType: MsoDocType,
-    val cryptographicSuitesSupported: List<JWSAlgorithm>,
+    val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>,
     override val scope: Scope? = null,
     override val display: List<CredentialDisplay> = emptyList(),
     val msoClaims: MsoClaims = emptyMap(),
@@ -47,18 +48,23 @@ data class MsoMdocMetaData(
     override val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod>
         get() = listOf(CryptographicBindingMethod.Mso(cryptographicSuitesSupported))
 
-    override val format: Format = Format(MSO_MDOC_FORMAT)
+    override val format: Format = MSO_MDOC_FORMAT
 }
 
 //
 // Credential Request
 //
-data class MsoMdocCredentialRequestFormat(
+data class MsoMdocCredentialRequest(
+    override val unvalidatedProof: UnvalidatedProof,
+    override val credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
     val docType: MsoDocType,
     val claims: Map<MsoNameSpace, List<MsoMdocAttributeName>> = emptyMap(),
-) : CredentialRequestFormat
+) : CredentialRequest {
+    override val format: Format = MSO_MDOC_FORMAT
+}
 
-fun MsoMdocCredentialRequestFormat.validate(meta: MsoMdocMetaData): Either<String, Unit> = either {
+context(Raise<String>)
+internal fun MsoMdocCredentialRequest.validate(meta: MsoMdocMetaData) {
     ensure(docType == meta.docType) { "doctype is $docType but was expecting ${meta.docType}" }
     if (meta.msoClaims.isEmpty()) {
         ensure(claims.isEmpty()) { "Requested claims should be empty. " }
@@ -73,3 +79,9 @@ fun MsoMdocCredentialRequestFormat.validate(meta: MsoMdocMetaData): Either<Strin
         }
     }
 }
+
+/**
+ * An MsoMdoc Issued Credential.
+ */
+@JvmInline
+value class MsoMdocIssuedCredential(val credential: ByteArray)

@@ -15,15 +15,14 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
-import arrow.core.Either
-import arrow.core.raise.either
+import arrow.core.raise.Raise
 import arrow.core.raise.ensure
-import com.nimbusds.jose.JWSAlgorithm
 
 /**
  * @see https://vcstuff.github.io/oid4vc-haip-sd-jwt-vc/draft-oid4vc-haip-sd-jwt-vc.html#name-format-identifier
  */
-const val SD_JWT_VC_FORMAT = "vc+sd-jwt"
+const val SD_JWT_VC_FORMAT_VALUE = "vc+sd-jwt"
+val SD_JWT_VC_FORMAT = Format(SD_JWT_VC_FORMAT_VALUE)
 
 @JvmInline
 value class SdJwtVcType(val value: String)
@@ -34,23 +33,27 @@ value class SdJwtVcType(val value: String)
 data class SdJwtVcMetaData(
     val type: SdJwtVcType,
     override val scope: Scope? = null,
-    val cryptographicSuitesSupported: List<JWSAlgorithm>,
     override val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod> = emptyList(),
     override val display: List<CredentialDisplay>,
     val claims: List<AttributeDetails>,
 ) : CredentialMetaData {
-    override val format: Format = Format(SD_JWT_VC_FORMAT)
+    override val format: Format = SD_JWT_VC_FORMAT
 }
 
 //
 // Credential Offer
 //
 data class SdJwtVcCredentialRequest(
+    override val unvalidatedProof: UnvalidatedProof,
+    override val credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
     val type: SdJwtVcType,
     val claims: List<AttributeDetails> = emptyList(),
-) : CredentialRequestFormat
+) : CredentialRequest {
+    override val format: Format = SD_JWT_VC_FORMAT
+}
 
-fun SdJwtVcCredentialRequest.validate(meta: SdJwtVcMetaData): Either<String, Unit> = either {
+context(Raise<String>)
+internal fun SdJwtVcCredentialRequest.validate(meta: SdJwtVcMetaData) {
     ensure(type == meta.type) { "doctype is $type but was expecting ${meta.type}" }
     if (meta.claims.isEmpty()) {
         ensure(claims.isEmpty()) { "Requested claims should be empty. " }

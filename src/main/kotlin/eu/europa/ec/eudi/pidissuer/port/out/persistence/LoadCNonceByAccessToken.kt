@@ -13,18 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.domain.pid
+package eu.europa.ec.eudi.pidissuer.port.out.persistence
 
-import arrow.core.nonEmptySetOf
-import com.nimbusds.jose.JWSAlgorithm
-import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.domain.CNonce
+import java.time.Clock
 
-val PidSdJwtVcScope: Scope = Scope("${PID_DOCTYPE}_${SD_JWT_VC_FORMAT.value}")
+interface LoadCNonceByAccessToken {
 
-val PidSdJwtVcV1: SdJwtVcMetaData = SdJwtVcMetaData(
-    type = SdJwtVcType(pidDocType(1)),
-    display = pidDisplay,
-    claims = pidAttributes,
-    cryptographicBindingMethodsSupported = listOf(CryptographicBindingMethod.Jwk(nonEmptySetOf(JWSAlgorithm.ES256K))),
-    scope = PidSdJwtVcScope,
-)
+    suspend operator fun invoke(accessToken: String): CNonce?
+
+    suspend operator fun invoke(accessToken: String, clock: Clock): CNonce? =
+        this(accessToken)
+            ?.takeIf {
+                (it.activatedAt + it.expiresIn) < clock.instant()
+            }
+}

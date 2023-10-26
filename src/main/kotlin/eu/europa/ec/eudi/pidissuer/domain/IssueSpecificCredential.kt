@@ -16,36 +16,56 @@
 package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.Either
+import arrow.core.raise.Raise
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.JWK
-import com.nimbusds.jwt.JWT
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonElement
+import java.security.cert.X509Certificate
 
 /**
  * Proof of possession.
  */
-sealed interface Proof {
+sealed interface UnvalidatedProof {
 
     /**
      * Proof of possession using a JWT.
      */
-    data class Jwt(val jwt: JWT) : Proof
+    data class Jwt(val jwt: String) : UnvalidatedProof
 
     /**
      * Proof of possession using a CWT.
      */
-    data class Cwt(val cwt: String) : Proof
+    data class Cwt(val cwt: String) : UnvalidatedProof
 }
 
-sealed interface RequestedCredentialResponseEncryption {
+/**
+ * This is the public key or reference to it
+ * that is provided by the wallet, via [UnvalidatedProof], to be included
+ * inside the issued credential
+ */
+sealed interface CredentialKey {
+
+    /**
+     * If the Credential shall be bound to a DID, the kid refers to a DID URL
+     * which identifies a particular key in the DID Document that the Credential shall be bound to
+     */
+    @JvmInline
+    value class DIDUrl(val value: String) : CredentialKey
+
+    data class Jwk(val value: JWK) : CredentialKey
+
+    data class X5c(val chain: List<X509Certificate>) : CredentialKey
+}
+
+sealed interface RequestedResponseEncryption {
 
     /**
      */
-    data object NotRequired : RequestedCredentialResponseEncryption
+    data object NotRequired : RequestedResponseEncryption
 
     /**
      * @param encryptionJwk A JSON object containing a single public key as a JWK
@@ -62,14 +82,14 @@ sealed interface RequestedCredentialResponseEncryption {
         val encryptionJwk: JWK,
         val encryptionAlgorithm: JWEAlgorithm,
         val encryptionMethod: EncryptionMethod = EncryptionMethod.A256GCM,
-    ) : RequestedCredentialResponseEncryption
+    ) : RequestedResponseEncryption
 
     companion object {
         operator fun invoke(
             encryptionKey: String?,
             encryptionAlgorithm: String?,
             encryptionMethod: String?,
-        ): Either<Throwable, RequestedCredentialResponseEncryption> = either {
+        ): Either<Throwable, RequestedResponseEncryption> = either {
             if (encryptionKey == null && encryptionAlgorithm == null && encryptionMethod == null) NotRequired
             else {
                 ensureNotNull(encryptionKey) { IllegalArgumentException("Missing encryption key") }
@@ -96,31 +116,69 @@ sealed interface RequestedCredentialResponseEncryption {
     }
 }
 
-sealed interface CredentialRequestFormat
+sealed interface CredentialRequest {
+    val format: Format
+    val unvalidatedProof: UnvalidatedProof
+    val credentialResponseEncryption: RequestedResponseEncryption
+}
 
-data class CredentialRequest(
-    val format: CredentialRequestFormat,
-    val proof: Proof? = null,
-    val credentialResponseEncryption: RequestedCredentialResponseEncryption = RequestedCredentialResponseEncryption.NotRequired,
-)
+/**
+ * The identifier of a deferred issuance transaction.
+ */
+@JvmInline
+value class TransactionId(val value: String)
 
-fun CredentialRequest.validate(meta: CredentialMetaData): Either<String, Unit> = either {
-    when (format) {
-        is MsoMdocCredentialRequestFormat -> {
-            ensure(meta is MsoMdocMetaData) { "Wrong metadata" }
-            format.validate(meta).bind()
-        }
+/**
+ * The response to a Credential Request.
+ */
+sealed interface CredentialResponse<out T> {
 
-        is SdJwtVcCredentialRequest -> {
-            ensure(meta is SdJwtVcMetaData) { "Wrong metadata" }
-            format.validate(meta)
-        }
+    /**
+     * An unencrypted Credential has been issued.
+     */
+    data class Issued<T>(val credential: T) : CredentialResponse<T>
+
+    /**
+     * The issuance of the requested Credential has been deferred.
+     * The deferred transaction can be identified by [transactionId].
+     */
+    data class Deferred(val transactionId: TransactionId) : CredentialResponse<Nothing>
+}
+
+sealed interface Err {
+    data object UnsupportedResponseEncryptionOptions : Err
+
+    data class Unexpected(val msg: String, val cause: Throwable? = null) : Err
+}
+
+context(Raise<String>)
+private fun CredentialRequest.assertIsSupported(meta: CredentialMetaData) = when (this) {
+    is MsoMdocCredentialRequest -> {
+        ensure(meta is MsoMdocMetaData) { "Was expecting a ${MSO_MDOC_FORMAT.value}" }
+        validate(meta)
+    }
+
+    is SdJwtVcCredentialRequest -> {
+        ensure(meta is SdJwtVcMetaData) { "Was expecting a ${SD_JWT_VC_FORMAT.value}" }
+        validate(meta)
     }
 }
 
-sealed interface IssuedCredential {
-    data class Jwt(val jwt: JWT): IssuedCredential
-    data class Json(val jsonObject: JsonObject): IssuedCredential
+context(Raise<Err>)
+private fun UnvalidatedProof.assureValidProof(meta: CredentialMetaData, cNonce: CNonce): CredentialKey {
+    // TODO
+    raise(Err.Unexpected("Not implemented"))
 }
 
+abstract class IssueSpecificCredential(val supportedCredential: CredentialMetaData) {
 
+    context(Raise<Err>)
+    abstract suspend operator fun invoke(
+        authorizationContext: AuthorizationContext,
+        request: CredentialRequest,
+        expectedCNonce: CNonce,
+    ): CredentialResponse<JsonElement>
+
+    fun supports(request: CredentialRequest): Boolean =
+        either { request.assertIsSupported(supportedCredential) }.isRight()
+}

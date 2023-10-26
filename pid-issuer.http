@@ -19,6 +19,7 @@ GET {{issuer_publicUrl}}/.well-known/openid-credential-issuer
         client.assert(response.status === 200, "Response status is not 200");
     });
     client.global.set("issuer_authorizationServer", response.body.authorization_server);
+    client.global.set("credential_endpoint", response.body.credential_endpoint)
 %}
 
 ### Get sample credentilas offer
@@ -64,11 +65,26 @@ Authorization: Bearer {{access_token}}
 
 ### Get userinfo from Issuer
 
-GET {{issuer_publicUrl}}/wallet/credentialEndpoint
+GET {{credential_endpoint}}
 Content-Type: application/json
 Accept: application/json
 Authorization: Bearer {{access_token}}
 
+### Request PID
+
+POST {{credential_endpoint}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "format": "mso_mdoc",
+  "doctype": "eu.europa.ec.eudiw.pid.1",
+  "proof": {
+    "proof_type": "jwt",
+    "jwt": "123321231"
+  }
+}
 
 ### Request permission
 

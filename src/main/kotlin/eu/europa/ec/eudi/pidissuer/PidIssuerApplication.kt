@@ -21,13 +21,9 @@ import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidDataFromAuthServer
-import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerContext
-import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
-import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
-import eu.europa.ec.eudi.pidissuer.domain.Scope
-import eu.europa.ec.eudi.pidissuer.domain.pid.PidMsoMdocV1
-import eu.europa.ec.eudi.pidissuer.domain.pid.PidSdJwtVcV1
+import eu.europa.ec.eudi.pidissuer.adapter.out.idp.GetPidDataFromAuthServer
+import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
+import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -59,9 +55,8 @@ private fun rsaJwk(clock: Clock): RSAKey =
 
 val beans = beans {
 
-    val supportedCredentials = listOf(PidMsoMdocV1, PidSdJwtVcV1)
-
     bean {
+        val issuingServices = provider<IssueSpecificCredential>().toList()
         val clock = Clock.systemDefaultZone()
         val sdJwtVcSigningKey = rsaJwk(clock)
         val issuerPublicUrl = env.getRequiredProperty("issuer.publicUrl").run { HttpsUrl.unsafe(this) }
@@ -69,14 +64,15 @@ val beans = beans {
         val credentialIssuerMetaData = CredentialIssuerMetaData(
             id = issuerPublicUrl,
             credentialEndPoint = env.getRequiredProperty("issuer.publicUrl")
-                .run { HttpsUrl.unsafe(this + "/wallet/credentialEndpoint") },
+                .run { HttpsUrl.unsafe("$this/wallet/credentialEndpoint") },
             authorizationServer = authorizationServer,
-            credentialsSupported = supportedCredentials,
+            credentialsSupported = issuingServices.map { it.supportedCredential },
         )
         CredentialIssuerContext(
             metaData = credentialIssuerMetaData,
             clock = clock,
             sdJwtVcSigningKey = sdJwtVcSigningKey,
+            issuingServices = issuingServices,
         )
     }
 
@@ -88,12 +84,16 @@ val beans = beans {
         GetPidDataFromAuthServer(userinfoEndpoint)
     }
     bean(::GetJwkSet)
+    bean { InMemoryCNonceRepository() }
 
     //
     // In Ports (use cases)
     //
     bean(::GetCredentialIssuerMetaData)
     bean(::RequestCredentialsOffer)
+    bean(::IssueMsoMdocPid)
+    bean(::IssueSdJwtVcPid)
+
     bean(::IssueCredential)
     bean(::HelloHolder)
 
@@ -120,12 +120,15 @@ val beans = beans {
          * Note that on the OAUTH2 server we set xyz as te scope
          * and not SCOPE_xyz
          */
-        fun Scope.toSpring() = "SCOPE_$value"
-        val supportedScopes = supportedCredentials.mapNotNull { it.scope?.toSpring() }.toTypedArray()
+        fun Scope.springConvention() = "SCOPE_$value"
+        val ctx = ref<CredentialIssuerContext>()
+        val scopes = ctx.metaData.credentialsSupported
+            .mapNotNull { it.scope?.springConvention() }
+            .distinct()
         val http = ref<ServerHttpSecurity>()
         http {
             authorizeExchange {
-                authorize(WalletApi.CREDENTIAL_ENDPOINT, hasAnyAuthority(*supportedScopes))
+                authorize(WalletApi.CREDENTIAL_ENDPOINT, hasAnyAuthority(*scopes.toTypedArray()))
                 authorize(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, permitAll)
                 authorize(MetaDataApi.WELL_KNOWN_JWKS, permitAll)
                 authorize(IssuerApi.CREDENTIALS_OFFER, permitAll)
