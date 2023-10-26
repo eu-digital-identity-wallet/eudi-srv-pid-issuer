@@ -1,6 +1,6 @@
 [versions]
 coroutines = "1.7.3"
-dokka = "1.9.0"
+dokka = "1.9.10"
 kotlin = "1.9.10"
 arrow = "1.2.1"
 foojay = "0.7.0"
