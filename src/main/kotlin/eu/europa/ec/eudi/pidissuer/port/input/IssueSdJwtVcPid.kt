@@ -18,7 +18,6 @@ package eu.europa.ec.eudi.pidissuer.port.input
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
-import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
@@ -34,9 +33,9 @@ import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.put
-import java.net.URL
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalTime
 import java.time.ZonedDateTime
 
 /**
@@ -48,13 +47,18 @@ class IssueSdJwtVcPid(
     private val hashAlgorithm: HashAlgorithm,
     private val signAlg: JWSAlgorithm,
     val issuerKey: ECKey,
+    private val expiresAt: TimeDependant<Instant>? = { iat -> iat.plusYears(2).with(LocalTime.MIDNIGHT).toInstant() },
+    private val notUseBefore: TimeDependant<Instant>? = { iat -> iat.plusSeconds(10).toInstant() },
     private val getPidData: GetPidData,
     private val validateJwtProof: ValidateJwtProof,
-) : IssueSpecificCredential(PidSdJwtVcV1) {
+) : IssueSpecificCredential {
+
+    override val supportedCredential: CredentialMetaData
+        get() = PidSdJwtVcV1
 
     private val issuer: SdJwtVCIssuer by lazy {
         val cfg = IssuerConfig(
-            issuerName = credentialIssuerId.value,
+            credentialIssuerId = credentialIssuerId,
             clock = clock,
             hashAlgorithm = hashAlgorithm,
             signAlg = signAlg,
@@ -75,8 +79,8 @@ class IssueSdJwtVcPid(
             subject = null,
             verifiableCredential = verifiableCredential,
             holderPubKey = holderPubKey,
-            expiresAt = null,
-            notUseBefore = null,
+            expiresAt = expiresAt,
+            notUseBefore = notUseBefore,
         )
         val sdJwt = issuer.issue(internalReq)
         return CredentialResponse.Issued(JsonPrimitive(sdJwt))
@@ -87,18 +91,12 @@ class IssueSdJwtVcPid(
         unvalidatedProof: UnvalidatedProof,
         expectedCNonce: CNonce,
     ): CredentialKey.Jwk {
-        ensure(unvalidatedProof is UnvalidatedProof.Jwt) { Err.Unexpected("Supporting only JWT proof") }
-        val algs = supportedCredential.cryptographicBindingMethodsSupported.mapNotNull {
-            when (it) {
-                is CryptographicBindingMethod.Jwk -> it.cryptographicSuitesSupported
-                else -> null
-            }
-        }.flatten().toNonEmptySetOrNull()
-        ensureNotNull(algs) { Err.Unexpected("Cannot find supported signing algs for proofs") }
-
+        ensure(unvalidatedProof is UnvalidatedProof.Jwt) { Err.ProofInvalid("Supporting only JWT proof") }
+        val algs = supportedCredential.cryptographicSuitesSupported()
         val key = validateJwtProof(unvalidatedProof, expectedCNonce, algs).getOrElse {
-            raise(Err.Unexpected("Proof is not valid"))
+            raise(Err.ProofInvalid("Proof is not valid", it))
         }
+        ensureNotNull(key is CredentialKey.Jwk) { Err.ProofInvalid("Proof is $key but we were expecting Jwk") }
         return key as CredentialKey.Jwk
     }
 
@@ -115,11 +113,11 @@ class IssueSdJwtVcPid(
 private typealias TimeDependant<F> = (ZonedDateTime) -> F
 
 private data class IssuerConfig(
-    val issuerName: URL,
-    val clock: Clock = Clock.systemDefaultZone(),
-    val hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA3_256,
+    val credentialIssuerId: CredentialIssuerId,
+    val clock: Clock,
+    val hashAlgorithm: HashAlgorithm,
     val issuerKey: ECKey,
-    val signAlg: JWSAlgorithm = JWSAlgorithm.ES256,
+    val signAlg: JWSAlgorithm,
 )
 
 /**
@@ -175,7 +173,7 @@ private class SdJwtVCIssuer(private val config: IssuerConfig) {
         buildSdObject {
             plain {
                 put("type", type)
-                iss(config.issuerName.toExternalForm())
+                iss(config.credentialIssuerId.externalForm)
                 iat(iat.toInstant().epochSecond)
                 subject?.let { sub(it) }
                 expiresAt?.let { provider ->

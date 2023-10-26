@@ -149,6 +149,8 @@ sealed interface Err {
     data object UnsupportedResponseEncryptionOptions : Err
 
     data class Unexpected(val msg: String, val cause: Throwable? = null) : Err
+
+    data class ProofInvalid(val msg: String, val cause: Throwable? = null) : Err
 }
 
 context(Raise<String>)
@@ -164,21 +166,16 @@ private fun CredentialRequest.assertIsSupported(meta: CredentialMetaData) = when
     }
 }
 
-context(Raise<Err>)
-private fun UnvalidatedProof.assureValidProof(meta: CredentialMetaData, cNonce: CNonce): CredentialKey {
-    // TODO
-    raise(Err.Unexpected("Not implemented"))
-}
+interface IssueSpecificCredential {
 
-abstract class IssueSpecificCredential(val supportedCredential: CredentialMetaData) {
+    val supportedCredential: CredentialMetaData
 
     context(Raise<Err>)
-    abstract suspend operator fun invoke(
+    suspend operator fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         expectedCNonce: CNonce,
     ): CredentialResponse<JsonElement>
-
-    fun supports(request: CredentialRequest): Boolean =
-        either { request.assertIsSupported(supportedCredential) }.isRight()
 }
+fun IssueSpecificCredential.supports(request: CredentialRequest): Boolean =
+    either { request.assertIsSupported(supportedCredential) }.isRight()

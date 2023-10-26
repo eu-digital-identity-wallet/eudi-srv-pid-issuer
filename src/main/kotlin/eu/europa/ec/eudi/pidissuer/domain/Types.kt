@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptySet
+import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.JWSAlgorithm
 import java.net.MalformedURLException
 import java.net.URL
@@ -94,10 +95,6 @@ sealed interface CryptographicBindingMethod {
     ) : CryptographicBindingMethod
 
     data class DidAnyMethod(val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>) : CryptographicBindingMethod
-    data class Other(
-        val methodName: String,
-        val cryptographicSuitesSupported: NonEmptySet<String>,
-    ) : CryptographicBindingMethod
 }
 
 fun CryptographicBindingMethod.methodName(): String = when (this) {
@@ -106,7 +103,6 @@ fun CryptographicBindingMethod.methodName(): String = when (this) {
     is CryptographicBindingMethod.Mso -> "mso"
     is CryptographicBindingMethod.DidMethod -> "did:$didMethod"
     is CryptographicBindingMethod.DidAnyMethod -> "DID"
-    is CryptographicBindingMethod.Other -> methodName
 }
 
 /**
@@ -119,6 +115,17 @@ sealed interface CredentialMetaData {
     val display: List<CredentialDisplay>
     val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod>
 }
+
+fun CredentialMetaData.cryptographicSuitesSupported(): NonEmptySet<JWSAlgorithm> =
+    cryptographicBindingMethodsSupported.map { method ->
+        when (method) {
+            is CryptographicBindingMethod.CoseKey -> method.cryptographicSuitesSupported
+            is CryptographicBindingMethod.DidAnyMethod -> method.cryptographicSuitesSupported
+            is CryptographicBindingMethod.DidMethod -> method.cryptographicSuitesSupported
+            is CryptographicBindingMethod.Jwk -> method.cryptographicSuitesSupported
+            is CryptographicBindingMethod.Mso -> method.cryptographicSuitesSupported
+        }
+    }.flatten().toNonEmptySetOrNull()!!
 
 data class AuthorizationContext(
     val accessToken: String,

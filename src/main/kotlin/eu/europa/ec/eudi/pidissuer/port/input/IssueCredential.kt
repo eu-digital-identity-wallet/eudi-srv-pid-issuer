@@ -392,11 +392,13 @@ private fun IssueCredentialError.toTO(nonce: CNonce): IssueCredentialResponse.Fa
 
         is WrongScope ->
             CredentialErrorTypeTo.INVALID_REQUEST to "Wrong scope. Expecting $expected"
+
         is SpecificCredentialError -> when (cause) {
             Err.UnsupportedResponseEncryptionOptions ->
                 CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS to "Invalid Credential Response Encryption Parameters"
 
-            is Err.Unexpected -> CredentialErrorTypeTo.INVALID_REQUEST to this.cause.msg
+            is Err.Unexpected -> CredentialErrorTypeTo.INVALID_REQUEST to cause.msg
+            is Err.ProofInvalid -> CredentialErrorTypeTo.INVALID_PROOF to cause.msg
         }
     }
     return IssueCredentialResponse.FailedTO(

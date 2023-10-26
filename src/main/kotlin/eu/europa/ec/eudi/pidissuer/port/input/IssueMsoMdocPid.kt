@@ -18,7 +18,8 @@ package eu.europa.ec.eudi.pidissuer.port.input
 import arrow.core.raise.Raise
 import arrow.core.raise.ensureNotNull
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.domain.pid.*
+import eu.europa.ec.eudi.pidissuer.domain.pid.Pid
+import eu.europa.ec.eudi.pidissuer.domain.pid.PidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.port.out.pid.GetPidData
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -35,7 +36,10 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  */
 class IssueMsoMdocPid(
     private val getPidData: GetPidData,
-) : IssueSpecificCredential(PidMsoMdocV1) {
+) : IssueSpecificCredential {
+
+    override val supportedCredential: CredentialMetaData
+        get() = PidMsoMdocV1
 
     context(Raise<Err>) override suspend fun invoke(
         authorizationContext: AuthorizationContext,
@@ -56,6 +60,7 @@ private fun cbor(pid: Pid): MsoMdocIssuedCredential {
         val familyName: String,
         val givenName: String,
     )
+
     val dummy = DummyPidCbor(
         pid.familyName.value,
         pid.givenName.value,

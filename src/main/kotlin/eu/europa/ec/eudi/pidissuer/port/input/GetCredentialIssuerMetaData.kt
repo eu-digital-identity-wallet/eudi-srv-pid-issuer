@@ -71,18 +71,7 @@ private fun credentialMetaDataJson(d: CredentialMetaData): JsonObject = buildJso
         addAll(d.cryptographicBindingMethodsSupported.map { it.methodName() })
     }
     putJsonArray("cryptographic_suites_supported") {
-        addAll(
-            d.cryptographicBindingMethodsSupported.map { method ->
-                when (method) {
-                    is CryptographicBindingMethod.CoseKey -> method.cryptographicSuitesSupported.map { it.name }
-                    is CryptographicBindingMethod.DidAnyMethod -> method.cryptographicSuitesSupported.map { it.name }
-                    is CryptographicBindingMethod.DidMethod -> method.cryptographicSuitesSupported.map { it.name }
-                    is CryptographicBindingMethod.Jwk -> method.cryptographicSuitesSupported.map { it.name }
-                    is CryptographicBindingMethod.Mso -> method.cryptographicSuitesSupported.map { it.name }
-                    is CryptographicBindingMethod.Other -> method.cryptographicSuitesSupported
-                }
-            }.flatten(),
-        )
+        addAll(d.cryptographicSuitesSupported().map { it.name })
     }
     when (d) {
         is JwtVcJsonMetaData -> TODO()
