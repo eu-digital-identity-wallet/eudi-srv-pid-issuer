@@ -194,7 +194,7 @@ internal class WalletApiTest {
 
             Assertions.assertEquals(
                 IssueCredentialResponse.FailedTO(
-                    CredentialErrorTypeTo.INVALID_REQUEST,
+                    CredentialErrorTypeTo.INVALID_PROOF,
                     "The Credential Request must include Proof of Possession",
                     cNonce.nonce,
                     cNonce.expiresIn.toSeconds(),
@@ -258,7 +258,7 @@ internal class WalletApiTest {
      * CNonce is expected to be generated.
      */
     @Test
-    internal fun `fails when using no cnonce is active`() {
+    internal fun `fails when using no c_nonce is active`() {
         val (principal, token) = bearerTokenAuthenticationPrincipal(issuedAt = context.clock.instant())
         runBlocking {
             cNonceRepository.verify {
@@ -287,7 +287,7 @@ internal class WalletApiTest {
 
             Assertions.assertEquals(
                 IssueCredentialResponse.FailedTO(
-                    CredentialErrorTypeTo.INVALID_REQUEST,
+                    CredentialErrorTypeTo.INVALID_PROOF,
                     "The Credential Request must include Proof of Possession",
                     cNonce.nonce,
                     cNonce.expiresIn.toSeconds(),
