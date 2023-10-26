@@ -379,7 +379,7 @@ private fun IssueCredentialError.toTO(nonce: CNonce): IssueCredentialResponse.Fa
             CredentialErrorTypeTo.UNSUPPORTED_CREDENTIAL_TYPE to "Unsupported format '${format.value}' type `$types`"
 
         is MissingProof ->
-            CredentialErrorTypeTo.INVALID_REQUEST to "The Credential Request must include Proof of Possession"
+            CredentialErrorTypeTo.INVALID_PROOF to "The Credential Request must a valid Proof of Possession"
 
         is InvalidJwtProof ->
             CredentialErrorTypeTo.INVALID_PROOF to "Invalid JWT Proof"
