@@ -79,7 +79,7 @@ private fun openId4VciProcessor(
 ): JWTProcessor<*> =
     DefaultJWTProcessor<SecurityContext>().apply {
         jwsTypeVerifier = DefaultJOSEObjectTypeVerifier(JOSEObjectType(EXPECTED_TYPE))
-        // jwsKeySelector = OpenIdVCIProofSelector(supportedAlg)
+        jwsKeySelector = OpenIdVCIProofSelector(supportedAlg)
         jwtClaimsSetVerifier = DefaultJWTClaimsVerifier<SecurityContext?>(
             credentialIssuerId.externalForm, // aud
             JWTClaimsSet.Builder().apply {
