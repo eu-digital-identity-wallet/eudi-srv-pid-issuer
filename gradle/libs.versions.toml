@@ -11,7 +11,7 @@ java = "17"
 kotlinxSerialization = "1.6.0"
 ktlintVersion = "0.50.0"
 nimbusJoseJwt = "9.37"
-nimbusOAuth2="10.15"
+nimbusOAuth2="11.5"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
