@@ -15,16 +15,16 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.jose
 
-import arrow.core.Either
-import com.nimbusds.jwt.SignedJWT
+import arrow.core.NonEmptySet
+import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.CNonce
 import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
-import eu.europa.ec.eudi.pidissuer.domain.CredentialMetaData
+import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 
 interface ValidateJwtProof {
     operator fun invoke(
-        jwtProof: SignedJWT,
+        unvalidatedProof: UnvalidatedProof.Jwt,
         expected: CNonce,
-        meta: CredentialMetaData,
-    ): Either<Throwable, CredentialKey>
+        supportedAlg: NonEmptySet<JWSAlgorithm>,
+    ): Result<CredentialKey>
 }

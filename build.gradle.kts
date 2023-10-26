@@ -45,6 +45,9 @@ dependencies {
     }
     implementation(libs.arrow.fx.coroutines)
     implementation(libs.nimbus.jose.jwt)
+    implementation(libs.eudi.sdjwt) {
+        because("To Support issuance in SD-JWT-VC format")
+    }
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.projectreactor:reactor-test")
     testImplementation(libs.nimbus.oauth2)

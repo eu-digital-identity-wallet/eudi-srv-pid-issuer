@@ -70,7 +70,7 @@ Content-Type: application/json
 Accept: application/json
 Authorization: Bearer {{access_token}}
 
-### Request PID
+### Request PID (mso_mdoc)
 
 POST {{credential_endpoint}}
 Content-Type: application/json
@@ -83,6 +83,24 @@ Authorization: Bearer {{access_token}}
   "proof": {
     "proof_type": "jwt",
     "jwt": "123321231"
+  }
+}
+
+### Request PID (SD-JWT-VC)
+
+POST {{credential_endpoint}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "format": "vc+sd-jwt",
+  "credential_definition": {
+    "type": "eu.europa.ec.eudiw.pid.1"
+  },
+  "proof": {
+    "proof_type": "jwt",
+    "jwt":"eyJraWQiOiJkaWQ6ZXhhbXBsZTplYmZlYjFmNzEyZWJjNmYxYzI3NmUxMmVjMjEva2V5cy8xIiwiYWxnIjoiRVMyNTYiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJzNkJoZFJrcXQzIiwiYXVkIjoiaHR0cHM6Ly9zZXJ2ZXIuZXhhbXBsZS5jb20iLCJpYXQiOiIyMDE4LTA5LTE0VDIxOjE5OjEwWiIsIm5vbmNlIjoidFppZ25zbkZicCJ9.ewdkIkPV50iOeBUqMXCC_aZKPxgihac0aW9EkL1nOzM"
   }
 }
 

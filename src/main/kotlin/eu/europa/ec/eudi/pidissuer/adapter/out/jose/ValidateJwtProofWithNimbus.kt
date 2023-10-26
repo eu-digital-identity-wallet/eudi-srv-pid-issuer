@@ -20,6 +20,7 @@ import arrow.core.NonEmptySet
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
+import arrow.core.raise.result
 import com.nimbusds.jose.*
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
@@ -38,19 +39,17 @@ import eu.europa.ec.eudi.pidissuer.port.out.jose.ValidateJwtProof
 import java.security.Key
 import java.time.Duration
 
-class ValidateJwtProofWithNimbus(private val ctx: CredentialIssuerContext) : ValidateJwtProof {
+class ValidateJwtProofWithNimbus(private val credentialIssuerId: CredentialIssuerId) : ValidateJwtProof {
     override fun invoke(
-        jwtProof: SignedJWT,
+        unvalidatedProof: UnvalidatedProof.Jwt,
         expected: CNonce,
-        meta: CredentialMetaData,
-    ): Either<Throwable, CredentialKey> =
-        TODO()
-//        either {
-//            Either.catch { processor(expected, ctx.metaData.id, meta.cryptographicBindingMethodsSupported.).process(jwtProof, null) }.bind()
-//            withError({ error -> IllegalArgumentException(error) }) {
-//                credentialKey(jwtProof.header).bind()
-//            }
-//        }
+        supportedAlg: NonEmptySet<JWSAlgorithm>,
+    ): Result<CredentialKey> = result {
+        val signedJwt = SignedJWT.parse(unvalidatedProof.jwt)
+        val processor = openId4VciProcessor(expected, credentialIssuerId, supportedAlg)
+        processor.process(signedJwt, null)
+        CredentialKey.Jwk(signedJwt.header.jwk)
+    }
 }
 
 private fun credentialKey(jwsHeader: JWSHeader): Either<String, CredentialKey> = either {
@@ -73,14 +72,14 @@ private fun credentialKey(jwsHeader: JWSHeader): Either<String, CredentialKey> =
     }
 }
 
-private fun processor(
+private fun openId4VciProcessor(
     expected: CNonce,
     credentialIssuerId: CredentialIssuerId,
-    keySelector: JWSKeySelector<SecurityContext>,
+    supportedAlg: NonEmptySet<JWSAlgorithm>,
 ): JWTProcessor<*> =
     DefaultJWTProcessor<SecurityContext>().apply {
         jwsTypeVerifier = DefaultJOSEObjectTypeVerifier(JOSEObjectType(EXPECTED_TYPE))
-        jwsKeySelector = keySelector
+        // jwsKeySelector = OpenIdVCIProofSelector(supportedAlg)
         jwtClaimsSetVerifier = DefaultJWTClaimsVerifier<SecurityContext?>(
             credentialIssuerId.externalForm, // aud
             JWTClaimsSet.Builder().apply {
@@ -96,7 +95,7 @@ private fun processor(
 private val MaxClockSkew = Duration.ofSeconds(30)
 private const val EXPECTED_TYPE = "openid4vci-proof+jwt"
 
-private class PIdJwsKeySelector<C : SecurityContext?>(
+private class OpenIdVCIProofSelector<C : SecurityContext?>(
     private val acceptedJWSAlgs: NonEmptySet<JWSAlgorithm>,
 ) : JWSKeySelector<C> {
 

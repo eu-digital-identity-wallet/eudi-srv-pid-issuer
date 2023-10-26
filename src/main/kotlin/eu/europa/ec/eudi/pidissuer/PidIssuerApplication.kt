@@ -15,16 +15,18 @@
  */
 package eu.europa.ec.eudi.pidissuer
 
-import com.nimbusds.jose.jwk.KeyUse
-import com.nimbusds.jose.jwk.RSAKey
-import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.jwk.Curve
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
 import eu.europa.ec.eudi.pidissuer.adapter.out.idp.GetPidDataFromAuthServer
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProofWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.*
+import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -44,22 +46,29 @@ import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.reactive.config.WebFluxConfigurer
 import java.net.URL
 import java.time.Clock
-import java.util.*
-
-private fun rsaJwk(clock: Clock): RSAKey =
-    RSAKeyGenerator(2048)
-        .keyUse(KeyUse.SIGNATURE) // indicate the intended use of the key (optional)
-        .keyID(UUID.randomUUID().toString()) // give the key a unique ID (optional)
-        .issueTime(Date.from(clock.instant())) // issued-at timestamp (optional)
-        .generate()
 
 val beans = beans {
 
     bean {
-        val issuingServices = provider<IssueSpecificCredential>().toList()
         val clock = Clock.systemDefaultZone()
-        val sdJwtVcSigningKey = rsaJwk(clock)
         val issuerPublicUrl = env.getRequiredProperty("issuer.publicUrl").run { HttpsUrl.unsafe(this) }
+
+        bean { IssueMsoMdocPid(ref()) }
+
+        bean {
+            IssueSdJwtVcPid(
+                hashAlgorithm = HashAlgorithm.SHA3_256,
+                issuerKey = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate(),
+                getPidData = ref(),
+                clock = clock,
+                signAlg = JWSAlgorithm.ES256,
+                credentialIssuerId = issuerPublicUrl,
+                validateJwtProof = ValidateJwtProofWithNimbus(issuerPublicUrl),
+            )
+        }
+
+        val issuingServices = provider<IssueSpecificCredential>().toList()
+
         val authorizationServer = env.getRequiredProperty("issuer.authorizationServer").run { HttpsUrl.unsafe(this) }
         val credentialIssuerMetaData = CredentialIssuerMetaData(
             id = issuerPublicUrl,
@@ -71,7 +80,7 @@ val beans = beans {
         CredentialIssuerContext(
             metaData = credentialIssuerMetaData,
             clock = clock,
-            sdJwtVcSigningKey = sdJwtVcSigningKey,
+
             issuingServices = issuingServices,
         )
     }
@@ -91,8 +100,6 @@ val beans = beans {
     //
     bean(::GetCredentialIssuerMetaData)
     bean(::RequestCredentialsOffer)
-    bean(::IssueMsoMdocPid)
-    bean(::IssueSdJwtVcPid)
 
     bean(::IssueCredential)
     bean(::HelloHolder)

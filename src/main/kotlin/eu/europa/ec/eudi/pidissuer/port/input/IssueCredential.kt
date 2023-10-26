@@ -396,7 +396,7 @@ private fun IssueCredentialError.toTO(nonce: CNonce): IssueCredentialResponse.Fa
             Err.UnsupportedResponseEncryptionOptions ->
                 CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS to "Invalid Credential Response Encryption Parameters"
 
-            is Err.Unexpected -> TODO()
+            is Err.Unexpected -> CredentialErrorTypeTo.INVALID_REQUEST to this.cause.msg
         }
     }
     return IssueCredentialResponse.FailedTO(
