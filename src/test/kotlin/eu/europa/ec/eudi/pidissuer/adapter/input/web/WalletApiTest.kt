@@ -25,10 +25,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenCNonce
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.decodeFromStream
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
@@ -47,7 +44,6 @@ import org.springframework.security.test.web.reactive.server.SecurityMockServerC
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.springSecurity
 import org.springframework.test.web.reactive.server.WebTestClient
 import org.springframework.test.web.reactive.server.expectBody
-import java.io.ByteArrayInputStream
 import java.time.Clock
 import java.time.Duration
 import java.time.LocalDate
@@ -56,7 +52,7 @@ import java.util.*
 import kotlin.test.*
 
 @PidIssuerApplicationTest(classes = [WalletApiTestConfig::class])
-@OptIn(ExperimentalSerializationApi::class, ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 internal class WalletApiTest {
 
     @Autowired
@@ -269,15 +265,11 @@ internal class WalletApiTest {
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk()
-            .expectBody()
+            .expectBody<IssueCredentialResponse.PlainTO>()
             .returnResult()
-            .let {
-                val body = it.responseBody
-                assertNotNull(body)
-                Json.decodeFromStream<IssueCredentialResponse.PlainTO>(ByteArrayInputStream(body))
-            }
+            .let { assertNotNull(it.responseBody) }
 
-        val newCNonce = assertNotNull(cNonceRepository.loadCNonceByAccessToken(token.tokenValue))
+        val newCNonce = checkNotNull(cNonceRepository.loadCNonceByAccessToken(token.tokenValue))
         assertNotEquals(previousCNonce, newCNonce)
 
         val issuedCredential = assertIs<JsonPrimitive>(response.credential)
