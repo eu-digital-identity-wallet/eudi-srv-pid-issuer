@@ -20,8 +20,8 @@ import arrow.core.raise.ensureNotNull
 import arrow.core.raise.result
 import arrow.core.toNonEmptySetOrNull
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
-import eu.europa.ec.eudi.pidissuer.domain.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.domain.Scope
+import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.CredentialRequestTO
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse

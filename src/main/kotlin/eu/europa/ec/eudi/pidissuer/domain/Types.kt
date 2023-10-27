@@ -126,8 +126,3 @@ fun CredentialMetaData.cryptographicSuitesSupported(): NonEmptySet<JWSAlgorithm>
             is CryptographicBindingMethod.Mso -> method.cryptographicSuitesSupported
         }
     }.flatten().toNonEmptySetOrNull()!!
-
-data class AuthorizationContext(
-    val accessToken: String,
-    val scopes: NonEmptySet<Scope>,
-)

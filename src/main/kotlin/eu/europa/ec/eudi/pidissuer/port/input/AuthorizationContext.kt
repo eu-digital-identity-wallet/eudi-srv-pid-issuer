@@ -13,21 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.out
+package eu.europa.ec.eudi.pidissuer.port.input
 
-import arrow.core.raise.Raise
-import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import arrow.core.NonEmptySet
+import eu.europa.ec.eudi.pidissuer.domain.Scope
 
-interface IssueSpecificCredential<out T> {
-
-    val supportedCredential: CredentialMetaData
-
-    context(Raise<IssueCredentialError>)
-    suspend operator fun invoke(
-        authorizationContext: AuthorizationContext,
-        request: CredentialRequest,
-        expectedCNonce: CNonce,
-    ): CredentialResponse<T>
-}
+data class AuthorizationContext(
+    val accessToken: String,
+    val scopes: NonEmptySet<Scope>,
+)

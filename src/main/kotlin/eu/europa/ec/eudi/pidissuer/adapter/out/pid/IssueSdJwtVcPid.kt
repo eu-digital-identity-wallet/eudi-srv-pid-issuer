@@ -18,9 +18,11 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 import arrow.core.nonEmptySetOf
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.ECKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProof
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.TimeDependant
+import eu.europa.ec.eudi.pidissuer.port.out.ValidateJwtProof
+import eu.europa.ec.eudi.pidissuer.port.out.createSdJwtVcIssuer
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import eu.europa.ec.eudi.sdjwt.SdObject
 import eu.europa.ec.eudi.sdjwt.sd

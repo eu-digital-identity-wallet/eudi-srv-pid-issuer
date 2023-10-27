@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.pid
+package eu.europa.ec.eudi.pidissuer.port.out
 
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
@@ -24,12 +24,11 @@ import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProof
 import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
-import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -182,6 +181,7 @@ fun <DATA> createSdJwtVcIssuer(
             ensureNotNull(data) { Unexpected("Cannot obtain data") }
             return createSdJwt(data)
         }
+
         suspend fun holderPubKey(): CredentialKey.Jwk {
             val unvalidatedProof = request.unvalidatedProof
             ensure(unvalidatedProof is UnvalidatedProof.Jwt) { InvalidProof("Supporting only JWT proof") }
