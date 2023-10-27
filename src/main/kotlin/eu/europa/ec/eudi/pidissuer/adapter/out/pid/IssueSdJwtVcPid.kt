@@ -39,7 +39,14 @@ val PidSdJwtVcV1: SdJwtVcMetaData = SdJwtVcMetaData(
     type = SdJwtVcType(pidDocType(1)),
     display = pidDisplay,
     claims = pidAttributes,
-    cryptographicBindingMethodsSupported = listOf(CryptographicBindingMethod.Jwk(nonEmptySetOf(JWSAlgorithm.ES256K))),
+    cryptographicBindingMethodsSupported = listOf(
+        CryptographicBindingMethod.Jwk(
+            nonEmptySetOf(
+                JWSAlgorithm.RS256,
+                JWSAlgorithm.ES256K,
+            ),
+        ),
+    ),
     scope = PidSdJwtVcScope,
 )
 
