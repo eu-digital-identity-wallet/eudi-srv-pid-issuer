@@ -16,34 +16,34 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import eu.europa.ec.eudi.pidissuer.domain.*
-import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 
-class GetCredentialIssuerMetaData(
-    val credentialIssuerMetaData: CredentialIssuerMetaData,
-) {
-    suspend operator fun invoke(): CredentialIssuerMetaDataTO =
-        coroutineScope {
-            credentialIssuerMetaData.toTransferObject()
-        }
+class GetCredentialIssuerMetaData(private val credentialIssuerMetaData: CredentialIssuerMetaData) {
+    operator fun invoke(): CredentialIssuerMetaDataTO = credentialIssuerMetaData.toTransferObject()
 }
 
 @Serializable
-public data class CredentialIssuerMetaDataTO(
-    @Required @SerialName("credential_issuer") val credentialIssuer: String,
-    @SerialName("authorization_server") val authorizationServer: String? = null,
-    @Required @SerialName("credential_endpoint") val credentialEndpoint: String,
-    @SerialName("batch_credential_endpoint") val batchCredentialEndpoint: String? = null,
-    @SerialName("deferred_credential_endpoint") val deferredCredentialEndpoint: String? = null,
-    @SerialName("credential_response_encryption_alg_values_supported") val credentialResponseEncryptionAlgValuesSupported: List<String> =
-        emptyList(),
-    @SerialName("credential_response_encryption_enc_values_supported") val credentialResponseEncryptionEncValuesSupported: List<String> =
-        emptyList(),
-    @SerialName("require_credential_response_encryption") val requireCredentialResponseEncryption: Boolean = false,
+data class CredentialIssuerMetaDataTO(
+    @Required @SerialName("credential_issuer")
+    val credentialIssuer: String,
+    @SerialName("authorization_server")
+    val authorizationServer: String? = null,
+    @Required @SerialName("credential_endpoint")
+    val credentialEndpoint: String,
+    @SerialName("batch_credential_endpoint")
+    val batchCredentialEndpoint: String? = null,
+    @SerialName("deferred_credential_endpoint")
+    val deferredCredentialEndpoint: String? = null,
+    @SerialName("credential_response_encryption_alg_values_supported")
+    val encryptionAlgorithms: List<String> = emptyList(),
+    @SerialName("credential_response_encryption_enc_values_supported")
+    val encryptionMethods: List<String> = emptyList(),
+    @SerialName("require_credential_response_encryption")
+    val encryptionRequired: Boolean = false,
     @Required @SerialName("credentials_supported") val credentialsSupported: List<JsonObject>,
 )
 
@@ -53,13 +53,13 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
     credentialEndpoint = credentialEndPoint.externalForm,
     batchCredentialEndpoint = batchCredentialEndpoint?.externalForm,
     deferredCredentialEndpoint = deferredCredentialEndpoint?.externalForm,
-    credentialResponseEncryptionAlgValuesSupported = credentialResponseEncryption.fold(emptyList()) { required ->
+    encryptionAlgorithms = credentialResponseEncryption.fold(emptyList()) { required ->
         required.algorithmsSupported.map { it.toJSONString() }
     },
-    credentialResponseEncryptionEncValuesSupported = credentialResponseEncryption.fold(emptyList()) { required ->
+    encryptionMethods = credentialResponseEncryption.fold(emptyList()) { required ->
         required.encryptionMethods.map { it.toJSONString() }
     },
-    requireCredentialResponseEncryption = credentialResponseEncryption.fold(false) { _ -> true },
+    encryptionRequired = credentialResponseEncryption.fold(false) { _ -> true },
     credentialsSupported = credentialsSupported.map { credentialMetaDataJson(it) },
 )
 
