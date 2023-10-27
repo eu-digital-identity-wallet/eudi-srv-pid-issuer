@@ -380,7 +380,7 @@ private fun IssueCredentialError.toTO(nonce: CNonce): IssueCredentialResponse.Fa
             CredentialErrorTypeTo.INVALID_PROOF to "The Credential Request must include Proof of Possession"
 
         is InvalidProof ->
-            CredentialErrorTypeTo.INVALID_PROOF to msg
+            (CredentialErrorTypeTo.INVALID_PROOF to msg).also { println(this@toTO.cause) }
 
         is InvalidEncryptionParameters ->
             CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS to "Invalid Credential Response Encryption Parameters"

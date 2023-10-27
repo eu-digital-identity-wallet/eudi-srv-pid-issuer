@@ -31,6 +31,9 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.sdjwt.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.put
@@ -168,19 +171,19 @@ fun <DATA> createSdJwtVcIssuer(
         SdJwtVCIssuer(cfg)
     }
 
-    context(Raise<IssueCredentialError>) override suspend fun invoke(
+    context(Raise<IssueCredentialError>)
+    override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         expectedCNonce: CNonce,
-    ): CredentialResponse<JsonElement> {
+    ): CredentialResponse<JsonElement> = coroutineScope {
         suspend fun selectivelyDisclosedData(): TimeDependant<SdObject> {
             val data = getData(authorizationContext)
             ensureNotNull(data) { Unexpected("Cannot obtain data") }
             return createSdJwt(data)
         }
-
-        val unvalidatedProof = request.unvalidatedProof
-        fun holderPubKey(): CredentialKey.Jwk {
+        suspend fun holderPubKey(): CredentialKey.Jwk {
+            val unvalidatedProof = request.unvalidatedProof
             ensure(unvalidatedProof is UnvalidatedProof.Jwt) { InvalidProof("Supporting only JWT proof") }
             val cryptographicSuitesSupported = supportedCredential.cryptographicSuitesSupported()
             val key = validateJwtProof(unvalidatedProof, expectedCNonce, cryptographicSuitesSupported).getOrElse {
@@ -190,15 +193,18 @@ fun <DATA> createSdJwtVcIssuer(
             return key as CredentialKey.Jwk
         }
 
+        val holderPubKey = async(Dispatchers.Default) { holderPubKey().value }
+        val vcData = async { selectivelyDisclosedData() }
+
         val internalReq = SdJwtVCIssuanceRequest(
             type = supportedCredential.type.value,
             subject = null,
-            verifiableCredential = selectivelyDisclosedData(),
-            holderPubKey = holderPubKey().value,
+            verifiableCredential = vcData.await(),
+            holderPubKey = holderPubKey.await(),
             expiresAt = expiresAt,
             notUseBefore = notUseBefore,
         )
         val sdJwt = issuer.issue(internalReq)
-        return CredentialResponse.Issued(JsonPrimitive(sdJwt))
+        CredentialResponse.Issued(JsonPrimitive(sdJwt))
     }
 }

@@ -35,7 +35,7 @@ import java.security.Key
 import java.time.Duration
 
 class ValidateJwtProofWithNimbus(private val credentialIssuerId: CredentialIssuerId) : ValidateJwtProof {
-    override fun invoke(
+    override suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof.Jwt,
         expected: CNonce,
         supportedAlg: NonEmptySet<JWSAlgorithm>,
