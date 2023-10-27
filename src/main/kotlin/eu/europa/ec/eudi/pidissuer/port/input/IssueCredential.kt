@@ -25,6 +25,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadCNonceByAccessToken
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.UpsertCNonce
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
+import org.slf4j.LoggerFactory
 import java.time.Clock
 
 @Serializable
@@ -221,6 +222,8 @@ sealed interface IssueCredentialResponse {
     ) : IssueCredentialResponse
 }
 
+private val log = LoggerFactory.getLogger(IssueCredential::class.java)
+
 /**
  * Usecase for issuing a Credential.
  */
@@ -236,6 +239,7 @@ class IssueCredential(
         authorizationContext: AuthorizationContext,
         credentialRequestTO: CredentialRequestTO,
     ): IssueCredentialResponse {
+        log.info("Handling request for ${credentialRequestTO.format}...")
         val outcome: Either<IssueCredentialError, Pair<CredentialRequest, CredentialResponse<JsonElement>>> = either {
             val credentialRequest = credentialRequestTO.toDomain()
             val issueSpecificCredential = issuingSrv(credentialRequest)
@@ -245,17 +249,18 @@ class IssueCredential(
             ensureNotNull(cNonce) { MissingProof }
             val cred = issueSpecificCredential(authorizationContext, credentialRequest, cNonce)
             credentialRequest to cred
+        }.also { result ->
+            result.fold(
+                ifLeft = { log.warn("Issuance failed: $it") },
+                ifRight = { log.info("Issuance succeed") },
+            )
         }
 
         val newCNonce = genCNonce(authorizationContext.accessToken, clock).also { upsertCNonce(it) }
         return outcome.fold(
             ifLeft = { error -> error.toTO(newCNonce) },
             ifRight = { (req, cred) ->
-                val format = when (req) {
-                    is MsoMdocCredentialRequest -> MSO_MDOC_FORMAT
-                    is SdJwtVcCredentialRequest -> SD_JWT_VC_FORMAT
-                }
-                val plain = cred.toTO(format, newCNonce)
+                val plain = cred.toTO(req.format, newCNonce)
                 when (req.credentialResponseEncryption) {
                     RequestedResponseEncryption.NotRequired -> plain
                     is RequestedResponseEncryption.Required -> TODO("Encrypt plain")
