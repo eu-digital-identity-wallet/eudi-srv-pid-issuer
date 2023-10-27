@@ -46,6 +46,10 @@ class GetPidDataFromAuthServer(
     }
 
     private fun pid(json: JsonObject): Pid? = runCatching {
+        requireNotNull(json["family_name"]) { "Missing family_name" }
+        requireNotNull(json["given_name"]) { "Missing given_name" }
+        requireNotNull(json["sub"]) { "Missing sub" }
+
         Pid(
             familyName = FamilyName(json["family_name"]!!.jsonPrimitive.content),
             givenName = GivenName(json["given_name"]!!.jsonPrimitive.content),
