@@ -13,10 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.out.persistence
+package eu.europa.ec.eudi.pidissuer.port.out
 
-import java.time.Instant
+import arrow.core.raise.Raise
+import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 
-interface DeleteCNonce {
-    suspend operator fun invoke(at: Instant)
+interface IssueSpecificCredential<out T> {
+
+    val supportedCredential: CredentialMetaData
+
+    context(Raise<IssueCredentialError>)
+    suspend operator fun invoke(
+        authorizationContext: AuthorizationContext,
+        request: CredentialRequest,
+        expectedCNonce: CNonce,
+    ): CredentialResponse<T>
 }

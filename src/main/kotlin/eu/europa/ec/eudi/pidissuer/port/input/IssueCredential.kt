@@ -19,11 +19,13 @@ import arrow.core.Either
 import arrow.core.raise.*
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
+import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadCNonceByAccessToken
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.UpsertCNonce
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
+import java.time.Clock
 
 @Serializable
 enum class FormatTO {
@@ -145,12 +147,7 @@ sealed interface IssueCredentialError {
     /**
      * Indicates a credential request contained an invalid 'jwt' proof.
      */
-    data class InvalidJwtProof(val error: Throwable) : IssueCredentialError
-
-    /**
-     * Indicates a credential request contained an invalid 'cwt' proof.
-     */
-    data class InvalidCwtProof(val error: Throwable) : IssueCredentialError
+    data class InvalidProof(val msg: String, val cause: Throwable? = null) : IssueCredentialError
 
     /**
      * Indicates a credential request contained contains an invalid 'credential_response_encryption_alg'.
@@ -159,7 +156,7 @@ sealed interface IssueCredentialError {
 
     data class WrongScope(val expected: Scope) : IssueCredentialError
 
-    data class SpecificCredentialError(val cause: Err) : IssueCredentialError
+    data class Unexpected(val msg: String, val cause: Throwable? = null) : IssueCredentialError
 }
 
 /**
@@ -228,7 +225,8 @@ sealed interface IssueCredentialResponse {
  * Usecase for issuing a Credential.
  */
 class IssueCredential(
-    private val ctx: CredentialIssuerContext,
+    private val clock: Clock,
+    private val specificCredentialIssuers: List<IssueSpecificCredential<JsonElement>>,
     private val loadCNonceByAccessToken: LoadCNonceByAccessToken,
     private val genCNonce: GenCNonce,
     private val upsertCNonce: UpsertCNonce,
@@ -243,15 +241,13 @@ class IssueCredential(
             val issueSpecificCredential = issuingSrv(credentialRequest)
             val expectedScope = issueSpecificCredential.supportedCredential.scope!!
             ensure(authorizationContext.scopes.contains(expectedScope)) { WrongScope(expectedScope) }
-            val cNonce = loadCNonceByAccessToken(authorizationContext.accessToken, ctx.clock)
+            val cNonce = loadCNonceByAccessToken(authorizationContext.accessToken, clock)
             ensureNotNull(cNonce) { MissingProof }
-            val cred = withError({ SpecificCredentialError(it) }) {
-                issueSpecificCredential(authorizationContext, credentialRequest, cNonce)
-            }
+            val cred = issueSpecificCredential(authorizationContext, credentialRequest, cNonce)
             credentialRequest to cred
         }
 
-        val newCNonce = genCNonce(authorizationContext.accessToken, ctx.clock).also { upsertCNonce(it) }
+        val newCNonce = genCNonce(authorizationContext.accessToken, clock).also { upsertCNonce(it) }
         return outcome.fold(
             ifLeft = { error -> error.toTO(newCNonce) },
             ifRight = { (req, cred) ->
@@ -269,8 +265,10 @@ class IssueCredential(
     }
 
     context(Raise<UnsupportedCredentialType>)
-    private fun issuingSrv(credentialRequest: CredentialRequest): IssueSpecificCredential {
-        val specificIssuer = ctx.issuingServices.find { it.supports(credentialRequest) }
+    private fun issuingSrv(credentialRequest: CredentialRequest): IssueSpecificCredential<JsonElement> {
+        val specificIssuer = specificCredentialIssuers.find { issuer ->
+            either { credentialRequest.assertIsSupported(issuer.supportedCredential) }.isRight()
+        }
         if (specificIssuer == null) {
             val types = when (credentialRequest) {
                 is MsoMdocCredentialRequest -> listOf(credentialRequest.docType)
@@ -319,12 +317,12 @@ fun CredentialRequestTO.toDomain(): CredentialRequest {
 context (Raise<IssueCredentialError>)
 private fun ProofTo.toDomain(): UnvalidatedProof = when (type) {
     ProofTypeTO.JWT -> {
-        ensure(!jwt.isNullOrEmpty()) { InvalidJwtProof(IllegalArgumentException("Missing JWT")) }
+        ensure(!jwt.isNullOrEmpty()) { MissingProof }
         UnvalidatedProof.Jwt(jwt)
     }
 
     ProofTypeTO.CWT -> {
-        ensureNotNull(cwt) { InvalidCwtProof(IllegalArgumentException("Missing CWT")) }
+        ensureNotNull(cwt) { MissingProof }
         UnvalidatedProof.Cwt(cwt)
     }
 }
@@ -381,11 +379,8 @@ private fun IssueCredentialError.toTO(nonce: CNonce): IssueCredentialResponse.Fa
         is MissingProof ->
             CredentialErrorTypeTo.INVALID_PROOF to "The Credential Request must include Proof of Possession"
 
-        is InvalidJwtProof ->
-            CredentialErrorTypeTo.INVALID_PROOF to "Invalid JWT Proof"
-
-        is InvalidCwtProof ->
-            CredentialErrorTypeTo.INVALID_PROOF to "Invalid CWT Proof"
+        is InvalidProof ->
+            CredentialErrorTypeTo.INVALID_PROOF to msg
 
         is InvalidEncryptionParameters ->
             CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS to "Invalid Credential Response Encryption Parameters"
@@ -393,13 +388,8 @@ private fun IssueCredentialError.toTO(nonce: CNonce): IssueCredentialResponse.Fa
         is WrongScope ->
             CredentialErrorTypeTo.INVALID_REQUEST to "Wrong scope. Expecting $expected"
 
-        is SpecificCredentialError -> when (cause) {
-            Err.UnsupportedResponseEncryptionOptions ->
-                CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS to "Invalid Credential Response Encryption Parameters"
-
-            is Err.Unexpected -> CredentialErrorTypeTo.INVALID_REQUEST to cause.msg
-            is Err.ProofInvalid -> CredentialErrorTypeTo.INVALID_PROOF to cause.msg
-        }
+        is Unexpected ->
+            CredentialErrorTypeTo.INVALID_REQUEST to "$msg${cause?.message?.let { " : $it" } ?: ""}"
     }
     return IssueCredentialResponse.FailedTO(
         type,

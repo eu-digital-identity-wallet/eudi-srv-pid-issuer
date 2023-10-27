@@ -19,12 +19,14 @@ import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import arrow.core.raise.result
 import arrow.core.toNonEmptySetOrNull
+import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
 import eu.europa.ec.eudi.pidissuer.domain.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.port.input.CredentialRequestTO
-import eu.europa.ec.eudi.pidissuer.port.input.HelloHolder
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.core.GrantedAuthority
@@ -37,7 +39,7 @@ private val APPLICATION_JWT = MediaType.parseMediaType("application/jwt")
 
 class WalletApi(
     private val issueCredential: IssueCredential,
-    private val helloHolder: HelloHolder,
+    private val getPidData: GetPidData,
 
 ) {
 
@@ -78,13 +80,11 @@ class WalletApi(
         }
     }
 
-    private suspend fun handleHelloHolder(req: ServerRequest): ServerResponse {
-        val context = req.authorizationContext().getOrThrow()
-        return helloHolder(context.accessToken)
-            .fold(
-                { ServerResponse.notFound().buildAndAwait() },
-                { pid -> ServerResponse.ok().json().bodyValueAndAwait(pid) },
-            )
+    private suspend fun handleHelloHolder(req: ServerRequest): ServerResponse = coroutineScope {
+        val context = async { req.authorizationContext().getOrThrow() }
+        val pid = getPidData(context.await().accessToken)
+        if (null != pid) ServerResponse.ok().json().bodyValueAndAwait(pid)
+        else ServerResponse.notFound().buildAndAwait()
     }
 
     companion object {

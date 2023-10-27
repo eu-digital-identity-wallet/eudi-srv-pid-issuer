@@ -13,16 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.input
+package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
+import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
 import arrow.core.raise.ensureNotNull
+import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.domain.pid.Pid
-import eu.europa.ec.eudi.pidissuer.domain.pid.PidMsoMdocV1
-import eu.europa.ec.eudi.pidissuer.port.out.pid.GetPidData
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.encodeToByteArray
@@ -31,29 +33,46 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
+val PidMsoMdocScope: Scope = Scope("${PID_DOCTYPE}_${MSO_MDOC_FORMAT.value}")
+
+val PidMsoMdocV1: MsoMdocMetaData = MsoMdocMetaData(
+    docType = pidDocType(1),
+    display = pidDisplay,
+    msoClaims = mapOf(pidNameSpace(1) to pidAttributes),
+    cryptographicSuitesSupported = nonEmptySetOf(JWSAlgorithm.ES256K),
+    scope = PidMsoMdocScope,
+)
+
+private fun pidDomesticNameSpace(v: Int?, countryCode: String): MsoNameSpace =
+    if (v == null) "$PID_DOCTYPE.$countryCode"
+    else "$PID_DOCTYPE.$countryCode.$v"
+
+private fun pidNameSpace(v: Int?): MsoNameSpace = pidDocType(v)
+
 /**
  * Service for issuing PID MsoMdoc credential
  */
 class IssueMsoMdocPid(
     private val getPidData: GetPidData,
-) : IssueSpecificCredential {
+) : IssueSpecificCredential<JsonElement> {
 
     override val supportedCredential: CredentialMetaData
         get() = PidMsoMdocV1
 
-    context(Raise<Err>) override suspend fun invoke(
+    context(Raise<IssueCredentialError>) override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         expectedCNonce: CNonce,
     ): CredentialResponse<JsonElement> = coroutineScope {
         val pidDataDeffered = async { getPidData(authorizationContext.accessToken) }
         val pidData = pidDataDeffered.await()
-        ensureNotNull(pidData) { Err.Unexpected("Cannot obtain PID data") }
+        ensureNotNull(pidData) { IssueCredentialError.Unexpected("Cannot obtain PID data") }
         val cbor = cbor(pidData)
         CredentialResponse.Issued(cbor.toJson())
     }
 }
 
+@OptIn(ExperimentalSerializationApi::class)
 private fun cbor(pid: Pid): MsoMdocIssuedCredential {
     @Serializable
     data class DummyPidCbor(

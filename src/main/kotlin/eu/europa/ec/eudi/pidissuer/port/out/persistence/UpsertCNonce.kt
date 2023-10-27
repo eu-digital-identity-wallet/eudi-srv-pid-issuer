@@ -17,6 +17,6 @@ package eu.europa.ec.eudi.pidissuer.port.out.persistence
 
 import eu.europa.ec.eudi.pidissuer.domain.CNonce
 
-interface UpsertCNonce {
+fun interface UpsertCNonce {
     suspend operator fun invoke(cNonce: CNonce)
 }

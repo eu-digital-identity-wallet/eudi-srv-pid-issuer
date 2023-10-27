@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.out.jose
+package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.NonEmptySet
 import com.nimbusds.jose.JWSAlgorithm

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.input
+package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
@@ -24,93 +24,21 @@ import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProof
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.domain.pid.PidSdJwtVcV1
-import eu.europa.ec.eudi.pidissuer.domain.pid.asSdObjectAt
-import eu.europa.ec.eudi.pidissuer.port.out.jose.ValidateJwtProof
-import eu.europa.ec.eudi.pidissuer.port.out.pid.GetPidData
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
+import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.put
 import java.time.Clock
 import java.time.Instant
-import java.time.LocalTime
 import java.time.ZonedDateTime
 
-/**
- * Service for issuing PID SD JWT credential
- */
-class IssueSdJwtVcPid(
-    private val credentialIssuerId: CredentialIssuerId,
-    private val clock: Clock,
-    private val hashAlgorithm: HashAlgorithm,
-    private val signAlg: JWSAlgorithm,
-    val issuerKey: ECKey,
-    private val expiresAt: TimeDependant<Instant>? = { iat -> iat.plusYears(2).with(LocalTime.MIDNIGHT).toInstant() },
-    private val notUseBefore: TimeDependant<Instant>? = { iat -> iat.plusSeconds(10).toInstant() },
-    private val getPidData: GetPidData,
-    private val validateJwtProof: ValidateJwtProof,
-) : IssueSpecificCredential {
-
-    override val supportedCredential: CredentialMetaData
-        get() = PidSdJwtVcV1
-
-    private val issuer: SdJwtVCIssuer by lazy {
-        val cfg = IssuerConfig(
-            credentialIssuerId = credentialIssuerId,
-            clock = clock,
-            hashAlgorithm = hashAlgorithm,
-            signAlg = signAlg,
-            issuerKey = issuerKey,
-        )
-        SdJwtVCIssuer(cfg)
-    }
-
-    context(Raise<Err>) override suspend fun invoke(
-        authorizationContext: AuthorizationContext,
-        request: CredentialRequest,
-        expectedCNonce: CNonce,
-    ): CredentialResponse<JsonElement> {
-        val holderPubKey = holderPubKey(request.unvalidatedProof, expectedCNonce).value
-        val verifiableCredential = selectivelyDisclosedData(authorizationContext)
-        val internalReq = SdJwtVCIssuanceRequest(
-            type = (supportedCredential as SdJwtVcMetaData).type.value,
-            subject = null,
-            verifiableCredential = verifiableCredential,
-            holderPubKey = holderPubKey,
-            expiresAt = expiresAt,
-            notUseBefore = notUseBefore,
-        )
-        val sdJwt = issuer.issue(internalReq)
-        return CredentialResponse.Issued(JsonPrimitive(sdJwt))
-    }
-
-    context(Raise<Err>)
-    private fun holderPubKey(
-        unvalidatedProof: UnvalidatedProof,
-        expectedCNonce: CNonce,
-    ): CredentialKey.Jwk {
-        ensure(unvalidatedProof is UnvalidatedProof.Jwt) { Err.ProofInvalid("Supporting only JWT proof") }
-        val algs = supportedCredential.cryptographicSuitesSupported()
-        val key = validateJwtProof(unvalidatedProof, expectedCNonce, algs).getOrElse {
-            raise(Err.ProofInvalid("Proof is not valid", it))
-        }
-        ensureNotNull(key is CredentialKey.Jwk) { Err.ProofInvalid("Proof is $key but we were expecting Jwk") }
-        return key as CredentialKey.Jwk
-    }
-
-    context(Raise<Err>)
-    private suspend fun selectivelyDisclosedData(
-        authorizationContext: AuthorizationContext,
-    ): TimeDependant<SdObject> {
-        val pid = getPidData(accessToken = authorizationContext.accessToken)
-        ensureNotNull(pid) { Err.Unexpected("Cannot obtain PID data") }
-        return pid::asSdObjectAt
-    }
-}
-
-private typealias TimeDependant<F> = (ZonedDateTime) -> F
+typealias TimeDependant<F> = (ZonedDateTime) -> F
 
 private data class IssuerConfig(
     val credentialIssuerId: CredentialIssuerId,
@@ -137,8 +65,8 @@ private data class SdJwtVCIssuanceRequest(
     val subject: String? = null,
     val verifiableCredential: TimeDependant<SdObject>,
     val holderPubKey: JWK,
-    val expiresAt: TimeDependant<Instant>? = null,
-    val notUseBefore: TimeDependant<Instant>? = null,
+    val expiresAt: TimeDependant<Instant>?,
+    val notUseBefore: TimeDependant<Instant>?,
 )
 
 /**
@@ -210,5 +138,67 @@ private class SdJwtVCIssuer(private val config: IssuerConfig) {
             keyID(config.issuerKey.keyID)
             type(JOSEObjectType("vc+sd-jwt"))
         }
+    }
+}
+
+fun <DATA> createSdJwtVcIssuer(
+    supportedCredential: SdJwtVcMetaData,
+    credentialIssuerId: CredentialIssuerId,
+    clock: Clock,
+    validateJwtProof: ValidateJwtProof,
+    hashAlgorithm: HashAlgorithm,
+    signAlg: JWSAlgorithm,
+    issuerKey: ECKey,
+    expiresAt: TimeDependant<Instant>? = null,
+    notUseBefore: TimeDependant<Instant>? = null,
+    getData: suspend (AuthorizationContext) -> DATA?,
+    createSdJwt: (DATA) -> TimeDependant<SdObject>,
+): IssueSpecificCredential<JsonElement> = object : IssueSpecificCredential<JsonElement> {
+    override val supportedCredential: CredentialMetaData
+        get() = supportedCredential
+
+    private val issuer: SdJwtVCIssuer by lazy {
+        val cfg = IssuerConfig(
+            credentialIssuerId = credentialIssuerId,
+            clock = clock,
+            hashAlgorithm = hashAlgorithm,
+            signAlg = signAlg,
+            issuerKey = issuerKey,
+        )
+        SdJwtVCIssuer(cfg)
+    }
+
+    context(Raise<IssueCredentialError>) override suspend fun invoke(
+        authorizationContext: AuthorizationContext,
+        request: CredentialRequest,
+        expectedCNonce: CNonce,
+    ): CredentialResponse<JsonElement> {
+        suspend fun selectivelyDisclosedData(): TimeDependant<SdObject> {
+            val data = getData(authorizationContext)
+            ensureNotNull(data) { Unexpected("Cannot obtain data") }
+            return createSdJwt(data)
+        }
+
+        val unvalidatedProof = request.unvalidatedProof
+        fun holderPubKey(): CredentialKey.Jwk {
+            ensure(unvalidatedProof is UnvalidatedProof.Jwt) { InvalidProof("Supporting only JWT proof") }
+            val cryptographicSuitesSupported = supportedCredential.cryptographicSuitesSupported()
+            val key = validateJwtProof(unvalidatedProof, expectedCNonce, cryptographicSuitesSupported).getOrElse {
+                raise(InvalidProof("Proof is not valid", it))
+            }
+            ensureNotNull(key is CredentialKey.Jwk) { InvalidProof("Proof is $key but we were expecting Jwk") }
+            return key as CredentialKey.Jwk
+        }
+
+        val internalReq = SdJwtVCIssuanceRequest(
+            type = supportedCredential.type.value,
+            subject = null,
+            verifiableCredential = selectivelyDisclosedData(),
+            holderPubKey = holderPubKey().value,
+            expiresAt = expiresAt,
+            notUseBefore = notUseBefore,
+        )
+        val sdJwt = issuer.issue(internalReq)
+        return CredentialResponse.Issued(JsonPrimitive(sdJwt))
     }
 }

@@ -18,7 +18,7 @@ package eu.europa.ec.eudi.pidissuer.port.out.persistence
 import eu.europa.ec.eudi.pidissuer.domain.CNonce
 import java.time.Clock
 
-interface LoadCNonceByAccessToken {
+fun interface LoadCNonceByAccessToken {
 
     suspend operator fun invoke(accessToken: String): CNonce?
 

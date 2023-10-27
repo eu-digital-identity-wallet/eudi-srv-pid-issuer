@@ -22,6 +22,7 @@ import org.springframework.context.annotation.Primary
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.core.annotation.AliasFor
 import org.springframework.test.context.ContextConfiguration
+import java.time.Clock
 import kotlin.reflect.KClass
 
 /**
@@ -50,6 +51,6 @@ internal annotation class PidIssuerApplicationTest(
  */
 internal class BeansDslApplicationContextInitializer : ApplicationContextInitializer<GenericApplicationContext> {
     override fun initialize(applicationContext: GenericApplicationContext) {
-        beans.initializer().initialize(applicationContext)
+        beans(Clock.systemDefaultZone()).initializer().initialize(applicationContext)
     }
 }

@@ -17,6 +17,8 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
+import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import kotlinx.serialization.json.JsonElement
 
 sealed interface CredentialResponseEncryption {
 
@@ -82,5 +84,8 @@ data class CredentialIssuerMetaData(
     val deferredCredentialEndpoint: HttpsUrl? = null,
     val credentialResponseEncryption: CredentialResponseEncryption = CredentialResponseEncryption.NotRequired,
     val display: Display = emptyMap(),
-    val credentialsSupported: List<CredentialMetaData>,
-)
+    val specificCredentialIssuers: List<IssueSpecificCredential<JsonElement>>,
+) {
+    val credentialsSupported: List<CredentialMetaData>
+        get() = specificCredentialIssuers.map { it.supportedCredential }
+}

@@ -15,11 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.Either
 import arrow.core.NonEmptySet
-import arrow.core.raise.either
-import arrow.core.raise.ensure
-import arrow.core.raise.ensureNotNull
 import arrow.core.raise.result
 import com.nimbusds.jose.*
 import com.nimbusds.jose.jwk.ECKey
@@ -35,7 +31,6 @@ import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import com.nimbusds.jwt.proc.JWTProcessor
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.port.out.jose.ValidateJwtProof
 import java.security.Key
 import java.time.Duration
 
@@ -49,26 +44,6 @@ class ValidateJwtProofWithNimbus(private val credentialIssuerId: CredentialIssue
         val processor = openId4VciProcessor(expected, credentialIssuerId, supportedAlg)
         processor.process(signedJwt, null)
         CredentialKey.Jwk(signedJwt.header.jwk)
-    }
-}
-
-private fun credentialKey(jwsHeader: JWSHeader): Either<String, CredentialKey> = either {
-    fun JWSAlgorithm.isAsymmetric(): Boolean = JWSAlgorithm.Family.SIGNATURE.contains(this)
-    val alg = jwsHeader.algorithm
-    ensureNotNull(alg) { "Missing alg" }
-    ensure(alg.isAsymmetric()) { "Alg $alg is not asymmetric." }
-    ensure(jwsHeader.type == JOSEObjectType(EXPECTED_TYPE)) { "Wrong typ ${jwsHeader.type.type}. Was expecting `$EXPECTED_TYPE`" }
-    val jwk = jwsHeader.jwk
-    val kid = jwsHeader.keyID
-    val x5c = jwsHeader.x509CertChain?.let {
-        Either.catch { X509CertChainUtils.parse(it).toList() }.mapLeft { t -> "X509 change Parsing exception" }.bind()
-    }
-
-    when {
-        kid != null && jwk == null && x5c == null -> CredentialKey.DIDUrl(kid)
-        kid == null && jwk != null && x5c == null -> CredentialKey.Jwk(jwk)
-        kid == null && jwk != null && x5c != null -> CredentialKey.X5c(x5c)
-        else -> raise("Unable to extract pub key form proof header")
     }
 }
 

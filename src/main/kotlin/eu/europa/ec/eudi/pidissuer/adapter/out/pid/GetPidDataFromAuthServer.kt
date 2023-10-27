@@ -13,13 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.idp
+package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
-import eu.europa.ec.eudi.pidissuer.domain.pid.FamilyName
-import eu.europa.ec.eudi.pidissuer.domain.pid.GivenName
-import eu.europa.ec.eudi.pidissuer.domain.pid.Pid
-import eu.europa.ec.eudi.pidissuer.domain.pid.UniqueId
-import eu.europa.ec.eudi.pidissuer.port.out.pid.GetPidData
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject

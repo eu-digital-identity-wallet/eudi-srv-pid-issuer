@@ -15,14 +15,25 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
-import java.time.Duration
-import java.time.Instant
+/**
+ * The identifier of a deferred issuance transaction.
+ */
+@JvmInline
+value class TransactionId(val value: String)
 
-data class CNonce(
-    val accessToken: String,
-    val nonce: String,
-    val activatedAt: Instant,
-    val expiresIn: Duration,
-)
+/**
+ * The response to a Credential Request.
+ */
+sealed interface CredentialResponse<out T> {
 
-fun CNonce.isExpired(at: Instant): Boolean = (activatedAt + expiresIn) <= at
+    /**
+     * An unencrypted Credential has been issued.
+     */
+    data class Issued<T>(val credential: T) : CredentialResponse<T>
+
+    /**
+     * The issuance of the requested Credential has been deferred.
+     * The deferred transaction can be identified by [transactionId].
+     */
+    data class Deferred(val transactionId: TransactionId) : CredentialResponse<Nothing>
+}

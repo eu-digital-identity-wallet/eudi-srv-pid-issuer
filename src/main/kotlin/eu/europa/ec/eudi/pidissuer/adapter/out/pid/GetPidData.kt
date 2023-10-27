@@ -13,16 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.domain
+package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
-import java.time.Duration
-import java.time.Instant
-
-data class CNonce(
-    val accessToken: String,
-    val nonce: String,
-    val activatedAt: Instant,
-    val expiresIn: Duration,
-)
-
-fun CNonce.isExpired(at: Instant): Boolean = (activatedAt + expiresIn) <= at
+fun interface GetPidData {
+    suspend operator fun invoke(accessToken: String): Pid?
+}

@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
-import eu.europa.ec.eudi.pidissuer.port.input.GetJwkSet
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.server.ServerResponse
 import org.springframework.web.reactive.function.server.bodyValueAndAwait
@@ -25,7 +24,6 @@ import org.springframework.web.reactive.function.server.json
 
 class MetaDataApi(
     val getCredentialIssuerMetaData: GetCredentialIssuerMetaData,
-    val getJwkSet: GetJwkSet,
 ) {
 
     val route = coRouter {
@@ -41,9 +39,7 @@ class MetaDataApi(
         getCredentialIssuerMetaData().let { metaData -> ServerResponse.ok().json().bodyValueAndAwait(metaData) }
 
     private suspend fun handleGetJwtIssuerJwkSet(): ServerResponse =
-        getJwkSet().let { metaData ->
-            ServerResponse.ok().json().bodyValueAndAwait(metaData)
-        }
+        TODO()
 
     companion object {
         const val WELL_KNOWN_OPENID_CREDENTIAL_ISSUER = "/.well-known/openid-credential-issuer"

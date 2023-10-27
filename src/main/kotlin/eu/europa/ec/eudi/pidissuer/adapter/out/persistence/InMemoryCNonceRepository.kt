@@ -16,44 +16,43 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.persistence
 
 import eu.europa.ec.eudi.pidissuer.domain.CNonce
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.DeleteCNonce
+import eu.europa.ec.eudi.pidissuer.domain.isExpired
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.DeleteExpiredCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadCNonceByAccessToken
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.UpsertCNonce
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.time.Instant
-import java.util.concurrent.ConcurrentHashMap
 
-class InMemoryCNonceRepository : DeleteCNonce, LoadCNonceByAccessToken, UpsertCNonce {
+class InMemoryCNonceRepository(
+    private val data: MutableMap<String, CNonce> = mutableMapOf(),
+) {
 
-    private val data = ConcurrentHashMap<String, CNonce>()
     private val mutex = Mutex()
 
-    override suspend fun invoke(at: Instant): Unit =
-        mutex.withLock(this) {
-            val matching = data.entries
-                .filter { (it.value.activatedAt + it.value.expiresIn) <= at }
-                .map { it.key }
-            matching.forEach { data.remove(it) }
-        }
+    val deleteExpiredCNonce: DeleteExpiredCNonce = DeleteExpiredCNonce { at ->
 
-    override suspend fun invoke(accessToken: String): CNonce? =
+        fun <K, V> MutableMap<K, V>.removeIfValue(predicate: (V) -> Boolean) =
+            filterValues(predicate).forEach { (k, _) -> remove(k) }
+
+        mutex.withLock(this) {
+            data.removeIfValue { it.isExpired(at) }
+        }
+    }
+
+    val loadCNonceByAccessToken: LoadCNonceByAccessToken = LoadCNonceByAccessToken { accessToken ->
         mutex.withLock(this) {
             data[accessToken]
         }
+    }
 
-    override suspend fun invoke(cNonce: CNonce): Unit =
+    val upsertCNonce: UpsertCNonce = UpsertCNonce { cNonce ->
         mutex.withLock(this) {
             data[cNonce.accessToken] = cNonce
         }
+    }
 
     internal suspend fun clear(): Unit =
         mutex.withLock(this) {
             data.clear()
-        }
-
-    internal suspend fun verify(verifier: suspend (Map<String, CNonce>) -> Unit): Unit =
-        mutex.withLock(this) {
-            verifier(data)
         }
 }

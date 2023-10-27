@@ -21,11 +21,15 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
-import eu.europa.ec.eudi.pidissuer.adapter.out.idp.GetPidDataFromAuthServer
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProofWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
+import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidDataFromAuthServer
+import eu.europa.ec.eudi.pidissuer.adapter.out.pid.IssueMsoMdocPid
+import eu.europa.ec.eudi.pidissuer.adapter.out.pid.issueSdJwtVcPid
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.port.input.*
+import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
+import eu.europa.ec.eudi.pidissuer.port.input.RequestCredentialsOffer
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenCNonce
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -52,40 +56,29 @@ import java.time.Clock
 import java.time.Duration
 import java.util.*
 
-val beans = beans {
-
+fun beans(clock: Clock) = beans {
+    bean { clock }
     bean {
-        val clock = Clock.systemDefaultZone()
         val issuerPublicUrl = env.getRequiredProperty("issuer.publicUrl").run { HttpsUrl.unsafe(this) }
-
-        bean { IssueMsoMdocPid(ref()) }
-
-        bean {
-            IssueSdJwtVcPid(
-                hashAlgorithm = HashAlgorithm.SHA3_256,
-                issuerKey = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate(),
-                getPidData = ref(),
-                clock = clock,
-                signAlg = JWSAlgorithm.ES256,
-                credentialIssuerId = issuerPublicUrl,
-                validateJwtProof = ValidateJwtProofWithNimbus(issuerPublicUrl),
-            )
-        }
-
-        val issuingServices = provider<IssueSpecificCredential>().toList()
-
+        val issueMsoMdocPid = IssueMsoMdocPid(ref())
+        val issueSdJwtVcPid = issueSdJwtVcPid(
+            hashAlgorithm = HashAlgorithm.SHA3_256,
+            issuerKey = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate(),
+            getPidData = ref(),
+            clock = clock,
+            signAlg = JWSAlgorithm.ES256,
+            credentialIssuerId = issuerPublicUrl,
+            validateJwtProof = ValidateJwtProofWithNimbus(issuerPublicUrl),
+        )
+        bean { issueMsoMdocPid }
+        bean { issueSdJwtVcPid }
         val authorizationServer = env.getRequiredProperty("issuer.authorizationServer").run { HttpsUrl.unsafe(this) }
-        val credentialIssuerMetaData = CredentialIssuerMetaData(
+        CredentialIssuerMetaData(
             id = issuerPublicUrl,
             credentialEndPoint = env.getRequiredProperty("issuer.publicUrl")
                 .run { HttpsUrl.unsafe("$this/wallet/credentialEndpoint") },
             authorizationServer = authorizationServer,
-            credentialsSupported = issuingServices.map { it.supportedCredential },
-        )
-        CredentialIssuerContext(
-            metaData = credentialIssuerMetaData,
-            clock = clock,
-            issuingServices = issuingServices,
+            specificCredentialIssuers = listOf(issueMsoMdocPid, issueSdJwtVcPid),
         )
     }
 
@@ -96,28 +89,35 @@ val beans = beans {
         val userinfoEndpoint = env.getRequiredProperty<URL>("issuer.authorizationServer.userinfo")
         GetPidDataFromAuthServer(userinfoEndpoint)
     }
-    bean(::GetJwkSet)
     bean {
         GenCNonce { accessToken, clock ->
             CNonce(accessToken, UUID.randomUUID().toString(), clock.instant(), Duration.ofMinutes(5L))
         }
     }
-    bean(::InMemoryCNonceRepository)
+    bean {
+        val repo = InMemoryCNonceRepository()
+        bean { repo }
+        bean { repo.deleteExpiredCNonce }
+        bean { repo.upsertCNonce }
+        bean { repo.loadCNonceByAccessToken }
+    }
 
     //
     // In Ports (use cases)
     //
     bean(::GetCredentialIssuerMetaData)
     bean(::RequestCredentialsOffer)
-
-    bean(::IssueCredential)
-    bean(::HelloHolder)
+    bean {
+        val credentialIssuerMetaData = ref<CredentialIssuerMetaData>()
+        val specificCredentialIssuers = credentialIssuerMetaData.specificCredentialIssuers
+        IssueCredential(clock, specificCredentialIssuers, ref(), ref(), ref())
+    }
 
     //
     // Routes
     //
     bean {
-        val metaDataApi = MetaDataApi(ref(), ref())
+        val metaDataApi = MetaDataApi(ref())
         val walletApi = WalletApi(ref(), ref())
         val issuerApi = IssuerApi(ref())
         metaDataApi.route.and(issuerApi.route).and(walletApi.route)
@@ -127,7 +127,6 @@ val beans = beans {
     // Security
     //
     bean {
-
         /*
          * This is Spring naming convention
          * A prefix of SCOPE_xyz will grant a SimpleAuthority(xyz)
@@ -137,8 +136,8 @@ val beans = beans {
          * and not SCOPE_xyz
          */
         fun Scope.springConvention() = "SCOPE_$value"
-        val ctx = ref<CredentialIssuerContext>()
-        val scopes = ctx.metaData.credentialsSupported
+        val metaData = ref<CredentialIssuerMetaData>()
+        val scopes = metaData.credentialsSupported
             .mapNotNull { it.scope?.springConvention() }
             .distinct()
         val http = ref<ServerHttpSecurity>()
@@ -198,6 +197,6 @@ class PidIssuerApplication
 
 fun main(args: Array<String>) {
     runApplication<PidIssuerApplication>(*args) {
-        addInitializers(beans.initializer())
+        addInitializers(beans(Clock.systemDefaultZone()).initializer())
     }
 }

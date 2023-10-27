@@ -17,21 +17,18 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import eu.europa.ec.eudi.pidissuer.PidIssuerApplicationTest
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
-import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerContext
+import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.domain.Scope
-import eu.europa.ec.eudi.pidissuer.domain.pid.*
 import eu.europa.ec.eudi.pidissuer.port.input.CredentialErrorTypeTo
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenCNonce
-import eu.europa.ec.eudi.pidissuer.port.out.pid.GetPidData
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromStream
-import org.junit.jupiter.api.Assertions
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
@@ -49,23 +46,24 @@ import org.springframework.security.oauth2.core.OAuth2TokenIntrospectionClaimNam
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockOpaqueToken
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.springSecurity
 import org.springframework.test.web.reactive.server.WebTestClient
+import org.springframework.test.web.reactive.server.expectBody
 import java.io.ByteArrayInputStream
+import java.time.Clock
 import java.time.Duration
-import java.time.Instant
 import java.time.LocalDate
 import java.time.Month
 import java.util.*
-import kotlin.properties.Delegates
+import kotlin.test.*
 
 @PidIssuerApplicationTest(classes = [WalletApiTestConfig::class])
-@OptIn(ExperimentalSerializationApi::class)
+@OptIn(ExperimentalSerializationApi::class, ExperimentalCoroutinesApi::class)
 internal class WalletApiTest {
 
     @Autowired
     private lateinit var applicationContext: ApplicationContext
 
     @Autowired
-    private lateinit var context: CredentialIssuerContext
+    private lateinit var clock: Clock
 
     @Autowired
     private lateinit var cNonceRepository: InMemoryCNonceRepository
@@ -73,18 +71,15 @@ internal class WalletApiTest {
     @Autowired
     private lateinit var genCNonce: GenCNonce
 
-    private var client by Delegates.notNull<WebTestClient>()
-
-    @BeforeEach
-    internal fun setup() {
-        client = WebTestClient.bindToApplicationContext(applicationContext)
+    private fun client(): WebTestClient =
+        WebTestClient.bindToApplicationContext(applicationContext)
             .apply(springSecurity())
             .configureClient()
             .build()
 
-        runBlocking {
-            cNonceRepository.clear()
-        }
+    @BeforeTest
+    internal fun setup() = runBlocking {
+        cNonceRepository.clear()
     }
 
     /**
@@ -92,73 +87,58 @@ internal class WalletApiTest {
      * No CNonce is expected to be generated.
      */
     @Test
-    internal fun `requires authorization`() {
-        runBlocking {
-            cNonceRepository.verify {
-                Assertions.assertTrue(it.isEmpty())
-            }
-            client.post()
-                .uri(WalletApi.CREDENTIAL_ENDPOINT)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(request)
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange()
-                .expectStatus().isUnauthorized()
-            cNonceRepository.verify {
-                Assertions.assertTrue(it.isEmpty())
-            }
-        }
+    fun `requires authorization`() = runTest {
+        client().post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isUnauthorized()
     }
 
     /**
      * Verifies that unknown credential formats cannot be deserialized.
-     * Application is expected to fail.
+     * The Application is expected to fail.
      * No CNonce is expected to be generated.
      */
     @Test
-    internal fun `fails with unknown credential request format`() {
+    fun `fails with unknown credential request format`() = runTest {
         val request = """
             {
               "format": "pid"
             }
         """.trimIndent()
 
-        val (principal, _) = bearerTokenAuthenticationPrincipal(issuedAt = context.clock.instant())
-        runBlocking {
-            cNonceRepository.verify {
-                Assertions.assertTrue(it.isEmpty())
-            }
-            client
-                .mutateWith(mockOpaqueToken().principal(principal))
-                .post()
-                .uri(WalletApi.CREDENTIAL_ENDPOINT)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(request)
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange()
-                .expectAll(
-                    { it.expectStatus().is5xxServerError() },
-                    {
-                        it.expectBody()
-                            .jsonPath("$.trace")
-                            .value<String> { value ->
-                                value.contains("Polymorphic serializer was not found for class discriminator")
-                            }
-                    },
-                )
-            cNonceRepository.verify {
-                Assertions.assertTrue(it.isEmpty())
-            }
-        }
+        val (principal, _) = bearerTokenAuthenticationPrincipal(clock = clock)
+
+        client()
+            .mutateWith(mockOpaqueToken().principal(principal))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectAll(
+                { it.expectStatus().is5xxServerError() },
+                {
+                    it.expectBody()
+                        .jsonPath("$.trace")
+                        .value<String> { value ->
+                            value.contains("Polymorphic serializer was not found for class discriminator")
+                        }
+                },
+            )
     }
 
     /**
      * Verifies that proof of possession is required.
-     * Application is expected to fail.
+     * The Application is expected to fail.
      * CNonce is expected to be generated.
      */
     @Test
-    internal fun `fails when proof is not provided`() {
+    fun `fails when proof is not provided`() = runTest {
         val request = """
             {
               "format": "mso_mdoc",
@@ -166,90 +146,70 @@ internal class WalletApiTest {
             }
         """.trimIndent()
 
-        val (principal, token) = bearerTokenAuthenticationPrincipal(issuedAt = context.clock.instant())
-        runBlocking {
-            cNonceRepository.verify {
-                Assertions.assertTrue(it.isEmpty())
-            }
-            val response = client
-                .mutateWith(mockOpaqueToken().principal(principal))
-                .post()
-                .uri(WalletApi.CREDENTIAL_ENDPOINT)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(request)
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange()
-                .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
-                .expectBody()
-                .returnResult()
-                .let {
-                    val body = it.responseBody
-                    Assertions.assertNotNull(body)
-                    Json.decodeFromStream<IssueCredentialResponse.FailedTO>(ByteArrayInputStream(body))
-                }
+        val (principal, token) = bearerTokenAuthenticationPrincipal(clock = clock)
 
-            val cNonce = cNonceRepository.invoke(token.tokenValue)
-            Assertions.assertNotNull(cNonce)
-            cNonce!!
+        val response = client()
+            .mutateWith(mockOpaqueToken().principal(principal))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
+            .expectBody<IssueCredentialResponse.FailedTO>()
+            .returnResult()
+            .responseBody
 
-            Assertions.assertEquals(
-                IssueCredentialResponse.FailedTO(
-                    CredentialErrorTypeTo.INVALID_PROOF,
-                    "The Credential Request must include Proof of Possession",
-                    cNonce.nonce,
-                    cNonce.expiresIn.toSeconds(),
-                ),
-                response,
-            )
-        }
+        val cNonce = assertNotNull(cNonceRepository.loadCNonceByAccessToken(token.tokenValue))
+
+        assertEquals(
+            IssueCredentialResponse.FailedTO(
+                CredentialErrorTypeTo.INVALID_PROOF,
+                "The Credential Request must include Proof of Possession",
+                cNonce.nonce,
+                cNonce.expiresIn.toSeconds(),
+            ),
+            response,
+        )
     }
 
     /**
      * Verifies that when an incorrect scope is used, issuance fails.
-     * Application is expected to fail.
+     * The Application is expected to fail.
      * CNonce is expected to be generated.
      */
     @Test
-    internal fun `fails when using incorrect scope`() {
+    fun `fails when using incorrect scope`() = runTest {
         val (principal, token) = bearerTokenAuthenticationPrincipal(
-            issuedAt = context.clock.instant(),
+            clock = clock,
             scopes = listOf(PidSdJwtVcScope),
         )
-        runBlocking {
-            cNonceRepository.verify {
-                Assertions.assertTrue(it.isEmpty())
-            }
-            val response = client
-                .mutateWith(mockOpaqueToken().principal(principal))
-                .post()
-                .uri(WalletApi.CREDENTIAL_ENDPOINT)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(request)
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange()
-                .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
-                .expectBody()
-                .returnResult()
-                .let {
-                    val body = it.responseBody
-                    Assertions.assertNotNull(body)
-                    Json.decodeFromStream<IssueCredentialResponse.FailedTO>(ByteArrayInputStream(body))
-                }
 
-            val cNonce = cNonceRepository.invoke(token.tokenValue)
-            Assertions.assertNotNull(cNonce)
-            cNonce!!
+        val response = client()
+            .mutateWith(mockOpaqueToken().principal(principal))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
+            .expectBody<IssueCredentialResponse.FailedTO>()
+            .returnResult()
+            .responseBody
 
-            Assertions.assertEquals(
-                IssueCredentialResponse.FailedTO(
-                    CredentialErrorTypeTo.INVALID_REQUEST,
-                    "Wrong scope. Expecting $PidMsoMdocScope",
-                    cNonce.nonce,
-                    cNonce.expiresIn.toSeconds(),
-                ),
-                response,
-            )
-        }
+        val cNonce = assertNotNull(cNonceRepository.loadCNonceByAccessToken(token.tokenValue))
+
+        assertEquals(
+            IssueCredentialResponse.FailedTO(
+                CredentialErrorTypeTo.INVALID_REQUEST,
+                "Wrong scope. Expecting $PidMsoMdocScope",
+                cNonce.nonce,
+                cNonce.expiresIn.toSeconds(),
+            ),
+            response,
+        )
     }
 
     /**
@@ -258,43 +218,33 @@ internal class WalletApiTest {
      * CNonce is expected to be generated.
      */
     @Test
-    internal fun `fails when using no c_nonce is active`() {
-        val (principal, token) = bearerTokenAuthenticationPrincipal(issuedAt = context.clock.instant())
-        runBlocking {
-            cNonceRepository.verify {
-                Assertions.assertTrue(it.isEmpty())
-            }
-            val response = client
-                .mutateWith(mockOpaqueToken().principal(principal))
-                .post()
-                .uri(WalletApi.CREDENTIAL_ENDPOINT)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(request)
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange()
-                .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
-                .expectBody()
-                .returnResult()
-                .let {
-                    val body = it.responseBody
-                    Assertions.assertNotNull(body)
-                    Json.decodeFromStream<IssueCredentialResponse.FailedTO>(ByteArrayInputStream(body))
-                }
+    fun `fails when using no c_nonce is active`() = runTest {
+        val (principal, token) = bearerTokenAuthenticationPrincipal(clock = clock)
 
-            val cNonce = cNonceRepository.invoke(token.tokenValue)
-            Assertions.assertNotNull(cNonce)
-            cNonce!!
+        val response = client()
+            .mutateWith(mockOpaqueToken().principal(principal))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
+            .expectBody<IssueCredentialResponse.FailedTO>()
+            .returnResult()
+            .responseBody
 
-            Assertions.assertEquals(
-                IssueCredentialResponse.FailedTO(
-                    CredentialErrorTypeTo.INVALID_PROOF,
-                    "The Credential Request must include Proof of Possession",
-                    cNonce.nonce,
-                    cNonce.expiresIn.toSeconds(),
-                ),
-                response,
-            )
-        }
+        val cNonce = assertNotNull(cNonceRepository.loadCNonceByAccessToken(token.tokenValue))
+
+        assertEquals(
+            IssueCredentialResponse.FailedTO(
+                CredentialErrorTypeTo.INVALID_PROOF,
+                "The Credential Request must include Proof of Possession",
+                cNonce.nonce,
+                cNonce.expiresIn.toSeconds(),
+            ),
+            response,
+        )
     }
 
     /**
@@ -305,54 +255,48 @@ internal class WalletApiTest {
      * Verifies response values.
      */
     @Test
-    internal fun `issuance success`() {
-        val (principal, token) = bearerTokenAuthenticationPrincipal(issuedAt = context.clock.instant())
-        runBlocking {
-            cNonceRepository.verify {
-                Assertions.assertTrue(it.isEmpty())
+    fun `issuance success`() = runTest {
+        val (principal, token) = bearerTokenAuthenticationPrincipal(clock = clock)
+        val previousCNonce = genCNonce(token.tokenValue, clock)
+        cNonceRepository.upsertCNonce(previousCNonce)
+
+        val response = client()
+            .mutateWith(mockOpaqueToken().principal(principal))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody()
+            .returnResult()
+            .let {
+                val body = it.responseBody
+                assertNotNull(body)
+                Json.decodeFromStream<IssueCredentialResponse.PlainTO>(ByteArrayInputStream(body))
             }
-            val previousCNonce = genCNonce(token.tokenValue, context.clock)
-            cNonceRepository.invoke(previousCNonce)
 
-            val response = client
-                .mutateWith(mockOpaqueToken().principal(principal))
-                .post()
-                .uri(WalletApi.CREDENTIAL_ENDPOINT)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(request)
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .returnResult()
-                .let {
-                    val body = it.responseBody
-                    Assertions.assertNotNull(body)
-                    Json.decodeFromStream<IssueCredentialResponse.PlainTO>(ByteArrayInputStream(body))
-                }
+        val newCNonce = assertNotNull(cNonceRepository.loadCNonceByAccessToken(token.tokenValue))
+        assertNotEquals(previousCNonce, newCNonce)
 
-            val newCNonce = cNonceRepository.invoke(token.tokenValue)
-            Assertions.assertNotNull(newCNonce)
-            newCNonce!!
-            Assertions.assertNotEquals(previousCNonce, newCNonce)
-
-            val issuedCredential = Assertions.assertInstanceOf(JsonPrimitive::class.java, response.credential)
-            Assertions.assertTrue(issuedCredential.isString)
-            Assertions.assertNull(response.transactionId)
-            Assertions.assertEquals(newCNonce.nonce, response.nonce)
-            Assertions.assertEquals(newCNonce.expiresIn.seconds, response.nonceExpiresIn)
-        }
+        val issuedCredential = assertIs<JsonPrimitive>(response.credential)
+        assertTrue(issuedCredential.isString)
+        assertNull(response.transactionId)
+        assertEquals(newCNonce.nonce, response.nonce)
+        assertEquals(newCNonce.expiresIn.seconds, response.nonceExpiresIn)
     }
 }
 
 private fun bearerTokenAuthenticationPrincipal(
     subject: String = "user",
-    issuedAt: Instant,
+    clock: Clock,
     expiresIn: Duration = Duration.ofMinutes(10L),
     scopes: List<Scope> = listOf(PidMsoMdocScope, PidSdJwtVcScope),
     authorities: List<GrantedAuthority> = listOf(SimpleGrantedAuthority("ROLE_USER")),
-): Pair<OAuth2AuthenticatedPrincipal, OAuth2AccessToken> =
-    DefaultOAuth2AuthenticatedPrincipal(
+): Pair<OAuth2AuthenticatedPrincipal, OAuth2AccessToken> {
+    val issuedAt = clock.instant()
+    return DefaultOAuth2AuthenticatedPrincipal(
         subject,
         mapOf(
             OAuth2TokenIntrospectionClaimNames.USERNAME to subject,
@@ -367,6 +311,7 @@ private fun bearerTokenAuthenticationPrincipal(
         ),
         authorities + scopes.map { SimpleGrantedAuthority("SCOPE_${it.value}") },
     ) to OAuth2AccessToken(TokenType.BEARER, "token", issuedAt, (issuedAt + expiresIn))
+}
 
 private val request =
     """

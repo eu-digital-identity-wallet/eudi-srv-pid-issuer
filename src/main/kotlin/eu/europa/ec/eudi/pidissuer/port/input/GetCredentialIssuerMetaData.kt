@@ -24,11 +24,11 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 
 class GetCredentialIssuerMetaData(
-    val credentialIssuerContext: CredentialIssuerContext,
+    val credentialIssuerMetaData: CredentialIssuerMetaData,
 ) {
     suspend operator fun invoke(): CredentialIssuerMetaDataTO =
         coroutineScope {
-            credentialIssuerContext.metaData.toTransferObject()
+            credentialIssuerMetaData.toTransferObject()
         }
 }
 

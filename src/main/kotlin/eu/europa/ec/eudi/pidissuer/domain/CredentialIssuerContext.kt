@@ -14,11 +14,3 @@
  * limitations under the License.
  */
 package eu.europa.ec.eudi.pidissuer.domain
-
-import java.time.Clock
-
-data class CredentialIssuerContext(
-    val metaData: CredentialIssuerMetaData,
-    val clock: Clock,
-    val issuingServices: List<IssueSpecificCredential>,
-)

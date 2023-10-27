@@ -23,7 +23,6 @@ import arrow.core.raise.ensureNotNull
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.JWK
-import kotlinx.serialization.json.JsonElement
 import java.security.cert.X509Certificate
 
 /**
@@ -122,39 +121,7 @@ sealed interface CredentialRequest {
     val credentialResponseEncryption: RequestedResponseEncryption
 }
 
-/**
- * The identifier of a deferred issuance transaction.
- */
-@JvmInline
-value class TransactionId(val value: String)
-
-/**
- * The response to a Credential Request.
- */
-sealed interface CredentialResponse<out T> {
-
-    /**
-     * An unencrypted Credential has been issued.
-     */
-    data class Issued<T>(val credential: T) : CredentialResponse<T>
-
-    /**
-     * The issuance of the requested Credential has been deferred.
-     * The deferred transaction can be identified by [transactionId].
-     */
-    data class Deferred(val transactionId: TransactionId) : CredentialResponse<Nothing>
-}
-
-sealed interface Err {
-    data object UnsupportedResponseEncryptionOptions : Err
-
-    data class Unexpected(val msg: String, val cause: Throwable? = null) : Err
-
-    data class ProofInvalid(val msg: String, val cause: Throwable? = null) : Err
-}
-
-context(Raise<String>)
-private fun CredentialRequest.assertIsSupported(meta: CredentialMetaData) = when (this) {
+context(Raise<String>) fun CredentialRequest.assertIsSupported(meta: CredentialMetaData) = when (this) {
     is MsoMdocCredentialRequest -> {
         ensure(meta is MsoMdocMetaData) { "Was expecting a ${MSO_MDOC_FORMAT.value}" }
         validate(meta)
@@ -165,17 +132,3 @@ private fun CredentialRequest.assertIsSupported(meta: CredentialMetaData) = when
         validate(meta)
     }
 }
-
-interface IssueSpecificCredential {
-
-    val supportedCredential: CredentialMetaData
-
-    context(Raise<Err>)
-    suspend operator fun invoke(
-        authorizationContext: AuthorizationContext,
-        request: CredentialRequest,
-        expectedCNonce: CNonce,
-    ): CredentialResponse<JsonElement>
-}
-fun IssueSpecificCredential.supports(request: CredentialRequest): Boolean =
-    either { request.assertIsSupported(supportedCredential) }.isRight()
