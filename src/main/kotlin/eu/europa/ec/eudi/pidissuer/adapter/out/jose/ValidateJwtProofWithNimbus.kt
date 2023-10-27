@@ -31,7 +31,6 @@ import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import com.nimbusds.jwt.proc.JWTProcessor
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.port.out.ValidateJwtProof
 import java.security.Key
 import java.time.Duration
 

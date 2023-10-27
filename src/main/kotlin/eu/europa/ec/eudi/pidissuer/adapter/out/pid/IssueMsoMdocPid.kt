@@ -19,6 +19,7 @@ import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
 import arrow.core.raise.ensureNotNull
 import com.nimbusds.jose.JWSAlgorithm
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProof
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
@@ -54,6 +55,7 @@ private fun pidNameSpace(v: Int?): MsoNameSpace = pidDocType(v)
  * Service for issuing PID MsoMdoc credential
  */
 class IssueMsoMdocPid(
+    private val validateJwtProof: ValidateJwtProof,
     private val getPidData: GetPidData,
 ) : IssueSpecificCredential<JsonElement> {
 

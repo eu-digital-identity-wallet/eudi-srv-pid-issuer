@@ -21,6 +21,7 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProofWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidDataFromAuthServer
@@ -60,7 +61,11 @@ fun beans(clock: Clock) = beans {
     bean { clock }
     bean {
         val issuerPublicUrl = env.getRequiredProperty("issuer.publicUrl").run { HttpsUrl.unsafe(this) }
-        val issueMsoMdocPid = IssueMsoMdocPid(ref())
+        val validateJwtProof: ValidateJwtProof = ValidateJwtProofWithNimbus(issuerPublicUrl)
+        val issueMsoMdocPid = IssueMsoMdocPid(
+            validateJwtProof = validateJwtProof,
+            getPidData = ref(),
+        )
         val issueSdJwtVcPid = issueSdJwtVcPid(
             hashAlgorithm = HashAlgorithm.SHA3_256,
             issuerKey = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate(),
@@ -68,7 +73,7 @@ fun beans(clock: Clock) = beans {
             clock = clock,
             signAlg = JWSAlgorithm.ES256,
             credentialIssuerId = issuerPublicUrl,
-            validateJwtProof = ValidateJwtProofWithNimbus(issuerPublicUrl),
+            validateJwtProof = validateJwtProof,
         )
         bean { issueMsoMdocPid }
         bean { issueSdJwtVcPid }
