@@ -20,6 +20,7 @@ import arrow.core.raise.*
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadCNonceByAccessToken
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.UpsertCNonce
@@ -201,7 +202,15 @@ sealed interface IssueCredentialResponse {
         @SerialName("transaction_id") val transactionId: String? = null,
         @SerialName("c_nonce") val nonce: String? = null,
         @SerialName("c_nonce_expires_in") val nonceExpiresIn: Long? = null,
-    ) : IssueCredentialResponse
+    ) : IssueCredentialResponse {
+        init {
+            if (credential != null) {
+                require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
+                    "credential must either be a JsonObject or a string JsonPrimitive"
+                }
+            }
+        }
+    }
 
     /**
      * A Credential has been issued as an encrypted JWT.
@@ -229,10 +238,11 @@ private val log = LoggerFactory.getLogger(IssueCredential::class.java)
  */
 class IssueCredential(
     private val clock: Clock,
-    private val specificCredentialIssuers: List<IssueSpecificCredential<JsonElement>>,
+    private val credentialIssuerMetadata: CredentialIssuerMetaData,
     private val loadCNonceByAccessToken: LoadCNonceByAccessToken,
     private val genCNonce: GenCNonce,
     private val upsertCNonce: UpsertCNonce,
+    private val encryptCredentialResponse: EncryptCredentialResponse,
 ) {
 
     suspend operator fun invoke(
@@ -241,7 +251,7 @@ class IssueCredential(
     ): IssueCredentialResponse {
         log.info("Handling request for ${credentialRequestTO.format}...")
         val outcome: Either<IssueCredentialError, Pair<CredentialRequest, CredentialResponse<JsonElement>>> = either {
-            val credentialRequest = credentialRequestTO.toDomain()
+            val credentialRequest = credentialRequestTO.toDomain(credentialIssuerMetadata.credentialResponseEncryption)
             val issueSpecificCredential = issuingSrv(credentialRequest)
             val expectedScope = issueSpecificCredential.supportedCredential.scope!!
             ensure(authorizationContext.scopes.contains(expectedScope)) { WrongScope(expectedScope) }
@@ -261,9 +271,12 @@ class IssueCredential(
             ifLeft = { error -> error.toTO(newCNonce) },
             ifRight = { (req, cred) ->
                 val plain = cred.toTO(req.format, newCNonce)
-                when (req.credentialResponseEncryption) {
+                when (val requested = req.credentialResponseEncryption) {
                     RequestedResponseEncryption.NotRequired -> plain
-                    is RequestedResponseEncryption.Required -> TODO("Encrypt plain")
+                    is RequestedResponseEncryption.Required ->
+                        encryptCredentialResponse(plain, requested)
+                            .map { IssueCredentialResponse.EncryptedJwtIssued(it) }
+                            .getOrElse { InvalidEncryptionParameters(it).toTO(newCNonce) }
                 }
             },
         )
@@ -271,9 +284,10 @@ class IssueCredential(
 
     context(Raise<UnsupportedCredentialType>)
     private fun issuingSrv(credentialRequest: CredentialRequest): IssueSpecificCredential<JsonElement> {
-        val specificIssuer = specificCredentialIssuers.find { issuer ->
-            either { credentialRequest.assertIsSupported(issuer.supportedCredential) }.isRight()
-        }
+        val specificIssuer = credentialIssuerMetadata.specificCredentialIssuers
+            .find { issuer ->
+                either { credentialRequest.assertIsSupported(issuer.supportedCredential) }.isRight()
+            }
         if (specificIssuer == null) {
             val types = when (credentialRequest) {
                 is MsoMdocCredentialRequest -> listOf(credentialRequest.docType)
@@ -292,9 +306,11 @@ class IssueCredential(
  * Tries to parse a [JsonObject] as a [CredentialRequest].
  */
 context(Raise<IssueCredentialError>)
-fun CredentialRequestTO.toDomain(): CredentialRequest {
+fun CredentialRequestTO.toDomain(
+    supported: CredentialResponseEncryption,
+): CredentialRequest {
     val proof = ensureNotNull(proof) { MissingProof }.toDomain()
-    val credentialResponseEncryption = credentialResponseEncryption.toDomain()
+    val credentialResponseEncryption = credentialResponseEncryption.toDomain(supported)
     return when (val req = this@toDomain) {
         is CredentialRequestTO.MsoMdoc -> {
             ensure(req.docType.isNotBlank()) { UnsupportedCredentialType(format = MSO_MDOC_FORMAT) }
@@ -336,38 +352,61 @@ private fun ProofTo.toDomain(): UnvalidatedProof = when (type) {
  * Gets the [RequestedResponseEncryption] that corresponds to the provided values.
  */
 context(Raise<InvalidEncryptionParameters>)
-private fun CredentialResponseEncryptionTO.toDomain(): RequestedResponseEncryption {
+private fun CredentialResponseEncryptionTO.toDomain(
+    supported: CredentialResponseEncryption,
+): RequestedResponseEncryption {
     val encryptionKey = credentialResponseEncryptionKey?.let { Json.encodeToString(it) }
-    return withError({ t: Throwable -> InvalidEncryptionParameters(t) }) {
-        RequestedResponseEncryption(
+    return withError({ InvalidEncryptionParameters(it) }) {
+        fun RequestedResponseEncryption.ensureIsSupported() {
+            when (supported) {
+                is CredentialResponseEncryption.NotRequired -> {
+                    if (this !is RequestedResponseEncryption.NotRequired) {
+                        raise(IllegalArgumentException("credential response encryption is not required"))
+                    }
+                }
+
+                is CredentialResponseEncryption.Required -> {
+                    if (this !is RequestedResponseEncryption.Required) {
+                        raise(IllegalArgumentException("credential response encryption is required"))
+                    }
+                    if (encryptionAlgorithm !in supported.algorithmsSupported) {
+                        raise(IllegalArgumentException("jwe algorithm '${encryptionAlgorithm.name}' is not supported"))
+                    }
+                    if (encryptionMethod !in supported.encryptionMethods) {
+                        raise(IllegalArgumentException("jwe encryption method '${encryptionMethod.name}' is not supported"))
+                    }
+                }
+            }
+        }
+
+        val requested = RequestedResponseEncryption(
             encryptionKey,
             credentialResponseEncryptionAlgorithm,
             credentialResponseEncryptionMethod,
         ).bind()
+
+        requested.ensureIsSupported()
+        requested
     }
 }
 
 fun CredentialResponse<JsonElement>.toTO(format: Format, nonce: CNonce): IssueCredentialResponse.PlainTO =
     when (this) {
-        is CredentialResponse.Issued -> {
-            require(
-                credential is JsonObject ||
-                    (credential is JsonPrimitive && credential.isString),
-            ) { "Object or string" }
+        is CredentialResponse.Issued ->
             IssueCredentialResponse.PlainTO(
                 format = format.value,
                 credential = credential,
                 nonce = nonce.nonce,
                 nonceExpiresIn = nonce.expiresIn.toSeconds(),
             )
-        }
 
-        is CredentialResponse.Deferred -> IssueCredentialResponse.PlainTO(
-            format = format.value,
-            transactionId = transactionId.value,
-            nonce = nonce.nonce,
-            nonceExpiresIn = nonce.expiresIn.toSeconds(),
-        )
+        is CredentialResponse.Deferred ->
+            IssueCredentialResponse.PlainTO(
+                format = format.value,
+                transactionId = transactionId.value,
+                nonce = nonce.nonce,
+                nonceExpiresIn = nonce.expiresIn.toSeconds(),
+            )
     }
 
 /**

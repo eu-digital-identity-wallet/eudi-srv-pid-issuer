@@ -21,13 +21,17 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProofWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidDataFromAuthServer
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.IssueMsoMdocPid
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.issueSdJwtVcPid
-import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.domain.CNonce
+import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
+import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
+import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
 import eu.europa.ec.eudi.pidissuer.port.input.RequestCredentialsOffer
@@ -106,6 +110,9 @@ fun beans(clock: Clock) = beans {
         bean { repo.upsertCNonce }
         bean { repo.loadCNonceByAccessToken }
     }
+    bean {
+        EncryptCredentialResponseWithNimbus(ref<CredentialIssuerMetaData>().id, ref())
+    }
 
     //
     // In Ports (use cases)
@@ -113,9 +120,7 @@ fun beans(clock: Clock) = beans {
     bean(::GetCredentialIssuerMetaData)
     bean(::RequestCredentialsOffer)
     bean {
-        val credentialIssuerMetaData = ref<CredentialIssuerMetaData>()
-        val specificCredentialIssuers = credentialIssuerMetaData.specificCredentialIssuers
-        IssueCredential(clock, specificCredentialIssuers, ref(), ref(), ref())
+        IssueCredential(clock, ref(), ref(), ref(), ref(), ref())
     }
 
     //

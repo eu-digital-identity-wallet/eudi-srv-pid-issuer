@@ -23,6 +23,7 @@ import arrow.core.raise.ensureNotNull
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.jwk.KeyUse
 import java.security.cert.X509Certificate
 
 /**
@@ -63,16 +64,20 @@ sealed interface CredentialKey {
 sealed interface RequestedResponseEncryption {
 
     /**
+     * Credential response encryption is not required.
      */
     data object NotRequired : RequestedResponseEncryption
 
     /**
-     * @param encryptionJwk A JSON object containing a single public key as a JWK
+     * Credential response encryption is required.
+     *
+     * [encryptionJwk]: A JSON object containing a single public key as a JWK
      * used for encrypting the Credential Response
-     * @param encryptionAlgorithm  JWE RFC7516 alg algorithm RFC7518 REQUIRED
+     *
+     * [encryptionAlgorithm]: JWE RFC7516 alg algorithm RFC7518 REQUIRED
      * for encrypting Credential and/or Batch Credential Responses
      *
-     * @param encryptionMethod  JWE RFC7516 enc algorithm RFC7518 REQUIRED
+     * [encryptionMethod]: JWE RFC7516 enc algorithm RFC7518 REQUIRED
      * for encrypting Credential Responses.
      * If credential_response_encryption_alg is specified, the default for this value is A256GCM.
      *
@@ -81,7 +86,17 @@ sealed interface RequestedResponseEncryption {
         val encryptionJwk: JWK,
         val encryptionAlgorithm: JWEAlgorithm,
         val encryptionMethod: EncryptionMethod = EncryptionMethod.A256GCM,
-    ) : RequestedResponseEncryption
+    ) : RequestedResponseEncryption {
+        init {
+            require(!encryptionJwk.isPrivate) { "encryptionJwk must not contain a private key" }
+            require(KeyUse.ENCRYPTION == encryptionJwk.keyUse) {
+                "encryptionJwk cannot be used for encryption"
+            }
+            require(encryptionAlgorithm in JWEAlgorithm.Family.ASYMMETRIC) {
+                "encryptionAlgorithm is not an asymmetric encryption algorithm"
+            }
+        }
+    }
 
     companion object {
         operator fun invoke(
@@ -101,17 +116,17 @@ sealed interface RequestedResponseEncryption {
             encryptionKey: String,
             encryptionAlgorithm: String,
             encryptionMethod: String?,
-        ): Either<Throwable, Required> = either {
-            val credentialResponseEncryptionKey = Either.catch { JWK.parse(encryptionKey) }.bind()
-            val credentialResponseEncryptionAlgorithm = Either.catch { JWEAlgorithm.parse(encryptionAlgorithm) }.bind()
-            val credentialResponseEncryptionMethod =
-                encryptionMethod?.let { Either.catch { EncryptionMethod.parse(it) }.bind() } ?: EncryptionMethod.A256GCM
-            Required(
-                credentialResponseEncryptionKey,
-                credentialResponseEncryptionAlgorithm,
-                credentialResponseEncryptionMethod,
-            )
-        }
+        ): Either<Throwable, Required> =
+            Either.catch {
+                val key = JWK.parse(encryptionKey)
+                val algorithm = JWEAlgorithm.parse(encryptionAlgorithm)
+                val method =
+                    encryptionMethod
+                        ?.let { EncryptionMethod.parse(it) }
+                        ?: EncryptionMethod.A256GCM
+
+                Required(key, algorithm, method)
+            }
     }
 }
 
