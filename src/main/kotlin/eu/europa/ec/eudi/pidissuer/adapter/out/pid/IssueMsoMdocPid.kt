@@ -24,7 +24,6 @@ import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
-import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
@@ -62,14 +61,27 @@ class IssueMsoMdocPid(
     override val supportedCredential: CredentialMetaData
         get() = PidMsoMdocV1
 
-    context(Raise<IssueCredentialError>) override suspend fun invoke(
+    context(Raise<IssueCredentialError>)
+    override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         expectedCNonce: CNonce,
     ): CredentialResponse<JsonElement> = coroutineScope {
-        val pidDataDeffered = async { getPidData(authorizationContext.accessToken) }
-        val pidData = pidDataDeffered.await()
+        val credentialKey =
+            when (val proof = request.unvalidatedProof) {
+                is UnvalidatedProof.Jwt ->
+                    validateJwtProof(
+                        proof,
+                        expectedCNonce,
+                        supportedCredential.cryptographicSuitesSupported(),
+                    ).getOrElse { raise(IssueCredentialError.InvalidProof("Invalid JWT Proof", it)) }
+
+                is UnvalidatedProof.Cwt -> raise(IssueCredentialError.InvalidProof("Only JWT Proofs are supported"))
+            }
+
+        val pidData = getPidData(authorizationContext.accessToken)
         ensureNotNull(pidData) { IssueCredentialError.Unexpected("Cannot obtain PID data") }
+
         val cbor = cbor(pidData)
         CredentialResponse.Issued(cbor.toJson())
     }

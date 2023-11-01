@@ -32,6 +32,7 @@ import org.springframework.http.MediaType
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.oauth2.core.OAuth2AccessToken
 import org.springframework.security.oauth2.core.OAuth2AccessToken.TokenType
+import org.springframework.security.oauth2.core.OAuth2TokenIntrospectionClaimNames
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthentication
 import org.springframework.web.reactive.function.server.*
 
@@ -112,5 +113,8 @@ private suspend fun ServerRequest.authorizationContext(): Result<AuthorizationCo
         val scopes = principal.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull()
         ensureNotNull(scopes) { IllegalArgumentException("OAuth2 scopes are expected") }
 
-        AuthorizationContext(accessToken.tokenValue, scopes)
+        val clientId = principal.tokenAttributes[OAuth2TokenIntrospectionClaimNames.CLIENT_ID]
+        ensure(clientId is String) { IllegalArgumentException("Unexpected client_id claim type '${clientId?.let { it::class.java }}'") }
+
+        AuthorizationContext(accessToken.tokenValue, scopes, clientId)
     }

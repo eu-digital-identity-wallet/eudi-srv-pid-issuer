@@ -185,14 +185,20 @@ fun <DATA> createSdJwtVcIssuer(
         }
 
         suspend fun holderPubKey(): CredentialKey.Jwk {
-            val unvalidatedProof = request.unvalidatedProof
-            ensure(unvalidatedProof is UnvalidatedProof.Jwt) { InvalidProof("Supporting only JWT proof") }
-            val cryptographicSuitesSupported = supportedCredential.cryptographicSuitesSupported()
-            val key = validateJwtProof(unvalidatedProof, expectedCNonce, cryptographicSuitesSupported).getOrElse {
-                raise(InvalidProof("Proof is not valid", it))
-            }
-            ensureNotNull(key is CredentialKey.Jwk) { InvalidProof("Proof is $key but we were expecting Jwk") }
-            return key as CredentialKey.Jwk
+            val key =
+                when (val proof = request.unvalidatedProof) {
+                    is UnvalidatedProof.Jwt ->
+                        validateJwtProof(
+                            proof,
+                            expectedCNonce,
+                            supportedCredential.cryptographicSuitesSupported(),
+                        ).getOrElse { raise(InvalidProof("Proof is not valid", it)) }
+
+                    is UnvalidatedProof.Cwt -> raise(InvalidProof("Supporting only JWT proof"))
+                }
+
+            ensure(key is CredentialKey.Jwk) { InvalidProof("Proof is $key but we were expecting Jwk") }
+            return key
         }
 
         val holderPubKey = async(Dispatchers.Default) { holderPubKey().value }

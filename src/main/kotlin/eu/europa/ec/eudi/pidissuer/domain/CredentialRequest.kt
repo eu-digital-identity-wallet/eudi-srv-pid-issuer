@@ -16,12 +16,14 @@
 package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.Either
+import arrow.core.NonEmptyList
 import arrow.core.raise.Raise
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
+import com.nimbusds.jose.jwk.AsymmetricJWK
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.KeyUse
 import java.security.cert.X509Certificate
@@ -56,9 +58,19 @@ sealed interface CredentialKey {
     @JvmInline
     value class DIDUrl(val value: String) : CredentialKey
 
-    data class Jwk(val value: JWK) : CredentialKey
+    @JvmInline
+    value class Jwk(val value: JWK) : CredentialKey {
+        init {
+            require(!value.isPrivate) { "jwk must not contain a private key" }
+            require(value is AsymmetricJWK) { "'jwk' must be asymmetric" }
+        }
+    }
 
-    data class X5c(val chain: List<X509Certificate>) : CredentialKey
+    @JvmInline
+    value class X5c(val chain: NonEmptyList<X509Certificate>) : CredentialKey {
+        val certificate: X509Certificate
+            get() = chain.head
+    }
 }
 
 sealed interface RequestedResponseEncryption {

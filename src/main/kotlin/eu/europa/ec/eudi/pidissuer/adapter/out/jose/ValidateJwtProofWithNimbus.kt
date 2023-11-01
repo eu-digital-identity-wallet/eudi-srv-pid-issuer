@@ -17,22 +17,36 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.NonEmptySet
 import arrow.core.raise.result
-import com.nimbusds.jose.*
+import arrow.core.toNonEmptyListOrNull
+import com.nimbusds.jose.JOSEObjectType
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.JWSHeader
+import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.crypto.Ed25519Signer
+import com.nimbusds.jose.crypto.RSASSASigner
+import com.nimbusds.jose.jwk.AsymmetricJWK
 import com.nimbusds.jose.jwk.ECKey
-import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.jwk.OctetKeyPair
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
 import com.nimbusds.jose.proc.JWSKeySelector
 import com.nimbusds.jose.proc.SecurityContext
+import com.nimbusds.jose.proc.SingleKeyJWSKeySelector
 import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import com.nimbusds.jwt.proc.JWTProcessor
-import eu.europa.ec.eudi.pidissuer.domain.*
-import java.security.Key
-import java.time.Duration
+import eu.europa.ec.eudi.pidissuer.domain.CNonce
+import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
+import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
+import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
+import java.security.interfaces.ECPublicKey
+import java.security.interfaces.EdECPublicKey
+import java.security.interfaces.RSAPublicKey
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.DurationUnit
 
 class ValidateJwtProofWithNimbus(private val credentialIssuerId: CredentialIssuerId) : ValidateJwtProof {
     override suspend operator fun invoke(
@@ -41,75 +55,112 @@ class ValidateJwtProofWithNimbus(private val credentialIssuerId: CredentialIssue
         supportedAlg: NonEmptySet<JWSAlgorithm>,
     ): Result<CredentialKey> = result {
         val signedJwt = SignedJWT.parse(unvalidatedProof.jwt)
-        val processor = openId4VciProcessor(expected, credentialIssuerId, supportedAlg)
+
+        val (algorithm, credentialKey) = algorithmAndCredentialKey(signedJwt.header, supportedAlg)
+        val keySelector = keySelector(credentialKey, algorithm)
+        val processor = processor(expected, credentialIssuerId, keySelector)
+
         processor.process(signedJwt, null)
-        CredentialKey.Jwk(signedJwt.header.jwk)
+
+        credentialKey
     }
 }
 
-private fun openId4VciProcessor(
+private fun algorithmAndCredentialKey(
+    header: JWSHeader,
+    supported: NonEmptySet<JWSAlgorithm>,
+): Pair<JWSAlgorithm, CredentialKey> {
+    val algorithm = header.algorithm
+        .takeIf(JWSAlgorithm.Family.SIGNATURE::contains)
+        ?.takeIf(supported::contains)
+        ?: error("signing algorithm '${header.algorithm.name}' is not supported")
+
+    val kid = header.keyID
+    val jwk = header.jwk
+    val x5c = header.x509CertChain
+
+    val key =
+        when {
+            kid != null && jwk == null && x5c.isNullOrEmpty() -> CredentialKey.DIDUrl(kid)
+            kid == null && jwk != null && x5c.isNullOrEmpty() -> CredentialKey.Jwk(jwk)
+            kid == null && jwk == null && !x5c.isNullOrEmpty() -> {
+                val parsed = X509CertChainUtils.parse(x5c).toNonEmptyListOrNull()
+                requireNotNull(parsed) { "'x5c' must contain at least one certificate" }
+                CredentialKey.X5c(parsed)
+            }
+
+            else -> error("a public key must be provided in one of 'kid', 'jwk', or 'x5c'")
+        }.apply { ensureCompatibleWith(algorithm) }
+
+    return (algorithm to key)
+}
+
+private fun CredentialKey.ensureCompatibleWith(algorithm: JWSAlgorithm) {
+    when (this) {
+        is CredentialKey.DIDUrl -> TODO("CredentialKey.DIDUrl is not yet supported")
+        is CredentialKey.Jwk -> {
+            val supportedAlgorithms =
+                when (value) {
+                    is RSAKey -> RSASSASigner.SUPPORTED_ALGORITHMS
+                    is ECKey -> ECDSASigner.SUPPORTED_ALGORITHMS
+                    is OctetKeyPair -> Ed25519Signer.SUPPORTED_ALGORITHMS
+                    else -> error("unsupported key type '${value.keyType.value}'")
+                }
+            require(algorithm in supportedAlgorithms) {
+                "key type '${value.keyType.value}' is not compatible with signing algorithm '${algorithm.name}'"
+            }
+        }
+
+        is CredentialKey.X5c -> {
+            val supportedAlgorithms =
+                when (certificate.publicKey) {
+                    is RSAPublicKey -> RSASSASigner.SUPPORTED_ALGORITHMS
+                    is ECPublicKey -> ECDSASigner.SUPPORTED_ALGORITHMS
+                    is EdECPublicKey -> Ed25519Signer.SUPPORTED_ALGORITHMS
+                    else -> error("unsupported certificate algorithm '${certificate.publicKey.algorithm}'")
+                }
+            require(algorithm in supportedAlgorithms) {
+                "certificate algorithm '${certificate.publicKey.algorithm}' is not compatible with signing algorithm '${algorithm.name}'"
+            }
+        }
+    }
+}
+
+private fun keySelector(
+    credentialKey: CredentialKey,
+    algorithm: JWSAlgorithm,
+): JWSKeySelector<SecurityContext> =
+    when (credentialKey) {
+        is CredentialKey.DIDUrl -> TODO("CredentialKey.DIDUrl is not yet supported")
+        is CredentialKey.Jwk ->
+            when (credentialKey.value) {
+                is AsymmetricJWK -> SingleKeyJWSKeySelector(algorithm, credentialKey.value.toPublicKey())
+                else -> TODO("CredentialKey.Jwk with non AsymmetricJWK is not yet supported")
+            }
+
+        is CredentialKey.X5c -> SingleKeyJWSKeySelector(algorithm, credentialKey.certificate.publicKey)
+    }
+
+private val expectedType = JOSEObjectType("openid4vci-proof+jwt")
+private val maxSkew = 30.seconds
+
+private fun processor(
     expected: CNonce,
     credentialIssuerId: CredentialIssuerId,
-    supportedAlg: NonEmptySet<JWSAlgorithm>,
-): JWTProcessor<*> =
-    DefaultJWTProcessor<SecurityContext>().apply {
-        jwsTypeVerifier = DefaultJOSEObjectTypeVerifier(JOSEObjectType(EXPECTED_TYPE))
-        jwsKeySelector = OpenIdVCIProofSelector(supportedAlg)
-        jwtClaimsSetVerifier = DefaultJWTClaimsVerifier<SecurityContext?>(
-            credentialIssuerId.externalForm, // aud
-            JWTClaimsSet.Builder().apply {
-                claim("nonce", expected.nonce)
-            }.build(),
-            mutableSetOf("iat", "nonce"),
-
-        ).apply {
-            maxClockSkew = MaxClockSkew.toSecondsPart()
-        }
-    }
-
-private val MaxClockSkew = Duration.ofSeconds(30)
-private const val EXPECTED_TYPE = "openid4vci-proof+jwt"
-
-private class OpenIdVCIProofSelector<C : SecurityContext?>(
-    private val acceptedJWSAlgs: NonEmptySet<JWSAlgorithm>,
-) : JWSKeySelector<C> {
-
-    override fun selectJWSKeys(header: JWSHeader, context: C): MutableList<Key> {
-        val alg = header.algorithm
-        require(acceptedJWSAlgs.contains(alg)) { "JWS header algorithm not accepted: $alg" }
-
-        val kid = header.keyID
-        val jwk = header.jwk
-        val x5c = header.x509CertChain?.let { X509CertChainUtils.parse(it).map { cert -> JWK.parse(cert) } }
-        return when {
-            kid != null -> TODO("Not supported")
-            jwk != null -> mutableListOf(selectFromJwk(alg, jwk))
-            !x5c.isNullOrEmpty() -> mutableListOf(selectFromJwk(alg, x5c[0]))
-            else -> mutableListOf()
-        }
-    }
-
-    private fun selectFromJwk(alg: JWSAlgorithm, jwk: JWK): Key {
-        return if (JWSAlgorithm.Family.RSA.contains(alg) && jwk is RSAKey) {
-            try {
-                if (jwk.isPrivate) {
-                    throw KeySourceException("Invalid RSA JWK: Private key is not allowed")
+    keySelector: JWSKeySelector<SecurityContext>,
+): JWTProcessor<SecurityContext> =
+    DefaultJWTProcessor<SecurityContext>()
+        .apply {
+            jwsTypeVerifier = DefaultJOSEObjectTypeVerifier(expectedType)
+            jwsKeySelector = keySelector
+            jwtClaimsSetVerifier =
+                DefaultJWTClaimsVerifier<SecurityContext?>(
+                    credentialIssuerId.externalForm, // aud
+                    JWTClaimsSet.Builder()
+                        .claim("nonce", expected.nonce)
+                        .build(),
+                    setOf("iat", "nonce"),
+                ).apply {
+                    maxClockSkew = maxSkew.toInt(DurationUnit.SECONDS)
                 }
-                jwk.toRSAPublicKey()
-            } catch (e: JOSEException) {
-                throw KeySourceException("Invalid RSA JWK: ${e.message}", e)
-            }
-        } else if (JWSAlgorithm.Family.EC.contains(alg) && jwk is ECKey) {
-            try {
-                if (jwk.isPrivate) {
-                    throw KeySourceException("Invalid RSA JWK: Private key is not allowed")
-                }
-                jwk.toECPublicKey()
-            } catch (e: JOSEException) {
-                throw KeySourceException("Invalid EC JWK: ${e.message}", e)
-            }
-        } else {
-            throw KeySourceException("JWS header alg / jwk mismatch: alg=$alg jwk.kty=${jwk.keyType}")
         }
-    }
-}

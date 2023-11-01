@@ -105,6 +105,14 @@ fun CryptographicBindingMethod.methodName(): String = when (this) {
     is CryptographicBindingMethod.DidAnyMethod -> "DID"
 }
 
+fun CryptographicBindingMethod.cryptographicSuitesSupported() = when (this) {
+    is CryptographicBindingMethod.CoseKey -> cryptographicSuitesSupported
+    is CryptographicBindingMethod.DidAnyMethod -> cryptographicSuitesSupported
+    is CryptographicBindingMethod.DidMethod -> cryptographicSuitesSupported
+    is CryptographicBindingMethod.Jwk -> cryptographicSuitesSupported
+    is CryptographicBindingMethod.Mso -> cryptographicSuitesSupported
+}
+
 /**
  * Representing metadata about a separate credential type
  * that the Credential Issuer can issue

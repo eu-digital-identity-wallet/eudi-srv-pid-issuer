@@ -15,9 +15,12 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import eu.europa.ec.eudi.pidissuer.PidIssuerApplicationTest
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
+import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.port.input.CredentialErrorTypeTo
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
@@ -291,8 +294,9 @@ private fun bearerTokenAuthenticationPrincipal(
     return DefaultOAuth2AuthenticatedPrincipal(
         subject,
         mapOf(
-            OAuth2TokenIntrospectionClaimNames.USERNAME to subject,
             OAuth2TokenIntrospectionClaimNames.ACTIVE to true,
+            OAuth2TokenIntrospectionClaimNames.USERNAME to subject,
+            OAuth2TokenIntrospectionClaimNames.CLIENT_ID to "wallet-dev",
             OAuth2TokenIntrospectionClaimNames.SCOPE to scopes.map { it.value },
             OAuth2TokenIntrospectionClaimNames.TOKEN_TYPE to TokenType.BEARER.value,
             OAuth2TokenIntrospectionClaimNames.EXP to (issuedAt + expiresIn),
@@ -332,4 +336,15 @@ private class WalletApiTestConfig {
                 uniqueId = UniqueId(UUID.randomUUID().toString()),
             )
         }
+
+    @Bean
+    @Primary
+    fun validateJwtProof(): ValidateJwtProof =
+        RSAKeyGenerator(2048, false)
+            .generate()
+            .let {
+                ValidateJwtProof { _, _, _ ->
+                    Result.success(CredentialKey.Jwk(it.toPublicJWK()))
+                }
+            }
 }

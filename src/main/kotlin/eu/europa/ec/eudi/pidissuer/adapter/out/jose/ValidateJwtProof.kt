@@ -21,7 +21,7 @@ import eu.europa.ec.eudi.pidissuer.domain.CNonce
 import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 
-interface ValidateJwtProof {
+fun interface ValidateJwtProof {
     suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof.Jwt,
         expected: CNonce,
