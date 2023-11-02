@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 import arrow.core.nonEmptySetOf
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.ECKey
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.sdjwt.TimeDependant
 import eu.europa.ec.eudi.pidissuer.adapter.out.sdjwt.createSdJwtVcIssuer
@@ -91,6 +92,7 @@ fun issueSdJwtVcPid(
     notUseBefore: TimeDependant<Instant>? = { iat -> iat.plusSeconds(10).toInstant() },
     getPidData: GetPidData,
     validateJwtProof: ValidateJwtProof,
+    extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
 ): IssueSpecificCredential<JsonElement> = createSdJwtVcIssuer(
     supportedCredential = PidSdJwtVcV1,
     credentialIssuerId = credentialIssuerId,
@@ -101,6 +103,7 @@ fun issueSdJwtVcPid(
     expiresAt = expiresAt,
     notUseBefore = notUseBefore,
     validateJwtProof = validateJwtProof,
+    extractJwkFromCredentialKey = extractJwkFromCredentialKey,
     getData = { authorizationContext -> getPidData(authorizationContext.accessToken) },
     createSdJwt = { pid -> pid::asSdObjectAt },
 

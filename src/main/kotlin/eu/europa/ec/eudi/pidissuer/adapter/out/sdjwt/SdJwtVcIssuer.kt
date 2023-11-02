@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.sdjwt
 
 import arrow.core.raise.Raise
-import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
@@ -24,6 +23,7 @@ import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProof
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
@@ -150,6 +150,7 @@ fun <DATA> createSdJwtVcIssuer(
     credentialIssuerId: CredentialIssuerId,
     clock: Clock,
     validateJwtProof: ValidateJwtProof,
+    extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
     hashAlgorithm: HashAlgorithm,
     signAlg: JWSAlgorithm,
     issuerKey: ECKey,
@@ -184,7 +185,7 @@ fun <DATA> createSdJwtVcIssuer(
             return createSdJwt(data)
         }
 
-        suspend fun holderPubKey(): CredentialKey.Jwk {
+        suspend fun holderPubKey(): JWK {
             val key =
                 when (val proof = request.unvalidatedProof) {
                     is UnvalidatedProof.Jwt ->
@@ -197,11 +198,13 @@ fun <DATA> createSdJwtVcIssuer(
                     is UnvalidatedProof.Cwt -> raise(InvalidProof("Supporting only JWT proof"))
                 }
 
-            ensure(key is CredentialKey.Jwk) { InvalidProof("Proof is $key but we were expecting Jwk") }
-            return key
+            return extractJwkFromCredentialKey(key)
+                .getOrElse {
+                    raise(InvalidProof("Unable to extract JWK from CredentialKey", it))
+                }
         }
 
-        val holderPubKey = async(Dispatchers.Default) { holderPubKey().value }
+        val holderPubKey = async(Dispatchers.Default) { holderPubKey() }
         val vcData = async { selectivelyDisclosedData() }
 
         val internalReq = SdJwtVCIssuanceRequest(

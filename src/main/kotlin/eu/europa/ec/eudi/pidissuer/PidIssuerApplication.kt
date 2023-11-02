@@ -21,6 +21,7 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.DefaultExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProofWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
@@ -62,6 +63,7 @@ import java.util.*
 
 fun beans(clock: Clock) = beans {
     bean { clock }
+    bean(::DefaultExtractJwkFromCredentialKey)
     bean {
         val issuerPublicUrl = env.getRequiredProperty("issuer.publicUrl").run { HttpsUrl.unsafe(this) }
         bean { ValidateJwtProofWithNimbus(issuerPublicUrl) }
@@ -77,6 +79,7 @@ fun beans(clock: Clock) = beans {
             signAlg = JWSAlgorithm.ES256,
             credentialIssuerId = issuerPublicUrl,
             validateJwtProof = ref(),
+            extractJwkFromCredentialKey = ref(),
         )
         bean { issueMsoMdocPid }
         bean { issueSdJwtVcPid }
