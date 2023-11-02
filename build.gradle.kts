@@ -48,6 +48,9 @@ dependencies {
     implementation(libs.eudi.sdjwt) {
         because("To Support issuance in SD-JWT-VC format")
     }
+    implementation(libs.bouncy.castle) {
+        because("To support X509 certificates parsing")
+    }
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation("org.springframework.boot:spring-boot-starter-test")
