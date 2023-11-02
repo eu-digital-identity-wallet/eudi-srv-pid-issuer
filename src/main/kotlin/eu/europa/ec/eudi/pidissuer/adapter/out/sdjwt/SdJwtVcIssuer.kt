@@ -77,7 +77,7 @@ private data class SdJwtVCIssuanceRequest(
  * An SD-JWT issuer according to SD-JWT VC
  *
  *
- * See [SD-JWT-VC](https://vcstuff.github.io/draft-terbu-sd-jwt-vc/draft-ietf-oauth-sd-jwt-vc-00/draft-ietf-oauth-sd-jwt-vc.html)
+ * See [SD-JWT-VC](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-01.html)
  */
 private class SdJwtVCIssuer(private val config: IssuerConfig) {
 
@@ -96,15 +96,15 @@ private class SdJwtVCIssuer(private val config: IssuerConfig) {
     /**
      * According to SD-JWT-VC,there are some registered JWT claims
      * that must always be disclosable (plain claims).
-     * Mandatory claims are: `type`, `iss`, `iat`, `cnf`
+     * Mandatory claims are: `vct`, `iss`, `iat`, `cnf`
      * Optional claims are: `sub`, `exp`, `nbf`
      *
-     * **See** [here](https://vcstuff.github.io/draft-terbu-sd-jwt-vc/draft-ietf-oauth-sd-jwt-vc-00/draft-ietf-oauth-sd-jwt-vc.html#name-registered-jwt-claims)
+     * **See** [here](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-01.html#name-verifiable-credential-type-)
      */
     private fun SdJwtVCIssuanceRequest.standardClaimsAt(iat: ZonedDateTime): SdObject =
         buildSdObject {
             plain {
-                put("type", type)
+                put("vct", type)
                 iss(config.credentialIssuerId.externalForm)
                 iat(iat.toInstant().epochSecond)
                 subject?.let { sub(it) }
@@ -138,7 +138,7 @@ private class SdJwtVCIssuer(private val config: IssuerConfig) {
         val signer = ECDSASigner(config.issuerKey)
         SdJwtIssuer.nimbus(sdJwtFactory, signer, config.signAlg) {
             // SD-JWT VC requires the kid & typ header attributes
-            // Check [here](https://vcstuff.github.io/draft-terbu-sd-jwt-vc/draft-ietf-oauth-sd-jwt-vc-00/draft-ietf-oauth-sd-jwt-vc.html#name-header-parameters)
+            // Check [here](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-01.html#name-jose-header)
             keyID(config.issuerKey.keyID)
             type(JOSEObjectType("vc+sd-jwt"))
         }
