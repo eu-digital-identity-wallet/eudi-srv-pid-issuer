@@ -23,6 +23,7 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.jwk.RSAKey
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jwt.JWTClaimsSet
@@ -140,6 +141,42 @@ internal class ValidateJwtProofWithNimbusTest {
         val credentialKey = assertDoesNotThrow { result.getOrThrow() }
         val jwk = assertIs<CredentialKey.Jwk>(credentialKey, "expected 'jwk' credential key")
         assertEquals(key.toPublicJWK(), jwk.value)
+    }
+
+    @Test
+    internal fun `proof validation fails with incorrect 'jwk' in header`() = runTest {
+        val key = loadKey()
+        val incorrectKey = RSAKeyGenerator(2048, false).generate()
+        val nonce = generateCNonce()
+        val signedJwt =
+            generateSignedJwt(key, nonce) {
+                jwk(incorrectKey.toPublicJWK())
+            }
+
+        val result = validate(
+            UnvalidatedProof.Jwt(signedJwt.serialize()),
+            nonce,
+            checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
+        )
+        assertTrue { result.isFailure }
+    }
+
+    @Test
+    internal fun `proof validation fails with incorrect 'x5c' in header`() = runTest {
+        val key = loadKey()
+        val incorrectKey = RSAKeyGenerator(2048, false).generate()
+        val nonce = generateCNonce()
+        val signedJwt =
+            generateSignedJwt(key, nonce) {
+                x509CertChain(incorrectKey.toPublicJWK().x509CertChain)
+            }
+
+        val result = validate(
+            UnvalidatedProof.Jwt(signedJwt.serialize()),
+            nonce,
+            checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
+        )
+        assertTrue { result.isFailure }
     }
 
     private fun generateCNonce(): CNonce =
