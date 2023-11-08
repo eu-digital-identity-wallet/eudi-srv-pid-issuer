@@ -16,5 +16,5 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 fun interface GetPidData {
-    suspend operator fun invoke(accessToken: String): Pid?
+    suspend operator fun invoke(accessToken: String): Pair<Pid, PidMetaData>?
 }

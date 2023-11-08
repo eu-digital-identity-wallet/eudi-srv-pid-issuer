@@ -28,20 +28,33 @@ import java.time.LocalDate
 
 class GetPidDataFromAuthServer(
     private val authorizationServerUserInfoEndPoint: URL,
+
 ) : GetPidData {
     private val log = LoggerFactory.getLogger(GetPidDataFromAuthServer::class.java)
-    override suspend fun invoke(accessToken: String): Pid? {
+    override suspend fun invoke(accessToken: String): Pair<Pid, PidMetaData>? {
         log.info("Trying to get PID Data from userinfo endpoint ...")
         val webClient: WebClient = WebClient.create(authorizationServerUserInfoEndPoint.toString())
         val userInfo = webClient.get().accept(MediaType.APPLICATION_JSON)
             .headers { it.setBearerAuth(accessToken) }
             .retrieve()
             .awaitBody<JsonObject>()
+
         if (log.isInfoEnabled) {
             log.info(jsonSupport.encodeToString(userInfo))
         }
         return pid(userInfo).also {
             log.info("$it")
+        }?.let {
+            it to PidMetaData(
+                expiryDate = LocalDate.now().asDateAndPossiblyTime(),
+                issuanceDate = LocalDate.now().asDateAndPossiblyTime(),
+                issuingCountry = IsoCountry("GR"),
+                issuingAuthority = IssuingAuthority.MemberState(IsoCountry("GR")),
+                documentNumber = null,
+                administrativeNumber = null,
+                issuingJurisdiction = null,
+                portrait = null,
+            )
         }
     }
 
@@ -64,3 +77,5 @@ class GetPidDataFromAuthServer(
         prettyPrint = true
     }
 }
+
+private fun LocalDate.asDateAndPossiblyTime(): DateAndPossiblyTime = DateAndPossiblyTime(this, null)

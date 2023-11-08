@@ -19,7 +19,6 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.Year
-import java.util.*
 
 @JvmInline
 value class FamilyName(val value: String)
@@ -27,6 +26,16 @@ value class FamilyName(val value: String)
 @JvmInline
 value class GivenName(val value: String)
 
+/**
+ * A PID Provider SHALL ensure that a unique_id data element is present in the PID.
+ * It SHALL contain an identifier for the PID User.
+ * The value of this data element SHALL be unique and persistent.
+ * This means that a specific Relying Party, if it is authorised to receive this data element,
+ * SHALL always receive the same unique_id value for the same PID User from all Wallet Instances
+ * issued to that PID User, either in parallel or consecutively, throughout the User’s lifetime.
+ * It is up to each PID Provider to determine if the unique_id for a User is different for each Relying Party,
+ * or the same for a group of Relying Parties or even for all Relying Parties.
+ */
 @JvmInline
 value class UniqueId(val value: String)
 
@@ -51,6 +60,8 @@ value class PostalCode(val value: String)
  */
 @JvmInline
 value class IsoGender(val value: UInt)
+
+typealias Nationality = IsoCountry
 
 /**
  * @param familyName Current last name(s) or surname(s) of the PID User.
@@ -78,7 +89,7 @@ value class IsoGender(val value: UInt)
  * currently resides.
  * @param residentCity The municipality, city, town, or village where the PID User
  * currently resides.
- *
+ *This document stipulates that a
  */
 data class Pid(
     val familyName: FamilyName,
@@ -99,11 +110,16 @@ data class Pid(
     val residentPostalCode: PostalCode? = null,
     val residentHouseNumber: String? = null,
     val gender: IsoGender? = null,
-    val nationality: IsoCountry? = null,
-
+    val nationality: Nationality? = null,
 )
 
 data class DateAndPossiblyTime(val date: LocalDate, val time: LocalTime?)
+
+/**
+ * Name of the administrative authority that has issued this PID instance,
+ * or the ISO 3166 Alpha-2 country code of the respective Member State
+ * if there is no separate authority authorized to issue PID
+ */
 sealed interface IssuingAuthority {
     data class MemberState(val code: IsoCountry) : IssuingAuthority
     data class AdministrativeAuthority(val value: String) : IssuingAuthority
@@ -123,11 +139,25 @@ sealed interface PortraitImage {
     value class JPEG2000(val value: ByteArray) : PortraitImage
 }
 
-data class Portrait(
-    val image: PortraitImage,
-    val captureDate: LocalDateTime,
-)
+data class Portrait(val image: PortraitImage, val captureDate: LocalDateTime)
 
+/**
+ * Country subdivision code of the jurisdiction that issued the PID, as defined in ISO 3166-2:2020, Clause 8.
+ * The first part of the code SHALL be the same as the value for issuing_country.
+ */
+typealias IsoCountrySubdivision = String
+
+/**
+ * @param issuanceDate Date (and possibly time) when the PID was issued.
+ * @param expiryDate Date (and possibly time) when the PID will expire.
+ * @param issuingAuthority Name of the administrative authority that has issued this PID instance,
+ * or the ISO 3166 Alpha-2 country code of the respective Member State
+ * if there is no separate authority authorized to issue PID
+ * @param documentNumber A number for the PID, assigned by the PID Provider
+ * @param administrativeNumber A number assigned by the PID Provider for audit control or other purposes.
+ * @param issuingCountry Alpha-2 country code, as defined in ISO 3166-1, of the PID Provider’s country or territory.
+ * @param issuingJurisdiction
+ */
 data class PidMetaData(
     val issuanceDate: DateAndPossiblyTime,
     val expiryDate: DateAndPossiblyTime,
@@ -135,5 +165,6 @@ data class PidMetaData(
     val documentNumber: DocumentNumber? = null,
     val administrativeNumber: AdministrativeNumber? = null,
     val issuingCountry: IsoCountry,
+    val issuingJurisdiction: IsoCountrySubdivision? = null,
     val portrait: Portrait?,
 )

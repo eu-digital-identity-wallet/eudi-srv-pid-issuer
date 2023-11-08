@@ -24,11 +24,10 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.sdjwt.TimeDependant
 import eu.europa.ec.eudi.pidissuer.adapter.out.sdjwt.createSdJwtVcIssuer
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
-import eu.europa.ec.eudi.sdjwt.HashAlgorithm
-import eu.europa.ec.eudi.sdjwt.SdObject
-import eu.europa.ec.eudi.sdjwt.sd
-import eu.europa.ec.eudi.sdjwt.sdJwt
+import eu.europa.ec.eudi.sdjwt.*
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.put
 import java.time.Clock
 import java.time.Instant
@@ -53,31 +52,50 @@ val PidSdJwtVcV1: SdJwtVcMetaData = SdJwtVcMetaData(
     scope = PidSdJwtVcScope,
 )
 
-fun Pid.asSdObjectAt(iat: ZonedDateTime): SdObject =
-    sdJwt {
+fun Pair<Pid, PidMetaData>.asSdObjectAt(iat: ZonedDateTime): SdObject {
+    val (pid, pidMetaData) = this
+
+    fun Pid.includePlaceOfBirth() = birthPlace != null || birthState != null || birthCity != null
+    fun Pid.includeAddress() =
+        residentCountry != null ||
+            residentState != null ||
+            residentCity != null ||
+            residentPostalCode != null ||
+            residentHouseNumber != null
+
+    return sdJwt {
+        sub(pid.uniqueId.value)
+        sd("given_name", pid.givenName.value)
+        sd("family_name", pid.familyName.value)
+        sd("birthdate", pid.birthDate.toString())
+        pid.familyNameBirth?.let { sd("birth_family_name", it.value) }
+        pid.givenNameBirth?.let { sd("birth_given_name", it.value) }
+
+        if (pid.includePlaceOfBirth()) {
+            structured("place_of_birth") {
+                pid.birthCountry?.let { sd("birth_country", it.value) }
+                pid.birthState?.let { sd("birth_state", it.value) }
+                pid.birthCity?.let { sd("birth_city", it.value) }
+            }
+        }
+        if (pid.includeAddress()) {
+            structured("address") {
+                pid.residentCountry?.let { sd("resident_country", it.value) }
+                pid.residentState?.let { sd("resident_state", it.value) }
+                pid.residentCity?.let { sd("resident_city", it.value) }
+                pid.residentPostalCode?.let { sd("resident_postal_code", it.value) }
+                pid.residentHouseNumber?.let { sd("resident_house_number", it) }
+            }
+        }
+        pid.gender?.let { sd("gender", it.value.toInt()) }
+        pid.nationality?.let { sd("nationalities", JsonArray(listOf(JsonPrimitive(it.value)))) }
         sd {
-            put("given_name", givenName.value)
-            put("family_name", familyName.value)
-            put("birth_date", birthDate.toString())
-            val age = iat.year - birthDate.get(ChronoField.YEAR)
+            val age = iat.year - pid.birthDate.get(ChronoField.YEAR)
             put("is_over_18", age >= 18)
-            ageBirthYear?.let { put("age_birth_year", it.value) }
-            put("unique_id", uniqueId.value)
-            familyNameBirth?.let { put("family_name_birth", it.value) }
-            givenNameBirth?.let { put("given_name_birth", it.value) }
-            birthPlace?.let { put("birth_place", it) }
-            birthCountry?.let { put("birth_country", it.value) }
-            birthState?.let { put("birth_state", it.value) }
-            birthCity?.let { put("birth_city", it.value) }
-            residentCountry?.let { put("resident_country", it.value) }
-            residentState?.let { put("resident_state", it.value) }
-            residentCity?.let { put("resident_city", it.value) }
-            residentPostalCode?.let { put("resident_postal_code", it.value) }
-            residentHouseNumber?.let { put("resident_house_number", it) }
-            gender?.let { put("gender", it.value.toInt()) }
-            nationality?.let { put("", it.value) }
+            pid.ageBirthYear?.let { put("age_birth_year", it.value) }
         }
     }
+}
 
 /**
  * Service for issuing PID SD JWT credential

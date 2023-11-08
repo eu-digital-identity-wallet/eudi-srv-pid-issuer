@@ -328,13 +328,25 @@ private class WalletApiTestConfig {
     @Primary
     fun getPidData(): GetPidData =
         GetPidData {
-            Pid(
+            val pid = Pid(
                 familyName = FamilyName("Surname"),
                 givenName = GivenName("Firstname"),
                 birthDate = LocalDate.of(1989, Month.AUGUST, 22),
                 ageOver18 = true,
                 uniqueId = UniqueId(UUID.randomUUID().toString()),
             )
+            val issuingCountry = IsoCountry("GR")
+            val pidMetaData = PidMetaData(
+                issuanceDate = DateAndPossiblyTime(LocalDate.now(), null),
+                expiryDate = DateAndPossiblyTime(LocalDate.of(2030, 11, 10), null),
+                documentNumber = null,
+                issuingAuthority = IssuingAuthority.MemberState(issuingCountry),
+                administrativeNumber = null,
+                issuingCountry = issuingCountry,
+                issuingJurisdiction = null,
+                portrait = null,
+            )
+            pid to pidMetaData
         }
 
     @Bean

@@ -82,13 +82,15 @@ class IssueMsoMdocPid(
         val pidData = getPidData(authorizationContext.accessToken)
         ensureNotNull(pidData) { IssueCredentialError.Unexpected("Cannot obtain PID data") }
 
-        val cbor = cbor(pidData)
+        val cbor = cbor(pidData, credentialKey)
         CredentialResponse.Issued(cbor.toJson())
     }
 }
 
 @OptIn(ExperimentalSerializationApi::class)
-private fun cbor(pid: Pid): MsoMdocIssuedCredential {
+private fun cbor(pidData: Pair<Pid, PidMetaData>, credentialKey: CredentialKey): MsoMdocIssuedCredential {
+    val (pid, pidMetaData) = pidData
+
     @Serializable
     data class DummyPidCbor(
         val familyName: String,
