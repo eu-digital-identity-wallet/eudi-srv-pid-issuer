@@ -20,6 +20,7 @@ import com.nimbusds.jose.JWEHeader
 import com.nimbusds.jose.crypto.ECDHEncrypter
 import com.nimbusds.jose.crypto.RSAEncrypter
 import com.nimbusds.jose.jwk.ECKey
+import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.EncryptedJWT
@@ -32,6 +33,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import java.time.Clock
+import java.time.Instant
 import java.util.*
 
 /**
@@ -46,40 +48,45 @@ class EncryptCredentialResponseWithNimbus(
         response: IssueCredentialResponse.PlainTO,
         parameters: RequestedResponseEncryption.Required,
     ): Result<String> = runCatching {
-        val credential = response.credential
-            ?.let {
-                if (it is JsonPrimitive) {
-                    it.content
-                } else {
-                    JSONObjectUtils.parse(Json.encodeToString(it))
-                }
-            }
+        val jweHeader = parameters.asHeader()
+        val jwtClaimSet = response.asJwtClaimSet(clock.instant())
 
-        val header = JWEHeader.Builder(parameters.encryptionAlgorithm, parameters.encryptionMethod)
-            .jwk(parameters.encryptionJwk)
-            .keyID(parameters.encryptionJwk.keyID)
-            .type(JOSEObjectType.JWT)
-            .build()
+        EncryptedJWT(jweHeader, jwtClaimSet)
+            .apply { encrypt(parameters.encryptionJwk) }
+            .serialize()
+    }
 
-        val claimSet = JWTClaimsSet.Builder()
-            .issuer(issuer.externalForm)
-            .issueTime(Date.from(clock.instant()))
-            .claim("format", response.format)
-            .claim("credential", credential)
-            .claim("transaction_id", response.transactionId)
-            .claim("c_nonce", response.nonce)
-            .claim("c_nonce_expires_in", response.nonceExpiresIn)
-            .build()
+    private fun RequestedResponseEncryption.Required.asHeader() =
+        JWEHeader.Builder(encryptionAlgorithm, encryptionMethod).apply {
+            jwk(encryptionJwk)
+            keyID(encryptionJwk.keyID)
+            type(JOSEObjectType.JWT)
+        }.build()
 
-        val jwt = EncryptedJWT(header, claimSet)
-        val encrypter =
-            when (val jwk = parameters.encryptionJwk) {
-                is RSAKey -> RSAEncrypter(jwk)
-                is ECKey -> ECDHEncrypter(jwk)
-                else -> throw IllegalArgumentException("unsupported 'kty': '${jwk.keyType.value}'")
-            }
+    private fun IssueCredentialResponse.PlainTO.asJwtClaimSet(iat: Instant) =
+        JWTClaimsSet.Builder().apply {
+            issuer(issuer.externalForm)
+            issueTime(Date.from(iat))
+            claim("format", format)
+            claim(
+                "credential",
+                credential?.let {
+                    if (it is JsonPrimitive) it.content
+                    else JSONObjectUtils.parse(Json.encodeToString(it))
+                },
+            )
+            claim("transaction_id", transactionId)
+            claim("c_nonce", nonce)
+            claim("c_nonce_expires_in", nonceExpiresIn)
+        }.build()
 
-        jwt.encrypt(encrypter)
-        jwt.serialize()
+    private fun EncryptedJWT.encrypt(jwk: JWK) {
+        val enc = when (jwk) {
+            is RSAKey -> RSAEncrypter(jwk)
+            is ECKey -> ECDHEncrypter(jwk)
+            else -> null
+        }
+        enc?.let { encrypt(it) }
+            ?: error("unsupported 'kty': '${jwk.keyType.value}'")
     }
 }

@@ -45,6 +45,7 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal
 import org.springframework.security.oauth2.core.OAuth2TokenIntrospectionClaimNames
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockOpaqueToken
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.springSecurity
+import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.reactive.server.WebTestClient
 import org.springframework.test.web.reactive.server.expectBody
 import java.time.Clock
@@ -56,6 +57,7 @@ import kotlin.test.*
 
 @PidIssuerApplicationTest(classes = [WalletApiTestConfig::class])
 @OptIn(ExperimentalCoroutinesApi::class)
+@TestPropertySource(properties = ["issuer.credentialResponseEncryption.required=false"])
 internal class WalletApiTest {
 
     @Autowired

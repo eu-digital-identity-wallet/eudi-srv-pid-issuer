@@ -15,6 +15,10 @@
  */
 package eu.europa.ec.eudi.pidissuer
 
+import arrow.core.NonEmptySet
+import arrow.core.toNonEmptySetOrNull
+import com.nimbusds.jose.EncryptionMethod
+import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
@@ -26,10 +30,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseWit
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProofWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
-import eu.europa.ec.eudi.pidissuer.domain.CNonce
-import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
-import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
-import eu.europa.ec.eudi.pidissuer.domain.Scope
+import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
 import eu.europa.ec.eudi.pidissuer.port.input.RequestCredentialsOffer
@@ -43,6 +44,8 @@ import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.support.BeanDefinitionDsl
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.context.support.beans
+import org.springframework.core.env.Environment
+import org.springframework.core.env.getProperty
 import org.springframework.core.env.getRequiredProperty
 import org.springframework.http.HttpStatus
 import org.springframework.http.codec.ServerCodecConfigurer
@@ -89,12 +92,16 @@ fun beans(clock: Clock) = beans {
         )
         bean { issueMsoMdocPid }
         bean { issueSdJwtVcPid }
-        val authorizationServer = env.getRequiredProperty("issuer.authorizationServer").run { HttpsUrl.unsafe(this) }
+        val authorizationServer =
+            env.getRequiredProperty("issuer.authorizationServer")
+                .run { HttpsUrl.unsafe(this) }
+        val credentialEndPoint = env.getRequiredProperty("issuer.publicUrl")
+            .run { HttpsUrl.unsafe("$this/wallet/credentialEndpoint") }
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
-            credentialEndPoint = env.getRequiredProperty("issuer.publicUrl")
-                .run { HttpsUrl.unsafe("$this/wallet/credentialEndpoint") },
+            credentialEndPoint = credentialEndPoint,
             authorizationServer = authorizationServer,
+            credentialResponseEncryption = env.credentialResponseEncryption(),
             specificCredentialIssuers = listOf(issueMsoMdocPid, issueSdJwtVcPid),
         )
     }
@@ -104,7 +111,8 @@ fun beans(clock: Clock) = beans {
     //
     bean {
         val userinfoEndpoint = env.getRequiredProperty<URL>("issuer.authorizationServer.userinfo")
-        GetPidDataFromAuthServer(userinfoEndpoint)
+        val issuingCountry = env.getRequiredProperty("issuer.pid.issuingCountry").run { IsoCountry(this) }
+        GetPidDataFromAuthServer(userinfoEndpoint, issuingCountry)
     }
     bean {
         GenCNonce { accessToken, clock ->
@@ -203,6 +211,24 @@ fun beans(clock: Clock) = beans {
             }
         }
     }
+}
+
+private fun Environment.credentialResponseEncryption(): CredentialResponseEncryption {
+    val isRequired = getProperty<Boolean>("issuer.credentialResponseEncryption.required") ?: false
+    return if (!isRequired)
+        CredentialResponseEncryption.NotRequired
+    else
+        CredentialResponseEncryption.Required(
+            algorithmsSupported = readNonEmptySet("issuer.credentialResponseEncryption.algorithmsSupported", JWEAlgorithm::parse),
+            encryptionMethods = readNonEmptySet("issuer.credentialResponseEncryption.encryptionMethods", EncryptionMethod::parse),
+        )
+}
+
+private fun <T> Environment.readNonEmptySet(key: String, f: (String) -> T?): NonEmptySet<T> {
+    val nonEmptySet = getRequiredProperty<MutableSet<String>>(key)
+        .mapNotNull(f)
+        .toNonEmptySetOrNull()
+    return checkNotNull(nonEmptySet) { "Missing or incorrect values values for key `$key`" }
 }
 
 fun BeanDefinitionDsl.initializer(): ApplicationContextInitializer<GenericApplicationContext> =

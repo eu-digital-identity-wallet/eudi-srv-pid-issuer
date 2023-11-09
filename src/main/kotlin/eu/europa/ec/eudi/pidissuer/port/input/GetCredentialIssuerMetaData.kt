@@ -54,10 +54,10 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
     batchCredentialEndpoint = batchCredentialEndpoint?.externalForm,
     deferredCredentialEndpoint = deferredCredentialEndpoint?.externalForm,
     encryptionAlgorithms = credentialResponseEncryption.fold(emptyList()) { required ->
-        required.algorithmsSupported.map { it.toString() }
+        required.algorithmsSupported.map { it.name }
     },
     encryptionMethods = credentialResponseEncryption.fold(emptyList()) { required ->
-        required.encryptionMethods.map { it.toString() }
+        required.encryptionMethods.map { it.name }
     },
     encryptionRequired = credentialResponseEncryption.fold(false) { _ -> true },
     credentialsSupported = credentialsSupported.map { credentialMetaDataJson(it) },

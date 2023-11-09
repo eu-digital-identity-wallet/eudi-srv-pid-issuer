@@ -26,6 +26,8 @@ import org.bouncycastle.util.io.pem.PemObject
 import org.bouncycastle.util.io.pem.PemWriter
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
+import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
+import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
 import org.springframework.web.reactive.function.client.awaitExchange
@@ -44,6 +46,17 @@ class EncodePidInCborWithMicroService(
         log.info("Initialized using: $creatorUrl")
     }
 
+    private val webClient: WebClient by lazy {
+        val json = Json { ignoreUnknownKeys = true }
+        WebClient
+            .builder()
+            .codecs { configurer ->
+                configurer.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
+                configurer.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
+                configurer.defaultCodecs().enableLoggingRequestDetails(true)
+            }.baseUrl(creatorUrl.toExternalForm())
+            .build()
+    }
     override suspend fun invoke(
         pid: Pid,
         pidMetaData: PidMetaData,
@@ -51,7 +64,7 @@ class EncodePidInCborWithMicroService(
     ): String = coroutineScope {
         log.info("Requesting PID in mso_mdoc for ${pid.familyName} ...")
         val request = createMsoMdocReq(pid, pidMetaData, holderKey)
-        val response = WebClient.create(creatorUrl.toExternalForm())
+        val response = webClient
             .post()
             .accept(MediaType.APPLICATION_JSON)
             .contentType(MediaType.APPLICATION_JSON)
@@ -127,9 +140,9 @@ internal fun createMsoMdocReq(
 
 @Serializable
 private data class CreateMsoMdocResponse(
-    @SerialName("error_code") val errorCode: Int?,
+    @SerialName("error_code") val errorCode: Int? = null,
     @SerialName("error_message") val errorMessage: String? = null,
-    @SerialName("mDoc") val mdoc: String?,
+    @SerialName("mdoc") val mdoc: String? = null,
 )
 
 private fun CreateMsoMdocResponse.fold(): Result<String> =

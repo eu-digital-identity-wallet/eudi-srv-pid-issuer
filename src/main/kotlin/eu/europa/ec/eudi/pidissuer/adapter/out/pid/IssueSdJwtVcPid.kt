@@ -141,7 +141,7 @@ val PidSdJwtVcV1: SdJwtVcMetaData = SdJwtVcMetaData(
         CryptographicBindingMethod.Jwk(
             nonEmptySetOf(
                 JWSAlgorithm.RS256,
-                JWSAlgorithm.ES256K,
+                JWSAlgorithm.ES256,
             ),
         ),
     ),

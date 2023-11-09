@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import arrow.core.NonEmptySet
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
@@ -44,8 +45,8 @@ sealed interface CredentialResponseEncryption {
      *
      */
     data class Required(
-        val algorithmsSupported: List<JWEAlgorithm>,
-        val encryptionMethods: List<EncryptionMethod>,
+        val algorithmsSupported: NonEmptySet<JWEAlgorithm>,
+        val encryptionMethods: NonEmptySet<EncryptionMethod>,
     ) : CredentialResponseEncryption
 }
 
@@ -54,7 +55,7 @@ fun <T> CredentialResponseEncryption.fold(
     ifRequired: (CredentialResponseEncryption.Required) -> T,
 ): T = when (this) {
     CredentialResponseEncryption.NotRequired -> ifNotRequired
-    is CredentialResponseEncryption.Required -> ifRequired(this)
+    is CredentialResponseEncryption.Required -> ifRequired.invoke(this)
 }
 
 /**
@@ -74,7 +75,7 @@ fun <T> CredentialResponseEncryption.fold(
  * @param credentialResponseEncryption indicates whether the issuer requires the
  * Credential Response encrypted or not.
  * @param display display properties of a Credential Issuer for a certain language
- * @param credentialsSupported
+ * @param specificCredentialIssuers the list of the specific issuers supported
  */
 data class CredentialIssuerMetaData(
     val id: CredentialIssuerId,
@@ -82,7 +83,7 @@ data class CredentialIssuerMetaData(
     val credentialEndPoint: HttpsUrl,
     val batchCredentialEndpoint: HttpsUrl? = null,
     val deferredCredentialEndpoint: HttpsUrl? = null,
-    val credentialResponseEncryption: CredentialResponseEncryption = CredentialResponseEncryption.NotRequired,
+    val credentialResponseEncryption: CredentialResponseEncryption,
     val display: Display = emptyMap(),
     val specificCredentialIssuers: List<IssueSpecificCredential<JsonElement>>,
 ) {

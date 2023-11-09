@@ -15,11 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
-import arrow.core.NonEmptySet
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
-import com.nimbusds.jose.JWSAlgorithm
 
 //
 // Credential MetaData
@@ -40,13 +38,11 @@ typealias MsoClaims = Map<MsoNameSpace, List<AttributeDetails>>
  */
 data class MsoMdocMetaData(
     val docType: MsoDocType,
-    val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>,
+    override val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod>,
     override val scope: Scope? = null,
     override val display: List<CredentialDisplay> = emptyList(),
     val msoClaims: MsoClaims = emptyMap(),
 ) : CredentialMetaData {
-    override val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod>
-        get() = listOf(CryptographicBindingMethod.Mso(cryptographicSuitesSupported))
 
     override val format: Format = MSO_MDOC_FORMAT
 }

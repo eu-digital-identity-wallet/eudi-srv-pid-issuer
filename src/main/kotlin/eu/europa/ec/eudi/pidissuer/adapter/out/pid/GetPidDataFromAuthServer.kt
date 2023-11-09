@@ -28,6 +28,7 @@ import java.time.LocalDate
 
 class GetPidDataFromAuthServer(
     private val authorizationServerUserInfoEndPoint: URL,
+    private val issuerCountry: IsoCountry,
 
 ) : GetPidData {
     private val log = LoggerFactory.getLogger(GetPidDataFromAuthServer::class.java)
@@ -46,10 +47,10 @@ class GetPidDataFromAuthServer(
             log.info("$it")
         }?.let {
             it to PidMetaData(
-                expiryDate = LocalDate.now().asDateAndPossiblyTime(),
+                expiryDate = LocalDate.now().plusDays(100).asDateAndPossiblyTime(),
                 issuanceDate = LocalDate.now().asDateAndPossiblyTime(),
-                issuingCountry = IsoCountry("GR"),
-                issuingAuthority = IssuingAuthority.MemberState(IsoCountry("GR")),
+                issuingCountry = issuerCountry,
+                issuingAuthority = IssuingAuthority.AdministrativeAuthority(" Foo bat administrative authority"),
                 documentNumber = null,
                 administrativeNumber = null,
                 issuingJurisdiction = null,

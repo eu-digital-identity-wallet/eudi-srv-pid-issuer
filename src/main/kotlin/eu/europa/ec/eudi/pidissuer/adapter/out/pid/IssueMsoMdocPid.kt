@@ -134,13 +134,19 @@ private val pidAttributes = pidNameSpace(1) to listOf(
     ),
 )
 
-val PidMsoMdocV1: MsoMdocMetaData = MsoMdocMetaData(
-    docType = pidDocType(1),
-    display = pidDisplay,
-    msoClaims = mapOf(pidAttributes),
-    cryptographicSuitesSupported = nonEmptySetOf(JWSAlgorithm.ES256K),
-    scope = PidMsoMdocScope,
-)
+val PidMsoMdocV1: MsoMdocMetaData = run {
+    val algs = nonEmptySetOf(JWSAlgorithm.ES256)
+    MsoMdocMetaData(
+        docType = pidDocType(1),
+        display = pidDisplay,
+        msoClaims = mapOf(pidAttributes),
+        cryptographicBindingMethodsSupported = listOf(
+            CryptographicBindingMethod.Mso(algs),
+            CryptographicBindingMethod.Jwk(algs),
+        ),
+        scope = PidMsoMdocScope,
+    )
+}
 
 //
 // Meta
