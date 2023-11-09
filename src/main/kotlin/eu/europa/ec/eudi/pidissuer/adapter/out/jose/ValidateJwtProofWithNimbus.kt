@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.NonEmptySet
 import arrow.core.raise.result
-import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -32,7 +31,6 @@ import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
 import com.nimbusds.jose.proc.JWSKeySelector
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jose.proc.SingleKeyJWSKeySelector
-import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
@@ -79,18 +77,13 @@ private fun algorithmAndCredentialKey(
     val jwk = header.jwk
     val x5c = header.x509CertChain
 
-    val key =
-        when {
-            kid != null && jwk == null && x5c.isNullOrEmpty() -> CredentialKey.DIDUrl(kid)
-            kid == null && jwk != null && x5c.isNullOrEmpty() -> CredentialKey.Jwk(jwk)
-            kid == null && jwk == null && !x5c.isNullOrEmpty() -> {
-                val parsed = X509CertChainUtils.parse(x5c).toNonEmptyListOrNull()
-                requireNotNull(parsed) { "'x5c' must contain at least one certificate" }
-                CredentialKey.X5c(parsed)
-            }
+    val key = when {
+        kid != null && jwk == null && x5c.isNullOrEmpty() -> CredentialKey.DIDUrl(kid)
+        kid == null && jwk != null && x5c.isNullOrEmpty() -> CredentialKey.Jwk(jwk)
+        kid == null && jwk == null && !x5c.isNullOrEmpty() -> CredentialKey.X5c.parseDer(x5c).getOrThrow()
 
-            else -> error("a public key must be provided in one of 'kid', 'jwk', or 'x5c'")
-        }.apply { ensureCompatibleWith(algorithm) }
+        else -> error("a public key must be provided in one of 'kid', 'jwk', or 'x5c'")
+    }.apply { ensureCompatibleWith(algorithm) }
 
     return (algorithm to key)
 }

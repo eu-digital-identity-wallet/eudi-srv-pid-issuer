@@ -70,6 +70,8 @@ sealed interface CredentialKey {
     value class X5c(val chain: NonEmptyList<X509Certificate>) : CredentialKey {
         val certificate: X509Certificate
             get() = chain.head
+
+        companion object
     }
 }
 

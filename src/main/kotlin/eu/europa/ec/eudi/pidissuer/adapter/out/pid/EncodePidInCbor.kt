@@ -15,17 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
-import arrow.core.raise.Raise
-import arrow.core.raise.ensureNotNull
-import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import com.nimbusds.jose.jwk.ECKey
 
-fun interface GetPidData {
-    suspend operator fun invoke(accessToken: String): Pair<Pid, PidMetaData>?
-
-    context (Raise<IssueCredentialError.Unexpected>)
-    suspend operator fun invoke(authorizationContext: AuthorizationContext): Pair<Pid, PidMetaData> {
-        val data = invoke(authorizationContext.accessToken)
-        return ensureNotNull(data) { IssueCredentialError.Unexpected("Cannot obtain data") }
-    }
+fun interface EncodePidInCbor {
+    suspend operator fun invoke(pid: Pid, pidMetaData: PidMetaData, holderKey: ECKey): String
 }

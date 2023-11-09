@@ -17,22 +17,19 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
-import arrow.core.raise.ensureNotNull
+import arrow.core.raise.withError
 import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProof
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.cbor.Cbor
-import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
 
 val PidMsoMdocScope: Scope = Scope("${PID_DOCTYPE}_${MSO_MDOC_FORMAT.value}")
 
@@ -56,6 +53,7 @@ private fun pidNameSpace(v: Int?): MsoNameSpace = pidDocType(v)
 class IssueMsoMdocPid(
     private val validateJwtProof: ValidateJwtProof,
     private val getPidData: GetPidData,
+    private val encodePidInCbor: EncodePidInCbor,
 ) : IssueSpecificCredential<JsonElement> {
 
     override val supportedCredential: CredentialMetaData
@@ -67,44 +65,36 @@ class IssueMsoMdocPid(
         request: CredentialRequest,
         expectedCNonce: CNonce,
     ): CredentialResponse<JsonElement> = coroutineScope {
-        val credentialKey =
+        val holderPubKey = async(Dispatchers.Default) { holderPubKey(request, expectedCNonce) }
+        val pidData = async { getPidData(authorizationContext) }
+        val (pid, pidMetaData) = pidData.await()
+        val cbor = encodePidInCbor(pid, pidMetaData, holderPubKey.await())
+        CredentialResponse.Issued(JsonPrimitive(cbor))
+    }
+
+    context(Raise<IssueCredentialError>)
+    private suspend fun holderPubKey(
+        request: CredentialRequest,
+        expectedCNonce: CNonce,
+    ): ECKey {
+        val key =
             when (val proof = request.unvalidatedProof) {
                 is UnvalidatedProof.Jwt ->
                     validateJwtProof(
                         proof,
                         expectedCNonce,
                         supportedCredential.cryptographicSuitesSupported(),
-                    ).getOrElse { raise(IssueCredentialError.InvalidProof("Invalid JWT Proof", it)) }
+                    ).getOrElse { raise(IssueCredentialError.InvalidProof("Proof is not valid", it)) }
 
-                is UnvalidatedProof.Cwt -> raise(IssueCredentialError.InvalidProof("Only JWT Proofs are supported"))
+                is UnvalidatedProof.Cwt -> raise(IssueCredentialError.InvalidProof("Supporting only JWT proof"))
             }
 
-        val pidData = getPidData(authorizationContext.accessToken)
-        ensureNotNull(pidData) { IssueCredentialError.Unexpected("Cannot obtain PID data") }
-
-        val cbor = cbor(pidData, credentialKey)
-        CredentialResponse.Issued(cbor.toJson())
+        return withError({ _: Throwable -> IssueCredentialError.InvalidProof("Only EC Key is supported") }) {
+            when (key) {
+                is CredentialKey.DIDUrl -> raise(IssueCredentialError.InvalidProof("DID not supported"))
+                is CredentialKey.Jwk -> key.value.toECKey()
+                is CredentialKey.X5c -> ECKey.parse(key.certificate)
+            }
+        }
     }
 }
-
-@OptIn(ExperimentalSerializationApi::class)
-private fun cbor(pidData: Pair<Pid, PidMetaData>, credentialKey: CredentialKey): MsoMdocIssuedCredential {
-    val (pid, pidMetaData) = pidData
-
-    @Serializable
-    data class DummyPidCbor(
-        val familyName: String,
-        val givenName: String,
-    )
-
-    val dummy = DummyPidCbor(
-        pid.familyName.value,
-        pid.givenName.value,
-
-    )
-    val cbor = Cbor.encodeToByteArray(dummy)
-    return MsoMdocIssuedCredential(cbor)
-}
-
-@OptIn(ExperimentalEncodingApi::class)
-private fun MsoMdocIssuedCredential.toJson(): JsonPrimitive = JsonPrimitive(Base64.UrlSafe.encode(credential))

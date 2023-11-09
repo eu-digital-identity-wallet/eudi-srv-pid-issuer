@@ -25,9 +25,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.jose.DefaultExtractJwkFromCredent
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProofWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidDataFromAuthServer
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.IssueMsoMdocPid
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.issueSdJwtVcPid
+import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.domain.CNonce
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
@@ -67,11 +65,17 @@ fun beans(clock: Clock) = beans {
     bean {
         val issuerPublicUrl = env.getRequiredProperty("issuer.publicUrl").run { HttpsUrl.unsafe(this) }
         bean { ValidateJwtProofWithNimbus(issuerPublicUrl) }
+
+        val encodePidInCbor =
+            EncodePidInCborWithMicroService(
+                env.getRequiredProperty<URL>("issuer.pid.mso_mdoc.encoderUrl"),
+            )
         val issueMsoMdocPid = IssueMsoMdocPid(
             validateJwtProof = ref(),
             getPidData = ref(),
+            encodePidInCbor = encodePidInCbor,
         )
-        val issueSdJwtVcPid = issueSdJwtVcPid(
+        val issueSdJwtVcPid = IssueSdJwtVcPid(
             hashAlgorithm = HashAlgorithm.SHA3_256,
             issuerKey = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate(),
             getPidData = ref(),
@@ -80,6 +84,8 @@ fun beans(clock: Clock) = beans {
             credentialIssuerId = issuerPublicUrl,
             validateJwtProof = ref(),
             extractJwkFromCredentialKey = ref(),
+            calculateExpiresAt = { iat -> iat.plusDays(30).toInstant() },
+            calculateNotUseBefore = { iat -> iat.plusSeconds(60).toInstant() },
         )
         bean { issueMsoMdocPid }
         bean { issueSdJwtVcPid }
@@ -140,7 +146,7 @@ fun beans(clock: Clock) = beans {
     //
     bean {
         /*
-         * This is Spring naming convention
+         * This is a Spring naming convention
          * A prefix of SCOPE_xyz will grant a SimpleAuthority(xyz)
          * if there is a scope xyz
          *

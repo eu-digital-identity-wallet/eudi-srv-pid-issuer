@@ -16,24 +16,27 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.nonEmptySetOf
+import arrow.core.raise.Raise
+import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jwk.ECKey
+import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProof
-import eu.europa.ec.eudi.pidissuer.adapter.out.sdjwt.TimeDependant
-import eu.europa.ec.eudi.pidissuer.adapter.out.sdjwt.createSdJwtVcIssuer
 import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.sdjwt.*
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.put
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.serialization.json.*
 import java.time.Clock
 import java.time.Instant
-import java.time.LocalTime
 import java.time.ZonedDateTime
-import java.time.temporal.ChronoField
 
 val PidSdJwtVcScope: Scope = Scope("${PID_DOCTYPE}_vc_sd_jwt")
 
@@ -52,47 +55,70 @@ val PidSdJwtVcV1: SdJwtVcMetaData = SdJwtVcMetaData(
     scope = PidSdJwtVcScope,
 )
 
-fun Pair<Pid, PidMetaData>.asSdObjectAt(iat: ZonedDateTime): SdObject {
-    val (pid, pidMetaData) = this
+typealias TimeDependant<F> = (ZonedDateTime) -> F
 
-    fun Pid.includePlaceOfBirth() = birthPlace != null || birthState != null || birthCity != null
-    fun Pid.includeAddress() =
-        residentCountry != null ||
-            residentState != null ||
-            residentCity != null ||
-            residentPostalCode != null ||
-            residentHouseNumber != null
+fun selectivelyDisclosed(
+    pid: Pid,
+    pidMetaData: PidMetaData,
+    credentialIssuerId: CredentialIssuerId,
+    holderPubKey: JWK,
+    iat: ZonedDateTime,
+    exp: Instant,
+    nbf: Instant?,
+): SdObject {
+    require(exp.epochSecond > iat.toInstant().epochSecond) { "exp should be after iat" }
+    nbf?.let {
+        require(nbf.epochSecond > iat.toInstant().epochSecond) { "nbe should be after iat" }
+    }
 
     return sdJwt {
+        //
+        // Always disclosed claims
+        //
+        iss(credentialIssuerId.externalForm)
+        iat(iat.toInstant().epochSecond)
+        nbf?.let { nbf(it.epochSecond) }
+        exp(exp.epochSecond)
+        cnf(holderPubKey)
+        plain("vct", PidSdJwtVcV1.type.value)
+        sub(pid.uniqueId.value)
+
+        //
+        // Selectively Disclosed claims
+        //
+        // https://openid.net/specs/openid-connect-4-identity-assurance-1_0.html#section-4
+        sd("issuance_date", pidMetaData.issuanceDate.toString())
         sub(pid.uniqueId.value)
         sd("given_name", pid.givenName.value)
         sd("family_name", pid.familyName.value)
         sd("birthdate", pid.birthDate.toString())
-        pid.familyNameBirth?.let { sd("birth_family_name", it.value) }
-        pid.givenNameBirth?.let { sd("birth_given_name", it.value) }
-
-        if (pid.includePlaceOfBirth()) {
-            structured("place_of_birth") {
-                pid.birthCountry?.let { sd("birth_country", it.value) }
-                pid.birthState?.let { sd("birth_state", it.value) }
-                pid.birthCity?.let { sd("birth_city", it.value) }
-            }
-        }
-        if (pid.includeAddress()) {
-            structured("address") {
-                pid.residentCountry?.let { sd("resident_country", it.value) }
-                pid.residentState?.let { sd("resident_state", it.value) }
-                pid.residentCity?.let { sd("resident_city", it.value) }
-                pid.residentPostalCode?.let { sd("resident_postal_code", it.value) }
-                pid.residentHouseNumber?.let { sd("resident_house_number", it) }
-            }
-        }
+        sd("is_over_18", pid.ageOver18)
         pid.gender?.let { sd("gender", it.value.toInt()) }
         pid.nationality?.let { sd("nationalities", JsonArray(listOf(JsonPrimitive(it.value)))) }
-        sd {
-            val age = iat.year - pid.birthDate.get(ChronoField.YEAR)
-            put("is_over_18", age >= 18)
-            pid.ageBirthYear?.let { put("age_birth_year", it.value) }
+        pid.ageBirthYear?.let { sd("age_birth_year", it.value) }
+        pid.familyNameBirth?.let { sd("birth_family_name", it.value) }
+        pid.givenNameBirth?.let { sd("birth_given_name", it.value) }
+        if (pid.birthCountry != null || pid.birthState != null || pid.birthCity != null) {
+            sd {
+                putJsonObject("place_of_birth") {
+                    pid.birthCountry?.let { put("country", it.value) }
+                    pid.birthState?.let { put("region", it.value) }
+                    pid.birthCity?.let { put("locality", it.value) }
+                }
+            }
+        }
+        // https://openid.net/specs/openid-connect-core-1_0.html#AddressClaim
+        if (pid.residentCountry != null || pid.residentState != null ||
+            pid.residentCity != null || pid.residentPostalCode != null
+        ) {
+            sd {
+                putJsonObject("address") {
+                    pid.residentCountry?.let { put("country", it.value) }
+                    pid.residentState?.let { put("region", it.value) }
+                    pid.residentCity?.let { put("locality", it.value) }
+                    pid.residentPostalCode?.let { put("postal_code", it.value) }
+                }
+            }
         }
     }
 }
@@ -100,29 +126,94 @@ fun Pair<Pid, PidMetaData>.asSdObjectAt(iat: ZonedDateTime): SdObject {
 /**
  * Service for issuing PID SD JWT credential
  */
-fun issueSdJwtVcPid(
-    credentialIssuerId: CredentialIssuerId,
-    clock: Clock,
-    hashAlgorithm: HashAlgorithm,
-    signAlg: JWSAlgorithm,
-    issuerKey: ECKey,
-    expiresAt: TimeDependant<Instant>? = { iat -> iat.plusYears(2).with(LocalTime.MIDNIGHT).toInstant() },
-    notUseBefore: TimeDependant<Instant>? = { iat -> iat.plusSeconds(10).toInstant() },
-    getPidData: GetPidData,
-    validateJwtProof: ValidateJwtProof,
-    extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
-): IssueSpecificCredential<JsonElement> = createSdJwtVcIssuer(
-    supportedCredential = PidSdJwtVcV1,
-    credentialIssuerId = credentialIssuerId,
-    clock = clock,
-    hashAlgorithm = hashAlgorithm,
-    signAlg = signAlg,
-    issuerKey = issuerKey,
-    expiresAt = expiresAt,
-    notUseBefore = notUseBefore,
-    validateJwtProof = validateJwtProof,
-    extractJwkFromCredentialKey = extractJwkFromCredentialKey,
-    getData = { authorizationContext -> getPidData(authorizationContext.accessToken) },
-    createSdJwt = { pid -> pid::asSdObjectAt },
+class IssueSdJwtVcPid(
+    private val credentialIssuerId: CredentialIssuerId,
+    private val clock: Clock,
+    private val hashAlgorithm: HashAlgorithm,
+    private val signAlg: JWSAlgorithm,
+    private val issuerKey: ECKey,
+    private val getPidData: GetPidData,
+    private val validateJwtProof: ValidateJwtProof,
+    private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
+    private val calculateExpiresAt: TimeDependant<Instant>,
+    private val calculateNotUseBefore: TimeDependant<Instant>?,
+) : IssueSpecificCredential<JsonElement> {
+    override val supportedCredential: CredentialMetaData
+        get() = PidSdJwtVcV1
 
-)
+    context(Raise<IssueCredentialError>)
+    override suspend fun invoke(
+        authorizationContext: AuthorizationContext,
+        request: CredentialRequest,
+        expectedCNonce: CNonce,
+    ): CredentialResponse<JsonElement> = coroutineScope {
+        val holderPubKey = async(Dispatchers.Default) { holderPubKey(request, expectedCNonce) }
+        val pidData = async { getPidData(authorizationContext) }
+        val (pid, pidMetaData) = pidData.await()
+        val sdJwt = encodePidInSdJwt(pid, pidMetaData, holderPubKey.await())
+        CredentialResponse.Issued(JsonPrimitive(sdJwt))
+    }
+
+    context(Raise<IssueCredentialError>)
+    private fun encodePidInSdJwt(pid: Pid, pidMetaData: PidMetaData, holderPubKey: JWK): String {
+        val at = clock.instant().atZone(clock.zone)
+        val sdJwtSpec = selectivelyDisclosed(
+            pid = pid,
+            pidMetaData = pidMetaData,
+            credentialIssuerId = credentialIssuerId,
+            holderPubKey = holderPubKey,
+            iat = at,
+            exp = calculateExpiresAt(at),
+            nbf = calculateNotUseBefore?.let { calculate -> calculate(at) },
+        )
+        val issuedSdJwt = issuer.issue(sdJwtSpec).getOrElse {
+            raise(IssueCredentialError.Unexpected("Error while creating SD-JWT", it))
+        }
+        return issuedSdJwt.serialize()
+    }
+
+    context(Raise<IssueCredentialError>)
+    private suspend fun holderPubKey(
+        request: CredentialRequest,
+        expectedCNonce: CNonce,
+    ): JWK {
+        val key =
+            when (val proof = request.unvalidatedProof) {
+                is UnvalidatedProof.Jwt ->
+                    validateJwtProof(
+                        proof,
+                        expectedCNonce,
+                        supportedCredential.cryptographicSuitesSupported(),
+                    ).getOrElse { raise(IssueCredentialError.InvalidProof("Proof is not valid", it)) }
+
+                is UnvalidatedProof.Cwt -> raise(IssueCredentialError.InvalidProof("Supporting only JWT proof"))
+            }
+
+        return extractJwkFromCredentialKey(key)
+            .getOrElse {
+                raise(IssueCredentialError.InvalidProof("Unable to extract JWK from CredentialKey", it))
+            }
+    }
+
+    /**
+     * Creates a Nimbus-based SD-JWT issuer
+     * according to the requirements of SD-JWT VC
+     * - No decoys
+     * - JWS header kid should contain the id of issuer's key
+     * - JWS header typ should contain value "vs+sd-jwt"
+     * In addition the issuer will use the config to select
+     * [HashAlgorithm], [JWSAlgorithm] and [issuer's key][ECKey]
+     */
+    private val issuer: SdJwtIssuer<SignedJWT> by lazy {
+        // SD-JWT VC requires no decoys
+
+        val sdJwtFactory = SdJwtFactory(hashAlgorithm = hashAlgorithm, numOfDecoysLimit = 0)
+        val signer = ECDSASigner(issuerKey)
+        SdJwtIssuer.nimbus(sdJwtFactory, signer, signAlg) {
+            // SD-JWT VC requires the kid & typ header attributes
+            // Check [here](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-01.html#name-jose-header)
+            keyID(issuerKey.keyID)
+            type(JOSEObjectType("vc+sd-jwt"))
+        }
+    }
+}

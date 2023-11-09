@@ -30,7 +30,7 @@ value class GivenName(val value: String)
  * A PID Provider SHALL ensure that a unique_id data element is present in the PID.
  * It SHALL contain an identifier for the PID User.
  * The value of this data element SHALL be unique and persistent.
- * This means that a specific Relying Party, if it is authorised to receive this data element,
+ * This means that a specific Relying Party, if it is authorized to receive this data element,
  * SHALL always receive the same unique_id value for the same PID User from all Wallet Instances
  * issued to that PID User, either in parallel or consecutively, throughout the User’s lifetime.
  * It is up to each PID Provider to determine if the unique_id for a User is different for each Relying Party,
@@ -111,9 +111,24 @@ data class Pid(
     val residentHouseNumber: String? = null,
     val gender: IsoGender? = null,
     val nationality: Nationality? = null,
-)
+) {
+    init {
+        ageBirthYear?.let { year ->
+            require(birthDate.year == year.value) {
+                "Given ageBirthYear = ${year.value} is not equal to year of birthDate $birthDate"
+            }
+        }
+    }
+}
 
-data class DateAndPossiblyTime(val date: LocalDate, val time: LocalTime?)
+data class DateAndPossiblyTime(val date: LocalDate, val time: LocalTime?) {
+    constructor(date: LocalDate) : this(date = date, time = null)
+
+    companion object {
+        fun of(year: Int, month: Int, dayOfMonth: Int): DateAndPossiblyTime =
+            DateAndPossiblyTime(LocalDate.of(year, month, dayOfMonth))
+    }
+}
 
 /**
  * Name of the administrative authority that has issued this PID instance,
@@ -166,5 +181,14 @@ data class PidMetaData(
     val administrativeNumber: AdministrativeNumber? = null,
     val issuingCountry: IsoCountry,
     val issuingJurisdiction: IsoCountrySubdivision? = null,
-    val portrait: Portrait?,
-)
+    val portrait: Portrait? = null,
+) {
+    init {
+        require(issuanceDate.date.isBefore(expiryDate.date)) { "Issuance date should be before expiry date" }
+        if (issuingAuthority is IssuingAuthority.MemberState) {
+            require(issuingAuthority.code == issuingCountry) {
+                "IssuanceAuthority ${issuingAuthority.code.value} should be the same with issuingCountry = ${issuingCountry.value}"
+            }
+        }
+    }
+}
