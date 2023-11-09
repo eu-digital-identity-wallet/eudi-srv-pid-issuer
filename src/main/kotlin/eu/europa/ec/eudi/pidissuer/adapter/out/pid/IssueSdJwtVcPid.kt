@@ -37,13 +37,106 @@ import kotlinx.serialization.json.*
 import java.time.Clock
 import java.time.Instant
 import java.time.ZonedDateTime
+import java.util.*
 
 val PidSdJwtVcScope: Scope = Scope("${PID_DOCTYPE}_vc_sd_jwt")
+
+private object Attributes {
+    val FamilyName = AttributeDetails(
+        name = "family_name",
+        display = mapOf(Locale.ENGLISH to "Current Family Name"),
+    )
+    val GivenName = AttributeDetails(
+        name = "given_name",
+        display = mapOf(Locale.ENGLISH to "Current First Names"),
+    )
+
+    val BirthDate = AttributeDetails(
+        name = "birthdate",
+        display = mapOf(Locale.ENGLISH to "Date of Birth"),
+    )
+
+    val BirthDateYear = AttributeDetails(
+        name = "birthdate_year",
+        mandatory = false,
+    )
+    val AgeOver18 = AttributeDetails(
+        name = "age_over_18",
+        display = mapOf(Locale.ENGLISH to "Adult or minor"),
+    )
+
+    val AgeInYears = AttributeDetails(
+        name = "age_in_years",
+        display = mapOf(Locale.ENGLISH to "The subject’s current age in years."),
+    )
+    val UniqueId = AttributeDetails(
+        name = "sub",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Unique Identifier"),
+    )
+
+    val PlaceOfBirth = AttributeDetails(
+        name = "place_of_birth",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The country, region, and locality"),
+    )
+
+    val Gender = AttributeDetails(
+        name = "gender",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "PID User’s gender, using a value as defined in ISO/IEC 5218."),
+    )
+
+    val Nationalities = AttributeDetails(
+        name = "nationalities",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Array of nationalities"),
+    )
+
+    val Address = AttributeDetails(
+        name = "address",
+        mandatory = false,
+        display = mapOf(
+            Locale.ENGLISH to "Resident country, region, locality and postal_code",
+        ),
+    )
+    val IssuanceDate = AttributeDetails(
+        name = "issuance_date",
+        mandatory = true,
+    )
+    val BirthFamilyName = AttributeDetails(
+        name = "birth_family_name",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Last name(s) or surname(s) of the PID User at the time of birth."),
+    )
+    val BirthGivenName = AttributeDetails(
+        name = "birth_given_name",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "First name(s), including middle name(s), of the PID User at the time of birth."),
+    )
+
+    val pidAttributes = listOf(
+        FamilyName,
+        GivenName,
+        BirthDate,
+        BirthFamilyName,
+        BirthGivenName,
+        AgeOver18,
+        AgeInYears,
+        UniqueId,
+        PlaceOfBirth,
+        Gender,
+        Nationalities,
+        Address,
+        IssuanceDate,
+        BirthDateYear,
+    )
+}
 
 val PidSdJwtVcV1: SdJwtVcMetaData = SdJwtVcMetaData(
     type = SdJwtVcType(pidDocType(1)),
     display = pidDisplay,
-    claims = pidAttributes,
+    claims = Attributes.pidAttributes,
     cryptographicBindingMethodsSupported = listOf(
         CryptographicBindingMethod.Jwk(
             nonEmptySetOf(
@@ -81,26 +174,26 @@ fun selectivelyDisclosed(
         exp(exp.epochSecond)
         cnf(holderPubKey)
         plain("vct", PidSdJwtVcV1.type.value)
-        sub(pid.uniqueId.value)
+        plain(Attributes.UniqueId.name, pid.uniqueId.value)
 
         //
         // Selectively Disclosed claims
         //
         // https://openid.net/specs/openid-connect-4-identity-assurance-1_0.html#section-4
-        sd("issuance_date", pidMetaData.issuanceDate.toString())
-        sub(pid.uniqueId.value)
-        sd("given_name", pid.givenName.value)
-        sd("family_name", pid.familyName.value)
-        sd("birthdate", pid.birthDate.toString())
-        sd("is_over_18", pid.ageOver18)
-        pid.gender?.let { sd("gender", it.value.toInt()) }
-        pid.nationality?.let { sd("nationalities", JsonArray(listOf(JsonPrimitive(it.value)))) }
-        pid.ageBirthYear?.let { sd("age_birth_year", it.value) }
-        pid.familyNameBirth?.let { sd("birth_family_name", it.value) }
-        pid.givenNameBirth?.let { sd("birth_given_name", it.value) }
+        sd(Attributes.IssuanceDate.name, pidMetaData.issuanceDate.toString())
+        sd(Attributes.GivenName.name, pid.givenName.value)
+        sd(Attributes.FamilyName.name, pid.familyName.value)
+        sd(Attributes.BirthDate.name, pid.birthDate.toString())
+        sd(Attributes.AgeOver18.name, pid.ageOver18)
+        pid.gender?.let { sd(Attributes.Gender.name, it.value.toInt()) }
+        pid.nationality?.let { sd(Attributes.Nationalities.name, JsonArray(listOf(JsonPrimitive(it.value)))) }
+        pid.ageBirthYear?.let { sd(Attributes.AgeInYears.name, it.value) }
+        pid.ageBirthYear?.let { sd(Attributes.BirthDateYear.name, it.value.toString()) }
+        pid.familyNameBirth?.let { sd(Attributes.BirthFamilyName.name, it.value) }
+        pid.givenNameBirth?.let { sd(Attributes.BirthGivenName.name, it.value) }
         if (pid.birthCountry != null || pid.birthState != null || pid.birthCity != null) {
             sd {
-                putJsonObject("place_of_birth") {
+                putJsonObject(Attributes.PlaceOfBirth.name) {
                     pid.birthCountry?.let { put("country", it.value) }
                     pid.birthState?.let { put("region", it.value) }
                     pid.birthCity?.let { put("locality", it.value) }
@@ -112,7 +205,7 @@ fun selectivelyDisclosed(
             pid.residentCity != null || pid.residentPostalCode != null
         ) {
             sd {
-                putJsonObject("address") {
+                putJsonObject(Attributes.Address.name) {
                     pid.residentCountry?.let { put("country", it.value) }
                     pid.residentState?.let { put("region", it.value) }
                     pid.residentCity?.let { put("locality", it.value) }

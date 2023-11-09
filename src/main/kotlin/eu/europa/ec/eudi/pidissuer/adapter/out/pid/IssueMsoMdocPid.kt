@@ -30,16 +30,121 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
+import java.util.*
 
 val PidMsoMdocScope: Scope = Scope("${PID_DOCTYPE}_${MSO_MDOC_FORMAT.value}")
+
+private val pidAttributes = pidNameSpace(1) to listOf(
+
+    AttributeDetails(
+        name = "family_name",
+        display = mapOf(Locale.ENGLISH to "Current Family Name"),
+    ),
+    AttributeDetails(
+        name = "given_name",
+        display = mapOf(Locale.ENGLISH to "Current First Names"),
+    ),
+    AttributeDetails(
+        name = "birth_date",
+        display = mapOf(Locale.ENGLISH to "Date of Birth"),
+    ),
+    AttributeDetails(
+        name = "age_over_18",
+        display = mapOf(Locale.ENGLISH to "Adult or minor"),
+    ),
+    AttributeDetails(
+        name = "age_birth_year",
+    ),
+    AttributeDetails(
+        name = "unique_id",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Unique Identifier"),
+    ),
+    AttributeDetails(
+        name = "family_name_birth",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Last name(s) or surname(s) of the PID User at the time of birth."),
+    ),
+    AttributeDetails(
+        name = "given_name_birth",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "First name(s), including middle name(s), of the PID User at the time of birth."),
+    ),
+    AttributeDetails(
+        name = "birth_place",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The country, state, and city where the PID User was born."),
+    ),
+    AttributeDetails(
+        name = "birth_country",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The country where the PID User was born, as an Alpha-2 country code."),
+    ),
+    AttributeDetails(
+        name = "birth_state",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User was born. "),
+    ),
+    AttributeDetails(
+        name = "birth_city",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The municipality, city, town, or village where the PID User was born. "),
+    ),
+    AttributeDetails(
+        name = "resident_country",
+        mandatory = false,
+        display = mapOf(
+            Locale.ENGLISH to "he country where the PID User currently resides, as an Alpha-2 country code as specified in ISO 3166-1.",
+        ),
+    ),
+    AttributeDetails(
+        name = "resident_state",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User currently resides"),
+    ),
+    AttributeDetails(
+        name = "resident_city",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The municipality, city, town, or village where the PID User currently resides."),
+    ),
+    AttributeDetails(
+        name = "resident_postal_code",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Postal code of the place where the PID User currently resides."),
+    ),
+    AttributeDetails(
+        name = "resident_street",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The name of the street where the PID User currently resides"),
+    ),
+    AttributeDetails(
+        name = "resident_house_number",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The house number where the PID User currently resides, including any affix or suffix."),
+    ),
+    AttributeDetails(
+        name = "gender",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "PID User’s gender, using a value as defined in ISO/IEC 5218."),
+    ),
+    AttributeDetails(
+        name = "nationality",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Alpha-2 country code, representing the nationality of the PID User."),
+    ),
+)
 
 val PidMsoMdocV1: MsoMdocMetaData = MsoMdocMetaData(
     docType = pidDocType(1),
     display = pidDisplay,
-    msoClaims = mapOf(pidNameSpace(1) to pidAttributes),
+    msoClaims = mapOf(pidAttributes),
     cryptographicSuitesSupported = nonEmptySetOf(JWSAlgorithm.ES256K),
     scope = PidMsoMdocScope,
 )
+
+//
+// Meta
+//
 
 private fun pidDomesticNameSpace(v: Int?, countryCode: String): MsoNameSpace =
     if (v == null) "$PID_DOCTYPE.$countryCode"
