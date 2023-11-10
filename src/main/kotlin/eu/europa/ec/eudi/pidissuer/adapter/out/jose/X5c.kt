@@ -22,12 +22,6 @@ import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.X509CertChainUtils
 import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
 
-fun CredentialKey.X5c.Companion.parsePem(pem: String): Result<CredentialKey.X5c> = result {
-    val chain = X509CertChainUtils.parse(pem).toNonEmptyListOrNull()
-    ensureNotNull(chain) { IllegalArgumentException("Pem string contains no certificates") }
-    CredentialKey.X5c(chain)
-}
-
 fun CredentialKey.X5c.Companion.parseDer(der: List<Base64>): Result<CredentialKey.X5c> = result {
     val chain = X509CertChainUtils.parse(der).toNonEmptyListOrNull()
     ensureNotNull(chain) { IllegalArgumentException("der must contain no certificates") }

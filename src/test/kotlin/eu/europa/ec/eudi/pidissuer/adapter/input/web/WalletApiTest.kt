@@ -15,12 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
-import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import eu.europa.ec.eudi.pidissuer.PidIssuerApplicationTest
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
-import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.port.input.CredentialErrorTypeTo
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
@@ -256,7 +253,7 @@ internal class WalletApiTest {
      * Verifies response values.
      */
     @Test
-    @Ignore // TODO The test is currently ignored, it doesn't provide expected proof
+    @Ignore // TODO The test is currently ignored, it doesn't provide a proper proof
     fun `issuance success`() = runTest {
         val (principal, token) = bearerTokenAuthenticationPrincipal(clock = clock)
         val previousCNonce = genCNonce(token.tokenValue, clock)
@@ -354,15 +351,4 @@ private class WalletApiTestConfig {
             )
             pid to pidMetaData
         }
-
-    @Bean
-    @Primary
-    fun validateJwtProof(): ValidateJwtProof =
-        RSAKeyGenerator(2048, false)
-            .generate()
-            .let {
-                ValidateJwtProof { _, _, _ ->
-                    Result.success(CredentialKey.Jwk(it.toPublicJWK()))
-                }
-            }
 }

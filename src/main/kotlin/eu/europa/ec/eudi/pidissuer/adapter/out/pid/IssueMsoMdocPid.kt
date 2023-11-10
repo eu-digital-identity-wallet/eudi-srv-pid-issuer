@@ -20,10 +20,11 @@ import arrow.core.raise.Raise
 import arrow.core.raise.withError
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.ECKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProof
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProof
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -135,14 +136,14 @@ private val pidAttributes = pidNameSpace(1) to listOf(
 )
 
 val PidMsoMdocV1: MsoMdocMetaData = run {
-    val algs = nonEmptySetOf(JWSAlgorithm.ES256)
+    val algorithms = nonEmptySetOf(JWSAlgorithm.ES256)
     MsoMdocMetaData(
         docType = pidDocType(1),
         display = pidDisplay,
         msoClaims = mapOf(pidAttributes),
         cryptographicBindingMethodsSupported = listOf(
-            CryptographicBindingMethod.Mso(algs),
-            CryptographicBindingMethod.Jwk(algs),
+            CryptographicBindingMethod.Mso(algorithms),
+            CryptographicBindingMethod.Jwk(algorithms),
         ),
         scope = PidMsoMdocScope,
     )
@@ -162,7 +163,7 @@ private fun pidNameSpace(v: Int?): MsoNameSpace = pidDocType(v)
  * Service for issuing PID MsoMdoc credential
  */
 class IssueMsoMdocPid(
-    private val validateJwtProof: ValidateJwtProof,
+    private val validateProof: ValidateProof,
     private val getPidData: GetPidData,
     private val encodePidInCbor: EncodePidInCbor,
 ) : IssueSpecificCredential<JsonElement> {
@@ -184,25 +185,11 @@ class IssueMsoMdocPid(
     }
 
     context(Raise<IssueCredentialError>)
-    private suspend fun holderPubKey(
-        request: CredentialRequest,
-        expectedCNonce: CNonce,
-    ): ECKey {
-        val key =
-            when (val proof = request.unvalidatedProof) {
-                is UnvalidatedProof.Jwt ->
-                    validateJwtProof(
-                        proof,
-                        expectedCNonce,
-                        supportedCredential.cryptographicSuitesSupported(),
-                    ).getOrElse { raise(IssueCredentialError.InvalidProof("Proof is not valid", it)) }
-
-                is UnvalidatedProof.Cwt -> raise(IssueCredentialError.InvalidProof("Supporting only JWT proof"))
-            }
-
-        return withError({ _: Throwable -> IssueCredentialError.InvalidProof("Only EC Key is supported") }) {
+    private fun holderPubKey(request: CredentialRequest, expectedCNonce: CNonce): ECKey {
+        val key = validateProof(request.unvalidatedProof, expectedCNonce, supportedCredential)
+        return withError({ _: Throwable -> InvalidProof("Only EC Key is supported") }) {
             when (key) {
-                is CredentialKey.DIDUrl -> raise(IssueCredentialError.InvalidProof("DID not supported"))
+                is CredentialKey.DIDUrl -> raise(InvalidProof("DID not supported"))
                 is CredentialKey.Jwk -> key.value.toECKey()
                 is CredentialKey.X5c -> ECKey.parse(key.certificate)
             }

@@ -24,10 +24,12 @@ import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ExtractJwkFromCredentialKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProof
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProof
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.coroutines.Dispatchers
@@ -226,7 +228,7 @@ class IssueSdJwtVcPid(
     private val signAlg: JWSAlgorithm,
     private val issuerKey: ECKey,
     private val getPidData: GetPidData,
-    private val validateJwtProof: ValidateJwtProof,
+    private val validateProof: ValidateProof,
     private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
     private val calculateExpiresAt: TimeDependant<Instant>,
     private val calculateNotUseBefore: TimeDependant<Instant>?,
@@ -260,31 +262,20 @@ class IssueSdJwtVcPid(
             nbf = calculateNotUseBefore?.let { calculate -> calculate(at) },
         )
         val issuedSdJwt = issuer.issue(sdJwtSpec).getOrElse {
-            raise(IssueCredentialError.Unexpected("Error while creating SD-JWT", it))
+            raise(Unexpected("Error while creating SD-JWT", it))
         }
         return issuedSdJwt.serialize()
     }
 
-    context(Raise<IssueCredentialError>)
+    context(Raise<InvalidProof>)
     private suspend fun holderPubKey(
         request: CredentialRequest,
         expectedCNonce: CNonce,
     ): JWK {
-        val key =
-            when (val proof = request.unvalidatedProof) {
-                is UnvalidatedProof.Jwt ->
-                    validateJwtProof(
-                        proof,
-                        expectedCNonce,
-                        supportedCredential.cryptographicSuitesSupported(),
-                    ).getOrElse { raise(IssueCredentialError.InvalidProof("Proof is not valid", it)) }
-
-                is UnvalidatedProof.Cwt -> raise(IssueCredentialError.InvalidProof("Supporting only JWT proof"))
-            }
-
+        val key = validateProof(request.unvalidatedProof, expectedCNonce, supportedCredential)
         return extractJwkFromCredentialKey(key)
             .getOrElse {
-                raise(IssueCredentialError.InvalidProof("Unable to extract JWK from CredentialKey", it))
+                raise(InvalidProof("Unable to extract JWK from CredentialKey", it))
             }
     }
 

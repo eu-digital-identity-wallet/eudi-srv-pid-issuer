@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
+import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -23,60 +24,68 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
-import java.net.URL
+import java.time.Clock
 import java.time.LocalDate
 
-class GetPidDataFromAuthServer(
-    private val authorizationServerUserInfoEndPoint: URL,
-    private val issuerCountry: IsoCountry,
+private val log = LoggerFactory.getLogger(GetPidDataFromAuthServer::class.java)
 
+class GetPidDataFromAuthServer(
+    authorizationServerUserInfoEndPoint: HttpsUrl,
+    private val issuerCountry: IsoCountry,
+    private val clock: Clock,
 ) : GetPidData {
-    private val log = LoggerFactory.getLogger(GetPidDataFromAuthServer::class.java)
+
+    private val jsonSupport: Json by lazy {
+        Json { prettyPrint = true }
+    }
+    private val webClient: WebClient =
+        WebClient.create(authorizationServerUserInfoEndPoint.externalForm)
+
     override suspend fun invoke(accessToken: String): Pair<Pid, PidMetaData>? {
         log.info("Trying to get PID Data from userinfo endpoint ...")
-        val webClient: WebClient = WebClient.create(authorizationServerUserInfoEndPoint.toString())
-        val userInfo = webClient.get().accept(MediaType.APPLICATION_JSON)
-            .headers { it.setBearerAuth(accessToken) }
+        val userInfo = userInfo(accessToken).also {
+            if (log.isInfoEnabled) log.info(jsonSupport.encodeToString(it))
+        }
+        return pid(userInfo)
+    }
+
+    private suspend fun userInfo(accessToken: String): JsonObject =
+        webClient.get().accept(MediaType.APPLICATION_JSON)
+            .headers { headers -> headers.setBearerAuth(accessToken) }
             .retrieve()
             .awaitBody<JsonObject>()
 
-        if (log.isInfoEnabled) {
-            log.info(jsonSupport.encodeToString(userInfo))
-        }
-        return pid(userInfo).also {
-            log.info("$it")
-        }?.let {
-            it to PidMetaData(
-                expiryDate = LocalDate.now().plusDays(100).asDateAndPossiblyTime(),
-                issuanceDate = LocalDate.now().asDateAndPossiblyTime(),
-                issuingCountry = issuerCountry,
-                issuingAuthority = IssuingAuthority.AdministrativeAuthority(" Foo bat administrative authority"),
-                documentNumber = null,
-                administrativeNumber = null,
-                issuingJurisdiction = null,
-                portrait = null,
-            )
-        }
+    private fun genPidMetaData(): PidMetaData {
+        val issuanceDate = LocalDate.now(clock)
+        return PidMetaData(
+            expiryDate = issuanceDate.plusDays(100).asDateAndPossiblyTime(),
+            issuanceDate = issuanceDate.asDateAndPossiblyTime(),
+            issuingCountry = issuerCountry,
+            issuingAuthority = IssuingAuthority.AdministrativeAuthority(" Foo bat administrative authority"),
+            documentNumber = null,
+            administrativeNumber = null,
+            issuingJurisdiction = null,
+            portrait = null,
+        )
     }
 
-    private fun pid(json: JsonObject): Pid? = runCatching {
+    private fun pid(json: JsonObject): Pair<Pid, PidMetaData>? = runCatching {
         requireNotNull(json["family_name"]) { "Missing family_name" }
         requireNotNull(json["given_name"]) { "Missing given_name" }
         requireNotNull(json["sub"]) { "Missing sub" }
 
-        Pid(
+        val pid = Pid(
             familyName = FamilyName(json["family_name"]!!.jsonPrimitive.content),
             givenName = GivenName(json["given_name"]!!.jsonPrimitive.content),
             birthDate = LocalDate.now(),
             ageOver18 = true,
             uniqueId = UniqueId(json["sub"]!!.jsonPrimitive.content),
-
         )
-    }.getOrNull()
 
-    private val jsonSupport = Json {
-        prettyPrint = true
-    }
+        val pidMetaData = genPidMetaData()
+
+        return pid to pidMetaData
+    }.getOrNull()
 }
 
 private fun LocalDate.asDateAndPossiblyTime(): DateAndPossiblyTime = DateAndPossiblyTime(this, null)

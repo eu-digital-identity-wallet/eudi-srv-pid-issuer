@@ -27,7 +27,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.DefaultExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseWithNimbus
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateJwtProofWithNimbus
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -57,7 +57,6 @@ import org.springframework.security.config.web.server.invoke
 import org.springframework.security.web.server.authentication.HttpStatusServerEntryPoint
 import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.reactive.config.WebFluxConfigurer
-import java.net.URL
 import java.time.Clock
 import java.time.Duration
 import java.util.*
@@ -66,15 +65,16 @@ fun beans(clock: Clock) = beans {
     bean { clock }
     bean(::DefaultExtractJwkFromCredentialKey)
     bean {
-        val issuerPublicUrl = env.getRequiredProperty("issuer.publicUrl").run { HttpsUrl.unsafe(this) }
-        bean { ValidateJwtProofWithNimbus(issuerPublicUrl) }
+        val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl")
 
-        val encodePidInCbor =
-            EncodePidInCborWithMicroService(
-                env.getRequiredProperty<URL>("issuer.pid.mso_mdoc.encoderUrl"),
-            )
+        bean { ValidateProof(issuerPublicUrl) }
+
+        val encodePidInCbor = env
+            .readRequiredUrl("issuer.pid.mso_mdoc.encoderUrl")
+            .let(::EncodePidInCborWithMicroService)
+
         val issueMsoMdocPid = IssueMsoMdocPid(
-            validateJwtProof = ref(),
+            validateProof = ref(),
             getPidData = ref(),
             encodePidInCbor = encodePidInCbor,
         )
@@ -85,18 +85,16 @@ fun beans(clock: Clock) = beans {
             clock = clock,
             signAlg = JWSAlgorithm.ES256,
             credentialIssuerId = issuerPublicUrl,
-            validateJwtProof = ref(),
+            validateProof = ref(),
             extractJwkFromCredentialKey = ref(),
             calculateExpiresAt = { iat -> iat.plusDays(30).toInstant() },
             calculateNotUseBefore = { iat -> iat.plusSeconds(60).toInstant() },
         )
         bean { issueMsoMdocPid }
         bean { issueSdJwtVcPid }
-        val authorizationServer =
-            env.getRequiredProperty("issuer.authorizationServer")
-                .run { HttpsUrl.unsafe(this) }
+        val authorizationServer = env.readRequiredUrl("issuer.authorizationServer")
         val credentialEndPoint = env.getRequiredProperty("issuer.publicUrl")
-            .run { HttpsUrl.unsafe("$this/wallet/credentialEndpoint") }
+            .run { HttpsUrl.unsafe("$this${WalletApi.CREDENTIAL_ENDPOINT}") }
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
             credentialEndPoint = credentialEndPoint,
@@ -110,9 +108,9 @@ fun beans(clock: Clock) = beans {
     // Adapters (out ports)
     //
     bean {
-        val userinfoEndpoint = env.getRequiredProperty<URL>("issuer.authorizationServer.userinfo")
-        val issuingCountry = env.getRequiredProperty("issuer.pid.issuingCountry").run { IsoCountry(this) }
-        GetPidDataFromAuthServer(userinfoEndpoint, issuingCountry)
+        val userinfoEndpoint = env.readRequiredUrl("issuer.authorizationServer.userinfo")
+        val issuingCountry = env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry)
+        GetPidDataFromAuthServer(userinfoEndpoint, issuingCountry, clock)
     }
     bean {
         GenCNonce { accessToken, clock ->
@@ -219,10 +217,19 @@ private fun Environment.credentialResponseEncryption(): CredentialResponseEncryp
         CredentialResponseEncryption.NotRequired
     else
         CredentialResponseEncryption.Required(
-            algorithmsSupported = readNonEmptySet("issuer.credentialResponseEncryption.algorithmsSupported", JWEAlgorithm::parse),
-            encryptionMethods = readNonEmptySet("issuer.credentialResponseEncryption.encryptionMethods", EncryptionMethod::parse),
+            algorithmsSupported = readNonEmptySet(
+                "issuer.credentialResponseEncryption.algorithmsSupported",
+                JWEAlgorithm::parse,
+            ),
+            encryptionMethods = readNonEmptySet(
+                "issuer.credentialResponseEncryption.encryptionMethods",
+                EncryptionMethod::parse,
+            ),
         )
 }
+
+private fun Environment.readRequiredUrl(key: String): HttpsUrl =
+    getRequiredProperty(key).let(HttpsUrl::unsafe)
 
 private fun <T> Environment.readNonEmptySet(key: String, f: (String) -> T?): NonEmptySet<T> {
     val nonEmptySet = getRequiredProperty<MutableSet<String>>(key)

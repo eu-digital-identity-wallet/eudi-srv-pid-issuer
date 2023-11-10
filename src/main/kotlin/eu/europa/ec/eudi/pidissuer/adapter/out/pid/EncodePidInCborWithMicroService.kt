@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
+import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -32,15 +33,12 @@ import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
 import org.springframework.web.reactive.function.client.awaitExchange
 import java.io.StringWriter
-import java.net.URL
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 private val log = LoggerFactory.getLogger(EncodePidInCborWithMicroService::class.java)
 
-class EncodePidInCborWithMicroService(
-    private val creatorUrl: URL,
-) : EncodePidInCbor {
+class EncodePidInCborWithMicroService(private val creatorUrl: HttpsUrl) : EncodePidInCbor {
 
     init {
         log.info("Initialized using: $creatorUrl")
@@ -54,9 +52,10 @@ class EncodePidInCborWithMicroService(
                 configurer.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
                 configurer.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
                 configurer.defaultCodecs().enableLoggingRequestDetails(true)
-            }.baseUrl(creatorUrl.toExternalForm())
+            }.baseUrl(creatorUrl.externalForm)
             .build()
     }
+
     override suspend fun invoke(
         pid: Pid,
         pidMetaData: PidMetaData,

@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.NonEmptyList
+import arrow.core.raise.either
 import arrow.core.toNonEmptyListOrNull
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.JOSEObjectType
@@ -37,7 +38,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
-import org.junit.jupiter.api.assertDoesNotThrow
 import java.security.cert.X509Certificate
 import java.time.Clock
 import java.util.*
@@ -46,11 +46,10 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 
 @OptIn(ExperimentalCoroutinesApi::class)
-internal class ValidateJwtProofWithNimbusTest {
+internal class ValidateJwtProofTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.systemDefaultZone()
-    private val validate = ValidateJwtProofWithNimbus(issuer)
 
     @Test
     internal fun `proof validation fails with incorrect 'typ'`() = runTest {
@@ -61,13 +60,15 @@ internal class ValidateJwtProofWithNimbusTest {
                 type(JOSEObjectType.JWT)
                 jwk(key.toPublicJWK())
             }
-
-        val result = validate(
-            UnvalidatedProof.Jwt(signedJwt.serialize()),
-            nonce,
-            checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
-        )
-        assertTrue { result.isFailure }
+        val result = either {
+            validateJwtProof(
+                issuer,
+                UnvalidatedProof.Jwt(signedJwt.serialize()),
+                nonce,
+                checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
+            )
+        }
+        assert(result.isLeft())
     }
 
     @Test
@@ -76,12 +77,15 @@ internal class ValidateJwtProofWithNimbusTest {
         val nonce = generateCNonce()
         val signedJwt = generateSignedJwt(key, nonce)
 
-        val result = validate(
-            UnvalidatedProof.Jwt(signedJwt.serialize()),
-            nonce,
-            checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
-        )
-        assertTrue { result.isFailure }
+        val result = either {
+            validateJwtProof(
+                issuer,
+                UnvalidatedProof.Jwt(signedJwt.serialize()),
+                nonce,
+                checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
+            )
+        }
+        assert(result.isLeft())
     }
 
     @Test
@@ -94,12 +98,15 @@ internal class ValidateJwtProofWithNimbusTest {
             x509CertChain(chain.map { Base64.encode(it.encoded) })
         }
 
-        val result = validate(
-            UnvalidatedProof.Jwt(signedJwt.serialize()),
-            nonce,
-            checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
-        )
-        assertTrue { result.isFailure }
+        val result = either {
+            validateJwtProof(
+                issuer,
+                UnvalidatedProof.Jwt(signedJwt.serialize()),
+                nonce,
+                checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
+            )
+        }
+        assertTrue { result.isLeft() }
     }
 
     @Test
@@ -112,15 +119,20 @@ internal class ValidateJwtProofWithNimbusTest {
                 x509CertChain(chain.map { Base64.encode(it.encoded) })
             }
 
-        val result = validate(
-            UnvalidatedProof.Jwt(signedJwt.serialize()),
-            nonce,
-            checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
+        either {
+            validateJwtProof(
+                issuer,
+                UnvalidatedProof.Jwt(signedJwt.serialize()),
+                nonce,
+                checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
+            )
+        }.fold(
+            ifLeft = { fail("Unexpected $it") },
+            ifRight = { credentialKey ->
+                val x5c = assertIs<CredentialKey.X5c>(credentialKey, "expected 'x5c' credential key")
+                assertEquals(chain, x5c.chain)
+            },
         )
-
-        val credentialKey = assertDoesNotThrow { result.getOrThrow() }
-        val x5c = assertIs<CredentialKey.X5c>(credentialKey, "expected 'x5c' credential key")
-        assertEquals(chain, x5c.chain)
     }
 
     @Test
@@ -132,15 +144,20 @@ internal class ValidateJwtProofWithNimbusTest {
                 jwk(key.toPublicJWK())
             }
 
-        val result = validate(
-            UnvalidatedProof.Jwt(signedJwt.serialize()),
-            nonce,
-            checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
+        either {
+            validateJwtProof(
+                issuer,
+                UnvalidatedProof.Jwt(signedJwt.serialize()),
+                nonce,
+                checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
+            )
+        }.fold(
+            ifLeft = { fail("Unexpected $it") },
+            ifRight = { credentialKey ->
+                val jwk = assertIs<CredentialKey.Jwk>(credentialKey, "expected 'jwk' credential key")
+                assertEquals(key.toPublicJWK(), jwk.value)
+            },
         )
-
-        val credentialKey = assertDoesNotThrow { result.getOrThrow() }
-        val jwk = assertIs<CredentialKey.Jwk>(credentialKey, "expected 'jwk' credential key")
-        assertEquals(key.toPublicJWK(), jwk.value)
     }
 
     @Test
@@ -153,12 +170,15 @@ internal class ValidateJwtProofWithNimbusTest {
                 jwk(incorrectKey.toPublicJWK())
             }
 
-        val result = validate(
-            UnvalidatedProof.Jwt(signedJwt.serialize()),
-            nonce,
-            checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
-        )
-        assertTrue { result.isFailure }
+        val result = either {
+            validateJwtProof(
+                issuer,
+                UnvalidatedProof.Jwt(signedJwt.serialize()),
+                nonce,
+                checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
+            )
+        }
+        assertTrue { result.isLeft() }
     }
 
     @Test
@@ -171,12 +191,15 @@ internal class ValidateJwtProofWithNimbusTest {
                 x509CertChain(incorrectKey.toPublicJWK().x509CertChain)
             }
 
-        val result = validate(
-            UnvalidatedProof.Jwt(signedJwt.serialize()),
-            nonce,
-            checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
-        )
-        assertTrue { result.isFailure }
+        val result = either {
+            validateJwtProof(
+                issuer,
+                UnvalidatedProof.Jwt(signedJwt.serialize()),
+                nonce,
+                checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
+            )
+        }
+        assertTrue { result.isLeft() }
     }
 
     private fun generateCNonce(): CNonce =
