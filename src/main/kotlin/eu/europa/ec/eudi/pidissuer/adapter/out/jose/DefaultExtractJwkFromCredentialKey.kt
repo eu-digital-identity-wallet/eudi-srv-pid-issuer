@@ -19,7 +19,7 @@ import arrow.core.raise.result
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
 
-class DefaultExtractJwkFromCredentialKey : ExtractJwkFromCredentialKey {
+object DefaultExtractJwkFromCredentialKey : ExtractJwkFromCredentialKey {
     override suspend fun invoke(key: CredentialKey): Result<JWK> =
         result {
             when (key) {

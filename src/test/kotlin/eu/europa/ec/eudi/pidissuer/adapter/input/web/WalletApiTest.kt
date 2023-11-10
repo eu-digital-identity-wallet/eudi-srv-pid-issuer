@@ -340,8 +340,8 @@ private class WalletApiTestConfig {
             )
             val issuingCountry = IsoCountry("GR")
             val pidMetaData = PidMetaData(
-                issuanceDate = DateAndPossiblyTime(LocalDate.now(), null),
-                expiryDate = DateAndPossiblyTime(LocalDate.of(2030, 11, 10), null),
+                issuanceDate = LocalDate.now(),
+                expiryDate = LocalDate.of(2030, 11, 10),
                 documentNumber = null,
                 issuingAuthority = IssuingAuthority.MemberState(issuingCountry),
                 administrativeNumber = null,

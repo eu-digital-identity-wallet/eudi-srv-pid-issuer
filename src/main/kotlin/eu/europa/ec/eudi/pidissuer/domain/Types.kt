@@ -18,9 +18,11 @@ package eu.europa.ec.eudi.pidissuer.domain
 import arrow.core.NonEmptySet
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.JWSAlgorithm
+import org.slf4j.LoggerFactory
 import java.net.MalformedURLException
 import java.net.URL
 import java.util.*
+private val logHttpsUrl = LoggerFactory.getLogger(HttpsUrl::class.java)
 
 @JvmInline
 value class HttpsUrl private constructor(val value: URL) {
@@ -38,7 +40,7 @@ value class HttpsUrl private constructor(val value: URL) {
 
         fun unsafe(url: String): HttpsUrl =
             URL(url).run {
-                println("Warning: using unsafe URL $url")
+                logHttpsUrl.warn("Using unsafe URL $url")
                 HttpsUrl(this)
             }
     }

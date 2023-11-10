@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
-import arrow.core.Either
+import arrow.core.getOrElse
 import arrow.core.raise.*
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
@@ -24,6 +24,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadCNonceByAccessToken
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.UpsertCNonce
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import org.slf4j.LoggerFactory
@@ -248,42 +249,32 @@ class IssueCredential(
     suspend operator fun invoke(
         authorizationContext: AuthorizationContext,
         credentialRequestTO: CredentialRequestTO,
-    ): IssueCredentialResponse {
-        log.info("Handling request for ${credentialRequestTO.format}...")
-        val outcome: Either<IssueCredentialError, Pair<CredentialRequest, CredentialResponse<JsonElement>>> = either {
-            val credentialRequest = credentialRequestTO.toDomain(credentialIssuerMetadata.credentialResponseEncryption)
-            val issueSpecificCredential = issuingSrv(credentialRequest)
-            val expectedScope = issueSpecificCredential.supportedCredential.scope!!
-            ensure(authorizationContext.scopes.contains(expectedScope)) { WrongScope(expectedScope) }
-            val cNonce = loadCNonceByAccessToken(authorizationContext.accessToken, clock)
-            ensureNotNull(cNonce) { MissingProof }
-            val cred = issueSpecificCredential(authorizationContext, credentialRequest, cNonce)
-            credentialRequest to cred
-        }.also { result ->
-            result.fold(
-                ifLeft = { log.warn("Issuance failed: $it") },
-                ifRight = { log.info("Issuance succeed") },
-            )
+    ): IssueCredentialResponse = coroutineScope {
+        either {
+            log.info("Handling issuance request for ${credentialRequestTO.format}..")
+            val request = credentialRequestTO.toDomain(credentialIssuerMetadata.credentialResponseEncryption)
+            val issued = issue(authorizationContext, request)
+            successResponse(authorizationContext, request, issued)
+        }.getOrElse { error ->
+            errorResponse(authorizationContext, error)
         }
+    }
 
-        val newCNonce = genCNonce(authorizationContext.accessToken, clock).also { upsertCNonce(it) }
-        return outcome.fold(
-            ifLeft = { error -> error.toTO(newCNonce) },
-            ifRight = { (req, cred) ->
-                val plain = cred.toTO(req.format, newCNonce)
-                when (val requested = req.credentialResponseEncryption) {
-                    RequestedResponseEncryption.NotRequired -> plain
-                    is RequestedResponseEncryption.Required ->
-                        encryptCredentialResponse(plain, requested)
-                            .map { IssueCredentialResponse.EncryptedJwtIssued(it) }
-                            .getOrElse { InvalidEncryptionParameters(it).toTO(newCNonce) }
-                }
-            },
-        )
+    context(Raise<IssueCredentialError>)
+    private suspend fun issue(
+        authorizationContext: AuthorizationContext,
+        credentialRequest: CredentialRequest,
+    ): CredentialResponse<JsonElement> {
+        val issueSpecificCredential = specificIssuerFor(credentialRequest)
+        val expectedScope = issueSpecificCredential.supportedCredential.scope!!
+        ensure(authorizationContext.scopes.contains(expectedScope)) { WrongScope(expectedScope) }
+        val cNonce = loadCNonceByAccessToken(authorizationContext.accessToken, clock)
+        ensureNotNull(cNonce) { MissingProof }
+        return issueSpecificCredential(authorizationContext, credentialRequest, cNonce)
     }
 
     context(Raise<UnsupportedCredentialType>)
-    private fun issuingSrv(credentialRequest: CredentialRequest): IssueSpecificCredential<JsonElement> {
+    private fun specificIssuerFor(credentialRequest: CredentialRequest): IssueSpecificCredential<JsonElement> {
         val specificIssuer = credentialIssuerMetadata.specificCredentialIssuers
             .find { issuer ->
                 either { credentialRequest.assertIsSupported(issuer.supportedCredential) }.isRight()
@@ -296,6 +287,33 @@ class IssueCredential(
             raise(UnsupportedCredentialType(credentialRequest.format, types))
         }
         return specificIssuer
+    }
+
+    private suspend fun successResponse(
+        authorizationContext: AuthorizationContext,
+        request: CredentialRequest,
+        credential: CredentialResponse<JsonElement>,
+    ): IssueCredentialResponse {
+        val newCNonce = newCNonce(authorizationContext)
+        val plain = credential.toTO(request.format, newCNonce)
+        return when (val encryption = request.credentialResponseEncryption) {
+            RequestedResponseEncryption.NotRequired -> plain
+            is RequestedResponseEncryption.Required -> encryptCredentialResponse(plain, encryption).getOrThrow()
+        }
+    }
+
+    private suspend fun errorResponse(
+        authorizationContext: AuthorizationContext,
+        error: IssueCredentialError,
+    ): IssueCredentialResponse {
+        log.warn("Issuance failed: $error")
+        val newCNonce = newCNonce(authorizationContext)
+        return error.toTO(newCNonce)
+    }
+
+    private suspend fun newCNonce(authorizationContext: AuthorizationContext): CNonce {
+        val newCNonce = genCNonce(authorizationContext.accessToken, clock)
+        return newCNonce.also { upsertCNonce(it) }
     }
 }
 //

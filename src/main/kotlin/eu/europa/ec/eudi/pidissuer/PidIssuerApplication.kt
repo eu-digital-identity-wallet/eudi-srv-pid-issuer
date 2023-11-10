@@ -27,7 +27,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.DefaultExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseWithNimbus
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -63,44 +62,54 @@ import java.util.*
 
 fun beans(clock: Clock) = beans {
     bean { clock }
-    bean(::DefaultExtractJwkFromCredentialKey)
     bean {
         val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl")
 
-        bean { ValidateProof(issuerPublicUrl) }
-
-        val encodePidInCbor = env
-            .readRequiredUrl("issuer.pid.mso_mdoc.encoderUrl")
-            .let(::EncodePidInCborWithMicroService)
-
-        val issueMsoMdocPid = IssueMsoMdocPid(
-            validateProof = ref(),
-            getPidData = ref(),
-            encodePidInCbor = encodePidInCbor,
-        )
-        val issueSdJwtVcPid = IssueSdJwtVcPid(
-            hashAlgorithm = HashAlgorithm.SHA3_256,
-            issuerKey = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate(),
-            getPidData = ref(),
-            clock = clock,
-            signAlg = JWSAlgorithm.ES256,
-            credentialIssuerId = issuerPublicUrl,
-            validateProof = ref(),
-            extractJwkFromCredentialKey = ref(),
-            calculateExpiresAt = { iat -> iat.plusDays(30).toInstant() },
-            calculateNotUseBefore = { iat -> iat.plusSeconds(60).toInstant() },
-        )
-        bean { issueMsoMdocPid }
-        bean { issueSdJwtVcPid }
-        val authorizationServer = env.readRequiredUrl("issuer.authorizationServer")
-        val credentialEndPoint = env.getRequiredProperty("issuer.publicUrl")
-            .run { HttpsUrl.unsafe("$this${WalletApi.CREDENTIAL_ENDPOINT}") }
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
-            credentialEndPoint = credentialEndPoint,
-            authorizationServer = authorizationServer,
+            credentialEndPoint = env.readRequiredUrl("issuer.publicUrl").run {
+                HttpsUrl.unsafe("${this.value}${WalletApi.CREDENTIAL_ENDPOINT}")
+            },
+            authorizationServer = env.readRequiredUrl("issuer.authorizationServer"),
             credentialResponseEncryption = env.credentialResponseEncryption(),
-            specificCredentialIssuers = listOf(issueMsoMdocPid, issueSdJwtVcPid),
+            specificCredentialIssuers = buildList {
+                val enableMsoMdocPid = env.getProperty<Boolean>("issuer.pid.mso_mdoc.enabled") ?: true
+                if (enableMsoMdocPid) {
+                    val issueMsoMdocPid = IssueMsoMdocPid(
+                        credentialIssuerId = issuerPublicUrl,
+                        getPidData = ref(),
+                        encodePidInCbor = env.readRequiredUrl("issuer.pid.mso_mdoc.encoderUrl")
+                            .let(::EncodePidInCborWithMicroService),
+                    )
+                    add(issueMsoMdocPid)
+                }
+                val enableSdJwtVcPid = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.enabled") ?: true
+                if (enableSdJwtVcPid) {
+                    val notUseBefore = env.getProperty("issuer.pid.sd_jwt_vc.notUseBefore")?.let {
+                        runCatching {
+                            Duration.parse(it).takeUnless { it.isZero || it.isNegative }
+                        }.getOrNull()
+                    }
+
+                    val issueSdJwtVcPid = IssueSdJwtVcPid(
+                        hashAlgorithm = HashAlgorithm.SHA3_256,
+                        issuerKey = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate(),
+                        getPidData = ref(),
+                        clock = clock,
+                        signAlg = JWSAlgorithm.ES256,
+                        credentialIssuerId = issuerPublicUrl,
+                        extractJwkFromCredentialKey = DefaultExtractJwkFromCredentialKey,
+                        calculateExpiresAt = { iat -> iat.plusDays(30).toInstant() },
+                        calculateNotUseBefore = notUseBefore?.let { duration ->
+                            {
+                                    iat ->
+                                iat.plusSeconds(duration.seconds).toInstant()
+                            }
+                        },
+                    )
+                    add(issueSdJwtVcPid)
+                }
+            },
         )
     }
 
@@ -108,9 +117,11 @@ fun beans(clock: Clock) = beans {
     // Adapters (out ports)
     //
     bean {
-        val userinfoEndpoint = env.readRequiredUrl("issuer.authorizationServer.userinfo")
-        val issuingCountry = env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry)
-        GetPidDataFromAuthServer(userinfoEndpoint, issuingCountry, clock)
+        GetPidDataFromAuthServer(
+            env.readRequiredUrl("issuer.authorizationServer.userinfo"),
+            env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
+            clock,
+        )
     }
     bean {
         GenCNonce { accessToken, clock ->
@@ -125,7 +136,7 @@ fun beans(clock: Clock) = beans {
         bean { repo.loadCNonceByAccessToken }
     }
     bean {
-        EncryptCredentialResponseWithNimbus(ref<CredentialIssuerMetaData>().id, ref())
+        EncryptCredentialResponseWithNimbus(ref<CredentialIssuerMetaData>().id, clock)
     }
 
     //
@@ -229,7 +240,9 @@ private fun Environment.credentialResponseEncryption(): CredentialResponseEncryp
 }
 
 private fun Environment.readRequiredUrl(key: String): HttpsUrl =
-    getRequiredProperty(key).let(HttpsUrl::unsafe)
+    getRequiredProperty(key).let { url ->
+        HttpsUrl.of(url) ?: HttpsUrl.unsafe(url)
+    }
 
 private fun <T> Environment.readNonEmptySet(key: String, f: (String) -> T?): NonEmptySet<T> {
     val nonEmptySet = getRequiredProperty<MutableSet<String>>(key)

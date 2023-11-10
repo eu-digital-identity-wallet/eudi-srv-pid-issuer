@@ -23,5 +23,5 @@ fun interface EncryptCredentialResponse {
     operator fun invoke(
         response: IssueCredentialResponse.PlainTO,
         parameters: RequestedResponseEncryption.Required,
-    ): Result<String>
+    ): Result<IssueCredentialResponse.EncryptedJwtIssued>
 }

@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.LocalTime
 import java.time.Year
 
 @JvmInline
@@ -45,6 +44,9 @@ value class UniqueId(val value: String)
  */
 @JvmInline
 value class IsoCountry(val value: String)
+
+@JvmInline
+value class Street(val value: String)
 
 @JvmInline
 value class State(val value: String)
@@ -104,6 +106,7 @@ data class Pid(
     val birthCountry: IsoCountry? = null,
     val birthState: State? = null,
     val birthCity: City? = null,
+    val residentStreet: Street? = null,
     val residentCountry: IsoCountry? = null,
     val residentState: State? = null,
     val residentCity: City? = null,
@@ -118,15 +121,6 @@ data class Pid(
                 "Given ageBirthYear = ${year.value} is not equal to year of birthDate $birthDate"
             }
         }
-    }
-}
-
-data class DateAndPossiblyTime(val date: LocalDate, val time: LocalTime?) {
-    constructor(date: LocalDate) : this(date = date, time = null)
-
-    companion object {
-        fun of(year: Int, month: Int, dayOfMonth: Int): DateAndPossiblyTime =
-            DateAndPossiblyTime(LocalDate.of(year, month, dayOfMonth))
     }
 }
 
@@ -174,8 +168,8 @@ typealias IsoCountrySubdivision = String
  * @param issuingJurisdiction
  */
 data class PidMetaData(
-    val issuanceDate: DateAndPossiblyTime,
-    val expiryDate: DateAndPossiblyTime,
+    val issuanceDate: LocalDate,
+    val expiryDate: LocalDate,
     val issuingAuthority: IssuingAuthority,
     val documentNumber: DocumentNumber? = null,
     val administrativeNumber: AdministrativeNumber? = null,
@@ -184,7 +178,7 @@ data class PidMetaData(
     val portrait: Portrait? = null,
 ) {
     init {
-        require(issuanceDate.date.isBefore(expiryDate.date)) { "Issuance date should be before expiry date" }
+        require(issuanceDate.isBefore(expiryDate)) { "Issuance date should be before expiry date" }
         if (issuingAuthority is IssuingAuthority.MemberState) {
             require(issuingAuthority.code == issuingCountry) {
                 "IssuanceAuthority ${issuingAuthority.code.value} should be the same with issuingCountry = ${issuingCountry.value}"

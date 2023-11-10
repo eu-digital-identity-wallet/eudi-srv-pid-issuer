@@ -117,7 +117,7 @@ internal class EncryptCredentialResponseWithNimbusTest {
             )
         }
 
-        val claims = runCatching { processor.process(encrypted, null) }.getOrElse { fail(it.message, it) }
+        val claims = runCatching { processor.process(encrypted.jwt, null) }.getOrElse { fail(it.message, it) }
         val credential = claims.getClaim("credential")
             ?.let {
                 when (it) {

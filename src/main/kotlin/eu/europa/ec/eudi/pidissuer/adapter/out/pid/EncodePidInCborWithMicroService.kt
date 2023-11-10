@@ -16,13 +16,11 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import com.nimbusds.jose.jwk.ECKey
-import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
 import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
-import org.bouncycastle.openssl.jcajce.JcaPEMWriter
 import org.bouncycastle.util.io.pem.PemObject
 import org.bouncycastle.util.io.pem.PemWriter
 import org.slf4j.LoggerFactory
@@ -81,16 +79,6 @@ class EncodePidInCborWithMicroService(private val creatorUrl: HttpsUrl) : Encode
 }
 
 @OptIn(ExperimentalEncodingApi::class)
-internal fun CredentialKey.X5c.base64EncodedPem(): String {
-    val stringWriter = StringWriter()
-    JcaPEMWriter(stringWriter).use {
-        it.writeObject(certificate)
-    }
-    val pem = stringWriter.toString()
-    return Base64.UrlSafe.encode(pem.toByteArray())
-}
-
-@OptIn(ExperimentalEncodingApi::class)
 fun ECKey.base64EncodedPem(): String {
     val output = StringWriter()
     PemWriter(output).use { pemWriter ->
@@ -126,8 +114,8 @@ internal fun createMsoMdocReq(
                 put("is_over_18", pid.ageOver18)
                 pid.ageBirthYear?.let { put("age_birth_year", it.value) }
                 put("unique_id", pid.uniqueId.value)
-                put("issuance_date", pidMetaData.issuanceDate.date.toString())
-                put("expiry_date", pidMetaData.expiryDate.date.toString())
+                put("issuance_date", pidMetaData.issuanceDate.toString())
+                put("expiry_date", pidMetaData.expiryDate.toString())
                 when (val issuingAuthority = pidMetaData.issuingAuthority) {
                     is IssuingAuthority.MemberState -> put("issuing_authority", issuingAuthority.code.value)
                     is IssuingAuthority.AdministrativeAuthority -> put("issuing_authority", issuingAuthority.value)

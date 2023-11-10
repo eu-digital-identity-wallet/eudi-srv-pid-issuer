@@ -47,13 +47,14 @@ class EncryptCredentialResponseWithNimbus(
     override fun invoke(
         response: IssueCredentialResponse.PlainTO,
         parameters: RequestedResponseEncryption.Required,
-    ): Result<String> = runCatching {
+    ): Result<IssueCredentialResponse.EncryptedJwtIssued> = runCatching {
         val jweHeader = parameters.asHeader()
         val jwtClaimSet = response.asJwtClaimSet(clock.instant())
 
-        EncryptedJWT(jweHeader, jwtClaimSet)
+        val jwt = EncryptedJWT(jweHeader, jwtClaimSet)
             .apply { encrypt(parameters.encryptionJwk) }
             .serialize()
+        IssueCredentialResponse.EncryptedJwtIssued(jwt)
     }
 
     private fun RequestedResponseEncryption.Required.asHeader() =

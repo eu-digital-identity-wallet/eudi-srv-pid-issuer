@@ -54,8 +54,8 @@ class EncodePidInCborWithMicroServiceTest {
             uniqueId = UniqueId("86b73c6c-7542-4923-a986-97d2cdf7f07a"),
         )
         val pidMetaData = PidMetaData(
-            issuanceDate = DateAndPossiblyTime.of(2023, 7, 19),
-            expiryDate = DateAndPossiblyTime.of(2023, 8, 19),
+            issuanceDate = LocalDate.of(2023, 7, 19),
+            expiryDate = LocalDate.of(2023, 8, 19),
             issuingAuthority = IssuingAuthority.AdministrativeAuthority("Some authority"),
             issuingCountry = IsoCountry("FC"),
         )

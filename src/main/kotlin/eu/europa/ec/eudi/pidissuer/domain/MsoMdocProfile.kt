@@ -25,12 +25,8 @@ import arrow.core.raise.ensureNotNull
 typealias MsoDocType = String
 typealias MsoNameSpace = String
 typealias MsoMdocAttributeName = String
-
-data class MsoMdocAttribute<out V>(val name: MsoMdocAttributeName, val value: V)
-
 const val MSO_MDOC_FORMAT_VALUE = "mso_mdoc"
 val MSO_MDOC_FORMAT = Format(MSO_MDOC_FORMAT_VALUE)
-
 typealias MsoClaims = Map<MsoNameSpace, List<AttributeDetails>>
 
 /**
@@ -43,7 +39,6 @@ data class MsoMdocMetaData(
     override val display: List<CredentialDisplay> = emptyList(),
     val msoClaims: MsoClaims = emptyMap(),
 ) : CredentialMetaData {
-
     override val format: Format = MSO_MDOC_FORMAT
 }
 
@@ -75,9 +70,3 @@ internal fun MsoMdocCredentialRequest.validate(meta: MsoMdocMetaData) {
         }
     }
 }
-
-/**
- * An MsoMdoc Issued Credential.
- */
-@JvmInline
-value class MsoMdocIssuedCredential(val credential: ByteArray)

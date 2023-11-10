@@ -15,11 +15,14 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
+import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAddressClaim
+import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAssurancePlaceOfBirth
 import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.client.WebClient
@@ -49,17 +52,17 @@ class GetPidDataFromAuthServer(
         return pid(userInfo)
     }
 
-    private suspend fun userInfo(accessToken: String): JsonObject =
+    private suspend fun userInfo(accessToken: String): UserInfo =
         webClient.get().accept(MediaType.APPLICATION_JSON)
             .headers { headers -> headers.setBearerAuth(accessToken) }
             .retrieve()
-            .awaitBody<JsonObject>()
+            .awaitBody<UserInfo>()
 
     private fun genPidMetaData(): PidMetaData {
         val issuanceDate = LocalDate.now(clock)
         return PidMetaData(
-            expiryDate = issuanceDate.plusDays(100).asDateAndPossiblyTime(),
-            issuanceDate = issuanceDate.asDateAndPossiblyTime(),
+            expiryDate = issuanceDate.plusDays(100),
+            issuanceDate = issuanceDate,
             issuingCountry = issuerCountry,
             issuingAuthority = IssuingAuthority.AdministrativeAuthority(" Foo bat administrative authority"),
             documentNumber = null,
@@ -69,23 +72,38 @@ class GetPidDataFromAuthServer(
         )
     }
 
-    private fun pid(json: JsonObject): Pair<Pid, PidMetaData>? = runCatching {
-        requireNotNull(json["family_name"]) { "Missing family_name" }
-        requireNotNull(json["given_name"]) { "Missing given_name" }
-        requireNotNull(json["sub"]) { "Missing sub" }
-
+    private fun pid(userInfo: UserInfo): Pair<Pid, PidMetaData> {
         val pid = Pid(
-            familyName = FamilyName(json["family_name"]!!.jsonPrimitive.content),
-            givenName = GivenName(json["given_name"]!!.jsonPrimitive.content),
-            birthDate = LocalDate.now(),
-            ageOver18 = true,
-            uniqueId = UniqueId(json["sub"]!!.jsonPrimitive.content),
+            familyName = FamilyName(userInfo.familyName),
+            givenName = GivenName(userInfo.givenName),
+            birthDate = LocalDate.parse(userInfo.birthDate),
+            ageOver18 = userInfo.ageOver18 ?: false,
+            gender = userInfo.gender?.let { IsoGender(it) },
+            uniqueId = UniqueId(userInfo.sub),
+            residentCountry = userInfo.address?.country?.let { IsoCountry(it) },
+            residentState = userInfo.address?.region?.let { State(it) },
+            residentPostalCode = userInfo.address?.postalCode?.let { PostalCode(it) },
+            residentCity = userInfo.address?.locality?.let { City(it) },
+            residentStreet = userInfo.address?.street?.let { Street(it) },
+            birthCity = userInfo.placeOfBirth?.locality?.let { City(it) },
+            birthCountry = userInfo.placeOfBirth?.country?.let { IsoCountry(it) },
+            birthState = userInfo.placeOfBirth?.region?.let { State(it) },
         )
 
         val pidMetaData = genPidMetaData()
 
         return pid to pidMetaData
-    }.getOrNull()
+    }
 }
 
-private fun LocalDate.asDateAndPossiblyTime(): DateAndPossiblyTime = DateAndPossiblyTime(this, null)
+@Serializable
+private data class UserInfo(
+    @Required @SerialName("family_name") val familyName: String,
+    @Required @SerialName("given_name") val givenName: String,
+    @Required val sub: String,
+    @SerialName(OidcAddressClaim.NAME) val address: OidcAddressClaim? = null,
+    @SerialName("birthdate") val birthDate: String? = null,
+    @SerialName("gender") val gender: UInt? = null,
+    @SerialName(OidcAssurancePlaceOfBirth.NAME)val placeOfBirth: OidcAssurancePlaceOfBirth? = null,
+    @SerialName("age_over_18") val ageOver18: Boolean? = null,
+)

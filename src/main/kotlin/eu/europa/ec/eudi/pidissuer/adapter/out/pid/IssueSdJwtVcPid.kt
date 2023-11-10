@@ -25,6 +25,8 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProof
+import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.pid.Printer.prettyPrint
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
@@ -35,7 +37,9 @@ import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
+import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.time.Instant
 import java.time.ZonedDateTime
@@ -44,19 +48,6 @@ import java.util.*
 val PidSdJwtVcScope: Scope = Scope("${PID_DOCTYPE}_vc_sd_jwt")
 
 private object Attributes {
-    val FamilyName = AttributeDetails(
-        name = "family_name",
-        display = mapOf(Locale.ENGLISH to "Current Family Name"),
-    )
-    val GivenName = AttributeDetails(
-        name = "given_name",
-        display = mapOf(Locale.ENGLISH to "Current First Names"),
-    )
-
-    val BirthDate = AttributeDetails(
-        name = "birthdate",
-        display = mapOf(Locale.ENGLISH to "Date of Birth"),
-    )
 
     val BirthDateYear = AttributeDetails(
         name = "birthdate_year",
@@ -71,65 +62,25 @@ private object Attributes {
         name = "age_in_years",
         display = mapOf(Locale.ENGLISH to "The subject’s current age in years."),
     )
-    val UniqueId = AttributeDetails(
-        name = "sub",
-        mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Unique Identifier"),
-    )
 
-    val PlaceOfBirth = AttributeDetails(
-        name = "place_of_birth",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "The country, region, and locality"),
-    )
-
-    val Gender = AttributeDetails(
-        name = "gender",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "PID User’s gender, using a value as defined in ISO/IEC 5218."),
-    )
-
-    val Nationalities = AttributeDetails(
-        name = "nationalities",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Array of nationalities"),
-    )
-
-    val Address = AttributeDetails(
-        name = "address",
-        mandatory = false,
-        display = mapOf(
-            Locale.ENGLISH to "Resident country, region, locality and postal_code",
-        ),
-    )
     val IssuanceDate = AttributeDetails(
         name = "issuance_date",
         mandatory = true,
     )
-    val BirthFamilyName = AttributeDetails(
-        name = "birth_family_name",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Last name(s) or surname(s) of the PID User at the time of birth."),
-    )
-    val BirthGivenName = AttributeDetails(
-        name = "birth_given_name",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "First name(s), including middle name(s), of the PID User at the time of birth."),
-    )
 
     val pidAttributes = listOf(
-        FamilyName,
-        GivenName,
-        BirthDate,
-        BirthFamilyName,
-        BirthGivenName,
+        OidcFamilyName,
+        OidcGivenName,
+        OidcBirthDate,
+        OidcAddressClaim.attribute,
+        OidcSub,
+        OidcGender,
+        OidcAssuranceNationalities,
+        OidcAssuranceBirthFamilyName,
+        OidcAssuranceBirthGivenName,
         AgeOver18,
         AgeInYears,
-        UniqueId,
-        PlaceOfBirth,
-        Gender,
-        Nationalities,
-        Address,
+        OidcAssurancePlaceOfBirth.attribute,
         IssuanceDate,
         BirthDateYear,
     )
@@ -176,45 +127,58 @@ fun selectivelyDisclosed(
         exp(exp.epochSecond)
         cnf(holderPubKey)
         plain("vct", PidSdJwtVcV1.type.value)
-        plain(Attributes.UniqueId.name, pid.uniqueId.value)
+        plain(OidcSub.name, pid.uniqueId.value)
 
         //
         // Selectively Disclosed claims
         //
         // https://openid.net/specs/openid-connect-4-identity-assurance-1_0.html#section-4
         sd(Attributes.IssuanceDate.name, pidMetaData.issuanceDate.toString())
-        sd(Attributes.GivenName.name, pid.givenName.value)
-        sd(Attributes.FamilyName.name, pid.familyName.value)
-        sd(Attributes.BirthDate.name, pid.birthDate.toString())
+        sd(OidcGivenName.name, pid.givenName.value)
+        sd(OidcFamilyName.name, pid.familyName.value)
+        sd(OidcBirthDate.name, pid.birthDate.toString())
         sd(Attributes.AgeOver18.name, pid.ageOver18)
-        pid.gender?.let { sd(Attributes.Gender.name, it.value.toInt()) }
-        pid.nationality?.let { sd(Attributes.Nationalities.name, JsonArray(listOf(JsonPrimitive(it.value)))) }
+        // TODO
+        //  Here we need a mapping in OIDC gender can be male, female on null
+        //  In PID the use iso
+        pid.gender?.let { sd(OidcGender.name, it.value.toInt()) }
+        pid.nationality?.let { sd(OidcAssuranceNationalities.name, JsonArray(listOf(JsonPrimitive(it.value)))) }
         pid.ageBirthYear?.let { sd(Attributes.AgeInYears.name, it.value) }
         pid.ageBirthYear?.let { sd(Attributes.BirthDateYear.name, it.value.toString()) }
-        pid.familyNameBirth?.let { sd(Attributes.BirthFamilyName.name, it.value) }
-        pid.givenNameBirth?.let { sd(Attributes.BirthGivenName.name, it.value) }
-        if (pid.birthCountry != null || pid.birthState != null || pid.birthCity != null) {
-            sd {
-                putJsonObject(Attributes.PlaceOfBirth.name) {
-                    pid.birthCountry?.let { put("country", it.value) }
-                    pid.birthState?.let { put("region", it.value) }
-                    pid.birthCity?.let { put("locality", it.value) }
-                }
-            }
-        }
-        // https://openid.net/specs/openid-connect-core-1_0.html#AddressClaim
-        if (pid.residentCountry != null || pid.residentState != null ||
-            pid.residentCity != null || pid.residentPostalCode != null
-        ) {
-            sd {
-                putJsonObject(Attributes.Address.name) {
-                    pid.residentCountry?.let { put("country", it.value) }
-                    pid.residentState?.let { put("region", it.value) }
-                    pid.residentCity?.let { put("locality", it.value) }
-                    pid.residentPostalCode?.let { put("postal_code", it.value) }
-                }
-            }
-        }
+        pid.familyNameBirth?.let { sd(OidcAssuranceBirthFamilyName.name, it.value) }
+        pid.givenNameBirth?.let { sd(OidcAssuranceBirthGivenName.name, it.value) }
+        placeOfBirth(pid)
+        addressClaim(pid)
+    }
+}
+
+context (SdObjectBuilder)
+private fun placeOfBirth(pid: Pid) {
+    if (pid.birthCountry != null || pid.birthState != null || pid.birthCity != null) {
+        val placeOfBirth = OidcAssurancePlaceOfBirth(
+            country = pid.birthCountry?.value,
+            region = pid.residentState?.value,
+            locality = pid.residentCity?.value,
+        )
+        sd(OidcAssurancePlaceOfBirth.attribute.name, Json.encodeToJsonElement(placeOfBirth))
+    }
+}
+
+context (SdObjectBuilder)
+private fun addressClaim(pid: Pid) {
+    if (
+        pid.residentCountry != null || pid.residentState != null ||
+        pid.residentCity != null || pid.residentPostalCode != null ||
+        pid.residentStreet != null
+    ) {
+        val address = OidcAddressClaim(
+            country = pid.residentCountry?.value,
+            region = pid.residentState?.value,
+            locality = pid.residentCity?.value,
+            postalCode = pid.residentPostalCode?.value,
+            street = pid.residentStreet?.value,
+        )
+        sd(OidcAddressClaim.attribute.name, Json.encodeToJsonElement(address))
     }
 }
 
@@ -228,13 +192,16 @@ class IssueSdJwtVcPid(
     private val signAlg: JWSAlgorithm,
     private val issuerKey: ECKey,
     private val getPidData: GetPidData,
-    private val validateProof: ValidateProof,
     private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
     private val calculateExpiresAt: TimeDependant<Instant>,
     private val calculateNotUseBefore: TimeDependant<Instant>?,
 ) : IssueSpecificCredential<JsonElement> {
+
+    private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
     override val supportedCredential: CredentialMetaData
         get() = PidSdJwtVcV1
+
+    private val validateProof = ValidateProof(credentialIssuerId)
 
     context(Raise<IssueCredentialError>)
     override suspend fun invoke(
@@ -242,6 +209,7 @@ class IssueSdJwtVcPid(
         request: CredentialRequest,
         expectedCNonce: CNonce,
     ): CredentialResponse<JsonElement> = coroutineScope {
+        log.info("Handling issuance request ...")
         val holderPubKey = async(Dispatchers.Default) { holderPubKey(request, expectedCNonce) }
         val pidData = async { getPidData(authorizationContext) }
         val (pid, pidMetaData) = pidData.await()
@@ -261,9 +229,13 @@ class IssueSdJwtVcPid(
             exp = calculateExpiresAt(at),
             nbf = calculateNotUseBefore?.let { calculate -> calculate(at) },
         )
-        val issuedSdJwt = issuer.issue(sdJwtSpec).getOrElse {
+        val issuedSdJwt: SdJwt.Issuance<SignedJWT> = issuer.issue(sdJwtSpec).getOrElse {
             raise(Unexpected("Error while creating SD-JWT", it))
         }
+        if (log.isInfoEnabled) {
+            log.info(issuedSdJwt.prettyPrint())
+        }
+
         return issuedSdJwt.serialize()
     }
 
@@ -299,5 +271,25 @@ class IssueSdJwtVcPid(
             keyID(issuerKey.keyID)
             type(JOSEObjectType("vc+sd-jwt"))
         }
+    }
+}
+
+private object Printer {
+    val json = Json { prettyPrint = true }
+    private fun JsonElement.pretty(): String = json.encodeToString(this)
+    fun SdJwt.Issuance<SignedJWT>.prettyPrint(): String {
+        var str = "\nSD-JWT with ${disclosures.size} disclosures\n"
+        disclosures.forEach { d ->
+            val kind = when (d) {
+                is Disclosure.ArrayElement -> "\t - ArrayEntry ${d.claim().value().pretty()}"
+                is Disclosure.ObjectProperty -> "\t - ObjectProperty ${d.claim().first} = ${d.claim().second}"
+            }
+            str += kind + "\n"
+        }
+        str += "SD-JWT payload\n"
+        str += json.parseToJsonElement(jwt.jwtClaimsSet.toString()).run {
+            json.encodeToString(this)
+        }
+        return str
     }
 }

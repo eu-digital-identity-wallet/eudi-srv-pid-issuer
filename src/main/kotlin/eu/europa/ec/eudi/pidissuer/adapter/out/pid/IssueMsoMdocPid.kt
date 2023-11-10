@@ -31,6 +31,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
+import org.slf4j.LoggerFactory
 import java.util.*
 
 val PidMsoMdocScope: Scope = Scope("${PID_DOCTYPE}_${MSO_MDOC_FORMAT.value}")
@@ -163,11 +164,14 @@ private fun pidNameSpace(v: Int?): MsoNameSpace = pidDocType(v)
  * Service for issuing PID MsoMdoc credential
  */
 class IssueMsoMdocPid(
-    private val validateProof: ValidateProof,
+    credentialIssuerId: CredentialIssuerId,
     private val getPidData: GetPidData,
     private val encodePidInCbor: EncodePidInCbor,
 ) : IssueSpecificCredential<JsonElement> {
 
+    private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
+
+    private val validateProof = ValidateProof(credentialIssuerId)
     override val supportedCredential: CredentialMetaData
         get() = PidMsoMdocV1
 
@@ -177,10 +181,13 @@ class IssueMsoMdocPid(
         request: CredentialRequest,
         expectedCNonce: CNonce,
     ): CredentialResponse<JsonElement> = coroutineScope {
+        log.info("Handling issuance request ...")
         val holderPubKey = async(Dispatchers.Default) { holderPubKey(request, expectedCNonce) }
         val pidData = async { getPidData(authorizationContext) }
         val (pid, pidMetaData) = pidData.await()
-        val cbor = encodePidInCbor(pid, pidMetaData, holderPubKey.await())
+        val cbor = encodePidInCbor(pid, pidMetaData, holderPubKey.await()).also {
+            log.info("Issued $it")
+        }
         CredentialResponse.Issued(JsonPrimitive(cbor))
     }
 
