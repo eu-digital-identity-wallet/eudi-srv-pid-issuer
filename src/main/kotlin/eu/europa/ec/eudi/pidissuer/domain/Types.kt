@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory
 import java.net.MalformedURLException
 import java.net.URL
 import java.util.*
+
 private val logHttpsUrl = LoggerFactory.getLogger(HttpsUrl::class.java)
 
 @JvmInline
@@ -99,20 +100,17 @@ sealed interface CryptographicBindingMethod {
     data class DidAnyMethod(val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>) : CryptographicBindingMethod
 }
 
-fun CryptographicBindingMethod.methodName(): String = when (this) {
-    is CryptographicBindingMethod.Jwk -> "jwk"
-    is CryptographicBindingMethod.CoseKey -> "cose_key"
-    is CryptographicBindingMethod.Mso -> "mso"
-    is CryptographicBindingMethod.DidMethod -> "did:$didMethod"
-    is CryptographicBindingMethod.DidAnyMethod -> "DID"
-}
-
 fun CryptographicBindingMethod.cryptographicSuitesSupported() = when (this) {
     is CryptographicBindingMethod.CoseKey -> cryptographicSuitesSupported
     is CryptographicBindingMethod.DidAnyMethod -> cryptographicSuitesSupported
     is CryptographicBindingMethod.DidMethod -> cryptographicSuitesSupported
     is CryptographicBindingMethod.Jwk -> cryptographicSuitesSupported
     is CryptographicBindingMethod.Mso -> cryptographicSuitesSupported
+}
+
+enum class ProofType {
+    JWT,
+    CWT,
 }
 
 /**
@@ -124,6 +122,7 @@ sealed interface CredentialMetaData {
     val scope: Scope?
     val display: List<CredentialDisplay>
     val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod>
+    val proofTypesSupported: Set<ProofType>
 }
 
 fun CredentialMetaData.cryptographicSuitesSupported(): NonEmptySet<JWSAlgorithm> =

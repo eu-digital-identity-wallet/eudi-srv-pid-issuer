@@ -33,6 +33,7 @@ data class JwtVcJsonMetaData(
     override val scope: Scope? = null,
     val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>,
     override val display: List<CredentialDisplay>,
+    override val proofTypesSupported: Set<ProofType>,
 ) : CredentialMetaData {
     override val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod>
         get() = listOf(CryptographicBindingMethod.Mso(cryptographicSuitesSupported))

@@ -25,6 +25,7 @@ import arrow.core.raise.ensureNotNull
 typealias MsoDocType = String
 typealias MsoNameSpace = String
 typealias MsoMdocAttributeName = String
+
 const val MSO_MDOC_FORMAT_VALUE = "mso_mdoc"
 val MSO_MDOC_FORMAT = Format(MSO_MDOC_FORMAT_VALUE)
 typealias MsoClaims = Map<MsoNameSpace, List<AttributeDetails>>
@@ -38,6 +39,7 @@ data class MsoMdocMetaData(
     override val scope: Scope? = null,
     override val display: List<CredentialDisplay> = emptyList(),
     val msoClaims: MsoClaims = emptyMap(),
+    override val proofTypesSupported: Set<ProofType>,
 ) : CredentialMetaData {
     override val format: Format = MSO_MDOC_FORMAT
 }

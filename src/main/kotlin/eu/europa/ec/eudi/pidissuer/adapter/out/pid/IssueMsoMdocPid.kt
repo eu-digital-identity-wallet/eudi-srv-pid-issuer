@@ -147,6 +147,7 @@ val PidMsoMdocV1: MsoMdocMetaData = run {
             CryptographicBindingMethod.Jwk(algorithms),
         ),
         scope = PidMsoMdocScope,
+        proofTypesSupported = setOf(ProofType.JWT),
     )
 }
 

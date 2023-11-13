@@ -36,6 +36,7 @@ data class SdJwtVcMetaData(
     override val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod> = emptyList(),
     override val display: List<CredentialDisplay>,
     val claims: List<AttributeDetails>,
+    override val proofTypesSupported: Set<ProofType>,
 ) : CredentialMetaData {
     override val format: Format = SD_JWT_VC_FORMAT
 }

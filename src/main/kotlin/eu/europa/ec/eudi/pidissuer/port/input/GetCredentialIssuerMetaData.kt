@@ -73,12 +73,30 @@ private fun credentialMetaDataJson(d: CredentialMetaData): JsonObject = buildJso
     putJsonArray("cryptographic_suites_supported") {
         addAll(d.cryptographicSuitesSupported().map { it.name })
     }
+    putJsonArray("proof_types_supported") {
+        addAll(d.proofTypesSupported.map { it.proofTypeName() })
+    }
     when (d) {
         is JwtVcJsonMetaData -> TODO()
         is MsoMdocMetaData -> d.toTransferObject(false)(this)
         is SdJwtVcMetaData -> d.toTransferObject(false)(this)
     }
 }
+
+private fun CryptographicBindingMethod.methodName(): String =
+    when (this) {
+        is CryptographicBindingMethod.Jwk -> "jwk"
+        is CryptographicBindingMethod.CoseKey -> "cose_key"
+        is CryptographicBindingMethod.Mso -> "mso"
+        is CryptographicBindingMethod.DidMethod -> "did:$didMethod"
+        is CryptographicBindingMethod.DidAnyMethod -> "DID"
+    }
+
+private fun ProofType.proofTypeName(): String =
+    when (this) {
+        ProofType.JWT -> "jwt"
+        ProofType.CWT -> "cwt"
+    }
 
 @OptIn(ExperimentalSerializationApi::class)
 internal fun MsoMdocMetaData.toTransferObject(isOffer: Boolean): JsonObjectBuilder.() -> Unit = {

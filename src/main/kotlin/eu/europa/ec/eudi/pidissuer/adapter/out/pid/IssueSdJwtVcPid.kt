@@ -99,6 +99,7 @@ val PidSdJwtVcV1: SdJwtVcMetaData = SdJwtVcMetaData(
         ),
     ),
     scope = PidSdJwtVcScope,
+    proofTypesSupported = setOf(ProofType.JWT),
 )
 
 typealias TimeDependant<F> = (ZonedDateTime) -> F
