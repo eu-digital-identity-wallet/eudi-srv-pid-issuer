@@ -94,6 +94,9 @@ fun beans(clock: Clock) = beans {
                         }.getOrNull()
                     }
 
+                    val sdOption = env.getProperty<SelectiveDisclosureOption>("issuer.pid.sd_jwt_vc.complexObjectsSdOption")
+                        ?: SelectiveDisclosureOption.Structured
+
                     val issueSdJwtVcPid = IssueSdJwtVcPid(
                         hashAlgorithm = HashAlgorithm.SHA3_256,
                         issuerKey = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate(),
@@ -109,6 +112,7 @@ fun beans(clock: Clock) = beans {
                                 iat.plusSeconds(duration.seconds).toInstant()
                             }
                         },
+                        sdOption = sdOption,
                     )
                     add(issueSdJwtVcPid)
                 }

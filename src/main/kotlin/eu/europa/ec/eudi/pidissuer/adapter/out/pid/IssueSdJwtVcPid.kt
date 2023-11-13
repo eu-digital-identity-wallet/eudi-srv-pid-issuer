@@ -104,6 +104,10 @@ val PidSdJwtVcV1: SdJwtVcMetaData = SdJwtVcMetaData(
 
 typealias TimeDependant<F> = (ZonedDateTime) -> F
 
+enum class SelectiveDisclosureOption {
+    Flat, Structured, Recursive
+}
+
 fun selectivelyDisclosed(
     pid: Pid,
     pidMetaData: PidMetaData,
@@ -112,6 +116,7 @@ fun selectivelyDisclosed(
     iat: ZonedDateTime,
     exp: Instant,
     nbf: Instant?,
+    sdOption: SelectiveDisclosureOption,
 ): SdObject {
     require(exp.epochSecond > iat.toInstant().epochSecond) { "exp should be after iat" }
     nbf?.let {
@@ -128,7 +133,7 @@ fun selectivelyDisclosed(
         exp(exp.epochSecond)
         cnf(holderPubKey)
         plain("vct", PidSdJwtVcV1.type.value)
-        plain(OidcSub.name, pid.uniqueId.value)
+        sub(pid.uniqueId.value)
 
         //
         // Selectively Disclosed claims
@@ -148,25 +153,35 @@ fun selectivelyDisclosed(
         pid.ageBirthYear?.let { sd(Attributes.BirthDateYear.name, it.value.toString()) }
         pid.familyNameBirth?.let { sd(OidcAssuranceBirthFamilyName.name, it.value) }
         pid.givenNameBirth?.let { sd(OidcAssuranceBirthGivenName.name, it.value) }
-        placeOfBirth(pid)
-        addressClaim(pid)
+        placeOfBirth(pid, sdOption)
+        addressClaim(pid, sdOption)
     }
 }
 
 context (SdObjectBuilder)
-private fun placeOfBirth(pid: Pid) {
+private fun placeOfBirth(pid: Pid, sdOption: SelectiveDisclosureOption) {
     if (pid.birthCountry != null || pid.birthState != null || pid.birthCity != null) {
         val placeOfBirth = OidcAssurancePlaceOfBirth(
             country = pid.birthCountry?.value,
             region = pid.residentState?.value,
             locality = pid.residentCity?.value,
         )
-        sd(OidcAssurancePlaceOfBirth.attribute.name, Json.encodeToJsonElement(placeOfBirth))
+        val placeOfBirthJson = Json.encodeToJsonElement(placeOfBirth)
+        when (sdOption) {
+            SelectiveDisclosureOption.Flat ->
+                sd(OidcAssurancePlaceOfBirth.NAME, placeOfBirthJson)
+
+            SelectiveDisclosureOption.Structured ->
+                structured(OidcAssurancePlaceOfBirth.NAME) { sd(placeOfBirthJson) }
+
+            SelectiveDisclosureOption.Recursive ->
+                recursive(OidcAssurancePlaceOfBirth.NAME) { sd(placeOfBirthJson) }
+        }
     }
 }
 
 context (SdObjectBuilder)
-private fun addressClaim(pid: Pid) {
+private fun addressClaim(pid: Pid, sdOption: SelectiveDisclosureOption) {
     if (
         pid.residentCountry != null || pid.residentState != null ||
         pid.residentCity != null || pid.residentPostalCode != null ||
@@ -179,7 +194,18 @@ private fun addressClaim(pid: Pid) {
             postalCode = pid.residentPostalCode?.value,
             street = pid.residentStreet?.value,
         )
-        sd(OidcAddressClaim.attribute.name, Json.encodeToJsonElement(address))
+
+        val addressJson = Json.encodeToJsonElement(address)
+        when (sdOption) {
+            SelectiveDisclosureOption.Flat ->
+                sd(OidcAddressClaim.NAME, addressJson)
+
+            SelectiveDisclosureOption.Structured ->
+                structured(OidcAddressClaim.NAME) { sd(addressJson) }
+
+            SelectiveDisclosureOption.Recursive ->
+                recursive(OidcAddressClaim.NAME) { sd(addressJson) }
+        }
     }
 }
 
@@ -196,6 +222,7 @@ class IssueSdJwtVcPid(
     private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
     private val calculateExpiresAt: TimeDependant<Instant>,
     private val calculateNotUseBefore: TimeDependant<Instant>?,
+    private val sdOption: SelectiveDisclosureOption,
 ) : IssueSpecificCredential<JsonElement> {
 
     private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
@@ -229,6 +256,7 @@ class IssueSdJwtVcPid(
             iat = at,
             exp = calculateExpiresAt(at),
             nbf = calculateNotUseBefore?.let { calculate -> calculate(at) },
+            sdOption = sdOption,
         )
         val issuedSdJwt: SdJwt.Issuance<SignedJWT> = issuer.issue(sdJwtSpec).getOrElse {
             raise(Unexpected("Error while creating SD-JWT", it))
