@@ -98,6 +98,7 @@ sealed interface CredentialRequestTO {
     @Serializable
     @SerialName(MSO_MDOC_FORMAT_VALUE)
     data class MsoMdoc(
+        @Required override val format: FormatTO = FormatTO.MsoMdoc,
         @SerialName("doctype") @Required
         val docType: String,
         val claims: Map<String, Map<String, JsonObject>>? = null,
@@ -109,13 +110,17 @@ sealed interface CredentialRequestTO {
         @SerialName("credential_response_encryption_enc")
         override val credentialResponseEncryptionMethod: String? = null,
     ) : CredentialRequestTO {
-        override val format: FormatTO = FormatTO.MsoMdoc
+        init {
+            require(format == FormatTO.MsoMdoc)
+        }
     }
 
     @Serializable
     @SerialName(SD_JWT_VC_FORMAT_VALUE)
     data class SdJwtVc(
-        @Required @SerialName("credential_definition") val credentialDefinition: SdJwtVcCredentialDefinition,
+        @Required override val format: FormatTO = FormatTO.SdJwtVc,
+        @SerialName("credential_definition") @Required
+        val credentialDefinition: SdJwtVcCredentialDefinition,
         override val proof: ProofTo? = null,
         @SerialName("credential_encryption_jwk")
         override val credentialResponseEncryptionKey: JsonObject? = null,
@@ -124,7 +129,9 @@ sealed interface CredentialRequestTO {
         @SerialName("credential_response_encryption_enc")
         override val credentialResponseEncryptionMethod: String? = null,
     ) : CredentialRequestTO {
-        override val format: FormatTO = FormatTO.SdJwtVc
+        init {
+            require(format == FormatTO.SdJwtVc)
+        }
     }
 }
 

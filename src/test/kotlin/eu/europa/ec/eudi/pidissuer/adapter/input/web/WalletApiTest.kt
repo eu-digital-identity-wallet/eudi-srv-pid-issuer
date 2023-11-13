@@ -15,21 +15,33 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
+import com.nimbusds.jose.JOSEObjectType
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.JWSHeader
+import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.jwk.Curve
+import com.nimbusds.jose.jwk.ECKey
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator
+import com.nimbusds.jwt.JWTClaimsSet
+import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.PidIssuerApplicationTest
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
+import eu.europa.ec.eudi.pidissuer.domain.CNonce
+import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
+import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.Scope
-import eu.europa.ec.eudi.pidissuer.port.input.CredentialErrorTypeTo
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
+import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenCNonce
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -52,7 +64,7 @@ import java.time.Month
 import java.util.*
 import kotlin.test.*
 
-@PidIssuerApplicationTest(classes = [WalletApiTestConfig::class])
+@PidIssuerApplicationTest(classes = [WalletApiTest.WalletApiTestConfig::class])
 @OptIn(ExperimentalCoroutinesApi::class)
 @TestPropertySource(properties = ["issuer.credentialResponseEncryption.required=false"])
 internal class WalletApiTest {
@@ -68,6 +80,9 @@ internal class WalletApiTest {
 
     @Autowired
     private lateinit var genCNonce: GenCNonce
+
+    @Autowired
+    private lateinit var credentialIssuerMetadata: CredentialIssuerMetaData
 
     private fun client(): WebTestClient =
         WebTestClient.bindToApplicationContext(applicationContext)
@@ -89,7 +104,7 @@ internal class WalletApiTest {
         client().post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(request)
+            .bodyValue(request())
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isUnauthorized()
@@ -137,13 +152,6 @@ internal class WalletApiTest {
      */
     @Test
     fun `fails when proof is not provided`() = runTest {
-        val request = """
-            {
-              "format": "mso_mdoc",
-              "doctype": "eu.europa.ec.eudiw.pid.1"
-            }
-        """.trimIndent()
-
         val (principal, token) = bearerTokenAuthenticationPrincipal(clock = clock)
 
         val response = client()
@@ -151,7 +159,7 @@ internal class WalletApiTest {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(request)
+            .bodyValue(request(null))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
@@ -189,7 +197,7 @@ internal class WalletApiTest {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(request)
+            .bodyValue(request())
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
@@ -224,7 +232,7 @@ internal class WalletApiTest {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(request)
+            .bodyValue(request())
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
@@ -253,18 +261,22 @@ internal class WalletApiTest {
      * Verifies response values.
      */
     @Test
-    @Ignore // TODO The test is currently ignored, it doesn't provide a proper proof
     fun `issuance success`() = runTest {
         val (principal, token) = bearerTokenAuthenticationPrincipal(clock = clock)
         val previousCNonce = genCNonce(token.tokenValue, clock)
         cNonceRepository.upsertCNonce(previousCNonce)
+
+        val key = ECKeyGenerator(Curve.P_256).generate()
+        val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, key) {
+            jwk(key.toPublicJWK())
+        }
 
         val response = client()
             .mutateWith(mockOpaqueToken().principal(principal))
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(request)
+            .bodyValue(request(proof))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk()
@@ -276,10 +288,43 @@ internal class WalletApiTest {
         assertNotEquals(previousCNonce, newCNonce)
 
         val issuedCredential = assertIs<JsonPrimitive>(response.credential)
-        assertTrue(issuedCredential.isString)
+        assertEquals("PID", issuedCredential.contentOrNull)
         assertNull(response.transactionId)
         assertEquals(newCNonce.nonce, response.nonce)
         assertEquals(newCNonce.expiresIn.seconds, response.nonceExpiresIn)
+    }
+
+    @TestConfiguration
+    internal class WalletApiTestConfig {
+
+        @Bean
+        @Primary
+        fun getPidData(): GetPidData =
+            GetPidData {
+                val pid = Pid(
+                    familyName = FamilyName("Surname"),
+                    givenName = GivenName("Firstname"),
+                    birthDate = LocalDate.of(1989, Month.AUGUST, 22),
+                    ageOver18 = true,
+                    uniqueId = UniqueId(UUID.randomUUID().toString()),
+                )
+                val issuingCountry = IsoCountry("GR")
+                val pidMetaData = PidMetaData(
+                    issuanceDate = LocalDate.now(),
+                    expiryDate = LocalDate.of(2030, 11, 10),
+                    documentNumber = null,
+                    issuingAuthority = IssuingAuthority.MemberState(issuingCountry),
+                    administrativeNumber = null,
+                    issuingCountry = issuingCountry,
+                    issuingJurisdiction = null,
+                    portrait = null,
+                )
+                pid to pidMetaData
+            }
+
+        @Bean
+        @Primary
+        fun encodePidInCbor(): EncodePidInCbor = EncodePidInCbor { _, _, _ -> "PID" }
     }
 }
 
@@ -309,46 +354,32 @@ private fun bearerTokenAuthenticationPrincipal(
     ) to OAuth2AccessToken(TokenType.BEARER, "token", issuedAt, (issuedAt + expiresIn))
 }
 
-// FIXME
-//  The request doesn't include a correct proof.
-//  We need to build a function for creating a JWT proof using x5c
-private val request =
-    """
-        {
-          "format": "mso_mdoc",
-          "doctype": "eu.europa.ec.eudiw.pid.1",
-          "proof": {
-            "proof_type": "jwt",
-            "jwt": "123321231"
-          }
-        }
-    """.trimIndent()
+private fun request(
+    proof: ProofTo? = ProofTo(type = ProofTypeTO.JWT, jwt = "123456"),
+): CredentialRequestTO.MsoMdoc =
+    CredentialRequestTO.MsoMdoc(
+        docType = "eu.europa.ec.eudiw.pid.1",
+        proof = proof,
+    )
 
-@Configuration
-private class WalletApiTestConfig {
+private fun jwtProof(
+    audience: CredentialIssuerId,
+    clock: Clock,
+    nonce: CNonce,
+    key: ECKey,
+    headerCustomizer: JWSHeader.Builder.() -> Unit = { },
+): ProofTo {
+    val header = JWSHeader.Builder(JWSAlgorithm.ES256)
+        .type(JOSEObjectType("openid4vci-proof+jwt"))
+        .apply(headerCustomizer)
+        .build()
+    val claims = JWTClaimsSet.Builder()
+        .audience(audience.externalForm)
+        .issueTime(Date.from(clock.instant()))
+        .claim("nonce", nonce.nonce)
+        .build()
+    val jwt = SignedJWT(header, claims)
+    jwt.sign(ECDSASigner(key))
 
-    @Bean
-    @Primary
-    fun getPidData(): GetPidData =
-        GetPidData {
-            val pid = Pid(
-                familyName = FamilyName("Surname"),
-                givenName = GivenName("Firstname"),
-                birthDate = LocalDate.of(1989, Month.AUGUST, 22),
-                ageOver18 = true,
-                uniqueId = UniqueId(UUID.randomUUID().toString()),
-            )
-            val issuingCountry = IsoCountry("GR")
-            val pidMetaData = PidMetaData(
-                issuanceDate = LocalDate.now(),
-                expiryDate = LocalDate.of(2030, 11, 10),
-                documentNumber = null,
-                issuingAuthority = IssuingAuthority.MemberState(issuingCountry),
-                administrativeNumber = null,
-                issuingCountry = issuingCountry,
-                issuingJurisdiction = null,
-                portrait = null,
-            )
-            pid to pidMetaData
-        }
+    return ProofTo(type = ProofTypeTO.JWT, jwt = jwt.serialize())
 }

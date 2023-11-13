@@ -65,6 +65,10 @@ fun beans(clock: Clock) = beans {
     bean {
         val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl")
 
+        bean {
+            EncodePidInCborWithMicroService(env.readRequiredUrl("issuer.pid.mso_mdoc.encoderUrl"))
+        }
+
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
             credentialEndPoint = env.readRequiredUrl("issuer.publicUrl").run {
@@ -78,8 +82,7 @@ fun beans(clock: Clock) = beans {
                     val issueMsoMdocPid = IssueMsoMdocPid(
                         credentialIssuerId = issuerPublicUrl,
                         getPidData = ref(),
-                        encodePidInCbor = env.readRequiredUrl("issuer.pid.mso_mdoc.encoderUrl")
-                            .let(::EncodePidInCborWithMicroService),
+                        encodePidInCbor = ref(),
                     )
                     add(issueMsoMdocPid)
                 }
