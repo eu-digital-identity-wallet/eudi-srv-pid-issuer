@@ -94,8 +94,23 @@ testing {
     }
 }
 
+springBoot {
+    buildInfo()
+}
+
 tasks.named<BootBuildImage>("bootBuildImage") {
     imageName.set("$group/${project.name}")
+    publish.set(false)
+    docker {
+        publishRegistry {
+            url = System.getenv("REGISTRY_URL")
+            username = System.getenv("REGISTRY_USERNAME")
+            password = System.getenv("REGISTRY_PASSWORD")
+        }
+    }
+    // get the BP_OCI_* from env, for https://github.com/paketo-buildpacks/image-labels
+    // get the BP_JVM_* from env, jlink optimisation
+    environment.set(System.getenv())
 }
 
 spotless {
