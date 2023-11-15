@@ -20,7 +20,7 @@ and requires the use of a suitable OAUTH2 server.
 | [Credential Endpoint](#credential-endpoint)               | Yes, including proofs, encryption, repeatable invocations |
 | [Credential Issuer MetaData](#credential-issuer-metadata) | Yes, using `scopes`                                       | 
 | Batch Endpoint                                            | No                                                        | 
-| Deferred Endpoint                                         | No                                                        |
+| Deferred Endpoint                                         | Yes                                                       |
 | Proof                                                     | Yes JWT (`jwk`, `x5c`) , CWT not supported                |
 
 

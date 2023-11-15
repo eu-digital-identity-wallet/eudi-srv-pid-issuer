@@ -31,7 +31,7 @@ Content-Type: application/json
 GET {{issuer_publicUrl}}/.well-known/jwks.json
 
 > {%
-    client.test("Request executed successfully", function() {
+    client.test("Request executed successfully", function () {
         client.assert(response.status === 200, "Response status is not 200");
     });
     client.global.set("keys", response.body.keys);
@@ -42,11 +42,12 @@ GET {{issuer_publicUrl}}/.well-known/jwks.json
 GET {{issuer_publicUrl}}/.well-known/openid-credential-issuer
 
 > {%
-    client.test("Request executed successfully", function() {
+    client.test("Request executed successfully", function () {
         client.assert(response.status === 200, "Response status is not 200");
     });
     client.global.set("issuer_authorizationServer", response.body.authorization_server);
     client.global.set("credential_endpoint", response.body.credential_endpoint)
+    client.global.set("deferred_credential_endpoint", response.body.deferred_credential_endpoint)
 %}
 
 ### Get sample credentilas offer
@@ -61,7 +62,7 @@ GET {{issuer_authorizationServer}}/.well-known/openid-configuration
 Accept: application/json
 
 > {%
-    client.test("Request executed successfully", function() {
+    client.test("Request executed successfully", function () {
         client.assert(response.status === 200, "Response status is not 200");
     });
     client.global.set("token_endpoint", response.body.token_endpoint);
@@ -73,9 +74,13 @@ Accept: application/json
 POST {{token_endpoint}}
 Content-Type: application/x-www-form-urlencoded
 
-grant_type=password&username={{user_username}}&password={{user_password}}&scope={{request_scope}}&client_id={{user_client_id}}
+grant_type = password &
+username = {{user_username}} &
+password = {{user_password}} &
+scope = {{request_scope}} &
+client_id = {{user_client_id}}
 > {%
-    client.test("Request executed successfully", function() {
+    client.test("Request executed successfully", function () {
         client.assert(response.status === 200, "Response status is not 200");
     });
     client.global.set("id_token", response.body.id_token);
@@ -127,15 +132,17 @@ Authorization: Bearer {{access_token}}
   },
   "proof": {
     "proof_type": "jwt",
-    "jwt":"eyJraWQiOiJkaWQ6ZXhhbXBsZTplYmZlYjFmNzEyZWJjNmYxYzI3NmUxMmVjMjEva2V5cy8xIiwiYWxnIjoiRVMyNTYiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJzNkJoZFJrcXQzIiwiYXVkIjoiaHR0cHM6Ly9zZXJ2ZXIuZXhhbXBsZS5jb20iLCJpYXQiOiIyMDE4LTA5LTE0VDIxOjE5OjEwWiIsIm5vbmNlIjoidFppZ25zbkZicCJ9.ewdkIkPV50iOeBUqMXCC_aZKPxgihac0aW9EkL1nOzM"
+    "jwt": "eyJraWQiOiJkaWQ6ZXhhbXBsZTplYmZlYjFmNzEyZWJjNmYxYzI3NmUxMmVjMjEva2V5cy8xIiwiYWxnIjoiRVMyNTYiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJzNkJoZFJrcXQzIiwiYXVkIjoiaHR0cHM6Ly9zZXJ2ZXIuZXhhbXBsZS5jb20iLCJpYXQiOiIyMDE4LTA5LTE0VDIxOjE5OjEwWiIsIm5vbmNlIjoidFppZ25zbkZicCJ9.ewdkIkPV50iOeBUqMXCC_aZKPxgihac0aW9EkL1nOzM"
   }
 }
 
-### Request permission
+### Check deferred
 
-POST {{token_endpoint}}
-Content-Type: application/x-www-form-urlencoded
+POST {{deferred_credential_endpoint}}
+Content-Type: application/json
 Accept: application/json
 Authorization: Bearer {{access_token}}
 
-grant_type=urn:ietf:params:oauth:grant-type:uma-ticket&audience=pid-issuer-srv&permission=credentialEndpoint#issue_pid_mso_mdoc
+{
+"transaction_id" : "foo"
+}

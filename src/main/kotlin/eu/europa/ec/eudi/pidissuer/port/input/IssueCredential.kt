@@ -21,7 +21,7 @@ import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenCNonce
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadCNonceByAccessToken
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.UpsertCNonce
 import kotlinx.coroutines.coroutineScope
@@ -248,7 +248,7 @@ class IssueCredential(
     private val clock: Clock,
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
     private val loadCNonceByAccessToken: LoadCNonceByAccessToken,
-    private val genCNonce: GenCNonce,
+    private val genCNonce: GenerateCNonce,
     private val upsertCNonce: UpsertCNonce,
     private val encryptCredentialResponse: EncryptCredentialResponse,
 ) {
@@ -302,7 +302,7 @@ class IssueCredential(
         credential: CredentialResponse<JsonElement>,
     ): IssueCredentialResponse {
         val newCNonce = newCNonce(authorizationContext)
-        val plain = credential.toTO(request.format, newCNonce)
+        val plain = credential.toTO(newCNonce)
         return when (val encryption = request.credentialResponseEncryption) {
             RequestedResponseEncryption.NotRequired -> plain
             is RequestedResponseEncryption.Required -> encryptCredentialResponse(plain, encryption).getOrThrow()
@@ -415,7 +415,7 @@ private fun CredentialResponseEncryptionTO.toDomain(
     }
 }
 
-fun CredentialResponse<JsonElement>.toTO(format: Format, nonce: CNonce): IssueCredentialResponse.PlainTO =
+fun CredentialResponse<JsonElement>.toTO(nonce: CNonce): IssueCredentialResponse.PlainTO =
     when (this) {
         is CredentialResponse.Issued ->
             IssueCredentialResponse.PlainTO(

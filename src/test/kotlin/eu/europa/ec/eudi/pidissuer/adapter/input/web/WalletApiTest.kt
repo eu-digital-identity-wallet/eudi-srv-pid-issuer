@@ -32,7 +32,7 @@ import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.port.input.*
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenCNonce
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateCNonce
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -79,7 +79,7 @@ internal class WalletApiTest {
     private lateinit var cNonceRepository: InMemoryCNonceRepository
 
     @Autowired
-    private lateinit var genCNonce: GenCNonce
+    private lateinit var generateCNonce: GenerateCNonce
 
     @Autowired
     private lateinit var credentialIssuerMetadata: CredentialIssuerMetaData
@@ -263,7 +263,7 @@ internal class WalletApiTest {
     @Test
     fun `issuance success`() = runTest {
         val (principal, token) = bearerTokenAuthenticationPrincipal(clock = clock)
-        val previousCNonce = genCNonce(token.tokenValue, clock)
+        val previousCNonce = generateCNonce(token.tokenValue, clock)
         cNonceRepository.upsertCNonce(previousCNonce)
 
         val key = ECKeyGenerator(Curve.P_256).generate()

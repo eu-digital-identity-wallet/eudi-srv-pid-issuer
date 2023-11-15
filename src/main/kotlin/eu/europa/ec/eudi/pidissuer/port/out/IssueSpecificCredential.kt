@@ -19,6 +19,10 @@ import arrow.core.raise.Raise
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreDeferredCredential
+import kotlinx.serialization.json.JsonElement
+import org.slf4j.LoggerFactory
 
 interface IssueSpecificCredential<out T> {
 
@@ -30,4 +34,33 @@ interface IssueSpecificCredential<out T> {
         request: CredentialRequest,
         expectedCNonce: CNonce,
     ): CredentialResponse<T>
+}
+
+fun IssueSpecificCredential<JsonElement>.asDeferred(
+    generateTransactionId: GenerateTransactionId,
+    storeDeferredCredential: StoreDeferredCredential,
+): IssueSpecificCredential<JsonElement> =
+    DeferredIssuer(this, generateTransactionId, storeDeferredCredential)
+
+private class DeferredIssuer(
+    val issuer: IssueSpecificCredential<JsonElement>,
+    val generateTransactionId: GenerateTransactionId,
+    val storeDeferredCredential: StoreDeferredCredential,
+) : IssueSpecificCredential<JsonElement> by issuer {
+
+    private val log = LoggerFactory.getLogger(DeferredIssuer::class.java)
+    context(Raise<IssueCredentialError>) override suspend fun invoke(
+        authorizationContext: AuthorizationContext,
+        request: CredentialRequest,
+        expectedCNonce: CNonce,
+    ): CredentialResponse<JsonElement> {
+        val credentialResponse = issuer.invoke(authorizationContext, request, expectedCNonce)
+        require(credentialResponse is CredentialResponse.Issued<JsonElement>) { "Actual issuer should return issued credentials" }
+
+        val transactionId = generateTransactionId()
+        storeDeferredCredential(transactionId, credentialResponse)
+        return CredentialResponse.Deferred(credentialResponse.format, transactionId).also {
+            log.info("Repackaged $credentialResponse  as $it")
+        }
+    }
 }

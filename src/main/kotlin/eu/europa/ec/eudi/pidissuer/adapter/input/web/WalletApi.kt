@@ -15,16 +15,14 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
+import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import arrow.core.raise.result
 import arrow.core.toNonEmptySetOrNull
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
 import eu.europa.ec.eudi.pidissuer.domain.Scope
-import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
-import eu.europa.ec.eudi.pidissuer.port.input.CredentialRequestTO
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
+import eu.europa.ec.eudi.pidissuer.port.input.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import org.springframework.http.HttpStatus
@@ -40,6 +38,7 @@ private val APPLICATION_JWT = MediaType.parseMediaType("application/jwt")
 
 class WalletApi(
     private val issueCredential: IssueCredential,
+    private val getDeferredCredential: GetDeferredCredential,
     private val getPidData: GetPidData,
 
 ) {
@@ -55,11 +54,16 @@ class WalletApi(
             contentType(MediaType.APPLICATION_JSON) and accept(MediaType.APPLICATION_JSON),
             this@WalletApi::handleHelloHolder,
         )
+        POST(
+            DEFERRED_ENDPOINT,
+            contentType(MediaType.APPLICATION_JSON) and accept(MediaType.APPLICATION_JSON),
+            this@WalletApi::handleGetDeferredCredential,
+        )
     }
 
     private suspend fun handleIssueCredential(req: ServerRequest): ServerResponse {
         val context = req.authorizationContext().getOrThrow()
-        val credentialRequest = req.awaitBody(CredentialRequestTO::class)
+        val credentialRequest = req.awaitBody<CredentialRequestTO>()
         return when (val response = issueCredential(context, credentialRequest)) {
             is IssueCredentialResponse.PlainTO ->
                 ServerResponse
@@ -81,6 +85,14 @@ class WalletApi(
         }
     }
 
+    private suspend fun handleGetDeferredCredential(req: ServerRequest): ServerResponse = coroutineScope {
+        val requestTO = req.awaitBody<DeferredCredentialRequestTO>()
+        either { getDeferredCredential(requestTO) }.fold(
+            ifLeft = { error -> ServerResponse.badRequest().json().bodyValueAndAwait(error) },
+            ifRight = { credential -> ServerResponse.ok().json().bodyValueAndAwait(credential) },
+        )
+    }
+
     private suspend fun handleHelloHolder(req: ServerRequest): ServerResponse = coroutineScope {
         val context = async { req.authorizationContext().getOrThrow() }
         val pid = getPidData(context.await().accessToken)
@@ -90,6 +102,7 @@ class WalletApi(
 
     companion object {
         const val CREDENTIAL_ENDPOINT = "/wallet/credentialEndpoint"
+        const val DEFERRED_ENDPOINT = "/wallet/deferredEndpoint"
     }
 }
 

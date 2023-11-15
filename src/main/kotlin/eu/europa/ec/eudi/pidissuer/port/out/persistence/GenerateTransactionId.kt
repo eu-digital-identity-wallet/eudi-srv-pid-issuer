@@ -15,12 +15,14 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.persistence
 
-import eu.europa.ec.eudi.pidissuer.domain.CNonce
-import java.time.Clock
+import eu.europa.ec.eudi.pidissuer.domain.TransactionId
+import java.util.*
 
-/**
- * Gets the currently active [CNonce] for an Access Token.
- */
-fun interface GenCNonce {
-    suspend operator fun invoke(accessToken: String, clock: Clock): CNonce
+fun interface GenerateTransactionId {
+    suspend operator fun invoke(): TransactionId
+
+    companion object {
+        val Random: GenerateTransactionId =
+            GenerateTransactionId { TransactionId(UUID.randomUUID().toString()) }
+    }
 }

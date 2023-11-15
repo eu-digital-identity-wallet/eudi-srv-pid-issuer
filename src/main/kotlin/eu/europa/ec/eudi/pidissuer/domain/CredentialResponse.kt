@@ -25,15 +25,19 @@ value class TransactionId(val value: String)
  * The response to a Credential Request.
  */
 sealed interface CredentialResponse<out T> {
+    val format: Format
 
     /**
      * An unencrypted Credential has been issued.
      */
-    data class Issued<T>(val credential: T) : CredentialResponse<T>
+    data class Issued<T>(override val format: Format, val credential: T) : CredentialResponse<T>
 
     /**
      * The issuance of the requested Credential has been deferred.
      * The deferred transaction can be identified by [transactionId].
      */
-    data class Deferred(val transactionId: TransactionId) : CredentialResponse<Nothing>
+    data class Deferred(
+        override val format: Format,
+        val transactionId: TransactionId,
+    ) : CredentialResponse<Nothing>
 }

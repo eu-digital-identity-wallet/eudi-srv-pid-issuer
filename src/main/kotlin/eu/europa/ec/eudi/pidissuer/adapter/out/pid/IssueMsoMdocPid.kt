@@ -137,7 +137,10 @@ private val pidAttributes = pidNameSpace(1) to listOf(
 )
 
 val PidMsoMdocV1: MsoMdocMetaData = run {
-    val algorithms = nonEmptySetOf(JWSAlgorithm.ES256)
+    val algorithms = nonEmptySetOf(
+        JWSAlgorithm.RS256,
+        JWSAlgorithm.ES256,
+    )
     MsoMdocMetaData(
         docType = pidDocType(1),
         display = pidDisplay,
@@ -189,7 +192,7 @@ class IssueMsoMdocPid(
         val cbor = encodePidInCbor(pid, pidMetaData, holderPubKey.await()).also {
             log.info("Issued $it")
         }
-        CredentialResponse.Issued(JsonPrimitive(cbor))
+        CredentialResponse.Issued(format = MSO_MDOC_FORMAT, credential = JsonPrimitive(cbor))
     }
 
     context(Raise<IssueCredentialError>)

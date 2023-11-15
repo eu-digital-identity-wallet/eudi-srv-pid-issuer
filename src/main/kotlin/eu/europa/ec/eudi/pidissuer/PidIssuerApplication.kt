@@ -28,12 +28,16 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.DefaultExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
+import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
+import eu.europa.ec.eudi.pidissuer.port.input.GetDeferredCredential
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
 import eu.europa.ec.eudi.pidissuer.port.input.RequestCredentialsOffer
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenCNonce
+import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateCNonce
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -58,10 +62,48 @@ import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.reactive.config.WebFluxConfigurer
 import java.time.Clock
 import java.time.Duration
-import java.util.*
 
 fun beans(clock: Clock) = beans {
+    //
+    // Adapters (out ports)
+    //
     bean { clock }
+    bean {
+        GetPidDataFromAuthServer(
+            env.readRequiredUrl("issuer.authorizationServer.userinfo"),
+            env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
+            clock,
+        )
+    }
+    //
+    // Encryption of credential response
+    //
+    bean(isLazyInit = true) {
+        EncryptCredentialResponseWithNimbus(ref<CredentialIssuerMetaData>().id, clock)
+    }
+    //
+    // CNonce
+    //
+    with(InMemoryCNonceRepository()) {
+        bean { deleteExpiredCNonce }
+        bean { upsertCNonce }
+        bean { loadCNonceByAccessToken }
+        bean { GenerateCNonce.random(Duration.ofMinutes(5L)) }
+        bean { this@with } // this is needed for test
+    }
+
+    //
+    // Deferred Credentials
+    //
+    with(InMemoryDeferredCredentialRepository(mutableMapOf(TransactionId("foo") to null))) {
+        bean { GenerateTransactionId.Random }
+        bean { storeDeferredCredential }
+        bean { loadDeferredCredentialByTransactionId }
+    }
+
+    //
+    // Specific Issuers
+    //
     bean {
         val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl")
 
@@ -74,7 +116,11 @@ fun beans(clock: Clock) = beans {
             credentialEndPoint = env.readRequiredUrl("issuer.publicUrl").run {
                 HttpsUrl.unsafe("${this.value}${WalletApi.CREDENTIAL_ENDPOINT}")
             },
+            deferredCredentialEndpoint = env.readRequiredUrl("issuer.publicUrl").run {
+                HttpsUrl.unsafe("${this.value}${WalletApi.DEFERRED_ENDPOINT}")
+            },
             authorizationServer = env.readRequiredUrl("issuer.authorizationServer"),
+
             credentialResponseEncryption = env.credentialResponseEncryption(),
             specificCredentialIssuers = buildList {
                 val enableMsoMdocPid = env.getProperty<Boolean>("issuer.pid.mso_mdoc.enabled") ?: true
@@ -94,8 +140,9 @@ fun beans(clock: Clock) = beans {
                         }.getOrNull()
                     }
 
-                    val sdOption = env.getProperty<SelectiveDisclosureOption>("issuer.pid.sd_jwt_vc.complexObjectsSdOption")
-                        ?: SelectiveDisclosureOption.Structured
+                    val sdOption =
+                        env.getProperty<SelectiveDisclosureOption>("issuer.pid.sd_jwt_vc.complexObjectsSdOption")
+                            ?: SelectiveDisclosureOption.Structured
 
                     val issueSdJwtVcPid = IssueSdJwtVcPid(
                         hashAlgorithm = HashAlgorithm.SHA3_256,
@@ -114,36 +161,14 @@ fun beans(clock: Clock) = beans {
                         },
                         sdOption = sdOption,
                     )
-                    add(issueSdJwtVcPid)
+                    val deferred = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.deferred") ?: false
+                    add(
+                        if (deferred) issueSdJwtVcPid.asDeferred(ref(), ref())
+                        else issueSdJwtVcPid,
+                    )
                 }
             },
         )
-    }
-
-    //
-    // Adapters (out ports)
-    //
-    bean {
-        GetPidDataFromAuthServer(
-            env.readRequiredUrl("issuer.authorizationServer.userinfo"),
-            env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
-            clock,
-        )
-    }
-    bean {
-        GenCNonce { accessToken, clock ->
-            CNonce(accessToken, UUID.randomUUID().toString(), clock.instant(), Duration.ofMinutes(5L))
-        }
-    }
-    bean {
-        val repo = InMemoryCNonceRepository()
-        bean { repo }
-        bean { repo.deleteExpiredCNonce }
-        bean { repo.upsertCNonce }
-        bean { repo.loadCNonceByAccessToken }
-    }
-    bean {
-        EncryptCredentialResponseWithNimbus(ref<CredentialIssuerMetaData>().id, clock)
     }
 
     //
@@ -154,13 +179,16 @@ fun beans(clock: Clock) = beans {
     bean {
         IssueCredential(clock, ref(), ref(), ref(), ref(), ref())
     }
+    bean {
+        GetDeferredCredential(ref())
+    }
 
     //
     // Routes
     //
     bean {
         val metaDataApi = MetaDataApi(ref())
-        val walletApi = WalletApi(ref(), ref())
+        val walletApi = WalletApi(ref(), ref(), ref())
         val issuerApi = IssuerApi(ref())
         metaDataApi.route.and(issuerApi.route).and(walletApi.route)
     }
@@ -186,6 +214,7 @@ fun beans(clock: Clock) = beans {
         http {
             authorizeExchange {
                 authorize(WalletApi.CREDENTIAL_ENDPOINT, hasAnyAuthority(*scopes.toTypedArray()))
+                authorize(WalletApi.DEFERRED_ENDPOINT, hasAnyAuthority(*scopes.toTypedArray()))
                 authorize(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, permitAll)
                 authorize(MetaDataApi.WELL_KNOWN_JWKS, permitAll)
                 authorize(IssuerApi.CREDENTIALS_OFFER, permitAll)
