@@ -53,7 +53,8 @@ jobs:
           tags: |
             type=semver,pattern=v{{version}}
             type=edge,branch=$repo.default_branch
-
+      - name: Debug
+        run: echo ${{ steps.meta.outputs.json }}
       - name: Build and publish with Gradle Wrapper
         uses: gradle/gradle-build-action@v2.4.2
         if: github.event_name != 'pull_request'
