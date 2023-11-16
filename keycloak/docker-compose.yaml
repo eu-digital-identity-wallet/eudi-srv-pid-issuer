@@ -29,11 +29,10 @@ services:
     image: quay.io/keycloak/keycloak:nightly
     container_name: keycloak
     command:
-      - start
+      - start-dev
       - --import-realm
-      - --http-port=8080
-      - --hostname-url=https://keycloak.local
       - --proxy=edge
+      - --hostname-strict=false
     environment:
       - KC_HEALTH_ENABLED=true
       - KC_METRICS_ENABLED=true
@@ -42,10 +41,11 @@ services:
       - KC_DATABASE=keycloak
       - KC_DB_USERNAME=keycloak
       - KC_DB_PASSWORD=password
+      - KC_SPI_THEME_STATIC_MAX_AGE=-1
+      - KC_SPI_THEME_CACHE_THEMES=false
+      - KC_SPI_THEME_CACHE_TEMPLATES=false
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=password
-      - JAVA_OPTS_APPEND=-Dkeycloak.profile.feature.upload_scripts=enabled
-      - PRINT_ENV=true
     healthcheck:
       test: "bash /opt/keycloak/health-check.sh"
       interval: 5s
@@ -56,8 +56,8 @@ services:
         condition: service_healthy
     volumes:
       - ./keycloak-extra/health-check.sh:/opt/keycloak/health-check.sh
-      - ./keycloak-extra/etc/pki/ca-trust/extracted/java/cacerts:/etc/pki/ca-trust/extracted/java/cacerts
       - ./keycloak-realms/:/opt/keycloak/data/import
+      - ./keycloak-themes/:/opt/keycloak/themes
     networks:
       - default
 

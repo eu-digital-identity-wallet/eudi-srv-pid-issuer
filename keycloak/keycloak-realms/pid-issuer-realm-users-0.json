@@ -1,47 +1,81 @@
 {
-  "realm" : "pid-issuer-realm",
-  "users" : [ {
-    "id" : "57711c26-f0d4-46ad-9bb4-add519025b3d",
-    "createdTimestamp" : 1696267174283,
-    "username" : "babis",
-    "enabled" : true,
-    "totp" : false,
-    "emailVerified" : false,
-    "firstName" : "Babis",
-    "lastName" : "Routis",
-    "attributes" : {
-      "postal_code" : [ "15235" ],
-      "street" : [ "Ethnikis Antistaseos" ]
+  "realm": "pid-issuer-realm",
+  "users": [
+    {
+      "id": "60b8ba5f-c73f-4976-b0da-48d0e53335de",
+      "createdTimestamp": 1700060364127,
+      "username": "tneal",
+      "enabled": true,
+      "totp": false,
+      "email": "tyler.neal@example.com",
+      "emailVerified": true,
+      "firstName": "Tyler",
+      "lastName": "Neal",
+      "attributes": {
+        "gender": [
+          "1"
+        ],
+        "birthdate": [
+          "1955-04-12"
+        ],
+        "age_over_18": [
+          "true"
+        ],
+        "street": [
+          "101 Trauner"
+        ],
+        "locality": [
+          "Gemeinde Biberbach"
+        ],
+        "region": [
+          "Lower Austria"
+        ],
+        "postal_code": [
+          "3331"
+        ],
+        "country": [
+          "AT"
+        ]
+      },
+      "credentials": [
+        {
+          "id": "7af577bf-6f4c-43d7-b6d3-afb88fd32fc3",
+          "type": "password",
+          "userLabel": "My password",
+          "createdDate": 1700060647131,
+          "secretData": "{\"value\":\"egKcJR5bC34qoA0jlkrnq9ncKUet2Fnik+QY3Y7SLXg=\",\"salt\":\"4Fd5FLOSfE52BT3EGjSfTw==\",\"additionalParameters\":{}}",
+          "credentialData": "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
+        }
+      ],
+      "disableableCredentialTypes": [],
+      "requiredActions": [],
+      "realmRoles": [
+        "eid-holder-natural-person"
+      ],
+      "notBefore": 0,
+      "groups": []
     },
-    "credentials" : [ {
-      "id" : "988d2628-7b7c-468a-aef4-416fa5bc76bb",
-      "type" : "password",
-      "userLabel" : "My password",
-      "createdDate" : 1696267200830,
-      "secretData" : "{\"value\":\"MTmpXxXbxjN7Ckj37tZEhuCzFkC6KjjUaZUnnc55nQo=\",\"salt\":\"4Fd5FLOSfE52BT3EGjSfTw==\",\"additionalParameters\":{}}",
-      "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
-    } ],
-    "disableableCredentialTypes" : [ ],
-    "requiredActions" : [ ],
-    "realmRoles" : [ "default-roles-pid-issuer-realm", "eid-holder-natural-person" ],
-    "notBefore" : 0,
-    "groups" : [ ]
-  }, {
-    "id" : "2444bae3-92f9-4cf1-aad2-5163c709e5b0",
-    "createdTimestamp" : 1696266816614,
-    "username" : "service-account-pid-issuer-srv",
-    "enabled" : true,
-    "totp" : false,
-    "emailVerified" : false,
-    "serviceAccountClientId" : "pid-issuer-srv",
-    "credentials" : [ ],
-    "disableableCredentialTypes" : [ ],
-    "requiredActions" : [ ],
-    "realmRoles" : [ "default-roles-pid-issuer-realm" ],
-    "clientRoles" : {
-      "pid-issuer-srv" : [ "uma_protection" ]
-    },
-    "notBefore" : 0,
-    "groups" : [ ]
-  } ]
+    {
+      "id": "cfddc8df-b7b8-4038-a74d-1a6582a84989",
+      "createdTimestamp": 1700060675127,
+      "username": "service-account-pid-issuer-srv",
+      "enabled": true,
+      "totp": false,
+      "emailVerified": false,
+      "serviceAccountClientId": "pid-issuer-srv",
+      "credentials": [],
+      "disableableCredentialTypes": [],
+      "requiredActions": [],
+      "realmRoles": [
+        "default-roles-pid-issuer-realm"
+      ],
+      "clientRoles": {
+        "pid-issuer-srv": [
+          "uma_protection"
+        ]
+      },
+      "notBefore": 0,
+      "groups": []
+    }
+  ]
 }

@@ -101,9 +101,12 @@ private data class UserInfo(
     @Required @SerialName("family_name") val familyName: String,
     @Required @SerialName("given_name") val givenName: String,
     @Required val sub: String,
+    val email: String? = null,
     @SerialName(OidcAddressClaim.NAME) val address: OidcAddressClaim? = null,
     @SerialName("birthdate") val birthDate: String? = null,
     @SerialName("gender") val gender: UInt? = null,
     @SerialName(OidcAssurancePlaceOfBirth.NAME)val placeOfBirth: OidcAssurancePlaceOfBirth? = null,
     @SerialName("age_over_18") val ageOver18: Boolean? = null,
+    val profile: String? = null,
+    val picture: String? = null,
 )

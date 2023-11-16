@@ -26,7 +26,7 @@ Content-Type: application/json
 
 
 
-### Get Isusuer JWK Set
+### Get Issuer JWK Set
 
 GET {{issuer_publicUrl}}/.well-known/jwks.json
 
