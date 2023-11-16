@@ -75,6 +75,6 @@ jobs:
           arguments: |
             build 
             bootBuildImage
-            -Pdocker.tags=${{ teps.meta.outputs.tags }}
+            -Pdocker.tags=${{ steps.meta.outputs.tags }}
             --publishImage
             --full-stacktrace
