@@ -54,7 +54,7 @@ jobs:
             type=semver,pattern=v{{version}}
             type=edge
       - name: Debug
-        run: echo ${{ steps.meta.outputs.json }}
+        run: echo ${{ steps.meta.outputs }}
       - name: Build and publish with Gradle Wrapper
         uses: gradle/gradle-build-action@v2.4.2
         if: github.event_name != 'pull_request'
@@ -75,6 +75,6 @@ jobs:
           arguments: |
             build 
             bootBuildImage
-            -Pdocker.tags=${{ fromJSON(steps.meta.outputs.json).tags }}
+            -Pdocker.tags=${{ teps.meta.outputs.tags }}
             --publishImage
             --full-stacktrace
