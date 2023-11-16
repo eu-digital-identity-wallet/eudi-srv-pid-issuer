@@ -75,6 +75,6 @@ jobs:
           arguments: |
             build 
             bootBuildImage
-            --imageName=${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+            --tags=${{ fromJSON(steps.meta.outputs.json).tags }}
             --publishImage
             --full-stacktrace
