@@ -52,7 +52,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=semver,pattern=v{{version}}
-            type=edge,branch=$repo.default_branch
+            type=edge
       - name: Debug
         run: echo ${{ steps.meta.outputs.json }}
       - name: Build and publish with Gradle Wrapper
