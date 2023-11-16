@@ -31,9 +31,10 @@ services:
     command:
       - start-dev
       - --import-realm
-      - --proxy=edge
-      - --hostname-strict=false
     environment:
+      - KC_PROXY=edge
+      - KC_HTTP_RELATIVE_PATH=/idp
+      - KC_HOSTNAME_STRICT=false
       - KC_HEALTH_ENABLED=true
       - KC_METRICS_ENABLED=true
       - KC_DB=postgres
