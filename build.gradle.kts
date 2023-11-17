@@ -97,7 +97,6 @@ testing {
 springBoot {
     buildInfo()
 }
-
 tasks.named<BootBuildImage>("bootBuildImage") {
     imageName.set("$group/${project.name}")
     publish.set(false)
