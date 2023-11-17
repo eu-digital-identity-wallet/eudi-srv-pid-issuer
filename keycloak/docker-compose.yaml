@@ -16,8 +16,6 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - default
-    ports:
-      - "0.0.0.0:5432:5432"
     healthcheck:
       test: "exit 0"
     environment:
@@ -62,6 +60,30 @@ services:
     networks:
       - default
 
+  pid-issuer:
+    image: ghcr.io/eu-digital-identity-wallet/eudi-srv-pid-issuer:edge
+    pull_policy: always
+    container_name: pid-issuer
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    command:
+      - --spring.webflux.base-path=/pid-issuer
+      - --issuer.publicUrl=https://localhost/pid-issuer
+      - --issuer.authorizationServer.publicUrl=https://localhost/idp/realms/pid-issuer-realm
+      - --issuer.authorizationServer=http://keycloak:8080/idp/realms/pid-issuer-realm
+      - --issuer.authorizationServer.introspection=http://keycloak:8080/idp/realms/pid-issuer-realm/protocol/openid-connect/token/introspect
+      - --issuer.authorizationServer.userinfo=http://keycloak:8080/idp/realms/pid-issuer-realm/protocol/openid-connect/userinfo
+      - --issuer.pid.mso_mdoc.enabled=true
+      - --issuer.pid.mso_mdoc.encoderUrl=https://preprod.issuer.eudiw.dev/formatter/cbor
+      - --issuer.pid.sd_jwt_vc.enabled=true
+      - --issuer.pid.sd_jwt_vc.deferred=true
+      - --issuer.pid.issuingCountry=FC
+      - --spring.security.oauth2.resourceserver.opaquetoken.client-id=pid-issuer-srv
+      - --spring.security.oauth2.resourceserver.opaquetoken.client-secret=zIKAV9DIIIaJCzHCVBPlySgU8KgY68U2
+    networks:
+      - default
+
   haproxy:
     image: haproxy:2.8.3
     container_name: haproxy
@@ -71,6 +93,8 @@ services:
     depends_on:
       keycloak:
         condition: service_healthy
+      pid-issuer:
+        condition: service_started
     volumes:
       - ./haproxy/haproxy.conf:/usr/local/etc/haproxy/haproxy.cfg
       - ./haproxy/certs/:/etc/ssl/certs/
