@@ -32,7 +32,11 @@ services:
     environment:
       - KC_PROXY=edge
       - KC_HTTP_RELATIVE_PATH=/idp
+      - KC_HOSTNAME=localhost
       - KC_HOSTNAME_STRICT=false
+      - KC_HOSTNAME_STRICT_BACKCHANNEL=false
+      - KC_HTTPS_CERTIFICATE_FILE=/etc/ssl/certs/keycloak.tls.crt
+      - KC_HTTPS_CERTIFICATE_KEY_FILE=/etc/ssl/certs/keycloak.tls.key
       - KC_HEALTH_ENABLED=true
       - KC_METRICS_ENABLED=true
       - KC_DB=postgres
@@ -57,6 +61,7 @@ services:
       - ./keycloak-extra/health-check.sh:/opt/keycloak/health-check.sh
       - ./keycloak-realms/:/opt/keycloak/data/import
       - ./keycloak-themes/:/opt/keycloak/themes
+      - ./keycloak-certs/:/etc/ssl/certs/
     networks:
       - default
 
@@ -68,12 +73,12 @@ services:
       keycloak:
         condition: service_healthy
     command:
+      - --spring.profiles.active=insecure
       - --spring.webflux.base-path=/pid-issuer
       - --issuer.publicUrl=https://localhost/pid-issuer
       - --issuer.authorizationServer.publicUrl=https://localhost/idp/realms/pid-issuer-realm
-      - --issuer.authorizationServer=http://keycloak:8080/idp/realms/pid-issuer-realm
-      - --issuer.authorizationServer.introspection=http://keycloak:8080/idp/realms/pid-issuer-realm/protocol/openid-connect/token/introspect
-      - --issuer.authorizationServer.userinfo=http://keycloak:8080/idp/realms/pid-issuer-realm/protocol/openid-connect/userinfo
+      - --issuer.authorizationServer.introspection=https://keycloak:8443/idp/realms/pid-issuer-realm/protocol/openid-connect/token/introspect
+      - --issuer.authorizationServer.userinfo=https://keycloak:8443/idp/realms/pid-issuer-realm/protocol/openid-connect/userinfo
       - --issuer.pid.mso_mdoc.enabled=true
       - --issuer.pid.mso_mdoc.encoderUrl=https://preprod.issuer.eudiw.dev/formatter/cbor
       - --issuer.pid.sd_jwt_vc.enabled=true
