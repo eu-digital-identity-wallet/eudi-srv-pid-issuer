@@ -30,6 +30,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseWit
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.webclient.WebClients
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.port.input.GetDeferredCredential
@@ -42,6 +43,7 @@ import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties
 import org.springframework.boot.runApplication
 import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.support.BeanDefinitionDsl
@@ -57,6 +59,7 @@ import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.config.web.server.invoke
+import org.springframework.security.oauth2.server.resource.introspection.SpringReactiveOpaqueTokenIntrospector
 import org.springframework.security.web.server.authentication.HttpStatusServerEntryPoint
 import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.reactive.config.WebFluxConfigurer
@@ -68,12 +71,23 @@ fun beans(clock: Clock) = beans {
     // Adapters (out ports)
     //
     bean { clock }
-    bean {
-        GetPidDataFromAuthServer(
-            env.readRequiredUrl("issuer.authorizationServer.userinfo"),
-            env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
-            clock,
-        )
+    profile("!insecure") {
+        bean {
+            GetPidDataFromAuthServer(
+                env.readRequiredUrl("issuer.authorizationServer.userinfo"),
+                env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
+                clock,
+            )
+        }
+    }
+    profile("insecure") {
+        bean {
+            GetPidDataFromAuthServer.insecure(
+                env.readRequiredUrl("issuer.authorizationServer.userinfo"),
+                env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
+                clock,
+            )
+        }
     }
     //
     // Encryption of credential response
@@ -196,6 +210,20 @@ fun beans(clock: Clock) = beans {
     //
     // Security
     //
+    profile("insecure") {
+        bean {
+            val properties = ref<OAuth2ResourceServerProperties>()
+
+            SpringReactiveOpaqueTokenIntrospector(
+                properties.opaquetoken.introspectionUri,
+                WebClients.insecure {
+                    defaultHeaders {
+                        it.setBasicAuth(properties.opaquetoken.clientId, properties.opaquetoken.clientSecret)
+                    }
+                },
+            )
+        }
+    }
     bean {
         /*
          * This is a Spring naming convention
