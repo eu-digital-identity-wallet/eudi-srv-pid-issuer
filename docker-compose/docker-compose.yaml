@@ -72,20 +72,19 @@ services:
     depends_on:
       keycloak:
         condition: service_healthy
-    command:
-      - --spring.profiles.active=insecure
-      - --spring.webflux.base-path=/pid-issuer
-      - --issuer.publicUrl=https://localhost/pid-issuer
-      - --issuer.authorizationServer=https://localhost/idp/realms/pid-issuer-realm
-      - --issuer.authorizationServer.introspection=https://keycloak:8443/idp/realms/pid-issuer-realm/protocol/openid-connect/token/introspect
-      - --issuer.authorizationServer.userinfo=https://keycloak:8443/idp/realms/pid-issuer-realm/protocol/openid-connect/userinfo
-      - --issuer.pid.mso_mdoc.enabled=true
-      - --issuer.pid.mso_mdoc.encoderUrl=https://preprod.issuer.eudiw.dev/formatter/cbor
-      - --issuer.pid.sd_jwt_vc.enabled=true
-      - --issuer.pid.sd_jwt_vc.deferred=true
-      - --issuer.pid.issuingCountry=FC
-      - --spring.security.oauth2.resourceserver.opaquetoken.client-id=pid-issuer-srv
-      - --spring.security.oauth2.resourceserver.opaquetoken.client-secret=zIKAV9DIIIaJCzHCVBPlySgU8KgY68U2
+    environment:
+      - SPRING_PROFILES_ACTIVE=insecure
+      - SPRING_WEBFLUX_BASE_PATH=/pid-issuer
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENT_ID=pid-issuer-srv
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENT_SECRET=zIKAV9DIIIaJCzHCVBPlySgU8KgY68U2
+      - ISSUER_PUBLIC_URL=https://localhost/pid-issuer
+      - ISSUER_AUTHORIZATIONSERVER=https://localhost/idp/realms/pid-issuer-realm
+      - ISSUER_AUTHORIZATIONSERVER_INTROSPECTION=https://keycloak:8443/idp/realms/pid-issuer-realm/protocol/openid-connect/token/introspect
+      - ISSUER_AUTHORIZATIONSERVER_USERINFO=https://keycloak:8443/idp/realms/pid-issuer-realm/protocol/openid-connect/userinfo
+      - ISSUER_PID_MSO_MDOC_ENABLED=true
+      - ISSUER_PID_SD_JWT_VC_ENABLED=true
+      - ISSUER_PID_SD_JWT_VC_DEFERRED=true
+      - ISSUER_PID_ISSUING_COUNTRY=GR
     networks:
       - default
 
