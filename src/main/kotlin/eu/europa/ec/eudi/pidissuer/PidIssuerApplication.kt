@@ -133,8 +133,7 @@ fun beans(clock: Clock) = beans {
             deferredCredentialEndpoint = env.readRequiredUrl("issuer.publicUrl").run {
                 HttpsUrl.unsafe("${this.value}${WalletApi.DEFERRED_ENDPOINT}")
             },
-            authorizationServer = env.readOptionalUrl("issuer.authorizationServer.publicUrl")
-                ?: env.readRequiredUrl("issuer.authorizationServer"),
+            authorizationServer = env.readRequiredUrl("issuer.authorizationServer"),
 
             credentialResponseEncryption = env.credentialResponseEncryption(),
             specificCredentialIssuers = buildList {
@@ -311,9 +310,6 @@ private fun Environment.readRequiredUrl(key: String): HttpsUrl =
     getRequiredProperty(key).let { url ->
         HttpsUrl.of(url) ?: HttpsUrl.unsafe(url)
     }
-
-private fun Environment.readOptionalUrl(key: String): HttpsUrl? =
-    getProperty(key)?.let { HttpsUrl.of(it) ?: HttpsUrl.unsafe(it) }
 
 private fun <T> Environment.readNonEmptySet(key: String, f: (String) -> T?): NonEmptySet<T> {
     val nonEmptySet = getRequiredProperty<MutableSet<String>>(key)
