@@ -25,33 +25,21 @@ import org.bouncycastle.util.io.pem.PemObject
 import org.bouncycastle.util.io.pem.PemWriter
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
-import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
-import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
-import org.springframework.web.reactive.function.client.awaitExchange
 import java.io.StringWriter
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 private val log = LoggerFactory.getLogger(EncodePidInCborWithMicroService::class.java)
 
-class EncodePidInCborWithMicroService(private val creatorUrl: HttpsUrl) : EncodePidInCbor {
+class EncodePidInCborWithMicroService(
+    private val creatorUrl: HttpsUrl,
+    private val webClient: WebClient,
+) : EncodePidInCbor {
 
     init {
         log.info("Initialized using: $creatorUrl")
-    }
-
-    private val webClient: WebClient by lazy {
-        val json = Json { ignoreUnknownKeys = true }
-        WebClient
-            .builder()
-            .codecs { configurer ->
-                configurer.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
-                configurer.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
-                configurer.defaultCodecs().enableLoggingRequestDetails(true)
-            }.baseUrl(creatorUrl.externalForm)
-            .build()
     }
 
     override suspend fun invoke(
@@ -63,17 +51,12 @@ class EncodePidInCborWithMicroService(private val creatorUrl: HttpsUrl) : Encode
         val request = createMsoMdocReq(pid, pidMetaData, holderKey)
         val response = webClient
             .post()
+            .uri(creatorUrl.externalForm)
             .accept(MediaType.APPLICATION_JSON)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(request)
-            .awaitExchange { response ->
-                val statusCode = response.statusCode()
-                when {
-                    statusCode.is2xxSuccessful -> response.awaitBody<CreateMsoMdocResponse>()
-                    statusCode.is4xxClientError -> response.awaitBody<CreateMsoMdocResponse>()
-                    else -> error("Unexpected error statusCode = $statusCode")
-                }
-            }
+            .retrieve()
+            .awaitBody<CreateMsoMdocResponse>()
         response.fold().getOrThrow()
     }
 }

@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAddressClaim
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAssurancePlaceOfBirth
-import eu.europa.ec.eudi.pidissuer.adapter.out.webclient.WebClients
 import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -33,7 +32,8 @@ import java.time.LocalDate
 
 private val log = LoggerFactory.getLogger(GetPidDataFromAuthServer::class.java)
 
-class GetPidDataFromAuthServer private constructor(
+class GetPidDataFromAuthServer(
+    private val authorizationServerUserInfoEndPoint: HttpsUrl,
     private val issuerCountry: IsoCountry,
     private val clock: Clock,
     private val webClient: WebClient,
@@ -52,7 +52,9 @@ class GetPidDataFromAuthServer private constructor(
     }
 
     private suspend fun userInfo(accessToken: String): UserInfo =
-        webClient.get().accept(MediaType.APPLICATION_JSON)
+        webClient.get()
+            .uri(authorizationServerUserInfoEndPoint.externalForm)
+            .accept(MediaType.APPLICATION_JSON)
             .headers { headers -> headers.setBearerAuth(accessToken) }
             .retrieve()
             .awaitBody<UserInfo>()
@@ -92,42 +94,6 @@ class GetPidDataFromAuthServer private constructor(
         val pidMetaData = genPidMetaData()
 
         return pid to pidMetaData
-    }
-
-    companion object {
-
-        /**
-         * Creates a new [GetPidDataFromAuthServer] using the provided data.
-         */
-        operator fun invoke(
-            authorizationServerUserInfoEndPoint: HttpsUrl,
-            issuerCountry: IsoCountry,
-            clock: Clock,
-        ): GetPidDataFromAuthServer =
-            GetPidDataFromAuthServer(
-                issuerCountry,
-                clock,
-                WebClients.default {
-                    baseUrl(authorizationServerUserInfoEndPoint.externalForm)
-                },
-            )
-
-        /**
-         * Creates a new *insecure* [GetPidDataFromAuthServer] that trusts all certificates.
-         */
-        fun insecure(
-            authorizationServerUserInfoEndPoint: HttpsUrl,
-            issuerCountry: IsoCountry,
-            clock: Clock,
-        ): GetPidDataFromAuthServer {
-            return GetPidDataFromAuthServer(
-                issuerCountry,
-                clock,
-                WebClients.insecure {
-                    baseUrl(authorizationServerUserInfoEndPoint.externalForm)
-                },
-            )
-        }
     }
 }
 

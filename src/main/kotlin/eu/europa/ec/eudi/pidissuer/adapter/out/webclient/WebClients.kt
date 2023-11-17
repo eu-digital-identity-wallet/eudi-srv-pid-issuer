@@ -17,38 +17,47 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.webclient
 
 import io.netty.handler.ssl.SslContextBuilder
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
+import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import org.springframework.http.client.reactive.ReactorClientHttpConnector
+import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
+import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
 import org.springframework.web.reactive.function.client.WebClient
 import reactor.netty.http.client.HttpClient
 
-private val log = LoggerFactory.getLogger(WebClients::class.java)
-
 /**
- * Factories for [WebClient].
+ * [WebClient] instances for usage in the application.
  */
 internal object WebClients {
 
-    /**
-     * Creates a new [WebClient].
-     */
-    fun default(customizer: WebClient.Builder.() -> Unit = {}): WebClient =
-        WebClient.builder()
-            .apply(customizer)
-            .build()
+    private val log = LoggerFactory.getLogger(WebClients::class.java)
 
     /**
-     * Creates an *insecure* [WebClient] that trusts all certificates.
+     * A [WebClient] with JSON serialization/deserialization enabled using Kotlin-X Serialization.
      */
-    fun insecure(customizer: WebClient.Builder.() -> Unit = {}): WebClient {
+    val Default: WebClient by lazy {
+        val json = Json { ignoreUnknownKeys = true }
+        WebClient.builder()
+            .codecs {
+                it.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
+                it.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
+                it.defaultCodecs().enableLoggingRequestDetails(true)
+            }
+            .build()
+    }
+
+    /**
+     * A [WebClient] with JSON serialization/deserialization enabled using Kotlin-X Serialization
+     * that trusts all SSL certificates.
+     */
+    val Insecure: WebClient by lazy {
         log.warn("Using insecure WebClient trusting all certificates")
         val sslContext = SslContextBuilder.forClient()
             .trustManager(InsecureTrustManagerFactory.INSTANCE)
             .build()
         val httpClient = HttpClient.create().secure { it.sslContext(sslContext) }
-        return WebClient.builder()
+        Default.mutate()
             .clientConnector(ReactorClientHttpConnector(httpClient))
-            .apply(customizer)
             .build()
     }
 }

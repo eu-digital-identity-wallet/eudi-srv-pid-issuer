@@ -63,6 +63,7 @@ import org.springframework.security.oauth2.server.resource.introspection.SpringR
 import org.springframework.security.web.server.authentication.HttpStatusServerEntryPoint
 import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.reactive.config.WebFluxConfigurer
+import org.springframework.web.reactive.function.client.WebClient
 import java.time.Clock
 import java.time.Duration
 
@@ -72,22 +73,18 @@ fun beans(clock: Clock) = beans {
     //
     bean { clock }
     profile("!insecure") {
-        bean {
-            GetPidDataFromAuthServer(
-                env.readRequiredUrl("issuer.authorizationServer.userinfo"),
-                env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
-                clock,
-            )
-        }
+        bean { WebClients.Default }
     }
     profile("insecure") {
-        bean {
-            GetPidDataFromAuthServer.insecure(
-                env.readRequiredUrl("issuer.authorizationServer.userinfo"),
-                env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
-                clock,
-            )
-        }
+        bean { WebClients.Insecure }
+    }
+    bean {
+        GetPidDataFromAuthServer(
+            env.readRequiredUrl("issuer.authorizationServer.userinfo"),
+            env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
+            clock,
+            ref(),
+        )
     }
     //
     // Encryption of credential response
@@ -122,7 +119,7 @@ fun beans(clock: Clock) = beans {
         val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl")
 
         bean {
-            EncodePidInCborWithMicroService(env.readRequiredUrl("issuer.pid.mso_mdoc.encoderUrl"))
+            EncodePidInCborWithMicroService(env.readRequiredUrl("issuer.pid.mso_mdoc.encoderUrl"), ref())
         }
 
         CredentialIssuerMetaData(
@@ -210,19 +207,17 @@ fun beans(clock: Clock) = beans {
     //
     // Security
     //
-    profile("insecure") {
-        bean {
-            val properties = ref<OAuth2ResourceServerProperties>()
-
-            SpringReactiveOpaqueTokenIntrospector(
-                properties.opaquetoken.introspectionUri,
-                WebClients.insecure {
-                    defaultHeaders {
-                        it.setBasicAuth(properties.opaquetoken.clientId, properties.opaquetoken.clientSecret)
-                    }
-                },
-            )
-        }
+    bean {
+        val properties = ref<OAuth2ResourceServerProperties>()
+        SpringReactiveOpaqueTokenIntrospector(
+            properties.opaquetoken.introspectionUri,
+            ref<WebClient>()
+                .mutate()
+                .defaultHeaders {
+                    it.setBasicAuth(properties.opaquetoken.clientId, properties.opaquetoken.clientSecret)
+                }
+                .build(),
+        )
     }
     bean {
         /*
