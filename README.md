@@ -50,7 +50,21 @@ The Realm *pid-issuer-realm*:
 
 Administration console is accessible via https://localhost/idp/admin/ using the credentials admin / password
 
-### Startup
+### PID Issuer
+
+A PID Issuer instance accessible via https://localhost/pid-issuer/
+
+It uses the configured Keycloak instance as an Authorization Server, and PID issuance both *SD JWT VC* and *MSO MDOC* 
+formats is enabled. Additionally *deferred issuance* is enabled for *SD JWT VC* format.
+
+The issuing country is set to GR (Greece).
+
+### HA Proxy
+
+An HA Proxy instance is also configured. This instance exposes both Keyclaok and PID Issuer via https. The certificate
+and respective private key can be found in [docker-compose/haproxy/certs](docker-compose/haproxy/certs).
+
+### docker compose usage
 
 ```shell
 cd docker-compose
