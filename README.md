@@ -34,14 +34,35 @@ and requires the use of a suitable OAUTH2 server.
 
 ## How to use docker
 
-Folder [docker-compose](docker-compose) contains a keycloak installation to be used in a local development environment
+Folder [docker-compose](docker-compose) contains the following services to be used in a local development environment:
 
+### Keycloak
+
+A Keycloak instance accessible via https://localhost/idp/ with the Realm *pid-issuer-realm*.
+
+The Realm *pid-issuer-realm*:
+
+- has user self-registration active with a custom registration page accessible via https://localhost/idp/realms/pid-issuer-realm/account/#/
+- defines *eu.europa.ec.eudiw.pid_vc_sd_jwt* scope for requesting PID issuance in SD JWT VC format
+- defines *eu.europa.ec.eudiw.pid_mso_mdoc* scope for requesting PID issuance in MSO MDOC format
+- defines *wallet-dev* and *pid-issuer-srv* clients
+- contains sample user with credentials: tneal / password
+
+Administration console is accessible via https://localhost/idp/admin/ using the credentials admin / password
+
+### Startup
 
 ```shell
 cd docker-compose
 docker-compose up -d
 ```
 
+or 
+
+```shell
+cd docker-compose
+docker compose up -d
+```
 
 ## Endpoints
 
