@@ -12,6 +12,7 @@ plugins {
     alias(libs.plugins.kotlin.plugin.spring)
     alias(libs.plugins.kotlin.plugin.serialization)
     alias(libs.plugins.spotless)
+    alias(libs.plugins.dependency.check)
 }
 
 group = "eu.europa.ec.eudi"
