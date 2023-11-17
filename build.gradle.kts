@@ -104,11 +104,11 @@ tasks.named<BootBuildImage>("bootBuildImage") {
     val env = environment.get()
     docker {
         publishRegistry {
-            env["REGISTRY_URL"]?.let { url=it }
-            env["REGISTRY_USERNAME"]?.let { username=it }
-            env["REGISTRY_PASSWORD"]?.let { password=it }
+            env["REGISTRY_URL"]?.let { url = it }
+            env["REGISTRY_USERNAME"]?.let { username = it }
+            env["REGISTRY_PASSWORD"]?.let { password = it }
         }
-        env["DOCKER_METADATA_OUTPUT_TAGS"]?.let {tagStr->
+        env["DOCKER_METADATA_OUTPUT_TAGS"]?.let { tagStr ->
             tags = tagStr.split(" ")
         }
     }
