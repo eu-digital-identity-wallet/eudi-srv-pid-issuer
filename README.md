@@ -34,11 +34,11 @@ and requires the use of a suitable OAUTH2 server.
 
 ## How to use docker
 
-Folder [keycloak](keycloak) contains a keycloak installation to be used in a local development environment
+Folder [docker-compose](docker-compose) contains a keycloak installation to be used in a local development environment
 
 
 ```shell
-cd keycloak
+cd docker-compose
 docker-compose up -d
 ```
 
