@@ -247,8 +247,11 @@ fun beans(clock: Clock) = beans {
                 authorize(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, permitAll)
                 authorize(MetaDataApi.WELL_KNOWN_JWKS, permitAll)
                 authorize(IssuerApi.CREDENTIALS_OFFER, permitAll)
+                authorize("/actuator/health", permitAll)
                 authorize(anyExchange, denyAll)
             }
+
+            anonymous {}
 
             csrf {
                 disable()

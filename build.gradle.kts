@@ -52,6 +52,9 @@ dependencies {
     implementation(libs.bouncy.castle) {
         because("To support X509 certificates parsing")
     }
+    implementation("org.springframework.boot:spring-boot-starter-actuator") {
+        because("To add Actuator's health endpoint")
+    }
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation("org.springframework.boot:spring-boot-starter-test")
