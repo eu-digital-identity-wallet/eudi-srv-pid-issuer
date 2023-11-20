@@ -56,9 +56,9 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./keycloak-extra/health-check.sh:/opt/keycloak/health-check.sh
-      - ./keycloak-realms/:/opt/keycloak/data/import
-      - ./keycloak-themes/:/opt/keycloak/themes
+      - ./keycloak/extra/health-check.sh:/opt/keycloak/health-check.sh
+      - ./keycloak/realms/:/opt/keycloak/data/import
+      - ./keycloak/themes/:/opt/keycloak/themes
     networks:
       - default
 
