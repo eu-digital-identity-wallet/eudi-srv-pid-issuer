@@ -80,7 +80,7 @@ docker compose up -d
 
 ## Configuration
 
-The PID Issuer application can be configured using the following *environment variables*:
+The PID Issuer application can be configured using the following *environment* variables:
 
 Variable: `SPRING_PROFILES_ACTIVE`  
 Description: Spring profiles to enable  
