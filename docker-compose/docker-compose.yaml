@@ -34,7 +34,11 @@ services:
     environment:
       - KC_PROXY=edge
       - KC_HTTP_RELATIVE_PATH=/idp
+      - KC_HOSTNAME=localhost
       - KC_HOSTNAME_STRICT=false
+      - KC_HOSTNAME_STRICT_BACKCHANNEL=false
+      - KC_HTTPS_CERTIFICATE_FILE=/etc/ssl/certs/keycloak.tls.crt
+      - KC_HTTPS_CERTIFICATE_KEY_FILE=/etc/ssl/certs/keycloak.tls.key
       - KC_HEALTH_ENABLED=true
       - KC_METRICS_ENABLED=true
       - KC_DB=postgres
@@ -59,6 +63,7 @@ services:
       - ./keycloak/extra/health-check.sh:/opt/keycloak/health-check.sh
       - ./keycloak/realms/:/opt/keycloak/data/import
       - ./keycloak/themes/:/opt/keycloak/themes
+      - ./keycloak/certs/:/etc/ssl/certs/
     networks:
       - default
 
