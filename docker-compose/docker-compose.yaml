@@ -65,6 +65,29 @@ services:
     networks:
       - default
 
+  pid-issuer:
+    image: ghcr.io/eu-digital-identity-wallet/eudi-srv-pid-issuer:edge
+    pull_policy: always
+    container_name: pid-issuer
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=insecure
+      - SPRING_WEBFLUX_BASE_PATH=/pid-issuer
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENT_ID=pid-issuer-srv
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENT_SECRET=zIKAV9DIIIaJCzHCVBPlySgU8KgY68U2
+      - ISSUER_PUBLICURL=https://localhost/pid-issuer
+      - ISSUER_AUTHORIZATIONSERVER=https://localhost/idp/realms/pid-issuer-realm
+      - ISSUER_AUTHORIZATIONSERVER_INTROSPECTION=https://keycloak:8443/idp/realms/pid-issuer-realm/protocol/openid-connect/token/introspect
+      - ISSUER_AUTHORIZATIONSERVER_USERINFO=https://keycloak:8443/idp/realms/pid-issuer-realm/protocol/openid-connect/userinfo
+      - ISSUER_PID_MSO_MDOC_ENABLED=true
+      - ISSUER_PID_SD_JWT_VC_ENABLED=true
+      - ISSUER_PID_SD_JWT_VC_DEFERRED=true
+      - ISSUER_PID_ISSUING_COUNTRY=GR
+    networks:
+      - default
+
   haproxy:
     image: haproxy:2.8.3
     container_name: haproxy
@@ -74,6 +97,8 @@ services:
     depends_on:
       keycloak:
         condition: service_healthy
+      pid-issuer:
+        condition: service_started
     volumes:
       - ./haproxy/haproxy.conf:/usr/local/etc/haproxy/haproxy.cfg
       - ./haproxy/certs/:/etc/ssl/certs/
