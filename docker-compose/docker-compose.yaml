@@ -1,28 +1,10 @@
 version: '3.8'
 
-volumes:
-  postgres_data:
-    driver: local
-
 networks:
   default:
     driver: bridge
 
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: postgres
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - default
-    healthcheck:
-      test: "exit 0"
-    environment:
-      POSTGRES_DB: keycloak
-      POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: password
-
   keycloak:
     image: quay.io/keycloak/keycloak:nightly
     container_name: keycloak
@@ -39,11 +21,6 @@ services:
       - KC_HTTPS_CERTIFICATE_KEY_FILE=/etc/ssl/certs/keycloak.tls.key
       - KC_HEALTH_ENABLED=true
       - KC_METRICS_ENABLED=true
-      - KC_DB=postgres
-      - KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak
-      - KC_DATABASE=keycloak
-      - KC_DB_USERNAME=keycloak
-      - KC_DB_PASSWORD=password
       - KC_SPI_THEME_STATIC_MAX_AGE=-1
       - KC_SPI_THEME_CACHE_THEMES=false
       - KC_SPI_THEME_CACHE_TEMPLATES=false
@@ -54,9 +31,6 @@ services:
       interval: 5s
       timeout: 10s
       retries: 12
-    depends_on:
-      postgres:
-        condition: service_healthy
     volumes:
       - ./keycloak/extra/health-check.sh:/opt/keycloak/health-check.sh
       - ./keycloak/realms/:/opt/keycloak/data/import

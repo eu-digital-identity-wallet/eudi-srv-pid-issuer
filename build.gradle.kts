@@ -1,7 +1,6 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.springframework.boot.gradle.tasks.bundling.BootBuildImage
 import java.net.URI
-import kotlin.jvm.optionals.getOrNull
 
 plugins {
     base
@@ -61,24 +60,15 @@ dependencies {
 }
 
 java {
-    val javaVersion = getVersionFromCatalog("java")
+    val javaVersion = libs.versions.java.get()
     sourceCompatibility = JavaVersion.toVersion(javaVersion)
 }
 
 kotlin {
-
     jvmToolchain {
-        val javaVersion = getVersionFromCatalog("java")
+        val javaVersion = libs.versions.java.get()
         languageVersion.set(JavaLanguageVersion.of(javaVersion))
     }
-}
-fun getVersionFromCatalog(lookup: String): String {
-    val versionCatalog: VersionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-    return versionCatalog
-        .findVersion(lookup)
-        .getOrNull()
-        ?.requiredVersion
-        ?: throw GradleException("Version '$lookup' is not specified in the version catalog")
 }
 
 tasks.withType<KotlinCompile>().configureEach {
@@ -87,6 +77,7 @@ tasks.withType<KotlinCompile>().configureEach {
         freeCompilerArgs += "-Xjsr305=strict"
     }
 }
+
 testing {
     suites {
         val test by getting(JvmTestSuite::class) {
@@ -98,6 +89,7 @@ testing {
 springBoot {
     buildInfo()
 }
+
 tasks.named<BootBuildImage>("bootBuildImage") {
     imageName.set("$group/${project.name}")
     publish.set(false)
@@ -116,7 +108,7 @@ tasks.named<BootBuildImage>("bootBuildImage") {
 }
 
 spotless {
-    val ktlintVersion = getVersionFromCatalog("ktlintVersion")
+    val ktlintVersion = libs.versions.ktlint.get()
     kotlin {
         ktlint(ktlintVersion)
         licenseHeaderFile("FileHeader.txt")
@@ -125,7 +117,3 @@ spotless {
         ktlint(ktlintVersion)
     }
 }
-
-// tasks.withType<Test> {
-// 	useJUnitPlatform()
-// }
