@@ -30,7 +30,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseWit
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
-import eu.europa.ec.eudi.pidissuer.adapter.out.webclient.WebClients
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.port.input.GetDeferredCredential
@@ -40,8 +39,11 @@ import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
+import io.netty.handler.ssl.SslContextBuilder
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
+import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties
 import org.springframework.boot.runApplication
@@ -53,6 +55,7 @@ import org.springframework.core.env.Environment
 import org.springframework.core.env.getProperty
 import org.springframework.core.env.getRequiredProperty
 import org.springframework.http.HttpStatus
+import org.springframework.http.client.reactive.ReactorClientHttpConnector
 import org.springframework.http.codec.ServerCodecConfigurer
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
 import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
@@ -63,31 +66,67 @@ import org.springframework.security.oauth2.server.resource.introspection.SpringR
 import org.springframework.security.web.server.authentication.HttpStatusServerEntryPoint
 import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.reactive.config.WebFluxConfigurer
+import org.springframework.web.reactive.function.client.WebClient
+import reactor.netty.http.client.HttpClient
 import java.time.Clock
 import java.time.Duration
+
+private val log = LoggerFactory.getLogger(PidIssuerApplication::class.java)
+
+/**
+ * [WebClient] instances for usage within the application.
+ */
+private object WebClients {
+
+    /**
+     * A [WebClient] with [Json] serialization enabled.
+     */
+    val Default: WebClient by lazy {
+        val json = Json { ignoreUnknownKeys = true }
+        WebClient
+            .builder()
+            .codecs {
+                it.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
+                it.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
+                it.defaultCodecs().enableLoggingRequestDetails(true)
+            }
+            .build()
+    }
+
+    /**
+     * A [WebClient] with [Json] serialization enabled that trusts *all* certificates.
+     */
+    val Insecure: WebClient by lazy {
+        log.warn("Using insecure WebClient trusting all certificates")
+        val sslContext = SslContextBuilder.forClient()
+            .trustManager(InsecureTrustManagerFactory.INSTANCE)
+            .build()
+        val httpClient = HttpClient.create().secure { it.sslContext(sslContext) }
+        Default.mutate()
+            .clientConnector(ReactorClientHttpConnector(httpClient))
+            .build()
+    }
+}
 
 fun beans(clock: Clock) = beans {
     //
     // Adapters (out ports)
     //
     bean { clock }
-    profile("!insecure") {
-        bean {
-            GetPidDataFromAuthServer(
-                env.readRequiredUrl("issuer.authorizationServer.userinfo"),
-                env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
-                clock,
-            )
+    bean {
+        if ("insecure" in env.activeProfiles) {
+            WebClients.Insecure
+        } else {
+            WebClients.Default
         }
     }
-    profile("insecure") {
-        bean {
-            GetPidDataFromAuthServer.insecure(
-                env.readRequiredUrl("issuer.authorizationServer.userinfo"),
-                env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
-                clock,
-            )
-        }
+    bean {
+        GetPidDataFromAuthServer(
+            env.readRequiredUrl("issuer.authorizationServer.userinfo"),
+            env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
+            clock,
+            ref(),
+        )
     }
     //
     // Encryption of credential response
@@ -122,7 +161,7 @@ fun beans(clock: Clock) = beans {
         val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl")
 
         bean {
-            EncodePidInCborWithMicroService(env.readRequiredUrl("issuer.pid.mso_mdoc.encoderUrl"))
+            EncodePidInCborWithMicroService(env.readRequiredUrl("issuer.pid.mso_mdoc.encoderUrl"), ref())
         }
 
         CredentialIssuerMetaData(
@@ -210,20 +249,6 @@ fun beans(clock: Clock) = beans {
     //
     // Security
     //
-    profile("insecure") {
-        bean {
-            val properties = ref<OAuth2ResourceServerProperties>()
-
-            SpringReactiveOpaqueTokenIntrospector(
-                properties.opaquetoken.introspectionUri,
-                WebClients.insecure {
-                    defaultHeaders {
-                        it.setBasicAuth(properties.opaquetoken.clientId, properties.opaquetoken.clientSecret)
-                    }
-                },
-            )
-        }
-    }
     bean {
         /*
          * This is a Spring naming convention
@@ -262,7 +287,18 @@ fun beans(clock: Clock) = beans {
             }
 
             oauth2ResourceServer {
-                opaqueToken {}
+                opaqueToken {
+                    val properties = ref<OAuth2ResourceServerProperties>()
+                    introspector = SpringReactiveOpaqueTokenIntrospector(
+                        properties.opaquetoken.introspectionUri,
+                        ref<WebClient>()
+                            .mutate()
+                            .defaultHeaders {
+                                it.setBasicAuth(properties.opaquetoken.clientId, properties.opaquetoken.clientSecret)
+                            }
+                            .build(),
+                    )
+                }
             }
         }
     }
