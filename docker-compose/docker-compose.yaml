@@ -16,8 +16,6 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - default
-    ports:
-      - "0.0.0.0:5432:5432"
     healthcheck:
       test: "exit 0"
     environment:
