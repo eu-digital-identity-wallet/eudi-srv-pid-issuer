@@ -78,7 +78,6 @@ class GetPidDataFromAuthServer private constructor(
             birthDate = LocalDate.parse(userInfo.birthDate),
             ageOver18 = userInfo.ageOver18 ?: false,
             gender = userInfo.gender?.let { IsoGender(it) },
-            uniqueId = UniqueId(userInfo.sub),
             residentCountry = userInfo.address?.country?.let { IsoCountry(it) },
             residentState = userInfo.address?.region?.let { State(it) },
             residentPostalCode = userInfo.address?.postalCode?.let { PostalCode(it) },

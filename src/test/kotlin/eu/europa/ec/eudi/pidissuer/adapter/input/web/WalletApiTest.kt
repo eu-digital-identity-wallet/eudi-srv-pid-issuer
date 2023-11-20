@@ -306,7 +306,6 @@ internal class WalletApiTest {
                     givenName = GivenName("Firstname"),
                     birthDate = LocalDate.of(1989, Month.AUGUST, 22),
                     ageOver18 = true,
-                    uniqueId = UniqueId(UUID.randomUUID().toString()),
                 )
                 val issuingCountry = IsoCountry("GR")
                 val pidMetaData = PidMetaData(

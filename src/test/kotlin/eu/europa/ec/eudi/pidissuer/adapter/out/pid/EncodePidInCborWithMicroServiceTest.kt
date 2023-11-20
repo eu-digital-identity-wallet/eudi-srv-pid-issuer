@@ -51,7 +51,6 @@ class EncodePidInCborWithMicroServiceTest {
             givenName = GivenName("javier"),
             birthDate = birthDate,
             ageOver18 = true,
-            uniqueId = UniqueId("86b73c6c-7542-4923-a986-97d2cdf7f07a"),
         )
         val pidMetaData = PidMetaData(
             issuanceDate = LocalDate.of(2023, 7, 19),

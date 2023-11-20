@@ -32,7 +32,7 @@ val OidcSub: AttributeDetails by lazy {
     AttributeDetails(
         name = "sub",
         mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Unique Identifier"),
+        display = mapOf(Locale.ENGLISH to "Subject - Identifier for the End-User at the Issuer"),
     )
 }
 

@@ -58,11 +58,6 @@ private val pidAttributes = pidNameSpace(1) to listOf(
         name = "age_birth_year",
     ),
     AttributeDetails(
-        name = "unique_id",
-        mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Unique Identifier"),
-    ),
-    AttributeDetails(
         name = "family_name_birth",
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "Last name(s) or surname(s) of the PID User at the time of birth."),
