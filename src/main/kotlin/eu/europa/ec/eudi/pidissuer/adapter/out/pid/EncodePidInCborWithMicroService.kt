@@ -29,7 +29,6 @@ import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
 import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
-import org.springframework.web.reactive.function.client.awaitExchange
 import java.io.StringWriter
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -61,20 +60,14 @@ class EncodePidInCborWithMicroService(private val creatorUrl: HttpsUrl) : Encode
     ): String = coroutineScope {
         log.info("Requesting PID in mso_mdoc for ${pid.familyName} ...")
         val request = createMsoMdocReq(pid, pidMetaData, holderKey)
-        val response = webClient
-            .post()
+        webClient.post()
             .accept(MediaType.APPLICATION_JSON)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(request)
-            .awaitExchange { response ->
-                val statusCode = response.statusCode()
-                when {
-                    statusCode.is2xxSuccessful -> response.awaitBody<CreateMsoMdocResponse>()
-                    statusCode.is4xxClientError -> response.awaitBody<CreateMsoMdocResponse>()
-                    else -> error("Unexpected error statusCode = $statusCode")
-                }
-            }
-        response.fold().getOrThrow()
+            .retrieve()
+            .awaitBody<CreateMsoMdocResponse>()
+            .fold()
+            .getOrThrow()
     }
 }
 
