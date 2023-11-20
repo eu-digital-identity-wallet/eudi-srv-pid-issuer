@@ -28,14 +28,6 @@ interface IsAttribute {
 // Open ID Connect Core
 //
 
-val OidcSub: AttributeDetails by lazy {
-    AttributeDetails(
-        name = "sub",
-        mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Unique Identifier"),
-    )
-}
-
 val OidcFamilyName: AttributeDetails by lazy {
     AttributeDetails(
         name = "family_name",

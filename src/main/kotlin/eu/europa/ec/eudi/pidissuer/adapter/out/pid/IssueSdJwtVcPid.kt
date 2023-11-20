@@ -73,7 +73,6 @@ private object Attributes {
         OidcGivenName,
         OidcBirthDate,
         OidcAddressClaim.attribute,
-        OidcSub,
         OidcGender,
         OidcAssuranceNationalities,
         OidcAssuranceBirthFamilyName,
@@ -133,7 +132,6 @@ fun selectivelyDisclosed(
         exp(exp.epochSecond)
         cnf(holderPubKey)
         plain("vct", PidSdJwtVcV1.type.value)
-        sub(pid.uniqueId.value)
 
         //
         // Selectively Disclosed claims

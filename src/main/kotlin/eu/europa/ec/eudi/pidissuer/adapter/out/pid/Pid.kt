@@ -26,19 +26,6 @@ value class FamilyName(val value: String)
 value class GivenName(val value: String)
 
 /**
- * A PID Provider SHALL ensure that a unique_id data element is present in the PID.
- * It SHALL contain an identifier for the PID User.
- * The value of this data element SHALL be unique and persistent.
- * This means that a specific Relying Party, if it is authorized to receive this data element,
- * SHALL always receive the same unique_id value for the same PID User from all Wallet Instances
- * issued to that PID User, either in parallel or consecutively, throughout the User’s lifetime.
- * It is up to each PID Provider to determine if the unique_id for a User is different for each Relying Party,
- * or the same for a group of Relying Parties or even for all Relying Parties.
- */
-@JvmInline
-value class UniqueId(val value: String)
-
-/**
  * An Alpha-2 country
  * code as specified in ISO 3166-1.
  */
@@ -74,8 +61,6 @@ typealias Nationality = IsoCountry
  * minor (false).
  * @param ageBirthYear The year when the PID User was born. If unknown, approximate
  * year.
- * @param uniqueId A unique and persistent identifier for the PID User, assigned by
- * the PID Provider.
  * @param familyNameBirth First name(s), including middle name(s), of the PID User at the
  * time of birth.
  * @param givenNameBirth First name(s), including middle name(s), of the PID User at the time of birth.
@@ -99,7 +84,6 @@ data class Pid(
     val birthDate: LocalDate,
     val ageOver18: Boolean,
     val ageBirthYear: Year? = null,
-    val uniqueId: UniqueId,
     val familyNameBirth: FamilyName? = null,
     val givenNameBirth: GivenName? = null,
     val birthPlace: String? = null,
