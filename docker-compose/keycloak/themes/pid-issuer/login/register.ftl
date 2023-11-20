@@ -1,6 +1,6 @@
 <#import "template.ftl" as layout>
 <#import "register-commons.ftl" as registerCommons>
-<@layout.registrationLayout displayMessage=!messagesPerField.existsError('firstName','lastName','user.attributes.gender','user.attributes.birthdate','user.attributes.place_of_birth','user.attributes.age_over_18','user.attributes.picture','user.attributes.street','user.attributes.locality','user.attributes.region','user.attributes.postal_code','user.attributes.country','user.attributes.formatted','email','username','password','password-confirm','termsAccepted'); section>
+<@layout.registrationLayout displayMessage=!messagesPerField.existsError('firstName','lastName','user.attributes.gender','user.attributes.birthdate','user.attributes.place_of_birth','user.attributes.age_over_18','user.attributes.picture','user.attributes.street','user.attributes.locality','user.attributes.region','user.attributes.postal_code','user.attributes.country','user.attributes.formatted','username','password','password-confirm','termsAccepted'); section>
     <#if section = "header">
         ${msg("registerTitle")}
     <#elseif section = "form">
@@ -269,26 +269,6 @@
             <!-- /formatted -->
 
             <h2>${msg("credentials")}</h2>
-            <!-- email -->
-            <div class="${properties.kcFormGroupClass!}">
-                <div class="${properties.kcLabelWrapperClass!}">
-                    <label for="email" class="${properties.kcLabelClass!}">${msg("email")}</label>
-                </div>
-                <div class="${properties.kcInputWrapperClass!}">
-                    <input type="text" id="email" class="${properties.kcInputClass!}" name="email"
-                           value="${(register.formData.email!'')}" autocomplete="email"
-                           aria-invalid="<#if messagesPerField.existsError('email')>true</#if>"
-                    />
-
-                    <#if messagesPerField.existsError('email')>
-                        <span id="input-error-email" class="${properties.kcInputErrorMessageClass!}" aria-live="polite">
-                            ${kcSanitize(messagesPerField.get('email'))?no_esc}
-                        </span>
-                    </#if>
-                </div>
-            </div>
-            <!-- email -->
-
             <!-- username -->
             <#if !realm.registrationEmailAsUsername>
                 <div class="${properties.kcFormGroupClass!}">
