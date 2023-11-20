@@ -96,7 +96,7 @@ internal fun createMsoMdocReq(
 ): JsonObject =
     buildJsonObject {
         put("version", "0.3")
-        put("country", pidMetaData.issuingCountry.value)
+        put("country", "FC")
         put("doctype", PidMsoMdocV1.docType)
         put("device_publickey", key.base64EncodedPem())
         putJsonObject("data") {
