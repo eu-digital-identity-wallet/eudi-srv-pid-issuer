@@ -31,7 +31,7 @@
   "registrationEmailAsUsername": false,
   "rememberMe": false,
   "verifyEmail": false,
-  "loginWithEmailAllowed": true,
+  "loginWithEmailAllowed": false,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": false,
   "editUsernameAllowed": false,
@@ -1154,23 +1154,6 @@
           }
         },
         {
-          "id": "572f1388-58ed-4e42-90ce-236617bbeac0",
-          "name": "profile",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-attribute-mapper",
-          "consentRequired": false,
-          "config": {
-            "aggregate.attrs": "false",
-            "userinfo.token.claim": "true",
-            "multivalued": "false",
-            "user.attribute": "profile",
-            "id.token.claim": "false",
-            "access.token.claim": "false",
-            "claim.name": "profile",
-            "jsonType.label": "String"
-          }
-        },
-        {
           "id": "27a29370-a2a6-4e8c-8378-6d4999ac092e",
           "name": "picture",
           "protocol": "openid-connect",
@@ -1357,23 +1340,6 @@
             "access.token.claim": "false",
             "claim.name": "place_of_birth",
             "jsonType.label": "JSON"
-          }
-        },
-        {
-          "id": "c1075001-f8d9-47ce-8bbb-22d108ffbec5",
-          "name": "profile",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-attribute-mapper",
-          "consentRequired": false,
-          "config": {
-            "aggregate.attrs": "false",
-            "userinfo.token.claim": "true",
-            "multivalued": "false",
-            "user.attribute": "profile",
-            "id.token.claim": "false",
-            "access.token.claim": "false",
-            "claim.name": "profile",
-            "jsonType.label": "String"
           }
         },
         {
