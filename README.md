@@ -80,23 +80,59 @@ docker compose up -d
 
 ## Configuration
 
-The PID Issuer application can be configured using the following *environment variables*:
+The PID Issuer application can be configured using the following *environment* variables:
 
-| Environment variable                                            | Description                                                                     | Default value                                                            |
-|-----------------------------------------------------------------|---------------------------------------------------------------------------------|--------------------------------------------------------------------------|
-| SPRING_PROFILES_ACTIVE                                          | Spring profiles to enable.                                                      | None. Enable *insecure* profile to disable SSL certificates verification |
-| SPRING_WEBFLUX_BASE_PATH                                        | Context path for the PID issuer application.                                    | /                                                                        |
-| SERVER_PORT                                                     | Port for the HTTP listener of the PID Isser application                         | 8080                                                                     |
-| SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENT_ID     | Client Id of the OAuth2 client registered in the Authorization Server           | N/A                                                                      |
-| SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENT_SECRET | Client Server of the OAuth2 client registered in the Authorization Server       | N/A                                                                      |
-| ISSUER_PUBLICURL                                                | URL the PID Issuer application is accessible from.                              | http://localhost:${SERVER_PORT}${SPRING_WEBFLUX_BASE_PATH}               |
-| ISSUER_AUTHORIZATIONSERVER                                      | URL of the Authorization Server                                                 | N/A                                                                      |
-| ISSUER_AUTHORIZATIONSERVER_INTROSPECTION                        | URL of the Token Introspection endpoint of the Authorization Server             | N/A                                                                      |
-| ISSUER_AUTHORIZATIONSERVER_USERINFO                             | URL of the UserInfo endpoint of the Authorization Server                        | N/A                                                                      |
-| ISSUER_PID_MSO_MDOC_ENABLED                                     | Whether to enable support for PID issuance in *MSO MDOC* format                 | true                                                                     |
-| ISSUER_PID_SD_JWT_VC_ENABLED                                    | Whether to enable support for PID issuance in *SD JWT VC* format                | true                                                                     |
-| ISSUER_PID_SD_JWT_VC_DEFERRED                                   | Whether PID issueance in *SD JWT VC* format should be *deferred* or *immediate* | false (i.e. immediate issuance)                                          |
-| ISSUER_PID_ISSUING_COUNTRY                                      | Code of the Country issuing the PID                                             | N/A                                                                      |
+Variable: `SPRING_PROFILES_ACTIVE`  
+Description: Spring profiles to enable  
+Default value: None. Enable `insecure` profile to disable SSL certificates verification
+
+Variable: `SPRING_WEBFLUX_BASE_PATH`  
+Description: Context path for the PID issuer application.  
+Default value: `/`
+
+Variable: `SERVER_PORT`  
+Description: Port for the HTTP listener of the PID Issuer application  
+Default value: `8080`
+
+Variable: `SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENT_ID`  
+Description: Client Id of the OAuth2 client registered in the Authorization Server  
+Default value: N/A
+
+Variable: `SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENT_SECRET`  
+Description: Client Server of the OAuth2 client registered in the Authorization Server  
+Default value: N/A
+
+Variable: `ISSUER_PUBLICURL`  
+Description: URL the PID Issuer application is accessible from  
+Default value: `http://localhost:${SERVER_PORT}${SPRING_WEBFLUX_BASE_PATH}`
+
+Variable: `ISSUER_AUTHORIZATIONSERVER`  
+Description: URL of the Authorization Server  
+Default value: N/A
+
+Variable: `ISSUER_AUTHORIZATIONSERVER_INTROSPECTION`  
+Description: URL of the Token Introspection endpoint of the Authorization Server  
+Default value: N/A
+
+Variable: `ISSUER_AUTHORIZATIONSERVER_USERINFO`  
+Description: URL of the UserInfo endpoint of the Authorization Server  
+Default value: N/A
+
+Variable: `ISSUER_PID_MSO_MDOC_ENABLED`  
+Description: Whether to enable support for PID issuance in *MSO MDOC* format  
+Default value: `true`
+
+Variable: `ISSUER_PID_SD_JWT_VC_ENABLED`  
+Description: Whether to enable support for PID issuance in *SD JWT VC* format  
+Default value: `true`
+
+Variable: `ISSUER_PID_SD_JWT_VC_DEFERRED`  
+Description: Whether PID issueance in *SD JWT VC* format should be *deferred* or *immediate*  
+Default value: `false` (i.e. immediate issuance)
+
+Variable: `ISSUER_PID_ISSUING_COUNTRY`  
+Description: Code of the Country issuing the PID  
+Default value: N/A
 
 ## Endpoints
 
