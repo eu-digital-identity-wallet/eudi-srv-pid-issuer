@@ -46,7 +46,7 @@ data class GrantsTO(
 @Serializable
 data class CredentialsOfferTO(
     @Required @SerialName("credential_issuer") val credentialIssuer: String,
-    val grants: GrantsTO,
+    val grants: GrantsTO? = null,
     val credentials: List<String>,
 )
 
@@ -110,7 +110,7 @@ private fun Grants.toTransferObject(): GrantsTO {
 
 internal fun CredentialsOffer.toTransferObject(): CredentialsOfferTO = CredentialsOfferTO(
     credentialIssuer = credentialIssuer.externalForm,
-    grants = grants.toTransferObject(),
+    grants = grants?.toTransferObject(),
     credentials = credentials.map { it.value },
 )
 

@@ -31,6 +31,6 @@ typealias Grants = Ior<AuthorizationCodeGrant, PreAuthorizedCodeGrant>
 
 data class CredentialsOffer(
     val credentialIssuer: CredentialIssuerId,
-    val grants: Grants,
+    val grants: Grants? = null,
     val credentials: List<Scope>,
 )
