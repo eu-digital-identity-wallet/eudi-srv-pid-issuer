@@ -18,15 +18,21 @@ package eu.europa.ec.eudi.pidissuer.domain
 import arrow.core.Ior
 import java.time.Duration
 
-data class AuthorizationCodeGrant(val issuerState: String? = null)
+data class AuthorizationCodeGrant(
+    val issuerState: String? = null,
+    val authorizationServer: HttpsUrl? = null,
+)
 
 @JvmInline
 value class PreAuthorizedCode(val value: String)
+
 data class PreAuthorizedCodeGrant(
     val preAuthorizedCode: PreAuthorizedCode,
     val userPinRequired: Boolean = false,
     val interval: Duration,
+    val authorizationServer: HttpsUrl? = null,
 )
+
 typealias Grants = Ior<AuthorizationCodeGrant, PreAuthorizedCodeGrant>
 
 data class CredentialsOffer(

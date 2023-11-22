@@ -29,18 +29,22 @@ import java.nio.charset.StandardCharsets
 @Serializable
 data class AuthorizationCodeGrantTO(
     @SerialName("issuer_state") val issuerState: String?,
+    @SerialName("authorization_server") val authorizationServer: String? = null,
 )
 
 @Serializable
 data class PreAuthorizedCodeGrantTO(
     @Required @SerialName("pre-authorized_code") val preAuthorizedCode: String,
     @SerialName("user_pin_required") val userPinRequired: Boolean = false,
+    @SerialName("authorization_server") val authorizationServer: String? = null,
 )
 
 @Serializable
 data class GrantsTO(
-    @SerialName("authorization_code") val authorizedCodeGrant: AuthorizationCodeGrantTO? = null,
-    @SerialName("urn:ietf:params:oauth:grant-type:pre-authorized_code") val preAuthorizedCodeGrant: PreAuthorizedCodeGrantTO? = null,
+    @SerialName("authorization_code")
+    val authorizedCodeGrant: AuthorizationCodeGrantTO? = null,
+    @SerialName("urn:ietf:params:oauth:grant-type:pre-authorized_code")
+    val preAuthorizedCodeGrant: PreAuthorizedCodeGrantTO? = null,
 )
 
 @Serializable
@@ -75,17 +79,22 @@ class RequestCredentialsOffer(
     // TODO This is a dummy method
     //  To be removed
     fun dummyOffer(): CredentialsOffer {
-        val metaData = credentialIssuerMetaData
-            .credentialsSupported
-            .filterIsInstance<MsoMdocMetaData>()
-            .find { it.docType == PidMsoMdocV1.docType }!!
+        // send the user to the first authorization server, in case we advertise multiple
+        val authorizationServer =
+            credentialIssuerMetaData.authorizationServers
+                .takeIf { it.size > 1 }
+                ?.first()
+        val credentialMetadata =
+            credentialIssuerMetaData.credentialsSupported
+                .filterIsInstance<MsoMdocMetaData>()
+                .find { it.docType == PidMsoMdocV1.docType }!!
         val credentials =
-            metaData.scope
+            credentialMetadata.scope
                 ?.let { listOf(it) }
                 ?: emptyList()
         return CredentialsOffer(
             credentialIssuer = credentialIssuerMetaData.id,
-            grants = AuthorizationCodeGrant().leftIor(),
+            grants = AuthorizationCodeGrant(authorizationServer = authorizationServer).leftIor(),
             credentials = credentials,
         )
     }
@@ -96,10 +105,14 @@ class RequestCredentialsOffer(
 //
 
 private fun Grants.toTransferObject(): GrantsTO {
-    fun AuthorizationCodeGrant.toTransferObject() = AuthorizationCodeGrantTO(issuerState)
+    fun AuthorizationCodeGrant.toTransferObject() = AuthorizationCodeGrantTO(
+        issuerState = issuerState,
+        authorizationServer = authorizationServer?.externalForm,
+    )
     fun PreAuthorizedCodeGrant.toTransferObject() = PreAuthorizedCodeGrantTO(
         preAuthorizedCode = preAuthorizedCode.value,
         userPinRequired = userPinRequired,
+        authorizationServer = authorizationServer?.externalForm,
     )
     return fold(
         fa = { GrantsTO(it.toTransferObject(), null) },
