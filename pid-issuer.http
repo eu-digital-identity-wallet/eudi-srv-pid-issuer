@@ -50,7 +50,7 @@ GET {{issuer_publicUrl}}/.well-known/openid-credential-issuer
     client.global.set("deferred_credential_endpoint", response.body.deferred_credential_endpoint)
 %}
 
-### Get sample credentilas offer
+### Get sample credentials offer
 
 GET  {{issuer_publicUrl}}/issuer/credentialsOffer
 
