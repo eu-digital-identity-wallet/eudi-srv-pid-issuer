@@ -172,7 +172,7 @@ fun beans(clock: Clock) = beans {
             deferredCredentialEndpoint = env.readRequiredUrl("issuer.publicUrl").run {
                 HttpsUrl.unsafe("${this.value}${WalletApi.DEFERRED_ENDPOINT}")
             },
-            authorizationServer = env.readRequiredUrl("issuer.authorizationServer"),
+            authorizationServers = listOf(env.readRequiredUrl("issuer.authorizationServer")),
 
             credentialResponseEncryption = env.credentialResponseEncryption(),
             specificCredentialIssuers = buildList {

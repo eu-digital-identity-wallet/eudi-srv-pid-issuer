@@ -30,8 +30,8 @@ class GetCredentialIssuerMetaData(private val credentialIssuerMetaData: Credenti
 data class CredentialIssuerMetaDataTO(
     @Required @SerialName("credential_issuer")
     val credentialIssuer: String,
-    @SerialName("authorization_server")
-    val authorizationServer: String? = null,
+    @SerialName("authorization_servers")
+    val authorizationServers: List<String>? = null,
     @Required @SerialName("credential_endpoint")
     val credentialEndpoint: String,
     @SerialName("batch_credential_endpoint")
@@ -49,7 +49,7 @@ data class CredentialIssuerMetaDataTO(
 
 private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDataTO = CredentialIssuerMetaDataTO(
     credentialIssuer = id.externalForm,
-    authorizationServer = authorizationServer.externalForm,
+    authorizationServers = authorizationServers.map { it.externalForm },
     credentialEndpoint = credentialEndPoint.externalForm,
     batchCredentialEndpoint = batchCredentialEndpoint?.externalForm,
     deferredCredentialEndpoint = deferredCredentialEndpoint?.externalForm,
