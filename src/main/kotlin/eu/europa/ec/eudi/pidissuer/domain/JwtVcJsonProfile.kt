@@ -29,7 +29,7 @@ const val JWT_VS_JSON_FORMAT = "jwt_vc_json"
  * W3C VC signed as a JWT, not using JSON-LD (jwt_vc_json)
  */
 data class JwtVcJsonMetaData(
-    val id: String,
+    override val id: CredentialUniqueId,
     override val scope: Scope? = null,
     val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>,
     override val display: List<CredentialDisplay>,

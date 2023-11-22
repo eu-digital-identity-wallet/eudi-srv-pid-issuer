@@ -44,7 +44,7 @@ data class CredentialIssuerMetaDataTO(
     val encryptionMethods: List<String> = emptyList(),
     @SerialName("require_credential_response_encryption")
     val encryptionRequired: Boolean = false,
-    @Required @SerialName("credentials_supported") val credentialsSupported: List<JsonObject>,
+    @Required @SerialName("credentials_supported") val credentialsSupported: JsonObject,
 )
 
 private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDataTO = CredentialIssuerMetaDataTO(
@@ -60,7 +60,7 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
         required.encryptionMethods.map { it.name }
     },
     encryptionRequired = credentialResponseEncryption.fold(false) { _ -> true },
-    credentialsSupported = credentialsSupported.map { credentialMetaDataJson(it) },
+    credentialsSupported = JsonObject(credentialsSupported.associate { it.id.value to credentialMetaDataJson(it) }),
 )
 
 @OptIn(ExperimentalSerializationApi::class)

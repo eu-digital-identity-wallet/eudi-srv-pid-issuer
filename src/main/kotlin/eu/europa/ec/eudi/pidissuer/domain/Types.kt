@@ -114,10 +114,17 @@ enum class ProofType {
 }
 
 /**
+ * The unique identifier of an offered Credential.
+ */
+@JvmInline
+value class CredentialUniqueId(val value: String)
+
+/**
  * Representing metadata about a separate credential type
  * that the Credential Issuer can issue
  */
 sealed interface CredentialMetaData {
+    val id: CredentialUniqueId
     val format: Format
     val scope: Scope?
     val display: List<CredentialDisplay>

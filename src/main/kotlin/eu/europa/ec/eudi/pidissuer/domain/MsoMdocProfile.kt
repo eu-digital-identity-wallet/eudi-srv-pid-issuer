@@ -34,6 +34,7 @@ typealias MsoClaims = Map<MsoNameSpace, List<AttributeDetails>>
  * @param docType string identifying the credential type as defined in ISO.18013-5.
  */
 data class MsoMdocMetaData(
+    override val id: CredentialUniqueId,
     val docType: MsoDocType,
     override val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod>,
     override val scope: Scope? = null,

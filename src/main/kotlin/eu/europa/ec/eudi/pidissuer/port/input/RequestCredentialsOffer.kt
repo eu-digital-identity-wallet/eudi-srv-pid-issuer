@@ -15,9 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
-import arrow.core.Either
-import arrow.core.leftIor
-import arrow.core.right
+import arrow.core.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.*
 import kotlinx.serialization.*
@@ -84,14 +82,12 @@ class RequestCredentialsOffer(
             credentialIssuerMetaData.authorizationServers
                 .takeIf { it.size > 1 }
                 ?.first()
-        val credentialMetadata =
+        val credentials =
             credentialIssuerMetaData.credentialsSupported
                 .filterIsInstance<MsoMdocMetaData>()
-                .find { it.docType == PidMsoMdocV1.docType }!!
-        val credentials =
-            credentialMetadata.scope
-                ?.let { listOf(it) }
-                ?: emptyList()
+                .firstOrNone { it.docType == PidMsoMdocV1.docType }
+                .map { listOf(it.id) }
+                .getOrElse { emptyList() }
         return CredentialsOffer(
             credentialIssuer = credentialIssuerMetaData.id,
             grants = AuthorizationCodeGrant(authorizationServer = authorizationServer).leftIor(),
