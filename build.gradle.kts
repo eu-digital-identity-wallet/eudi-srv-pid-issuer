@@ -102,7 +102,7 @@ tasks.named<BootBuildImage>("bootBuildImage") {
             env["REGISTRY_PASSWORD"]?.let { password = it }
         }
         env["DOCKER_METADATA_OUTPUT_TAGS"]?.let { tagStr ->
-            tags = tagStr.split(" ")
+            tags = tagStr.split("\n").onEach { println("Tag: $it") }
         }
     }
 }
