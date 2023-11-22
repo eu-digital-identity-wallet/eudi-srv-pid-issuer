@@ -22,9 +22,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -50,7 +47,7 @@ data class GrantsTO(
 data class CredentialsOfferTO(
     @Required @SerialName("credential_issuer") val credentialIssuer: String,
     val grants: GrantsTO,
-    val credentials: List<JsonElement>,
+    val credentials: List<String>,
 )
 
 @Serializable
@@ -82,12 +79,14 @@ class RequestCredentialsOffer(
             .credentialsSupported
             .filterIsInstance<MsoMdocMetaData>()
             .find { it.docType == PidMsoMdocV1.docType }!!
-        val credentialOffer = metaData.scope?.let { CredentialOffer.ByScope(it) }
-            ?: CredentialOffer.ByMetaData(metaData)
+        val credentials =
+            metaData.scope
+                ?.let { listOf(it) }
+                ?: emptyList()
         return CredentialsOffer(
             credentialIssuer = credentialIssuerMetaData.id,
             grants = AuthorizationCodeGrant().leftIor(),
-            credentials = listOf(credentialOffer),
+            credentials = credentials,
         )
     }
 }
@@ -109,28 +108,10 @@ private fun Grants.toTransferObject(): GrantsTO {
     )
 }
 
-private fun CredentialOffer.toTransferObject(): JsonElement =
-    when (this) {
-        is CredentialOffer.ByScope -> buildJsonObject {
-            val scope = this@toTransferObject.value
-            put("scope", scope.value)
-        }
-
-        is CredentialOffer.ByMetaData -> buildJsonObject {
-            val metaData = this@toTransferObject.value
-            put("format", metaData.format.value)
-            when (metaData) {
-                is JwtVcJsonMetaData -> TODO()
-                is MsoMdocMetaData -> metaData.toTransferObject(true)(this)
-                is SdJwtVcMetaData -> metaData.toTransferObject(true)(this)
-            }
-        }
-    }
-
 internal fun CredentialsOffer.toTransferObject(): CredentialsOfferTO = CredentialsOfferTO(
     credentialIssuer = credentialIssuer.externalForm,
     grants = grants.toTransferObject(),
-    credentials = credentials.map { it.toTransferObject() },
+    credentials = credentials.map { it.value },
 )
 
 @OptIn(ExperimentalSerializationApi::class)

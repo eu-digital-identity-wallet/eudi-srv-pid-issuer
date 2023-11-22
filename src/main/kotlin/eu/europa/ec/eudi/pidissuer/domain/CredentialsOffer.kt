@@ -18,15 +18,6 @@ package eu.europa.ec.eudi.pidissuer.domain
 import arrow.core.Ior
 import java.time.Duration
 
-/**
- * A
- */
-sealed interface CredentialOffer {
-    @JvmInline
-    value class ByScope(val value: Scope) : CredentialOffer
-    data class ByMetaData(val value: CredentialMetaData) : CredentialOffer
-}
-
 data class AuthorizationCodeGrant(val issuerState: String? = null)
 
 @JvmInline
@@ -41,5 +32,5 @@ typealias Grants = Ior<AuthorizationCodeGrant, PreAuthorizedCodeGrant>
 data class CredentialsOffer(
     val credentialIssuer: CredentialIssuerId,
     val grants: Grants,
-    val credentials: List<CredentialOffer>,
+    val credentials: List<Scope>,
 )
