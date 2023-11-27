@@ -12,7 +12,7 @@
 ## Overview
 
 An implementation of a credential issuing service, according to
-[OpenId4VCI - draft13](https://openid.github.io/OpenID4VCI/openid-4-verifiable-credential-issuance-wg-draft.html)
+[OpenId4VCI - draft12](https://openid.github.io/OpenID4VCI/openid-4-verifiable-credential-issuance-wg-draft.html)
 
 The service provides generic support for `mso_mdoc` and `SD-JWT-VC` formats using PID as an example
 and requires the use of a suitable OAUTH2 server.
