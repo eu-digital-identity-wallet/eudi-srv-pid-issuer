@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.port.out
 
 import arrow.core.raise.Raise
+import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
@@ -27,6 +28,7 @@ import org.slf4j.LoggerFactory
 interface IssueSpecificCredential<out T> {
 
     val supportedCredential: CredentialMetaData
+    val publicKey: JWK?
 
     context(Raise<IssueCredentialError>)
     suspend operator fun invoke(

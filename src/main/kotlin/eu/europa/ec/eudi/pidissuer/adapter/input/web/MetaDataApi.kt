@@ -15,7 +15,12 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
+import com.nimbusds.jose.jwk.JWKSet
+import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.server.ServerResponse
 import org.springframework.web.reactive.function.server.bodyValueAndAwait
@@ -23,7 +28,8 @@ import org.springframework.web.reactive.function.server.coRouter
 import org.springframework.web.reactive.function.server.json
 
 class MetaDataApi(
-    val getCredentialIssuerMetaData: GetCredentialIssuerMetaData,
+    private val getCredentialIssuerMetaData: GetCredentialIssuerMetaData,
+    private val credentialIssuerMetaData: CredentialIssuerMetaData,
 ) {
 
     val route = coRouter {
@@ -33,6 +39,12 @@ class MetaDataApi(
         GET(WELL_KNOWN_JWKS, accept(MediaType.APPLICATION_JSON)) { _ ->
             handleGetJwtIssuerJwkSet()
         }
+        GET(WELL_KNOWN_JWT_ISSUER, accept(MediaType.APPLICATION_JSON)) {
+            handleGetJwtIssuer()
+        }
+        GET(PUBLIC_KEYS, accept(MediaType.APPLICATION_JSON)) {
+            handleGetJwtIssuerJwks()
+        }
     }
 
     private suspend fun handleGetClientIssuerMetaData(): ServerResponse =
@@ -41,9 +53,28 @@ class MetaDataApi(
     private suspend fun handleGetJwtIssuerJwkSet(): ServerResponse =
         TODO()
 
+    private suspend fun handleGetJwtIssuer(): ServerResponse =
+        ServerResponse.ok()
+            .json()
+            .bodyValueAndAwait(
+                buildJsonObject {
+                    put("issuer ", JsonPrimitive(credentialIssuerMetaData.id.externalForm))
+                    put("jwks ", Json.parseToJsonElement(credentialIssuerMetaData.jwtIssuerJwks.toString(true)))
+                },
+            )
+
+    private suspend fun handleGetJwtIssuerJwks(): ServerResponse =
+        ServerResponse.ok()
+            .json()
+            .bodyValueAndAwait(credentialIssuerMetaData.jwtIssuerJwks.toString(true))
+
     companion object {
         const val WELL_KNOWN_OPENID_CREDENTIAL_ISSUER = "/.well-known/openid-credential-issuer"
-
         const val WELL_KNOWN_JWKS = "/.well-known/jwks.json"
+        const val WELL_KNOWN_JWT_ISSUER = "/.well-known/jwt-issuer"
+        const val PUBLIC_KEYS = "/public_keys.jwks"
     }
 }
+
+private val CredentialIssuerMetaData.jwtIssuerJwks: JWKSet
+    get() = JWKSet(specificCredentialIssuers.mapNotNull { it.publicKey })
