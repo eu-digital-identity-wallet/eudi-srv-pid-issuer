@@ -1139,23 +1139,6 @@
           }
         },
         {
-          "id": "90daa6fb-1cd3-4935-90fa-04a1427df4e9",
-          "name": "Place Of Birth",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-attribute-mapper",
-          "consentRequired": false,
-          "config": {
-            "aggregate.attrs": "false",
-            "userinfo.token.claim": "true",
-            "multivalued": "false",
-            "user.attribute": "place_of_birth",
-            "id.token.claim": "false",
-            "access.token.claim": "false",
-            "claim.name": "place_of_birth",
-            "jsonType.label": "JSON"
-          }
-        },
-        {
           "id": "27a29370-a2a6-4e8c-8378-6d4999ac092e",
           "name": "picture",
           "protocol": "openid-connect",
@@ -1325,23 +1308,6 @@
             "access.token.claim": "false",
             "claim.name": "age_over_18",
             "jsonType.label": "boolean"
-          }
-        },
-        {
-          "id": "c8395e40-a5f8-4983-ba39-ca8689bdfcbd",
-          "name": "Place Of Birth",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-attribute-mapper",
-          "consentRequired": false,
-          "config": {
-            "aggregate.attrs": "false",
-            "userinfo.token.claim": "true",
-            "multivalued": "false",
-            "user.attribute": "place_of_birth",
-            "id.token.claim": "false",
-            "access.token.claim": "false",
-            "claim.name": "place_of_birth",
-            "jsonType.label": "JSON"
           }
         },
         {

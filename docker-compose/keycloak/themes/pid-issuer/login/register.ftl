@@ -1,6 +1,6 @@
 <#import "template.ftl" as layout>
 <#import "register-commons.ftl" as registerCommons>
-<@layout.registrationLayout displayMessage=!messagesPerField.existsError('firstName','lastName','user.attributes.gender','user.attributes.birthdate','user.attributes.place_of_birth','user.attributes.age_over_18','user.attributes.picture','user.attributes.street','user.attributes.locality','user.attributes.region','user.attributes.postal_code','user.attributes.country','user.attributes.formatted','username','password','password-confirm','termsAccepted'); section>
+<@layout.registrationLayout displayMessage=!messagesPerField.existsError('firstName','lastName','user.attributes.gender','user.attributes.birthdate','user.attributes.age_over_18','user.attributes.picture','user.attributes.street','user.attributes.locality','user.attributes.region','user.attributes.postal_code','user.attributes.country','user.attributes.formatted','username','password','password-confirm','termsAccepted'); section>
     <#if section = "header">
         ${msg("registerTitle")}
     <#elseif section = "form">
@@ -105,26 +105,6 @@
                 </div>
             </div>
             <!-- /age_over_18 -->
-
-            <!-- place_of_birth -->
-            <div class="${properties.kcFormGroupClass!}">
-                <div class="${properties.kcLabelWrapperClass!}">
-                    <label for="user.attributes.place_of_birth" class="${properties.kcLabelClass!}">${msg("place_of_birth")}</label>
-                </div>
-                <div class="${properties.kcInputWrapperClass!}">
-                    <input type="text" id="user.attributes.place_of_birth" class="${properties.kcInputClass!}" name="user.attributes.place_of_birth"
-                           value="${(register.formData['user.attributes.place_of_birth']!'')}"
-                           aria-invalid="<#if messagesPerField.existsError('user.attributes.place_of_birth')>true</#if>"
-                    />
-
-                    <#if messagesPerField.existsError('user.attributes.place_of_birth')>
-                        <span id="input-error-user.attributes.place_of_birth" class="${properties.kcInputErrorMessageClass!}" aria-live="polite">
-                            ${kcSanitize(messagesPerField.get('user.attributes.place_of_birth'))?no_esc}
-                        </span>
-                    </#if>
-                </div>
-            </div>
-            <!-- /place_of_birth -->
 
             <!-- picture -->
             <div class="${properties.kcFormGroupClass!}">
