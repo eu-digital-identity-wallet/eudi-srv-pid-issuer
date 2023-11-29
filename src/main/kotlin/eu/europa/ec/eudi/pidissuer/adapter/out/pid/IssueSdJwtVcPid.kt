@@ -225,10 +225,11 @@ class IssueSdJwtVcPid(
 ) : IssueSpecificCredential<JsonElement> {
 
     private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
+    private val validateProof = ValidateProof(credentialIssuerId)
     override val supportedCredential: CredentialMetaData
         get() = PidSdJwtVcV1
-
-    private val validateProof = ValidateProof(credentialIssuerId)
+    override val publicKey: JWK
+        get() = issuerKey.toPublicJWK()
 
     context(Raise<IssueCredentialError>)
     override suspend fun invoke(

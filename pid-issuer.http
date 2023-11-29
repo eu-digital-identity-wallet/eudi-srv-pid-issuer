@@ -15,7 +15,6 @@ Content-Type: application/json
       "family_name": "Garcia",
       "birth_date": "1965-01-01",
       "is_over_18": true,
-      "unique_id": "86b73c6c-7542-4923-a986-97d2cdf7f07a",
       "issuance_date": "2023-07-19",
       "expiry_date": "2023-08-19",
       "issuing_authority": "Some authority",

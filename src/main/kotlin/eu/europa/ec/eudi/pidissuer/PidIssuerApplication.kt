@@ -240,7 +240,7 @@ fun beans(clock: Clock) = beans {
     // Routes
     //
     bean {
-        val metaDataApi = MetaDataApi(ref())
+        val metaDataApi = MetaDataApi(ref(), ref())
         val walletApi = WalletApi(ref(), ref(), ref())
         val issuerApi = IssuerApi(ref())
         metaDataApi.route.and(issuerApi.route).and(walletApi.route)
@@ -270,6 +270,8 @@ fun beans(clock: Clock) = beans {
                 authorize(WalletApi.DEFERRED_ENDPOINT, hasAnyAuthority(*scopes.toTypedArray()))
                 authorize(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, permitAll)
                 authorize(MetaDataApi.WELL_KNOWN_JWKS, permitAll)
+                authorize(MetaDataApi.WELL_KNOWN_JWT_ISSUER, permitAll)
+                authorize(MetaDataApi.PUBLIC_KEYS, permitAll)
                 authorize(IssuerApi.CREDENTIALS_OFFER, permitAll)
                 authorize(anyExchange, denyAll)
             }

@@ -20,6 +20,7 @@ import arrow.core.raise.Raise
 import arrow.core.raise.withError
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.ECKey
+import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProof
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
@@ -174,6 +175,7 @@ class IssueMsoMdocPid(
     private val validateProof = ValidateProof(credentialIssuerId)
     override val supportedCredential: CredentialMetaData
         get() = PidMsoMdocV1
+    override val publicKey: JWK? = null
 
     context(Raise<IssueCredentialError>)
     override suspend fun invoke(

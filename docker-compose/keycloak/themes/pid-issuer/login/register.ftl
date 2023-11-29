@@ -1,6 +1,6 @@
 <#import "template.ftl" as layout>
 <#import "register-commons.ftl" as registerCommons>
-<@layout.registrationLayout displayMessage=!messagesPerField.existsError('firstName','lastName','user.attributes.gender','user.attributes.birthdate','user.attributes.place_of_birth','user.attributes.age_over_18','user.attributes.picture','user.attributes.street','user.attributes.locality','user.attributes.region','user.attributes.postal_code','user.attributes.country','user.attributes.formatted','username','password','password-confirm','termsAccepted'); section>
+<@layout.registrationLayout displayMessage=!messagesPerField.existsError('firstName','lastName','user.attributes.gender','user.attributes.birthdate','user.attributes.age_over_18','user.attributes.picture','user.attributes.street','user.attributes.locality','user.attributes.region','user.attributes.postal_code','user.attributes.country','user.attributes.formatted','username','password','password-confirm','termsAccepted'); section>
     <#if section = "header">
         ${msg("registerTitle")}
     <#elseif section = "form">
@@ -52,11 +52,14 @@
                     <label for="user.attributes.gender" class="${properties.kcLabelClass!}">${msg("gender")}</label>
                 </div>
                 <div class="${properties.kcInputWrapperClass!}">
-                    <input type="text" id="user.attributes.gender" class="${properties.kcInputClass!}" name="user.attributes.gender"
-                           value="${(register.formData['user.attributes.gender']!'')}"
-                           aria-invalid="<#if messagesPerField.existsError('user.attributes.gender')>true</#if>"
-                    />
-
+                    <select id="user.attributes.gender" class="${properties.kcInputClass!}" name="user.attributes.gender"
+                            value="${(register.formData['user.attributes.gender']!'')}"
+                            aria-invalid="<#if messagesPerField.existsError('user.attributes.gender')>true</#if>">
+                        <option value="0" aria-label="${msg("gender_not_known")}">${msg("gender_not_known")}</option>
+                        <option value="1" aria-label="${msg("gender_male")}">${msg("gender_male")}</option>
+                        <option value="2" aria-label="${msg("gender_female")}">${msg("gender_female")}</option>
+                        <option value="3" aria-label="${msg("gender_not_applicable")}">${msg("gender_not_applicable")}</option>
+                    </select>
                     <#if messagesPerField.existsError('user.attributes.gender')>
                         <span id="input-error-user.attributes.gender" class="${properties.kcInputErrorMessageClass!}" aria-live="polite">
                             ${kcSanitize(messagesPerField.get('user.attributes.gender'))?no_esc}
@@ -92,11 +95,12 @@
                     <label for="user.attributes.age_over_18" class="${properties.kcLabelClass!}">${msg("age_over_18")}</label>
                 </div>
                 <div class="${properties.kcInputWrapperClass!}">
-                    <input type="text" id="user.attributes.age_over_18" class="${properties.kcInputClass!}" name="user.attributes.age_over_18"
-                           value="${(register.formData['user.attributes.age_over_18']!'')}"
-                           aria-invalid="<#if messagesPerField.existsError('user.attributes.age_over_18')>true</#if>"
-                    />
-
+                    <select id="user.attributes.age_over_18" class="${properties.kcInputClass!}" name="user.attributes.age_over_18"
+                            value="${(register.formData['user.attributes.age_over_18']!'')}"
+                            aria-invalid="<#if messagesPerField.existsError('user.attributes.age_over_18')>true</#if>">
+                        <option value="true" aria-label="${msg("age_over_18_yes")}">${msg("age_over_18_yes")}</option>
+                        <option value="false" aria-label="${msg("age_over_18_no")}">${msg("age_over_18_no")}</option>
+                    </select>
                     <#if messagesPerField.existsError('user.attributes.age_over_18')>
                         <span id="input-error-user.attributes.age_over_18" class="${properties.kcInputErrorMessageClass!}" aria-live="polite">
                             ${kcSanitize(messagesPerField.get('user.attributes.age_over_18'))?no_esc}
@@ -105,26 +109,6 @@
                 </div>
             </div>
             <!-- /age_over_18 -->
-
-            <!-- place_of_birth -->
-            <div class="${properties.kcFormGroupClass!}">
-                <div class="${properties.kcLabelWrapperClass!}">
-                    <label for="user.attributes.place_of_birth" class="${properties.kcLabelClass!}">${msg("place_of_birth")}</label>
-                </div>
-                <div class="${properties.kcInputWrapperClass!}">
-                    <input type="text" id="user.attributes.place_of_birth" class="${properties.kcInputClass!}" name="user.attributes.place_of_birth"
-                           value="${(register.formData['user.attributes.place_of_birth']!'')}"
-                           aria-invalid="<#if messagesPerField.existsError('user.attributes.place_of_birth')>true</#if>"
-                    />
-
-                    <#if messagesPerField.existsError('user.attributes.place_of_birth')>
-                        <span id="input-error-user.attributes.place_of_birth" class="${properties.kcInputErrorMessageClass!}" aria-live="polite">
-                            ${kcSanitize(messagesPerField.get('user.attributes.place_of_birth'))?no_esc}
-                        </span>
-                    </#if>
-                </div>
-            </div>
-            <!-- /place_of_birth -->
 
             <!-- picture -->
             <div class="${properties.kcFormGroupClass!}">
