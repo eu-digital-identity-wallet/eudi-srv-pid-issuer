@@ -67,6 +67,7 @@ import org.springframework.security.web.server.authentication.HttpStatusServerEn
 import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.reactive.config.WebFluxConfigurer
 import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
 import java.time.Clock
 import java.time.Duration
@@ -166,10 +167,9 @@ fun beans(clock: Clock) = beans {
 
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
-            credentialEndPoint = HttpsUrl.unsafe("${issuerPublicUrl.externalForm}${WalletApi.CREDENTIAL_ENDPOINT}"),
-            deferredCredentialEndpoint = HttpsUrl.unsafe("${issuerPublicUrl.externalForm}${WalletApi.DEFERRED_ENDPOINT}"),
+            credentialEndPoint = issuerPublicUrl.appendPath(WalletApi.CREDENTIAL_ENDPOINT),
+            deferredCredentialEndpoint = issuerPublicUrl.appendPath(WalletApi.DEFERRED_ENDPOINT),
             authorizationServers = listOf(env.readRequiredUrl("issuer.authorizationServer")),
-
             credentialResponseEncryption = env.credentialResponseEncryption(),
             specificCredentialIssuers = buildList {
                 val enableMsoMdocPid = env.getProperty<Boolean>("issuer.pid.mso_mdoc.enabled") ?: true
@@ -358,6 +358,14 @@ private fun <T> Environment.readNonEmptySet(key: String, f: (String) -> T?): Non
         .toNonEmptySetOrNull()
     return checkNotNull(nonEmptySet) { "Missing or incorrect values values for key `$key`" }
 }
+
+private fun HttpsUrl.appendPath(path: String): HttpsUrl =
+    HttpsUrl.unsafe(
+        UriComponentsBuilder.fromHttpUrl(externalForm)
+            .path(path)
+            .build()
+            .toUriString(),
+    )
 
 fun BeanDefinitionDsl.initializer(): ApplicationContextInitializer<GenericApplicationContext> =
     ApplicationContextInitializer<GenericApplicationContext> { initialize(it) }
