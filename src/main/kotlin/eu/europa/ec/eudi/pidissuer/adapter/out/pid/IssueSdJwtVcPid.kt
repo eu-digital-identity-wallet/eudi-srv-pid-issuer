@@ -86,6 +86,7 @@ private object Attributes {
 }
 
 val PidSdJwtVcV1: SdJwtVcMetaData = SdJwtVcMetaData(
+    id = CredentialUniqueId(PidSdJwtVcScope.value),
     type = SdJwtVcType(pidDocType(1)),
     display = pidDisplay,
     claims = Attributes.pidAttributes,

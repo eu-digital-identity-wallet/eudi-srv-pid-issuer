@@ -31,6 +31,7 @@ value class SdJwtVcType(val value: String)
  * @param type As defined in https://datatracker.ietf.org/doc/html/draft-ietf-oauth-sd-jwt-vc-00#type-claim
  */
 data class SdJwtVcMetaData(
+    override val id: CredentialUniqueId,
     val type: SdJwtVcType,
     override val scope: Scope? = null,
     override val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod> = emptyList(),

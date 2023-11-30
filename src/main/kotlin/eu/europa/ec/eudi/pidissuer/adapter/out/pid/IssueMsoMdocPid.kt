@@ -138,6 +138,7 @@ val PidMsoMdocV1: MsoMdocMetaData = run {
         JWSAlgorithm.ES256,
     )
     MsoMdocMetaData(
+        id = CredentialUniqueId(PidMsoMdocScope.value),
         docType = pidDocType(1),
         display = pidDisplay,
         msoClaims = mapOf(pidAttributes),

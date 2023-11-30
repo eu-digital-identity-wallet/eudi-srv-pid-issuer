@@ -15,16 +15,11 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
-import arrow.core.Either
-import arrow.core.leftIor
-import arrow.core.right
+import arrow.core.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -32,25 +27,29 @@ import java.nio.charset.StandardCharsets
 @Serializable
 data class AuthorizationCodeGrantTO(
     @SerialName("issuer_state") val issuerState: String?,
+    @SerialName("authorization_server") val authorizationServer: String? = null,
 )
 
 @Serializable
 data class PreAuthorizedCodeGrantTO(
     @Required @SerialName("pre-authorized_code") val preAuthorizedCode: String,
     @SerialName("user_pin_required") val userPinRequired: Boolean = false,
+    @SerialName("authorization_server") val authorizationServer: String? = null,
 )
 
 @Serializable
 data class GrantsTO(
-    @SerialName("authorization_code") val authorizedCodeGrant: AuthorizationCodeGrantTO? = null,
-    @SerialName("urn:ietf:params:oauth:grant-type:pre-authorized_code") val preAuthorizedCodeGrant: PreAuthorizedCodeGrantTO? = null,
+    @SerialName("authorization_code")
+    val authorizedCodeGrant: AuthorizationCodeGrantTO? = null,
+    @SerialName("urn:ietf:params:oauth:grant-type:pre-authorized_code")
+    val preAuthorizedCodeGrant: PreAuthorizedCodeGrantTO? = null,
 )
 
 @Serializable
 data class CredentialsOfferTO(
     @Required @SerialName("credential_issuer") val credentialIssuer: String,
-    val grants: GrantsTO,
-    val credentials: List<JsonElement>,
+    val grants: GrantsTO? = null,
+    val credentials: List<String>,
 )
 
 @Serializable
@@ -78,16 +77,21 @@ class RequestCredentialsOffer(
     // TODO This is a dummy method
     //  To be removed
     fun dummyOffer(): CredentialsOffer {
-        val metaData = credentialIssuerMetaData
-            .credentialsSupported
-            .filterIsInstance<MsoMdocMetaData>()
-            .find { it.docType == PidMsoMdocV1.docType }!!
-        val credentialOffer = metaData.scope?.let { CredentialOffer.ByScope(it) }
-            ?: CredentialOffer.ByMetaData(metaData)
+        // send the user to the first authorization server, in case we advertise multiple
+        val authorizationServer =
+            credentialIssuerMetaData.authorizationServers
+                .takeIf { it.size > 1 }
+                ?.first()
+        val credentials =
+            credentialIssuerMetaData.credentialsSupported
+                .filterIsInstance<MsoMdocMetaData>()
+                .firstOrNone { it.docType == PidMsoMdocV1.docType }
+                .map { listOf(it.id) }
+                .getOrElse { emptyList() }
         return CredentialsOffer(
             credentialIssuer = credentialIssuerMetaData.id,
-            grants = AuthorizationCodeGrant().leftIor(),
-            credentials = listOf(credentialOffer),
+            grants = AuthorizationCodeGrant(authorizationServer = authorizationServer).leftIor(),
+            credentials = credentials,
         )
     }
 }
@@ -97,10 +101,14 @@ class RequestCredentialsOffer(
 //
 
 private fun Grants.toTransferObject(): GrantsTO {
-    fun AuthorizationCodeGrant.toTransferObject() = AuthorizationCodeGrantTO(issuerState)
+    fun AuthorizationCodeGrant.toTransferObject() = AuthorizationCodeGrantTO(
+        issuerState = issuerState,
+        authorizationServer = authorizationServer?.externalForm,
+    )
     fun PreAuthorizedCodeGrant.toTransferObject() = PreAuthorizedCodeGrantTO(
         preAuthorizedCode = preAuthorizedCode.value,
         userPinRequired = userPinRequired,
+        authorizationServer = authorizationServer?.externalForm,
     )
     return fold(
         fa = { GrantsTO(it.toTransferObject(), null) },
@@ -109,28 +117,10 @@ private fun Grants.toTransferObject(): GrantsTO {
     )
 }
 
-private fun CredentialOffer.toTransferObject(): JsonElement =
-    when (this) {
-        is CredentialOffer.ByScope -> buildJsonObject {
-            val scope = this@toTransferObject.value
-            put("scope", scope.value)
-        }
-
-        is CredentialOffer.ByMetaData -> buildJsonObject {
-            val metaData = this@toTransferObject.value
-            put("format", metaData.format.value)
-            when (metaData) {
-                is JwtVcJsonMetaData -> TODO()
-                is MsoMdocMetaData -> metaData.toTransferObject(true)(this)
-                is SdJwtVcMetaData -> metaData.toTransferObject(true)(this)
-            }
-        }
-    }
-
 internal fun CredentialsOffer.toTransferObject(): CredentialsOfferTO = CredentialsOfferTO(
     credentialIssuer = credentialIssuer.externalForm,
-    grants = grants.toTransferObject(),
-    credentials = credentials.map { it.toTransferObject() },
+    grants = grants?.toTransferObject(),
+    credentials = credentials.map { it.value },
 )
 
 @OptIn(ExperimentalSerializationApi::class)

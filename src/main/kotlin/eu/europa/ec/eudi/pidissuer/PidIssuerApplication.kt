@@ -67,6 +67,7 @@ import org.springframework.security.web.server.authentication.HttpStatusServerEn
 import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.reactive.config.WebFluxConfigurer
 import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
 import java.time.Clock
 import java.time.Duration
@@ -158,7 +159,7 @@ fun beans(clock: Clock) = beans {
     // Specific Issuers
     //
     bean {
-        val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl")
+        val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl", removeTrailingSlash = true)
 
         bean {
             EncodePidInCborWithMicroService(env.readRequiredUrl("issuer.pid.mso_mdoc.encoderUrl"), ref())
@@ -166,14 +167,9 @@ fun beans(clock: Clock) = beans {
 
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
-            credentialEndPoint = env.readRequiredUrl("issuer.publicUrl").run {
-                HttpsUrl.unsafe("${this.value}${WalletApi.CREDENTIAL_ENDPOINT}")
-            },
-            deferredCredentialEndpoint = env.readRequiredUrl("issuer.publicUrl").run {
-                HttpsUrl.unsafe("${this.value}${WalletApi.DEFERRED_ENDPOINT}")
-            },
-            authorizationServer = env.readRequiredUrl("issuer.authorizationServer"),
-
+            credentialEndPoint = issuerPublicUrl.appendPath(WalletApi.CREDENTIAL_ENDPOINT),
+            deferredCredentialEndpoint = issuerPublicUrl.appendPath(WalletApi.DEFERRED_ENDPOINT),
+            authorizationServers = listOf(env.readRequiredUrl("issuer.authorizationServer")),
             credentialResponseEncryption = env.credentialResponseEncryption(),
             specificCredentialIssuers = buildList {
                 val enableMsoMdocPid = env.getProperty<Boolean>("issuer.pid.mso_mdoc.enabled") ?: true
@@ -341,10 +337,20 @@ private fun Environment.credentialResponseEncryption(): CredentialResponseEncryp
         )
 }
 
-private fun Environment.readRequiredUrl(key: String): HttpsUrl =
-    getRequiredProperty(key).let { url ->
-        HttpsUrl.of(url) ?: HttpsUrl.unsafe(url)
-    }
+private fun Environment.readRequiredUrl(key: String, removeTrailingSlash: Boolean = false): HttpsUrl =
+    getRequiredProperty(key)
+        .let { url ->
+            fun String.normalize() =
+                if (removeTrailingSlash) {
+                    this.removeSuffix("/")
+                } else {
+                    this
+                }
+
+            fun String.toHttpsUrl(): HttpsUrl = HttpsUrl.of(this) ?: HttpsUrl.unsafe(this)
+
+            url.normalize().toHttpsUrl()
+        }
 
 private fun <T> Environment.readNonEmptySet(key: String, f: (String) -> T?): NonEmptySet<T> {
     val nonEmptySet = getRequiredProperty<MutableSet<String>>(key)
@@ -352,6 +358,14 @@ private fun <T> Environment.readNonEmptySet(key: String, f: (String) -> T?): Non
         .toNonEmptySetOrNull()
     return checkNotNull(nonEmptySet) { "Missing or incorrect values values for key `$key`" }
 }
+
+private fun HttpsUrl.appendPath(path: String): HttpsUrl =
+    HttpsUrl.unsafe(
+        UriComponentsBuilder.fromHttpUrl(externalForm)
+            .path(path)
+            .build()
+            .toUriString(),
+    )
 
 fun BeanDefinitionDsl.initializer(): ApplicationContextInitializer<GenericApplicationContext> =
     ApplicationContextInitializer<GenericApplicationContext> { initialize(it) }
