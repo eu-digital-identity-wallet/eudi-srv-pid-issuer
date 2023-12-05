@@ -669,8 +669,8 @@
       "alwaysDisplayInConsole": true,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "",
-        "urn:ietf:wg:oauth:2.0:oob"
+        "urn:ietf:wg:oauth:2.0:oob",
+        "eudi-openid4ci://authorize"
       ],
       "webOrigins": [
         "/*"
@@ -977,8 +977,8 @@
       "alwaysDisplayInConsole": true,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "",
-        "urn:ietf:wg:oauth:2.0:oob"
+        "urn:ietf:wg:oauth:2.0:oob",
+        "eudi-openid4ci://authorize"
       ],
       "webOrigins": [
         "/*"
