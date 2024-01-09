@@ -14,7 +14,7 @@ nimbusJoseJwt = "9.37.3"
 nimbusOAuth2 = "11.8"
 eudiSdJwt = "0.2.0-SNAPSHOT"
 bouncyCastle = "1.77"
-dependencyCheck = "8.4.2"
+dependencyCheck = "9.0.8"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
