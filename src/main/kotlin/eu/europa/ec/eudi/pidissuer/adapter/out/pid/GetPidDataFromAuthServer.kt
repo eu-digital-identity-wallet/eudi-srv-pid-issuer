@@ -65,7 +65,7 @@ class GetPidDataFromAuthServer(
             expiryDate = issuanceDate.plusDays(100),
             issuanceDate = issuanceDate,
             issuingCountry = issuerCountry,
-            issuingAuthority = IssuingAuthority.AdministrativeAuthority(" Foo bat administrative authority"),
+            issuingAuthority = IssuingAuthority.AdministrativeAuthority("Foo bar administrative authority"),
             documentNumber = null,
             administrativeNumber = null,
             issuingJurisdiction = null,
