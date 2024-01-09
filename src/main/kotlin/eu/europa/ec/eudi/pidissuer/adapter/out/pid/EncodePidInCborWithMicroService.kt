@@ -94,7 +94,7 @@ internal fun createMsoMdocReq(
                 pid.givenNameBirth?.let { put("birth_given_name", it.value) }
                 pid.gender?.let { put("gender", it.value.toInt()) }
                 pid.nationality?.let { put("nationalities", JsonArray(listOf(JsonPrimitive(it.value)))) }
-                put("is_over_18", pid.ageOver18)
+                put("age_over_18", pid.ageOver18)
                 pid.ageBirthYear?.let { put("age_birth_year", it.value) }
                 put("issuance_date", pidMetaData.issuanceDate.toString())
                 put("expiry_date", pidMetaData.expiryDate.toString())
