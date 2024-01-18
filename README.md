@@ -17,8 +17,14 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 An implementation of a credential issuing service, according to
 [OpenId4VCI - draft12](https://openid.github.io/OpenID4VCI/openid-4-verifiable-credential-issuance-wg-draft.html)
 
-The service provides generic support for `mso_mdoc` and `SD-JWT-VC` formats using PID as an example
+The service provides generic support for `mso_mdoc` and `SD-JWT-VC` formats using PID and mDL as an example
 and requires the use of a suitable OAUTH2 server.
+
+| Credential/Attestation | Format    |
+|------------------------|-----------|
+| PID                    | mso_mdoc  |
+| PID                    | SD-JWT-VC |
+| mDL                    | mso_mdoc  | 
 
 ### OpenId4VCI coverage
 
@@ -45,7 +51,8 @@ A Keycloak instance accessible via https://localhost/idp/ with the Realm *pid-is
 
 The Realm *pid-issuer-realm*:
 
-- has user self-registration active with a custom registration page accessible via https://localhost/idp/realms/pid-issuer-realm/account/#/
+- has user self-registration active with a custom registration page accessible
+  via https://localhost/idp/realms/pid-issuer-realm/account/#/
 - defines *eu.europa.ec.eudiw.pid_vc_sd_jwt* scope for requesting PID issuance in SD JWT VC format
 - defines *eu.europa.ec.eudiw.pid_mso_mdoc* scope for requesting PID issuance in MSO MDOC format
 - defines *wallet-dev* and *pid-issuer-srv* clients
@@ -53,12 +60,12 @@ The Realm *pid-issuer-realm*:
 
 Administration console is accessible via https://localhost/idp/admin/ using the credentials admin / password
 
-### PID Issuer
+### PID mDL Issuer
 
-A PID Issuer instance accessible via https://localhost/pid-issuer/
+A PID mDL Issuer instance accessible via https://localhost/pid-issuer/
 
-It uses the configured Keycloak instance as an Authorization Server, and PID issuance both *SD JWT VC* and *MSO MDOC*
-formats is enabled. Additionally *deferred issuance* is enabled for *SD JWT VC* format.
+It uses the configured Keycloak instance as an Authorization Server, and supports issuing of PID and mDL. 
+Additionally, *deferred issuance* is enabled for PID in *SD JWT VC* format.
 
 The issuing country is set to GR (Greece).
 
@@ -146,7 +153,6 @@ curl http://localhost:8080/.well-known/openid-credential-issuer | jq .
 ```
 
 ### Credential Endpoint
-
 
 ### Credentials Offer
 
