@@ -27,6 +27,9 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.DefaultExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseWithNimbus
+import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.EncodeMobileDrivingLicenceInCborWithMicroservice
+import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.GetMobileDrivingLicenceDataMock
+import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.IssueMobileDrivingLicence
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
@@ -77,7 +80,7 @@ private val log = LoggerFactory.getLogger(PidIssuerApplication::class.java)
 /**
  * [WebClient] instances for usage within the application.
  */
-private object WebClients {
+internal object WebClients {
 
     /**
      * A [WebClient] with [Json] serialization enabled.
@@ -129,6 +132,18 @@ fun beans(clock: Clock) = beans {
             ref(),
         )
     }
+    bean {
+        EncodePidInCborWithMicroService(env.readRequiredUrl("issuer.pid.mso_mdoc.encoderUrl"), ref())
+    }
+    bean {
+        GetMobileDrivingLicenceDataMock()
+    }
+    bean {
+        EncodeMobileDrivingLicenceInCborWithMicroservice(
+            ref(),
+            env.readRequiredUrl("issuer.mdl.mso_mdoc.encoderUrl"),
+        )
+    }
     //
     // Encryption of credential response
     //
@@ -160,10 +175,6 @@ fun beans(clock: Clock) = beans {
     //
     bean {
         val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl", removeTrailingSlash = true)
-
-        bean {
-            EncodePidInCborWithMicroService(env.readRequiredUrl("issuer.pid.mso_mdoc.encoderUrl"), ref())
-        }
 
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
@@ -215,6 +226,12 @@ fun beans(clock: Clock) = beans {
                         if (deferred) issueSdJwtVcPid.asDeferred(ref(), ref())
                         else issueSdJwtVcPid,
                     )
+                }
+
+                val enableMobileDrivingLicence = env.getProperty("issuer.mdl.enabled", true)
+                if (enableMobileDrivingLicence) {
+                    val mdlIssuer = IssueMobileDrivingLicence(issuerPublicUrl, ref(), ref())
+                    add(mdlIssuer)
                 }
             },
         )

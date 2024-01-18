@@ -16,20 +16,16 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import com.nimbusds.jose.jwk.ECKey
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.toBase64UrlSafeEncodedPem
 import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
-import org.bouncycastle.util.io.pem.PemObject
-import org.bouncycastle.util.io.pem.PemWriter
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
-import java.io.StringWriter
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
 
 private val log = LoggerFactory.getLogger(EncodePidInCborWithMicroService::class.java)
 
@@ -61,17 +57,6 @@ class EncodePidInCborWithMicroService(
     }
 }
 
-@OptIn(ExperimentalEncodingApi::class)
-fun ECKey.base64EncodedPem(): String {
-    val output = StringWriter()
-    PemWriter(output).use { pemWriter ->
-        val pem = PemObject("PUBLIC KEY", this.toECPublicKey().encoded)
-        pemWriter.writeObject(pem)
-    }
-    val pem = output.toString()
-    return Base64.UrlSafe.encode(pem.toByteArray())
-}
-
 internal fun createMsoMdocReq(
     pid: Pid,
     pidMetaData: PidMetaData,
@@ -81,7 +66,7 @@ internal fun createMsoMdocReq(
         put("version", "0.3")
         put("country", "FC")
         put("doctype", PidMsoMdocV1.docType)
-        put("device_publickey", key.base64EncodedPem())
+        put("device_publickey", key.toBase64UrlSafeEncodedPem())
         putJsonObject("data") {
             val nameSpaces = PidMsoMdocV1.msoClaims.keys
             check(nameSpaces.isNotEmpty())
