@@ -495,6 +495,12 @@
       "roles": [
         "eid-holder-natural-person"
       ]
+    },
+    {
+      "clientScope": "org.iso.18013.5.1.mDL",
+      "roles": [
+        "eid-holder-natural-person"
+      ]
     }
   ],
   "clientScopeMappings": {
@@ -709,7 +715,8 @@
       ],
       "optionalClientScopes": [
         "eu.europa.ec.eudiw.pid_vc_sd_jwt",
-        "eu.europa.ec.eudiw.pid_mso_mdoc"
+        "eu.europa.ec.eudiw.pid_mso_mdoc",
+        "org.iso.18013.5.1.mDL"
       ]
     },
     {
@@ -1012,7 +1019,8 @@
       "optionalClientScopes": [
         "roles",
         "eu.europa.ec.eudiw.pid_vc_sd_jwt",
-        "eu.europa.ec.eudiw.pid_mso_mdoc"
+        "eu.europa.ec.eudiw.pid_mso_mdoc",
+        "org.iso.18013.5.1.mDL"
       ]
     }
   ],
@@ -1365,6 +1373,71 @@
       ]
     },
     {
+      "id": "261a329e-327b-43fa-849b-5c3c8748c663",
+      "name": "org.iso.18013.5.1.mDL",
+      "description": "",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "gui.order": "",
+        "consent.screen.text": "Do you consent to issue mDL?"
+      },
+      "protocolMappers": [
+        {
+          "id": "d06095b4-af59-40e1-ad1a-017c5c1f8473",
+          "name": "given name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "aggregate.attrs": "false",
+            "userinfo.token.claim": "true",
+            "multivalued": "false",
+            "user.attribute": "firstName",
+            "id.token.claim": "false",
+            "access.token.claim": "false",
+            "claim.name": "given_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "7b14d41e-74ec-4cf8-bc07-9afb932a797e",
+          "name": "family name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "aggregate.attrs": "false",
+            "userinfo.token.claim": "true",
+            "multivalued": "false",
+            "user.attribute": "lastName",
+            "id.token.claim": "false",
+            "access.token.claim": "false",
+            "claim.name": "family_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "1ab7730f-9a35-4587-86de-1fc2db219989",
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "aggregate.attrs": "false",
+            "userinfo.token.claim": "true",
+            "multivalued": "false",
+            "user.attribute": "email",
+            "id.token.claim": "false",
+            "access.token.claim": "false",
+            "claim.name": "email",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
       "id": "00bf2e53-5336-47ef-819f-3f1823a2cc81",
       "name": "roles",
       "description": "OpenID Connect scope for add user roles to the access token",
@@ -1419,7 +1492,8 @@
   ],
   "defaultOptionalClientScopes": [
     "eu.europa.ec.eudiw.pid_mso_mdoc",
-    "eu.europa.ec.eudiw.pid_vc_sd_jwt"
+    "eu.europa.ec.eudiw.pid_vc_sd_jwt",
+    "org.iso.18013.5.1.mDL"
   ],
   "browserSecurityHeaders": {
     "contentSecurityPolicyReportOnly": "",
