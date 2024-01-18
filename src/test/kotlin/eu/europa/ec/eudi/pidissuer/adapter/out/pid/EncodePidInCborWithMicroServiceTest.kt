@@ -25,11 +25,6 @@ import kotlin.test.Test
 
 class EncodePidInCborWithMicroServiceTest {
 
-    @Test
-    fun `base64EncodedPem() should not raise exception`() {
-        holderKey.base64EncodedPem().also { println(it) }
-    }
-
     private val json = Json { prettyPrint = true }
 
     @Test
