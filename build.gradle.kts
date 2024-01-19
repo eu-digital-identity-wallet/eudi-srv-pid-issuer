@@ -25,6 +25,9 @@ repositories {
             snapshotsOnly()
         }
     }
+    maven {
+        url = URI.create("https://jitpack.io")
+    }
 }
 
 dependencies {
@@ -32,6 +35,9 @@ dependencies {
         because("PID Issuer acts like a OAUTH2 resource server")
     }
     implementation("org.springframework.boot:spring-boot-starter-webflux")
+    implementation("org.springframework.boot:spring-boot-starter-thymeleaf") {
+        because("For HTML templates")
+    }
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
@@ -50,6 +56,15 @@ dependencies {
     }
     implementation(libs.bouncy.castle) {
         because("To support X509 certificates parsing")
+    }
+    implementation("org.webjars:webjars-locator-core") {
+        because("To support resolution of Webjars static resources")
+    }
+    implementation(libs.bootstrap) {
+        because("For inclusion in HTML templates")
+    }
+    implementation(libs.qrgen) {
+        because("To generate a QR Code for Credentials Offer URI")
     }
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
