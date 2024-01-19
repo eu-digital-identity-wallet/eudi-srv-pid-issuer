@@ -50,6 +50,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties
 import org.springframework.boot.runApplication
+import org.springframework.boot.web.codec.CodecCustomizer
 import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.support.BeanDefinitionDsl
 import org.springframework.context.support.GenericApplicationContext
@@ -59,16 +60,12 @@ import org.springframework.core.env.getProperty
 import org.springframework.core.env.getRequiredProperty
 import org.springframework.http.HttpStatus
 import org.springframework.http.client.reactive.ReactorClientHttpConnector
-import org.springframework.http.codec.ServerCodecConfigurer
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
 import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
-import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.config.web.server.invoke
 import org.springframework.security.oauth2.server.resource.introspection.SpringReactiveOpaqueTokenIntrospector
 import org.springframework.security.web.server.authentication.HttpStatusServerEntryPoint
-import org.springframework.web.reactive.config.EnableWebFlux
-import org.springframework.web.reactive.config.WebFluxConfigurer
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
@@ -112,6 +109,7 @@ internal object WebClients {
     }
 }
 
+@OptIn(ExperimentalSerializationApi::class)
 fun beans(clock: Clock) = beans {
     //
     // Adapters (out ports)
@@ -322,17 +320,14 @@ fun beans(clock: Clock) = beans {
     // Other
     //
     bean {
-        object : WebFluxConfigurer {
-            @OptIn(ExperimentalSerializationApi::class)
-            override fun configureHttpMessageCodecs(configurer: ServerCodecConfigurer) {
-                val json = Json {
-                    explicitNulls = false
-                    ignoreUnknownKeys = true
-                }
-                configurer.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
-                configurer.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
-                configurer.defaultCodecs().enableLoggingRequestDetails(true)
+        CodecCustomizer {
+            val json = Json {
+                explicitNulls = false
+                ignoreUnknownKeys = true
             }
+            it.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
+            it.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
+            it.defaultCodecs().enableLoggingRequestDetails(true)
         }
     }
 }
@@ -388,8 +383,6 @@ fun BeanDefinitionDsl.initializer(): ApplicationContextInitializer<GenericApplic
     ApplicationContextInitializer<GenericApplicationContext> { initialize(it) }
 
 @SpringBootApplication
-@EnableWebFlux
-@EnableWebFluxSecurity
 class PidIssuerApplication
 
 fun main(args: Array<String>) {
