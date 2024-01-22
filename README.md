@@ -35,6 +35,7 @@ and requires the use of a suitable OAUTH2 server.
 | mso_mdoc format                                           | ✅                                                         |
 | SD-JWT-VC format                                          | ✅ Except revocation list & meta                           |
 | W3C VC DM                                                 | ❌                                                         |
+| Credential Offer                                          | ✅ `authorization_code` , ❌ `pre-authorized_code`          |
 | [Credential Endpoint](#credential-endpoint)               | Yes, including proofs, encryption, repeatable invocations |
 | [Credential Issuer MetaData](#credential-issuer-metadata) | Yes, using `scopes`                                       | 
 | Batch Endpoint                                            | ❌                                                         | 
@@ -58,13 +59,13 @@ The Realm *pid-issuer-realm*:
 - defines *wallet-dev* and *pid-issuer-srv* clients
 - contains sample user with credentials: tneal / password
 
-Administration console is accessible via https://localhost/idp/admin/ using the credentials admin / password
+The Administration console is accessible via https://localhost/idp/admin/ using the credential admin / password
 
 ### PID mDL Issuer
 
 A PID mDL Issuer instance accessible via https://localhost/pid-issuer/
 
-It uses the configured Keycloak instance as an Authorization Server, and supports issuing of PID and mDL. 
+It uses the configured Keycloak instance as an Authorization Server, and supports issuing of PID and mDL.
 Additionally, *deferred issuance* is enabled for PID in *SD JWT VC* format.
 
 The issuing country is set to GR (Greece).
