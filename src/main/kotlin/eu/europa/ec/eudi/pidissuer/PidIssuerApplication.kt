@@ -33,6 +33,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.IssueMobileDrivingLicence
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
@@ -140,6 +141,8 @@ fun beans(clock: Clock) = beans {
             env.readRequiredUrl("issuer.mdl.mso_mdoc.encoderUrl"),
         )
     }
+    bean(::DefaultGenerateQrCode)
+
     //
     // Encryption of credential response
     //
@@ -252,7 +255,7 @@ fun beans(clock: Clock) = beans {
     bean {
         val metaDataApi = MetaDataApi(ref(), ref())
         val walletApi = WalletApi(ref(), ref(), ref())
-        val issuerUi = IssuerUi(ref(), ref())
+        val issuerUi = IssuerUi(ref(), ref(), ref())
         metaDataApi.route.and(walletApi.route).and(issuerUi.router)
     }
 

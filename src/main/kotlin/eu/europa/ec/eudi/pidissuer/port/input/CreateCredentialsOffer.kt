@@ -18,50 +18,21 @@ package eu.europa.ec.eudi.pidissuer.port.input
 import arrow.core.NonEmptySet
 import arrow.core.getOrElse
 import arrow.core.raise.Raise
-import arrow.core.raise.result
 import arrow.core.toNonEmptySetOrNone
-import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOffer.CredentialsOfferTO.GrantsTO.AuthorizationCodeTO
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError.*
+import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import net.glxn.qrgen.core.image.ImageType
-import net.glxn.qrgen.javase.QRCode
 import org.springframework.web.util.UriComponentsBuilder
 import java.net.URI
 
 /**
- * A generated Credentials Offer.
- *
- * Contains the [Credentials Offer URI][uri] and a [QR Code][qrCode] in PNG format.
+ * A Credential Offer.
  */
-data class GeneratedCredentialsOffer(
-    val uri: URI,
-    val qrCode: ByteArray,
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as GeneratedCredentialsOffer
-
-        if (uri != other.uri) return false
-        if (!qrCode.contentEquals(other.qrCode)) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = uri.hashCode()
-        result = 31 * result + qrCode.contentHashCode()
-        return result
-    }
-
-    companion object
-}
+data class CredentialsOffer(val uri: URI)
 
 /**
  * Errors that might be returned by [CreateCredentialsOffer].
@@ -77,11 +48,69 @@ sealed interface CreateCredentialsOfferError {
      * The provided Credential Unique Ids are not valid.
      */
     data object InvalidCredentialUniqueIds : CreateCredentialsOfferError
+}
 
-    /**
-     * An unexpected error occurred.
-     */
-    data class Unexpected(val cause: Throwable) : CreateCredentialsOfferError
+@Serializable
+private data class AuthorizationCodeTO(
+    @SerialName("issuer_state") val issuerState: String? = null,
+    @SerialName("authorization_server") val authorizationServer: String? = null,
+)
+
+@Serializable
+private data class PreAuthorizedCodeTO(
+    @SerialName("pre-authorized_code") @Required val preAuthorizedCode: String,
+    @SerialName("user_pin_required") val userPinRequired: Boolean = false,
+    @SerialName("interval") val interval: Long? = null,
+    @SerialName("authorization_server") val authorizationServer: String? = null,
+)
+
+@Serializable
+private data class GrantsTO(
+    @SerialName("authorization_code") val authorizationCode: AuthorizationCodeTO? = null,
+    @SerialName("urn:ietf:params:oauth:grant-type:pre-authorized_code") val preAuthorizedCode: PreAuthorizedCodeTO? = null,
+)
+
+/**
+ * A Credentials Offer as per
+ * [OpenId4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-4.1).
+ */
+@Serializable
+private data class CredentialsOfferTO(
+    @SerialName("credential_issuer") @Required val credentialIssuer: String,
+    @SerialName("credentials") @Required val credentials: Set<String>,
+    @SerialName("grants") val grants: GrantsTO? = null,
+) {
+    companion object {
+
+        /**
+         * Creates a new [CredentialsOfferTO] for an [Authorization Code Grant][AuthorizationCodeTO] flow.
+         * When more than one Authorization Servers are provided, only the first one is included in the resulting
+         * [CredentialsOfferTO] as per
+         * [OpenId4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-4.1.1-4.1.2.2).
+         *
+         * @param credentialIssuerId the Id of the Credential Issuer
+         * @param credentials the Ids of the Credentials to include in the generated request
+         * @param authorizationServers  the configured Authorization Servers
+         * @return the resulting TO
+         */
+        fun forAuthorizationCodeGrant(
+            credentialIssuerId: CredentialIssuerId,
+            credentials: NonEmptySet<CredentialUniqueId>,
+            authorizationServers: List<HttpsUrl>,
+        ): CredentialsOfferTO =
+            CredentialsOfferTO(
+                credentialIssuerId.externalForm,
+                credentials.map { it.value }.toSet(),
+                GrantsTO(
+                    AuthorizationCodeTO(
+                        authorizationServer = authorizationServers
+                            .takeIf { it.size > 1 }
+                            ?.first()
+                            ?.externalForm,
+                    ),
+                ),
+            )
+    }
 }
 
 /**
@@ -93,88 +122,21 @@ class CreateCredentialsOffer(
 ) {
 
     context(Raise<CreateCredentialsOfferError>)
-    operator fun invoke(maybeCredentials: Set<CredentialUniqueId>): GeneratedCredentialsOffer {
+    operator fun invoke(maybeCredentials: Set<CredentialUniqueId>): CredentialsOffer {
         val credentials = maybeCredentials.toNonEmptySetOrNone().getOrElse { raise(MissingCredentialUniqueIds) }
         val supportedCredentials = metadata.credentialsSupported.map(CredentialMetaData::id)
         if (!supportedCredentials.containsAll(credentials)) {
             raise(InvalidCredentialUniqueIds)
         }
-        val credentialsOffer = CredentialsOfferTO(metadata.id, credentials, metadata.authorizationServers)
-        return GeneratedCredentialsOffer(credentialsOfferUri, credentialsOffer).getOrElse { raise(Unexpected(it)) }
-    }
-
-    companion object {
-
-        /**
-         * Creates a new [GeneratedCredentialsOffer].
-         *
-         * Generate a new [QRCode] using a [credentialsOfferUri] that contains the data of the [credentialsOffer].
-         */
-        private operator fun GeneratedCredentialsOffer.Companion.invoke(
-            credentialsOfferUri: URI,
-            credentialsOffer: CredentialsOfferTO,
-        ): Result<GeneratedCredentialsOffer> = result {
-            val generatedCredentialsOfferUri = UriComponentsBuilder.fromUri(credentialsOfferUri)
-                .queryParam("credential_offer", Json.encodeToString(credentialsOffer))
-                .build()
-                .toUri()
-            val generatedQrCode = QRCode.from(generatedCredentialsOfferUri.toString())
-                .to(ImageType.PNG)
-                .withSize(300, 300)
-                .withCharset(Charsets.UTF_8.name())
-                .withErrorCorrection(ErrorCorrectionLevel.H)
-                .stream()
-                .toByteArray()
-
-            GeneratedCredentialsOffer(generatedCredentialsOfferUri, generatedQrCode)
-        }
-    }
-
-    /**
-     * A Credentials Offer using Authorization Code Grant as per
-     * [OpenId4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-4.1).
-     */
-    @Serializable
-    private data class CredentialsOfferTO(
-        @SerialName("credential_issuer") val credentialIssuer: String,
-        @SerialName("credentials") val credentials: Set<String>,
-        @SerialName("grants") val grants: GrantsTO? = null,
-    ) {
-        companion object {
-
-            /**
-             * Creates a new [CredentialsOfferTO] for the provided [credentialIssuerId], [credentials] and [authorizationServers].
-             * When more than one Authorization Servers are provided, only the first one is included in the resulting
-             * [CredentialsOfferTO] as per
-             * [OpenId4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-4.1.1-4.1.2.2).
-             */
-            operator fun invoke(
-                credentialIssuerId: CredentialIssuerId,
-                credentials: NonEmptySet<CredentialUniqueId>,
-                authorizationServers: List<HttpsUrl>,
-            ): CredentialsOfferTO =
-                CredentialsOfferTO(
-                    credentialIssuerId.externalForm,
-                    credentials.map { it.value }.toSet(),
-                    GrantsTO(
-                        AuthorizationCodeTO(
-                            authorizationServers
-                                .takeIf { it.size > 1 }
-                                ?.first()
-                                ?.externalForm,
-                        ),
-                    ),
-                )
-        }
-
-        @Serializable
-        data class GrantsTO(
-            @SerialName("authorization_code") val authorizationCode: AuthorizationCodeTO,
-        ) {
-            @Serializable
-            data class AuthorizationCodeTO(
-                @SerialName("authorization_server") val authorizationServer: String? = null,
-            )
-        }
+        val credentialsOffer = CredentialsOfferTO.forAuthorizationCodeGrant(
+            metadata.id,
+            credentials,
+            metadata.authorizationServers,
+        )
+        val generatedCredentialsOfferUri = UriComponentsBuilder.fromUri(credentialsOfferUri)
+            .queryParam("credential_offer", Json.encodeToString(credentialsOffer))
+            .build()
+            .toUri()
+        return CredentialsOffer(generatedCredentialsOfferUri)
     }
 }

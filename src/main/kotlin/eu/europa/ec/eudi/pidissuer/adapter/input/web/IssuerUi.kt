@@ -18,8 +18,11 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 import arrow.core.raise.either
 import eu.europa.ec.eudi.pidissuer.domain.CredentialUniqueId
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOffer
-import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError
 import eu.europa.ec.eudi.pidissuer.port.input.GetSupportedCredentialUniqueIds
+import eu.europa.ec.eudi.pidissuer.port.out.qr.Dimensions
+import eu.europa.ec.eudi.pidissuer.port.out.qr.Format
+import eu.europa.ec.eudi.pidissuer.port.out.qr.GenerateQqCode
+import eu.europa.ec.eudi.pidissuer.port.out.qr.Pixels
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -30,6 +33,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 class IssuerUi(
     private val getSupportedCredentialUniqueIds: GetSupportedCredentialUniqueIds,
     private val createCredentialsOffer: CreateCredentialsOffer,
+    private val generateQrCode: GenerateQqCode,
 ) {
     val router: RouterFunction<ServerResponse> = coRouter {
         // Redirect / to 'generate credentials offer' form
@@ -74,35 +78,40 @@ class IssuerUi(
             .fold(
                 ifLeft = { error ->
                     log.warn("Unable to generated Credentials Offer. Error: {}", error)
-                    val (status, exception) =
-                        when (error) {
-                            is CreateCredentialsOfferError.Unexpected ->
-                                HttpStatus.INTERNAL_SERVER_ERROR to error.cause.stackTraceToString()
-
-                            else ->
-                                HttpStatus.BAD_REQUEST to null
-                        }
-
-                    ServerResponse.status(status)
+                    ServerResponse.badRequest()
                         .contentType(MediaType.TEXT_HTML)
-                        .renderAndAwait(
-                            "generate-credentials-offer-error",
-                            mapOf(
-                                "error" to error::class.java.canonicalName,
-                                "exception" to exception,
-                            ),
-                        )
+                        .renderAndAwait("generate-credentials-offer-error", mapOf("error" to error::class.java.canonicalName))
                 },
-                ifRight = {
-                    log.info("Successfully generated Credentials Offer. URI: '{}'", it.uri)
-                    ServerResponse.ok()
-                        .contentType(MediaType.TEXT_HTML)
-                        .renderAndAwait(
-                            "display-credentials-offer",
-                            mapOf(
-                                "uri" to it.uri.toString(),
-                                "qrCode" to Base64.encode(it.qrCode),
-                            ),
+                ifRight = { credentialsOffer ->
+                    log.info("Successfully generated Credentials Offer. URI: '{}'", credentialsOffer.uri)
+                    log.info("Generating QR Code")
+                    generateQrCode(credentialsOffer.uri.toString(), Format.PNG, Dimensions(Pixels(300u), Pixels(300u)))
+                        .fold(
+                            onSuccess = { qrCode ->
+                                log.info("Successfully generated QR Code. Displaying generated Credentials Offer.")
+                                ServerResponse.ok()
+                                    .contentType(MediaType.TEXT_HTML)
+                                    .renderAndAwait(
+                                        "display-credentials-offer",
+                                        mapOf(
+                                            "uri" to credentialsOffer.uri.toString(),
+                                            "qrCode" to Base64.encode(qrCode),
+                                            "qrCodeMediaType" to "image/png",
+                                        ),
+                                    )
+                            },
+                            onFailure = { error ->
+                                log.error("Unable to generate QR Code.", error)
+                                ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                    .contentType(MediaType.TEXT_HTML)
+                                    .renderAndAwait(
+                                        "generate-credentials-offer-error",
+                                        mapOf(
+                                            "error" to "unexpected-error",
+                                            "exception" to error.stackTraceToString(),
+                                        ),
+                                    )
+                            },
                         )
                 },
             )
