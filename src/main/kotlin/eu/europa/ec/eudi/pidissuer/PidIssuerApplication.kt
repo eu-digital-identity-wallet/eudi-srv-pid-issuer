@@ -22,6 +22,7 @@ import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
+import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerUi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
@@ -256,7 +257,8 @@ fun beans(clock: Clock) = beans {
         val metaDataApi = MetaDataApi(ref(), ref())
         val walletApi = WalletApi(ref(), ref(), ref())
         val issuerUi = IssuerUi(ref(), ref(), ref())
-        metaDataApi.route.and(walletApi.route).and(issuerUi.router)
+        val issuerApi = IssuerApi(ref())
+        metaDataApi.route.and(walletApi.route).and(issuerUi.router).and(issuerApi.router)
     }
 
     //
@@ -286,6 +288,7 @@ fun beans(clock: Clock) = beans {
                 authorize(MetaDataApi.WELL_KNOWN_JWT_ISSUER, permitAll)
                 authorize(MetaDataApi.PUBLIC_KEYS, permitAll)
                 authorize(IssuerUi.GENERATE_CREDENTIALS_OFFER, permitAll)
+                authorize(IssuerApi.CREATE_CREDENTIALS_OFFER, permitAll)
                 authorize("", permitAll)
                 authorize("/", permitAll)
                 authorize(env.getRequiredProperty("spring.webflux.static-path-pattern"), permitAll)
