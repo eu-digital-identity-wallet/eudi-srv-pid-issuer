@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
+import arrow.core.getOrElse
 import arrow.core.raise.either
 import eu.europa.ec.eudi.pidissuer.domain.CredentialUniqueId
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOffer
@@ -47,8 +48,7 @@ class IssuerUi(
         GET(
             GENERATE_CREDENTIALS_OFFER,
             contentType(MediaType.ALL) and accept(MediaType.TEXT_HTML),
-            ::handleDisplayGenerateCredentialsOfferForm,
-        )
+        ) { handleDisplayGenerateCredentialsOfferForm() }
 
         // Submit 'generate credentials offer' form
         POST(
@@ -58,7 +58,7 @@ class IssuerUi(
         )
     }
 
-    private suspend fun handleDisplayGenerateCredentialsOfferForm(request: ServerRequest): ServerResponse {
+    private suspend fun handleDisplayGenerateCredentialsOfferForm(): ServerResponse {
         log.info("Displaying 'Generate Credentials Offer' page")
         val supportedCredentialUniqueIds = getSupportedCredentialUniqueIds()
         return ServerResponse.ok()
@@ -74,47 +74,28 @@ class IssuerUi(
             .map(::CredentialUniqueId)
             .toSet()
 
-        return either { createCredentialsOffer(credentialIds) }
-            .fold(
-                ifLeft = { error ->
-                    log.warn("Unable to generated Credentials Offer. Error: {}", error)
-                    ServerResponse.badRequest()
-                        .contentType(MediaType.TEXT_HTML)
-                        .renderAndAwait("generate-credentials-offer-error", mapOf("error" to error::class.java.canonicalName))
-                },
-                ifRight = { credentialsOffer ->
-                    log.info("Successfully generated Credentials Offer. URI: '{}'", credentialsOffer.uri)
-                    log.info("Generating QR Code")
-                    generateQrCode(credentialsOffer.uri.toString(), Format.PNG, Dimensions(Pixels(300u), Pixels(300u)))
-                        .fold(
-                            onSuccess = { qrCode ->
-                                log.info("Successfully generated QR Code. Displaying generated Credentials Offer.")
-                                ServerResponse.ok()
-                                    .contentType(MediaType.TEXT_HTML)
-                                    .renderAndAwait(
-                                        "display-credentials-offer",
-                                        mapOf(
-                                            "uri" to credentialsOffer.uri.toString(),
-                                            "qrCode" to Base64.encode(qrCode),
-                                            "qrCodeMediaType" to "image/png",
-                                        ),
-                                    )
-                            },
-                            onFailure = { error ->
-                                log.error("Unable to generate QR Code.", error)
-                                ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                                    .contentType(MediaType.TEXT_HTML)
-                                    .renderAndAwait(
-                                        "generate-credentials-offer-error",
-                                        mapOf(
-                                            "error" to "unexpected-error",
-                                            "exception" to error.stackTraceToString(),
-                                        ),
-                                    )
-                            },
-                        )
-                },
-            )
+        return either {
+            val credentialsOffer = createCredentialsOffer(credentialIds)
+            log.info("Successfully generated Credentials Offer. URI: '{}'", credentialsOffer)
+
+            val qrCode = generateQrCode(credentialsOffer, Format.PNG, Dimensions(Pixels(300u), Pixels(300u))).getOrThrow()
+            log.info("Successfully generated QR Code. Displaying generated Credentials Offer.")
+            ServerResponse.ok()
+                .contentType(MediaType.TEXT_HTML)
+                .renderAndAwait(
+                    "display-credentials-offer",
+                    mapOf(
+                        "uri" to credentialsOffer.toString(),
+                        "qrCode" to Base64.encode(qrCode),
+                        "qrCodeMediaType" to "image/png",
+                    ),
+                )
+        }.getOrElse { error ->
+            log.warn("Unable to generated Credentials Offer. Error: {}", error)
+            ServerResponse.badRequest()
+                .contentType(MediaType.TEXT_HTML)
+                .renderAndAwait("generate-credentials-offer-error", mapOf("error" to error::class.java.canonicalName))
+        }
     }
 
     companion object {

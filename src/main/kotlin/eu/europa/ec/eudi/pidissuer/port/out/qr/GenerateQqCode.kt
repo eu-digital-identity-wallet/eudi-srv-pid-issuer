@@ -15,6 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.qr
 
+import java.net.URI
+
 enum class Format {
     JPG,
     GIF,
@@ -39,5 +41,5 @@ fun interface GenerateQqCode {
      * @param format the image format to use
      * @param dimensions the dimensions of the generated QR Code
      */
-    operator fun invoke(content: String, format: Format, dimensions: Dimensions): Result<ByteArray>
+    operator fun invoke(content: URI, format: Format, dimensions: Dimensions): Result<ByteArray>
 }

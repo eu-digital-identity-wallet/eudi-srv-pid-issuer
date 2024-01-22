@@ -16,11 +16,13 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.NonEmptySet
-import arrow.core.getOrElse
 import arrow.core.raise.Raise
-import arrow.core.toNonEmptySetOrNone
+import arrow.core.raise.ensure
+import arrow.core.raise.ensureNotNull
+import arrow.core.toNonEmptySetOrNull
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError.*
+import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError.InvalidCredentialUniqueIds
+import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError.MissingCredentialUniqueIds
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -28,11 +30,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.springframework.web.util.UriComponentsBuilder
 import java.net.URI
-
-/**
- * A Credential Offer.
- */
-data class CredentialsOffer(val uri: URI)
 
 /**
  * Errors that might be returned by [CreateCredentialsOffer].
@@ -122,21 +119,22 @@ class CreateCredentialsOffer(
 ) {
 
     context(Raise<CreateCredentialsOfferError>)
-    operator fun invoke(maybeCredentials: Set<CredentialUniqueId>): CredentialsOffer {
-        val credentials = maybeCredentials.toNonEmptySetOrNone().getOrElse { raise(MissingCredentialUniqueIds) }
+    operator fun invoke(maybeCredentials: Set<CredentialUniqueId>): URI {
+        val credentials = maybeCredentials.toNonEmptySetOrNull()
+        ensureNotNull(credentials) { MissingCredentialUniqueIds }
+
         val supportedCredentials = metadata.credentialsSupported.map(CredentialMetaData::id)
-        if (!supportedCredentials.containsAll(credentials)) {
-            raise(InvalidCredentialUniqueIds)
-        }
+        ensure(supportedCredentials.containsAll(credentials)) { InvalidCredentialUniqueIds }
+
         val credentialsOffer = CredentialsOfferTO.forAuthorizationCodeGrant(
             metadata.id,
             credentials,
             metadata.authorizationServers,
         )
-        val generatedCredentialsOfferUri = UriComponentsBuilder.fromUri(credentialsOfferUri)
+
+        return UriComponentsBuilder.fromUri(credentialsOfferUri)
             .queryParam("credential_offer", Json.encodeToString(credentialsOffer))
             .build()
             .toUri()
-        return CredentialsOffer(generatedCredentialsOfferUri)
     }
 }

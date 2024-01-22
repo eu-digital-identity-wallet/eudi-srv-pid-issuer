@@ -22,13 +22,14 @@ import eu.europa.ec.eudi.pidissuer.port.out.qr.Format
 import eu.europa.ec.eudi.pidissuer.port.out.qr.GenerateQqCode
 import net.glxn.qrgen.core.image.ImageType
 import net.glxn.qrgen.javase.QRCode
+import java.net.URI
 
 /**
  * [GenerateQqCode] implementation using QRGen.
  */
 class DefaultGenerateQrCode : GenerateQqCode {
 
-    override fun invoke(content: String, format: Format, dimensions: Dimensions): Result<ByteArray> =
+    override fun invoke(content: URI, format: Format, dimensions: Dimensions): Result<ByteArray> =
         result {
             val imageType =
                 when (format) {
@@ -38,7 +39,7 @@ class DefaultGenerateQrCode : GenerateQqCode {
                     Format.BMP -> ImageType.BMP
                 }
 
-            QRCode.from(content)
+            QRCode.from(content.toString())
                 .to(imageType)
                 .withSize(dimensions.width.value.toInt(), dimensions.height.value.toInt())
                 .withCharset(Charsets.UTF_8.name())
