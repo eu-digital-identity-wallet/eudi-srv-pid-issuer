@@ -22,7 +22,6 @@ import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
-import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerUi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
@@ -238,7 +237,6 @@ fun beans(clock: Clock) = beans {
     // In Ports (use cases)
     //
     bean(::GetCredentialIssuerMetaData)
-    bean(::RequestCredentialsOffer)
     bean {
         IssueCredential(clock, ref(), ref(), ref(), ref(), ref())
     }
@@ -254,9 +252,8 @@ fun beans(clock: Clock) = beans {
     bean {
         val metaDataApi = MetaDataApi(ref(), ref())
         val walletApi = WalletApi(ref(), ref(), ref())
-        val issuerApi = IssuerApi(ref())
         val issuerUi = IssuerUi(ref(), ref())
-        metaDataApi.route.and(walletApi.route).and(issuerApi.route).and(issuerUi.router)
+        metaDataApi.route.and(walletApi.route).and(issuerUi.router)
     }
 
     //
@@ -285,7 +282,6 @@ fun beans(clock: Clock) = beans {
                 authorize(MetaDataApi.WELL_KNOWN_JWKS, permitAll)
                 authorize(MetaDataApi.WELL_KNOWN_JWT_ISSUER, permitAll)
                 authorize(MetaDataApi.PUBLIC_KEYS, permitAll)
-                authorize(IssuerApi.CREDENTIALS_OFFER, permitAll)
                 authorize(IssuerUi.GENERATE_CREDENTIALS_OFFER, permitAll)
                 authorize("", permitAll)
                 authorize("/", permitAll)
