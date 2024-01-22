@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
+import arrow.core.raise.either
 import eu.europa.ec.eudi.pidissuer.domain.CredentialUniqueId
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOffer
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError
@@ -69,7 +70,7 @@ class IssuerUi(
             .map(::CredentialUniqueId)
             .toSet()
 
-        return createCredentialsOffer(credentialIds)
+        return either { createCredentialsOffer(credentialIds) }
             .fold(
                 ifLeft = { error ->
                     log.warn("Unable to generated Credentials Offer. Error: {}", error)
@@ -77,6 +78,7 @@ class IssuerUi(
                         when (error) {
                             is CreateCredentialsOfferError.Unexpected ->
                                 HttpStatus.INTERNAL_SERVER_ERROR to error.cause.stackTraceToString()
+
                             else ->
                                 HttpStatus.BAD_REQUEST to null
                         }

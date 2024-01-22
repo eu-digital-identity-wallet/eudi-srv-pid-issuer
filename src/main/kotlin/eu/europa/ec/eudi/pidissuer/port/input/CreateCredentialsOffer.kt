@@ -15,10 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
-import arrow.core.Either
 import arrow.core.NonEmptySet
 import arrow.core.getOrElse
-import arrow.core.raise.either
+import arrow.core.raise.Raise
 import arrow.core.raise.result
 import arrow.core.toNonEmptySetOrNone
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
@@ -92,16 +91,17 @@ class CreateCredentialsOffer(
     private val metadata: CredentialIssuerMetaData,
     private val credentialsOfferUri: URI,
 ) {
-    operator fun invoke(maybeCredentials: Set<CredentialUniqueId>): Either<CreateCredentialsOfferError, GeneratedCredentialsOffer> =
-        either {
-            val credentials = maybeCredentials.toNonEmptySetOrNone().getOrElse { raise(MissingCredentialUniqueIds) }
-            val supportedCredentials = metadata.credentialsSupported.map(CredentialMetaData::id)
-            if (!supportedCredentials.containsAll(credentials)) {
-                raise(InvalidCredentialUniqueIds)
-            }
-            val credentialsOffer = CredentialsOfferTO(metadata.id, credentials, metadata.authorizationServers)
-            GeneratedCredentialsOffer(credentialsOfferUri, credentialsOffer).getOrElse { raise(Unexpected(it)) }
+
+    context(Raise<CreateCredentialsOfferError>)
+    operator fun invoke(maybeCredentials: Set<CredentialUniqueId>): GeneratedCredentialsOffer {
+        val credentials = maybeCredentials.toNonEmptySetOrNone().getOrElse { raise(MissingCredentialUniqueIds) }
+        val supportedCredentials = metadata.credentialsSupported.map(CredentialMetaData::id)
+        if (!supportedCredentials.containsAll(credentials)) {
+            raise(InvalidCredentialUniqueIds)
         }
+        val credentialsOffer = CredentialsOfferTO(metadata.id, credentials, metadata.authorizationServers)
+        return GeneratedCredentialsOffer(credentialsOfferUri, credentialsOffer).getOrElse { raise(Unexpected(it)) }
+    }
 
     companion object {
 
