@@ -15,34 +15,72 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
-import eu.europa.ec.eudi.pidissuer.port.input.RequestCredentialsOffer
+import arrow.core.getOrElse
+import arrow.core.raise.either
+import eu.europa.ec.eudi.pidissuer.domain.CredentialUniqueId
+import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOffer
+import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.server.*
+import java.net.URI
 
-class IssuerApi(private val requestCredentialsOffer: RequestCredentialsOffer) {
-    val route = coRouter {
+class IssuerApi(
+    private val createCredentialsOffer: CreateCredentialsOffer,
+) {
+    val router: RouterFunction<ServerResponse> = coRouter {
         POST(
-            CREDENTIALS_OFFER,
+            CREATE_CREDENTIALS_OFFER,
             contentType(MediaType.APPLICATION_JSON) and accept(MediaType.APPLICATION_JSON),
-            this@IssuerApi::handleRequestCredentialsOffer,
-        )
-
-        // TODO This is dummy. Remove it
-        GET(
-            CREDENTIALS_OFFER,
-            accept(MediaType.APPLICATION_JSON),
-            this@IssuerApi::handleRequestCredentialsOffer,
+            ::handleCreateCredentialsOffer,
         )
     }
 
-    private suspend fun handleRequestCredentialsOffer(req: ServerRequest): ServerResponse {
-        return requestCredentialsOffer().fold(
-            ifLeft = { _ -> ServerResponse.badRequest().buildAndAwait() },
-            ifRight = { ServerResponse.ok().json().bodyValueAndAwait(it) },
-        )
+    private suspend fun handleCreateCredentialsOffer(request: ServerRequest): ServerResponse {
+        log.info("Generating Credentials Offer")
+        val credentialIds = request.awaitBodyOrNull<CreateCredentialsOfferRequestTO>()
+            ?.credentialIds
+            .orEmpty()
+            .map(::CredentialUniqueId)
+            .toSet()
+
+        return either {
+            val credentialsOffer = createCredentialsOffer(credentialIds)
+            log.info("Successfully generated Credentials Offer. URI: '{}'", credentialsOffer)
+
+            ServerResponse.ok()
+                .json()
+                .bodyValueAndAwait(CreateCredentialsOfferResponseTO.success(credentialsOffer))
+        }.getOrElse { error ->
+            ServerResponse.badRequest()
+                .json()
+                .bodyValueAndAwait(CreateCredentialsOfferResponseTO.error(error))
+        }
     }
 
     companion object {
-        const val CREDENTIALS_OFFER = "/issuer/credentialsOffer"
+        const val CREATE_CREDENTIALS_OFFER: String = "/issuer/credentialsOffer/create"
+        private val log = LoggerFactory.getLogger(IssuerUi::class.java)
+    }
+}
+
+@Serializable
+private data class CreateCredentialsOfferRequestTO(
+    @SerialName("credentialIds") val credentialIds: Set<String>? = null,
+)
+
+@Serializable
+private data class CreateCredentialsOfferResponseTO(
+    @SerialName("credentialsOffer") val credentialsOffer: String? = null,
+    @SerialName("error") val error: String? = null,
+) {
+    companion object {
+        fun success(credentialsOffer: URI) =
+            CreateCredentialsOfferResponseTO(credentialsOffer = credentialsOffer.toString())
+
+        fun error(error: CreateCredentialsOfferError) =
+            CreateCredentialsOfferResponseTO(error = error::class.java.simpleName)
     }
 }

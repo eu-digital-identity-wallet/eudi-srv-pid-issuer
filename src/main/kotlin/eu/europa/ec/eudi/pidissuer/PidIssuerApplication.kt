@@ -23,6 +23,7 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
+import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerUi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.DefaultExtractJwkFromCredentialKey
@@ -33,11 +34,9 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.IssueMobileDrivingLicence
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
-import eu.europa.ec.eudi.pidissuer.port.input.GetDeferredCredential
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
-import eu.europa.ec.eudi.pidissuer.port.input.RequestCredentialsOffer
+import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
@@ -69,6 +68,7 @@ import org.springframework.security.web.server.authentication.HttpStatusServerEn
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
+import java.net.URI
 import java.time.Clock
 import java.time.Duration
 
@@ -142,6 +142,8 @@ fun beans(clock: Clock) = beans {
             env.readRequiredUrl("issuer.mdl.mso_mdoc.encoderUrl"),
         )
     }
+    bean(::DefaultGenerateQrCode)
+
     //
     // Encryption of credential response
     //
@@ -239,12 +241,12 @@ fun beans(clock: Clock) = beans {
     // In Ports (use cases)
     //
     bean(::GetCredentialIssuerMetaData)
-    bean(::RequestCredentialsOffer)
     bean {
         IssueCredential(clock, ref(), ref(), ref(), ref(), ref())
     }
+    bean(::GetDeferredCredential)
     bean {
-        GetDeferredCredential(ref())
+        CreateCredentialsOffer(ref(), env.getRequiredProperty<URI>("issuer.credentialOffer.uri"))
     }
 
     //
@@ -253,8 +255,9 @@ fun beans(clock: Clock) = beans {
     bean {
         val metaDataApi = MetaDataApi(ref(), ref())
         val walletApi = WalletApi(ref(), ref(), ref())
+        val issuerUi = IssuerUi(ref(), ref(), ref())
         val issuerApi = IssuerApi(ref())
-        metaDataApi.route.and(issuerApi.route).and(walletApi.route)
+        metaDataApi.route.and(walletApi.route).and(issuerUi.router).and(issuerApi.router)
     }
 
     //
@@ -283,7 +286,12 @@ fun beans(clock: Clock) = beans {
                 authorize(MetaDataApi.WELL_KNOWN_JWKS, permitAll)
                 authorize(MetaDataApi.WELL_KNOWN_JWT_ISSUER, permitAll)
                 authorize(MetaDataApi.PUBLIC_KEYS, permitAll)
-                authorize(IssuerApi.CREDENTIALS_OFFER, permitAll)
+                authorize(IssuerUi.GENERATE_CREDENTIALS_OFFER, permitAll)
+                authorize(IssuerApi.CREATE_CREDENTIALS_OFFER, permitAll)
+                authorize("", permitAll)
+                authorize("/", permitAll)
+                authorize(env.getRequiredProperty("spring.webflux.static-path-pattern"), permitAll)
+                authorize(env.getRequiredProperty("spring.webflux.webjars-path-pattern"), permitAll)
                 authorize(anyExchange, denyAll)
             }
 
