@@ -245,7 +245,6 @@ fun beans(clock: Clock) = beans {
         IssueCredential(clock, ref(), ref(), ref(), ref(), ref())
     }
     bean(::GetDeferredCredential)
-    bean(::GetSupportedCredentialUniqueIds)
     bean {
         CreateCredentialsOffer(ref(), env.getRequiredProperty<URI>("issuer.credentialOffer.uri"))
     }

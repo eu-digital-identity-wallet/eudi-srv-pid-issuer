@@ -17,9 +17,9 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.getOrElse
 import arrow.core.raise.either
+import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.CredentialUniqueId
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOffer
-import eu.europa.ec.eudi.pidissuer.port.input.GetSupportedCredentialUniqueIds
 import eu.europa.ec.eudi.pidissuer.port.out.qr.Dimensions
 import eu.europa.ec.eudi.pidissuer.port.out.qr.Format
 import eu.europa.ec.eudi.pidissuer.port.out.qr.GenerateQqCode
@@ -32,7 +32,7 @@ import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 class IssuerUi(
-    private val getSupportedCredentialUniqueIds: GetSupportedCredentialUniqueIds,
+    private val metadata: CredentialIssuerMetaData,
     private val createCredentialsOffer: CreateCredentialsOffer,
     private val generateQrCode: GenerateQqCode,
 ) {
@@ -60,10 +60,10 @@ class IssuerUi(
 
     private suspend fun handleDisplayGenerateCredentialsOfferForm(): ServerResponse {
         log.info("Displaying 'Generate Credentials Offer' page")
-        val supportedCredentialUniqueIds = getSupportedCredentialUniqueIds()
+        val credentialIds = metadata.credentialsSupported.map { it.id.value }
         return ServerResponse.ok()
             .contentType(MediaType.TEXT_HTML)
-            .renderAndAwait("generate-credentials-offer-form", mapOf("credentialIds" to supportedCredentialUniqueIds))
+            .renderAndAwait("generate-credentials-offer-form", mapOf("credentialIds" to credentialIds))
     }
 
     @OptIn(ExperimentalEncodingApi::class)
@@ -78,7 +78,8 @@ class IssuerUi(
             val credentialsOffer = createCredentialsOffer(credentialIds)
             log.info("Successfully generated Credentials Offer. URI: '{}'", credentialsOffer)
 
-            val qrCode = generateQrCode(credentialsOffer, Format.PNG, Dimensions(Pixels(300u), Pixels(300u))).getOrThrow()
+            val qrCode =
+                generateQrCode(credentialsOffer, Format.PNG, Dimensions(Pixels(300u), Pixels(300u))).getOrThrow()
             log.info("Successfully generated QR Code. Displaying generated Credentials Offer.")
             ServerResponse.ok()
                 .contentType(MediaType.TEXT_HTML)
