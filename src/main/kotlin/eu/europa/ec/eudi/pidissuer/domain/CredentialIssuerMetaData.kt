@@ -61,7 +61,7 @@ fun <T> CredentialResponseEncryption.fold(
 /**
  * @param id The Credential Issuer's identifier
  * @param authorizationServers Identifiers of the OAuth 2.0 Authorization
- * Servers (as defined in [RFC8414]) the Credential Issuer relies on for authorization
+ * Servers (as defined in RFC8414) the Credential Issuer relies on for authorization
  * @param credentialEndPoint URL of the Credential Issuer's Credential Endpoint.
  * This URL MUST use the https scheme and MAY contain port, path,
  * and query parameter components
@@ -87,6 +87,6 @@ data class CredentialIssuerMetaData(
     val display: Display = emptyMap(),
     val specificCredentialIssuers: List<IssueSpecificCredential<JsonElement>>,
 ) {
-    val credentialsSupported: List<CredentialMetaData>
+    val credentialConfigurationsSupported: List<CredentialConfiguration>
         get() = specificCredentialIssuers.map { it.supportedCredential }
 }

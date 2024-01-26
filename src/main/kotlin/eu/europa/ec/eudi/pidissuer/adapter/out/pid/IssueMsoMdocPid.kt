@@ -132,13 +132,13 @@ private val pidAttributes = pidNameSpace(1) to listOf(
     ),
 )
 
-val PidMsoMdocV1: MsoMdocMetaData = run {
+val PidMsoMdocV1: MsoMdocCredentialConfiguration = run {
     val algorithms = nonEmptySetOf(
         JWSAlgorithm.RS256,
         JWSAlgorithm.ES256,
     )
-    MsoMdocMetaData(
-        id = CredentialUniqueId(PidMsoMdocScope.value),
+    MsoMdocCredentialConfiguration(
+        id = CredentialConfigurationId(PidMsoMdocScope.value),
         docType = pidDocType(1),
         display = pidDisplay,
         msoClaims = mapOf(pidAttributes),
@@ -173,7 +173,7 @@ class IssueMsoMdocPid(
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
 
     private val validateProof = ValidateProof(credentialIssuerId)
-    override val supportedCredential: CredentialMetaData
+    override val supportedCredential: CredentialConfiguration
         get() = PidMsoMdocV1
     override val publicKey: JWK? = null
 

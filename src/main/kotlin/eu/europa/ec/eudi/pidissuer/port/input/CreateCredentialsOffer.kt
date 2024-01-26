@@ -54,9 +54,34 @@ private data class AuthorizationCodeTO(
 )
 
 @Serializable
+private enum class InputModeTO {
+    @SerialName("numeric")
+    Numeric,
+
+    @SerialName("text")
+    Text,
+}
+
+@Serializable
+private data class TransactionCodeTO(
+    @SerialName("input_mode") val inputMode: InputModeTO? = null,
+    @SerialName("length") val length: Int? = null,
+    @SerialName("description") val description: String? = null,
+) {
+    init {
+        require(length == null || length > 0) {
+            "Length if provided should positive number"
+        }
+        require(description == null || description.length <= 300) {
+            "Description is provided should dont exceed 300 characters"
+        }
+    }
+}
+
+@Serializable
 private data class PreAuthorizedCodeTO(
     @SerialName("pre-authorized_code") @Required val preAuthorizedCode: String,
-    @SerialName("user_pin_required") val userPinRequired: Boolean = false,
+    @SerialName("tx_code") val transactionCode: TransactionCodeTO? = null,
     @SerialName("interval") val interval: Long? = null,
     @SerialName("authorization_server") val authorizationServer: String? = null,
 )
@@ -74,7 +99,7 @@ private data class GrantsTO(
 @Serializable
 private data class CredentialsOfferTO(
     @SerialName("credential_issuer") @Required val credentialIssuer: String,
-    @SerialName("credentials") @Required val credentials: Set<String>,
+    @SerialName("credential_configuration_ids") @Required val credentialConfigurationIds: Set<String>,
     @SerialName("grants") val grants: GrantsTO? = null,
 ) {
     companion object {
@@ -86,18 +111,18 @@ private data class CredentialsOfferTO(
          * [OpenId4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-4.1.1-4.1.2.2).
          *
          * @param credentialIssuerId the Id of the Credential Issuer
-         * @param credentials the Ids of the Credentials to include in the generated request
+         * @param credentialConfigurationIds the Ids of the Credentials to include in the generated request
          * @param authorizationServers  the configured Authorization Servers
          * @return the resulting TO
          */
         fun forAuthorizationCodeGrant(
             credentialIssuerId: CredentialIssuerId,
-            credentials: NonEmptySet<CredentialUniqueId>,
+            credentialConfigurationIds: NonEmptySet<CredentialConfigurationId>,
             authorizationServers: List<HttpsUrl>,
         ): CredentialsOfferTO =
             CredentialsOfferTO(
                 credentialIssuerId.externalForm,
-                credentials.map { it.value }.toSet(),
+                credentialConfigurationIds.map { it.value }.toSet(),
                 GrantsTO(
                     AuthorizationCodeTO(
                         authorizationServer = authorizationServers
@@ -119,11 +144,11 @@ class CreateCredentialsOffer(
 ) {
 
     context(Raise<CreateCredentialsOfferError>)
-    operator fun invoke(maybeCredentials: Set<CredentialUniqueId>): URI {
+    operator fun invoke(maybeCredentials: Set<CredentialConfigurationId>): URI {
         val credentials = maybeCredentials.toNonEmptySetOrNull()
         ensureNotNull(credentials) { MissingCredentialUniqueIds }
 
-        val supportedCredentials = metadata.credentialsSupported.map(CredentialMetaData::id)
+        val supportedCredentials = metadata.credentialConfigurationsSupported.map(CredentialConfiguration::id)
         ensure(supportedCredentials.containsAll(credentials)) { InvalidCredentialUniqueIds }
 
         val credentialsOffer = CredentialsOfferTO.forAuthorizationCodeGrant(

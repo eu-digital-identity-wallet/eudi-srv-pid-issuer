@@ -30,15 +30,15 @@ value class SdJwtVcType(val value: String)
 /**
  * @param type As defined in https://datatracker.ietf.org/doc/html/draft-ietf-oauth-sd-jwt-vc-00#type-claim
  */
-data class SdJwtVcMetaData(
-    override val id: CredentialUniqueId,
+data class SdJwtVcCredentialConfiguration(
+    override val id: CredentialConfigurationId,
     val type: SdJwtVcType,
     override val scope: Scope? = null,
     override val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod> = emptyList(),
     override val display: List<CredentialDisplay>,
     val claims: List<AttributeDetails>,
     override val proofTypesSupported: Set<ProofType>,
-) : CredentialMetaData {
+) : CredentialConfiguration {
     override val format: Format = SD_JWT_VC_FORMAT
 }
 
@@ -55,7 +55,7 @@ data class SdJwtVcCredentialRequest(
 }
 
 context(Raise<String>)
-internal fun SdJwtVcCredentialRequest.validate(meta: SdJwtVcMetaData) {
+internal fun SdJwtVcCredentialRequest.validate(meta: SdJwtVcCredentialConfiguration) {
     ensure(type == meta.type) { "doctype is $type but was expecting ${meta.type}" }
     if (meta.claims.isEmpty()) {
         ensure(claims.isEmpty()) { "Requested claims should be empty. " }

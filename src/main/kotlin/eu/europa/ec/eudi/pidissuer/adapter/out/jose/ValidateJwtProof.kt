@@ -50,9 +50,9 @@ fun validateJwtProof(
     credentialIssuerId: CredentialIssuerId,
     unvalidatedProof: UnvalidatedProof.Jwt,
     expectedCNonce: CNonce,
-    credentialMetaData: CredentialMetaData,
+    credentialConfiguration: CredentialConfiguration,
 ): CredentialKey =
-    validateJwtProof(credentialIssuerId, unvalidatedProof, expectedCNonce, credentialMetaData.cryptographicSuitesSupported())
+    validateJwtProof(credentialIssuerId, unvalidatedProof, expectedCNonce, credentialConfiguration.cryptographicSuitesSupported())
 
 context (Raise<IssueCredentialError.InvalidProof>)
 fun validateJwtProof(

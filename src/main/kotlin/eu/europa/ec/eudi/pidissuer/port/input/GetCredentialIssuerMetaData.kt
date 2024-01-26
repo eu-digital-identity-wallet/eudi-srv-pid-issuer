@@ -44,7 +44,7 @@ data class CredentialIssuerMetaDataTO(
     val encryptionMethods: List<String> = emptyList(),
     @SerialName("require_credential_response_encryption")
     val encryptionRequired: Boolean = false,
-    @Required @SerialName("credentials_supported") val credentialsSupported: JsonObject,
+    @Required @SerialName("credential_configurations_supported") val credentialConfigurationsSupported: JsonObject,
 )
 
 private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDataTO = CredentialIssuerMetaDataTO(
@@ -60,11 +60,13 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
         required.encryptionMethods.map { it.name }
     },
     encryptionRequired = credentialResponseEncryption.fold(false) { _ -> true },
-    credentialsSupported = JsonObject(credentialsSupported.associate { it.id.value to credentialMetaDataJson(it) }),
+    credentialConfigurationsSupported = JsonObject(
+        credentialConfigurationsSupported.associate { it.id.value to credentialMetaDataJson(it) },
+    ),
 )
 
 @OptIn(ExperimentalSerializationApi::class)
-private fun credentialMetaDataJson(d: CredentialMetaData): JsonObject = buildJsonObject {
+private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject = buildJsonObject {
     put("format", d.format.value)
     d.scope?.value?.let { put("scope", it) }
     putJsonArray("cryptographic_binding_methods_supported") {
@@ -77,9 +79,9 @@ private fun credentialMetaDataJson(d: CredentialMetaData): JsonObject = buildJso
         addAll(d.proofTypesSupported.map { it.proofTypeName() })
     }
     when (d) {
-        is JwtVcJsonMetaData -> TODO()
-        is MsoMdocMetaData -> d.toTransferObject(false)(this)
-        is SdJwtVcMetaData -> d.toTransferObject(false)(this)
+        is JwtVcJsonCredentialConfiguration -> TODO()
+        is MsoMdocCredentialConfiguration -> d.toTransferObject(false)(this)
+        is SdJwtVcCredentialConfiguration -> d.toTransferObject(false)(this)
     }
 }
 
@@ -99,7 +101,7 @@ private fun ProofType.proofTypeName(): String =
     }
 
 @OptIn(ExperimentalSerializationApi::class)
-internal fun MsoMdocMetaData.toTransferObject(isOffer: Boolean): JsonObjectBuilder.() -> Unit = {
+internal fun MsoMdocCredentialConfiguration.toTransferObject(isOffer: Boolean): JsonObjectBuilder.() -> Unit = {
     put("doctype", docType)
     if (!isOffer) {
         if (display.isNotEmpty()) {
@@ -119,7 +121,7 @@ internal fun MsoMdocMetaData.toTransferObject(isOffer: Boolean): JsonObjectBuild
 }
 
 @OptIn(ExperimentalSerializationApi::class)
-internal fun SdJwtVcMetaData.toTransferObject(isOffer: Boolean): JsonObjectBuilder.() -> Unit = {
+internal fun SdJwtVcCredentialConfiguration.toTransferObject(isOffer: Boolean): JsonObjectBuilder.() -> Unit = {
     if (!isOffer) {
         if (display.isNotEmpty()) {
             putJsonArray("display") {

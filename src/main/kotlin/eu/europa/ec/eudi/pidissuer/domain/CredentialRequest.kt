@@ -150,14 +150,14 @@ sealed interface CredentialRequest {
     val credentialResponseEncryption: RequestedResponseEncryption
 }
 
-context(Raise<String>) fun CredentialRequest.assertIsSupported(meta: CredentialMetaData) = when (this) {
+context(Raise<String>) fun CredentialRequest.assertIsSupported(meta: CredentialConfiguration) = when (this) {
     is MsoMdocCredentialRequest -> {
-        ensure(meta is MsoMdocMetaData) { "Was expecting a ${MSO_MDOC_FORMAT.value}" }
+        ensure(meta is MsoMdocCredentialConfiguration) { "Was expecting a ${MSO_MDOC_FORMAT.value}" }
         validate(meta)
     }
 
     is SdJwtVcCredentialRequest -> {
-        ensure(meta is SdJwtVcMetaData) { "Was expecting a ${SD_JWT_VC_FORMAT.value}" }
+        ensure(meta is SdJwtVcCredentialConfiguration) { "Was expecting a ${SD_JWT_VC_FORMAT.value}" }
         validate(meta)
     }
 }

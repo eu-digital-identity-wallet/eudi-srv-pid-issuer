@@ -28,13 +28,13 @@ const val JWT_VS_JSON_FORMAT = "jwt_vc_json"
 /**
  * W3C VC signed as a JWT, not using JSON-LD (jwt_vc_json)
  */
-data class JwtVcJsonMetaData(
-    override val id: CredentialUniqueId,
+data class JwtVcJsonCredentialConfiguration(
+    override val id: CredentialConfigurationId,
     override val scope: Scope? = null,
     val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>,
     override val display: List<CredentialDisplay>,
     override val proofTypesSupported: Set<ProofType>,
-) : CredentialMetaData {
+) : CredentialConfiguration {
     override val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod>
         get() = listOf(CryptographicBindingMethod.Mso(cryptographicSuitesSupported))
 

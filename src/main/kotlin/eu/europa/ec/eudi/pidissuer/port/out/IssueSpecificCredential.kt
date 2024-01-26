@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory
 
 interface IssueSpecificCredential<out T> {
 
-    val supportedCredential: CredentialMetaData
+    val supportedCredential: CredentialConfiguration
     val publicKey: JWK?
 
     context(Raise<IssueCredentialError>)
