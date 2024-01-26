@@ -117,14 +117,14 @@ enum class ProofType {
  * The unique identifier of an offered Credential.
  */
 @JvmInline
-value class CredentialUniqueId(val value: String)
+value class CredentialConfigurationId(val value: String)
 
 /**
  * Representing metadata about a separate credential type
  * that the Credential Issuer can issue
  */
-sealed interface CredentialMetaData {
-    val id: CredentialUniqueId
+sealed interface CredentialConfiguration {
+    val id: CredentialConfigurationId
     val format: Format
     val scope: Scope?
     val display: List<CredentialDisplay>
@@ -132,7 +132,7 @@ sealed interface CredentialMetaData {
     val proofTypesSupported: Set<ProofType>
 }
 
-fun CredentialMetaData.cryptographicSuitesSupported(): NonEmptySet<JWSAlgorithm> =
+fun CredentialConfiguration.cryptographicSuitesSupported(): NonEmptySet<JWSAlgorithm> =
     cryptographicBindingMethodsSupported.map { method ->
         when (method) {
             is CryptographicBindingMethod.CoseKey -> method.cryptographicSuitesSupported

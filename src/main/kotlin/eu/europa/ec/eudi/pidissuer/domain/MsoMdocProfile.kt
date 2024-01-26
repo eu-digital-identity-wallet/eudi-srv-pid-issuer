@@ -33,15 +33,15 @@ typealias MsoClaims = Map<MsoNameSpace, List<AttributeDetails>>
 /**
  * @param docType string identifying the credential type as defined in ISO.18013-5.
  */
-data class MsoMdocMetaData(
-    override val id: CredentialUniqueId,
+data class MsoMdocCredentialConfiguration(
+    override val id: CredentialConfigurationId,
     val docType: MsoDocType,
     override val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod>,
     override val scope: Scope? = null,
     override val display: List<CredentialDisplay> = emptyList(),
     val msoClaims: MsoClaims = emptyMap(),
     override val proofTypesSupported: Set<ProofType>,
-) : CredentialMetaData {
+) : CredentialConfiguration {
     override val format: Format = MSO_MDOC_FORMAT
 }
 
@@ -58,7 +58,7 @@ data class MsoMdocCredentialRequest(
 }
 
 context(Raise<String>)
-internal fun MsoMdocCredentialRequest.validate(meta: MsoMdocMetaData) {
+internal fun MsoMdocCredentialRequest.validate(meta: MsoMdocCredentialConfiguration) {
     ensure(docType == meta.docType) { "doctype is $docType but was expecting ${meta.docType}" }
     if (meta.msoClaims.isEmpty()) {
         ensure(claims.isEmpty()) { "Requested claims should be empty. " }

@@ -85,8 +85,8 @@ private object Attributes {
     )
 }
 
-val PidSdJwtVcV1: SdJwtVcMetaData = SdJwtVcMetaData(
-    id = CredentialUniqueId(PidSdJwtVcScope.value),
+val PidSdJwtVcV1: SdJwtVcCredentialConfiguration = SdJwtVcCredentialConfiguration(
+    id = CredentialConfigurationId(PidSdJwtVcScope.value),
     type = SdJwtVcType(pidDocType(1)),
     display = pidDisplay,
     claims = Attributes.pidAttributes,
@@ -226,7 +226,7 @@ class IssueSdJwtVcPid(
 
     private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
     private val validateProof = ValidateProof(credentialIssuerId)
-    override val supportedCredential: CredentialMetaData
+    override val supportedCredential: CredentialConfiguration
         get() = PidSdJwtVcV1
     override val publicKey: JWK
         get() = issuerKey.toPublicJWK()

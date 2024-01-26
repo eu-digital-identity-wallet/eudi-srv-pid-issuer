@@ -28,16 +28,16 @@ class ValidateProof(
     operator fun invoke(
         unvalidatedProof: UnvalidatedProof,
         expectedCNonce: CNonce,
-        credentialMetaData: CredentialMetaData,
+        credentialConfiguration: CredentialConfiguration,
     ): CredentialKey {
         fun jwt(jwt: UnvalidatedProof.Jwt): CredentialKey =
-            validateJwtProof(credentialIssuerId, jwt, expectedCNonce, credentialMetaData)
+            validateJwtProof(credentialIssuerId, jwt, expectedCNonce, credentialConfiguration)
 
         fun cwt(cwt: UnvalidatedProof.Cwt): CredentialKey =
             raise(InvalidProof("Supporting only JWT proof"))
 
         val proofType = unvalidatedProof.proofType()
-        ensure(proofType in credentialMetaData.proofTypesSupported) {
+        ensure(proofType in credentialConfiguration.proofTypesSupported) {
             InvalidProof("Unsupported Proof: '$proofType'")
         }
 

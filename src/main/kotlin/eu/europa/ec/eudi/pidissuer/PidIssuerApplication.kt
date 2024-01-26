@@ -274,7 +274,7 @@ fun beans(clock: Clock) = beans {
          */
         fun Scope.springConvention() = "SCOPE_$value"
         val metaData = ref<CredentialIssuerMetaData>()
-        val scopes = metaData.credentialsSupported
+        val scopes = metaData.credentialConfigurationsSupported
             .mapNotNull { it.scope?.springConvention() }
             .distinct()
         val http = ref<ServerHttpSecurity>()
