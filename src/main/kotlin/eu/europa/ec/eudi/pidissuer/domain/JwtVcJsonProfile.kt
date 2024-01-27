@@ -23,7 +23,8 @@ import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 // Credential MetaData
 //
 
-const val JWT_VS_JSON_FORMAT = "jwt_vc_json"
+const val JWT_VS_JSON_FORMAT_VALUE = "jwt_vc_json"
+val JWT_VS_JSON_FORMAT = Format(JWT_VS_JSON_FORMAT_VALUE)
 
 /**
  * W3C VC signed as a JWT, not using JSON-LD (jwt_vc_json)
@@ -37,8 +38,6 @@ data class JwtVcJsonCredentialConfiguration(
 ) : CredentialConfiguration {
     override val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod>
         get() = listOf(CryptographicBindingMethod.Mso(cryptographicSuitesSupported))
-
-    override val format: Format = Format(JWT_VS_JSON_FORMAT)
 }
 
 //
