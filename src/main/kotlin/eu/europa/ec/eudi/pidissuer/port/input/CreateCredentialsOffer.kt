@@ -21,8 +21,8 @@ import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import arrow.core.toNonEmptySetOrNull
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError.InvalidCredentialUniqueIds
-import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError.MissingCredentialUniqueIds
+import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError.InvalidCredentialConfigurationId
+import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError.MissingCredentialConfigurationIds
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -39,12 +39,12 @@ sealed interface CreateCredentialsOfferError {
     /**
      * No Credentials Unique Ids have been provided.
      */
-    data object MissingCredentialUniqueIds : CreateCredentialsOfferError
+    data object MissingCredentialConfigurationIds : CreateCredentialsOfferError
 
     /**
      * The provided Credential Unique Ids are not valid.
      */
-    data object InvalidCredentialUniqueIds : CreateCredentialsOfferError
+    data class InvalidCredentialConfigurationId(val id: CredentialConfigurationId) : CreateCredentialsOfferError
 }
 
 @Serializable
@@ -93,7 +93,7 @@ private data class GrantsTO(
 )
 
 /**
- * A Credentials Offer as per
+ * A Credential Offer as per
  * [OpenId4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-4.1).
  */
 @Serializable
@@ -101,39 +101,7 @@ private data class CredentialsOfferTO(
     @SerialName("credential_issuer") @Required val credentialIssuer: String,
     @SerialName("credential_configuration_ids") @Required val credentialConfigurationIds: Set<String>,
     @SerialName("grants") val grants: GrantsTO? = null,
-) {
-    companion object {
-
-        /**
-         * Creates a new [CredentialsOfferTO] for an [Authorization Code Grant][AuthorizationCodeTO] flow.
-         * When more than one Authorization Servers are provided, only the first one is included in the resulting
-         * [CredentialsOfferTO] as per
-         * [OpenId4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-4.1.1-4.1.2.2).
-         *
-         * @param credentialIssuerId the Id of the Credential Issuer
-         * @param credentialConfigurationIds the Ids of the Credentials to include in the generated request
-         * @param authorizationServers  the configured Authorization Servers
-         * @return the resulting TO
-         */
-        fun forAuthorizationCodeGrant(
-            credentialIssuerId: CredentialIssuerId,
-            credentialConfigurationIds: NonEmptySet<CredentialConfigurationId>,
-            authorizationServers: List<HttpsUrl>,
-        ): CredentialsOfferTO =
-            CredentialsOfferTO(
-                credentialIssuerId.externalForm,
-                credentialConfigurationIds.map { it.value }.toSet(),
-                GrantsTO(
-                    AuthorizationCodeTO(
-                        authorizationServer = authorizationServers
-                            .takeIf { it.size > 1 }
-                            ?.first()
-                            ?.externalForm,
-                    ),
-                ),
-            )
-    }
-}
+)
 
 /**
  * Generates a Credential Offer and a QR Code in PNG format.
@@ -144,22 +112,51 @@ class CreateCredentialsOffer(
 ) {
 
     context(Raise<CreateCredentialsOfferError>)
-    operator fun invoke(maybeCredentials: Set<CredentialConfigurationId>): URI {
-        val credentials = maybeCredentials.toNonEmptySetOrNull()
-        ensureNotNull(credentials) { MissingCredentialUniqueIds }
-
-        val supportedCredentials = metadata.credentialConfigurationsSupported.map(CredentialConfiguration::id)
-        ensure(supportedCredentials.containsAll(credentials)) { InvalidCredentialUniqueIds }
-
-        val credentialsOffer = CredentialsOfferTO.forAuthorizationCodeGrant(
-            metadata.id,
-            credentials,
-            metadata.authorizationServers,
-        )
+    operator fun invoke(unvalidatedCredentialConfigurationIds: Set<CredentialConfigurationId>): URI {
+        val offer = with(metadata) {
+            val credentialConfigurationIds = validate(unvalidatedCredentialConfigurationIds)
+            authorizationCodeGrantOffer(credentialConfigurationIds)
+        }
 
         return UriComponentsBuilder.fromUri(credentialsOfferUri)
-            .queryParam("credential_offer", Json.encodeToString(credentialsOffer))
+            .queryParam("credential_offer", Json.encodeToString(offer))
             .build()
             .toUri()
     }
+}
+
+context(Raise<CreateCredentialsOfferError>, CredentialIssuerMetaData)
+private fun validate(unvalidatedIds: Set<CredentialConfigurationId>): NonEmptySet<CredentialConfigurationId> {
+    val nonEmptyIds = unvalidatedIds.toNonEmptySetOrNull()
+    ensureNotNull(nonEmptyIds) { MissingCredentialConfigurationIds }
+    val supportedIds = credentialConfigurationsSupported.map(CredentialConfiguration::id)
+    nonEmptyIds.forEach { id ->
+        ensure(id in supportedIds) { InvalidCredentialConfigurationId(id) }
+    }
+
+    return nonEmptyIds
+}
+
+/**
+ * Creates a new [CredentialsOfferTO] for an [Authorization Code Grant][AuthorizationCodeTO] flow.
+ * When more than one Authorization Servers are provided, only the first one is included in the resulting
+ * [CredentialsOfferTO] as per
+ * [OpenId4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-4.1.1-4.1.2.2).
+ *
+ * @param credentialConfigurationIds the Ids of the Credentials to include in the generated request
+ * @return the resulting TO
+ */
+context(CredentialIssuerMetaData)
+private fun authorizationCodeGrantOffer(
+    credentialConfigurationIds: NonEmptySet<CredentialConfigurationId>,
+): CredentialsOfferTO {
+    val authorizationCode = AuthorizationCodeTO(
+        authorizationServer = authorizationServers.firstOrNull()?.externalForm,
+    )
+
+    return CredentialsOfferTO(
+        id.externalForm,
+        credentialConfigurationIds.map(CredentialConfigurationId::value).toSet(),
+        GrantsTO(authorizationCode),
+    )
 }
