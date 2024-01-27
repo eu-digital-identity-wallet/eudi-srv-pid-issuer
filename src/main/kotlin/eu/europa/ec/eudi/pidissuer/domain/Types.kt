@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptySet
-import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.JWSAlgorithm
 import org.slf4j.LoggerFactory
 import java.net.MalformedURLException
@@ -99,46 +98,3 @@ sealed interface CryptographicBindingMethod {
 
     data class DidAnyMethod(val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>) : CryptographicBindingMethod
 }
-
-fun CryptographicBindingMethod.cryptographicSuitesSupported() = when (this) {
-    is CryptographicBindingMethod.CoseKey -> cryptographicSuitesSupported
-    is CryptographicBindingMethod.DidAnyMethod -> cryptographicSuitesSupported
-    is CryptographicBindingMethod.DidMethod -> cryptographicSuitesSupported
-    is CryptographicBindingMethod.Jwk -> cryptographicSuitesSupported
-    is CryptographicBindingMethod.Mso -> cryptographicSuitesSupported
-}
-
-enum class ProofType {
-    JWT,
-    CWT,
-}
-
-/**
- * The unique identifier of an offered Credential.
- */
-@JvmInline
-value class CredentialConfigurationId(val value: String)
-
-/**
- * Representing metadata about a separate credential type
- * that the Credential Issuer can issue
- */
-sealed interface CredentialConfiguration {
-    val id: CredentialConfigurationId
-    val format: Format
-    val scope: Scope?
-    val display: List<CredentialDisplay>
-    val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod>
-    val proofTypesSupported: Set<ProofType>
-}
-
-fun CredentialConfiguration.cryptographicSuitesSupported(): NonEmptySet<JWSAlgorithm> =
-    cryptographicBindingMethodsSupported.map { method ->
-        when (method) {
-            is CryptographicBindingMethod.CoseKey -> method.cryptographicSuitesSupported
-            is CryptographicBindingMethod.DidAnyMethod -> method.cryptographicSuitesSupported
-            is CryptographicBindingMethod.DidMethod -> method.cryptographicSuitesSupported
-            is CryptographicBindingMethod.Jwk -> method.cryptographicSuitesSupported
-            is CryptographicBindingMethod.Mso -> method.cryptographicSuitesSupported
-        }
-    }.flatten().toNonEmptySetOrNull()!!
