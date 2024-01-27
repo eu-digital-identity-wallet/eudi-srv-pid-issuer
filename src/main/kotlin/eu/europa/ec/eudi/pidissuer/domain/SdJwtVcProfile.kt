@@ -38,9 +38,7 @@ data class SdJwtVcCredentialConfiguration(
     override val display: List<CredentialDisplay>,
     val claims: List<AttributeDetails>,
     override val proofTypesSupported: Set<ProofType>,
-) : CredentialConfiguration {
-    override val format: Format = SD_JWT_VC_FORMAT
-}
+) : CredentialConfiguration
 
 //
 // Credential Offer

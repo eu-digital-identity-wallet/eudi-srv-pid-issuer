@@ -36,7 +36,6 @@ enum class ProofType {
  */
 sealed interface CredentialConfiguration {
     val id: CredentialConfigurationId
-    val format: Format
     val scope: Scope?
     val display: List<CredentialDisplay>
     val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod>

@@ -65,9 +65,15 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
     ),
 )
 
+private fun CredentialConfiguration.format(): Format = when (this) {
+    is JwtVcJsonCredentialConfiguration -> JWT_VS_JSON_FORMAT
+    is MsoMdocCredentialConfiguration -> MSO_MDOC_FORMAT
+    is SdJwtVcCredentialConfiguration -> SD_JWT_VC_FORMAT
+}
+
 @OptIn(ExperimentalSerializationApi::class)
 private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject = buildJsonObject {
-    put("format", d.format.value)
+    put("format", d.format().value)
     d.scope?.value?.let { put("scope", it) }
     putJsonArray("cryptographic_binding_methods_supported") {
         addAll(d.cryptographicBindingMethodsSupported.map { it.methodName() })

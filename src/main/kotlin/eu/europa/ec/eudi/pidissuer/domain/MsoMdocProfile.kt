@@ -41,9 +41,7 @@ data class MsoMdocCredentialConfiguration(
     override val display: List<CredentialDisplay> = emptyList(),
     val msoClaims: MsoClaims = emptyMap(),
     override val proofTypesSupported: Set<ProofType>,
-) : CredentialConfiguration {
-    override val format: Format = MSO_MDOC_FORMAT
-}
+) : CredentialConfiguration
 
 //
 // Credential Request
