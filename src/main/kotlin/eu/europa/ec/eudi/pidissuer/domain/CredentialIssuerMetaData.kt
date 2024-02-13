@@ -21,41 +21,62 @@ import com.nimbusds.jose.JWEAlgorithm
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import kotlinx.serialization.json.JsonElement
 
+/**
+ * Encryption algorithms and methods supported for encrypting Credential Responses.
+ *
+ * @param algorithmsSupported  a list of the JWE RFC7516 encryption
+ * algorithms (alg values) RFC7518 supported by the Credential and/or
+ * Batch Credential Endpoint to encode the Credential or
+ * Batch Credential Response in a JWT RFC7519
+ * @param methodsSupported a list of the JWE RFC7516 encryption algorithms
+ * (enc values) RFC7518 supported by the Credential
+ * and/or Batch Credential Endpoint to encode the Credential or
+ * Batch Credential Response in a JWT RFC7519
+ */
+data class CredentialResponseEncryptionSupportedParameters(
+    val algorithmsSupported: NonEmptySet<JWEAlgorithm>,
+    val methodsSupported: NonEmptySet<EncryptionMethod>,
+)
+
 sealed interface CredentialResponseEncryption {
 
     /**
-     * The Credential Issuer indicates that no additional
-     * Credential Response encryption is required
+     * The Credential Issuer indicates that additional
+     * Credential Response encryption is not supported
      */
-    data object NotRequired : CredentialResponseEncryption
+    data object NotSupported : CredentialResponseEncryption
 
     /**
-     * The Credential Issuer requires additional encryption on top of TLS
-     * for the Credential Response and expects encryption parameters to
-     * be present in the Credential Request and/or Batch Credential Request
+     * The Credential Issuer supports but does not require additional encryption
+     * on top of TLS for the Credential Response and can accept encryption parameters
+     * in the Credential Request and/or Batch Credential Request.
      *
-     * @param algorithmsSupported  a list of the JWE RFC7516 encryption
-     * algorithms (alg values) RFC7518 supported by the Credential and/or
-     * Batch Credential Endpoint to encode the Credential or
-     * Batch Credential Response in a JWT RFC7519
-     * @param encryptionMethods a list of the JWE RFC7516 encryption algorithms
-     * (enc values) RFC7518 supported by the Credential
-     * and/or Batch Credential Endpoint to encode the Credential or
-     * Batch Credential Response in a JWT RFC7519
+     * @param parameters the supported encryption algorithms and methods
+     */
+    data class Optional(
+        val parameters: CredentialResponseEncryptionSupportedParameters,
+    ) : CredentialResponseEncryption
+
+    /**
+     * The Credential Issuer requires additional encryption
+     * on top of TLS for the Credential Response and expects encryption parameters
+     * in the Credential Request and/or Batch Credential Request.
      *
+     * @param parameters the supported encryption algorithms and methods
      */
     data class Required(
-        val algorithmsSupported: NonEmptySet<JWEAlgorithm>,
-        val encryptionMethods: NonEmptySet<EncryptionMethod>,
+        val parameters: CredentialResponseEncryptionSupportedParameters,
     ) : CredentialResponseEncryption
 }
 
 fun <T> CredentialResponseEncryption.fold(
-    ifNotRequired: T,
+    ifNotSupported: T,
+    ifOptional: (CredentialResponseEncryption.Optional) -> T,
     ifRequired: (CredentialResponseEncryption.Required) -> T,
 ): T = when (this) {
-    CredentialResponseEncryption.NotRequired -> ifNotRequired
-    is CredentialResponseEncryption.Required -> ifRequired.invoke(this)
+    CredentialResponseEncryption.NotSupported -> ifNotSupported
+    is CredentialResponseEncryption.Optional -> ifOptional(this)
+    is CredentialResponseEncryption.Required -> ifRequired(this)
 }
 
 /**
