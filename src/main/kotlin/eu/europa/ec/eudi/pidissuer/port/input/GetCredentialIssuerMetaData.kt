@@ -41,8 +41,16 @@ data class CredentialIssuerMetaDataTO(
     val batchCredentialEndpoint: String? = null,
     @SerialName("deferred_credential_endpoint")
     val deferredCredentialEndpoint: String? = null,
+    @SerialName("notification_endpoint")
+    val notificationEndpoint: String? = null,
     @SerialName("credential_response_encryption")
     val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
+    @SerialName("credential_identifiers_supported")
+    val credentialIdentifiersSupported: Boolean? = null,
+    @SerialName("signed_metadata")
+    val signedMetadata: String? = null,
+    @SerialName("display")
+    val display: List<DisplayTO>? = null,
     @Required @SerialName("credential_configurations_supported")
     val credentialConfigurationsSupported: JsonObject,
 ) {
@@ -58,13 +66,35 @@ data class CredentialIssuerMetaDataTO(
     )
 }
 
+@Serializable
+data class DisplayTO(
+    @SerialName("name")
+    val name: String? = null,
+    @SerialName("locale")
+    val locale: String? = null,
+    @SerialName("logo")
+    val logo: LogoTO? = null,
+) {
+    @Serializable
+    data class LogoTO(
+        @Required @SerialName("uri")
+        val uri: String,
+        @SerialName("alt_text")
+        val alternativeText: String? = null,
+    )
+}
+
 private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDataTO = CredentialIssuerMetaDataTO(
     credentialIssuer = id.externalForm,
     authorizationServers = authorizationServers.map { it.externalForm },
     credentialEndpoint = credentialEndPoint.externalForm,
     batchCredentialEndpoint = batchCredentialEndpoint?.externalForm,
     deferredCredentialEndpoint = deferredCredentialEndpoint?.externalForm,
+    notificationEndpoint = notificationEndpoint?.externalForm,
     credentialResponseEncryption = credentialResponseEncryption.toTransferObject().getOrNull(),
+    credentialIdentifiersSupported = false,
+    signedMetadata = null,
+    display = display.map { it.toTransferObject() }.takeIf { it.isNotEmpty() },
     credentialConfigurationsSupported = JsonObject(
         credentialConfigurationsSupported.associate { it.id.value to credentialMetaDataJson(it) },
     ),
@@ -87,6 +117,19 @@ private fun CredentialResponseEncryption.toTransferObject(): Option<CredentialIs
                 required = true,
             ).some()
         },
+    )
+
+private fun CredentialIssuerDisplay.toTransferObject(): DisplayTO =
+    DisplayTO(
+        name = name?.name,
+        locale = name?.locale?.toString(),
+        logo = logo?.toTransferObject(),
+    )
+
+private fun ImageUri.toTransferObject(): DisplayTO.LogoTO =
+    DisplayTO.LogoTO(
+        uri = uri.toString(),
+        alternativeText = alternativeText,
     )
 
 private fun CredentialConfiguration.format(): Format = when (this) {
