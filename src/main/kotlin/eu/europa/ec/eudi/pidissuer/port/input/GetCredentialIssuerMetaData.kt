@@ -95,7 +95,6 @@ private fun CryptographicBindingMethod.methodName(): String =
     when (this) {
         is CryptographicBindingMethod.Jwk -> "jwk"
         is CryptographicBindingMethod.CoseKey -> "cose_key"
-        is CryptographicBindingMethod.Mso -> "mso"
         is CryptographicBindingMethod.DidMethod -> "did:$didMethod"
         is CryptographicBindingMethod.DidAnyMethod -> "DID"
     }

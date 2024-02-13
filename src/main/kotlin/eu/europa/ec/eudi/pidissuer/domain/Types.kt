@@ -90,7 +90,6 @@ sealed interface CryptographicBindingMethod {
      * Support for keys expressed as a COSE Key object
      */
     data class CoseKey(val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>) : CryptographicBindingMethod
-    data class Mso(val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>) : CryptographicBindingMethod
     data class DidMethod(
         val didMethod: String,
         val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>,
