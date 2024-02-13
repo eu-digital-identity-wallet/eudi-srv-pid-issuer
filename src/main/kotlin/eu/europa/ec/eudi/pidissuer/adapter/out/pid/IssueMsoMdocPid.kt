@@ -143,7 +143,6 @@ val PidMsoMdocV1: MsoMdocCredentialConfiguration = run {
         display = pidDisplay,
         msoClaims = mapOf(pidAttributes),
         cryptographicBindingMethodsSupported = listOf(
-            CryptographicBindingMethod.Mso(algorithms),
             CryptographicBindingMethod.Jwk(algorithms),
         ),
         scope = PidMsoMdocScope,

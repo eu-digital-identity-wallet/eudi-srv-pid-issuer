@@ -49,7 +49,6 @@ fun CredentialConfiguration.cryptographicSuitesSupported(): NonEmptySet<JWSAlgor
             is CryptographicBindingMethod.DidAnyMethod -> method.cryptographicSuitesSupported
             is CryptographicBindingMethod.DidMethod -> method.cryptographicSuitesSupported
             is CryptographicBindingMethod.Jwk -> method.cryptographicSuitesSupported
-            is CryptographicBindingMethod.Mso -> method.cryptographicSuitesSupported
         }
     }.flatten().toNonEmptySetOrNull()
     return checkNotNull(suites)

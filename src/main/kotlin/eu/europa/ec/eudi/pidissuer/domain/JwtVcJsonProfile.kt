@@ -37,7 +37,7 @@ data class JwtVcJsonCredentialConfiguration(
     override val proofTypesSupported: Set<ProofType>,
 ) : CredentialConfiguration {
     override val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod>
-        get() = listOf(CryptographicBindingMethod.Mso(cryptographicSuitesSupported))
+        get() = listOf(CryptographicBindingMethod.Jwk(cryptographicSuitesSupported))
 }
 
 //

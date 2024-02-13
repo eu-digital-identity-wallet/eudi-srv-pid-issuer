@@ -247,7 +247,6 @@ val MobileDrivingLicenceV1: MsoMdocCredentialConfiguration = run {
         display = MobileDrivingLicenceDisplay,
         msoClaims = mapOf(MobileDrivingLicenceV1Namespace to MobileDrivingLicenceV1Attributes),
         cryptographicBindingMethodsSupported = listOf(
-            CryptographicBindingMethod.Mso(algorithms),
             CryptographicBindingMethod.Jwk(algorithms),
         ),
         scope = MobileDrivingLicenceV1Scope,
