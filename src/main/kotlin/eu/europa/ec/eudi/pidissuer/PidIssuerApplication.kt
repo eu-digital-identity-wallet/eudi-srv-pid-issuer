@@ -36,7 +36,10 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCrede
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.port.input.*
+import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOffer
+import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
+import eu.europa.ec.eudi.pidissuer.port.input.GetDeferredCredential
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
 import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
@@ -341,20 +344,27 @@ fun beans(clock: Clock) = beans {
 }
 
 private fun Environment.credentialResponseEncryption(): CredentialResponseEncryption {
-    val isRequired = getProperty<Boolean>("issuer.credentialResponseEncryption.required") ?: false
-    return if (!isRequired)
-        CredentialResponseEncryption.NotRequired
-    else
-        CredentialResponseEncryption.Required(
+    val isSupported = getProperty<Boolean>("issuer.credentialResponseEncryption.supported") ?: false
+    return if (!isSupported) {
+        CredentialResponseEncryption.NotSupported
+    } else {
+        val parameters = CredentialResponseEncryptionSupportedParameters(
             algorithmsSupported = readNonEmptySet(
                 "issuer.credentialResponseEncryption.algorithmsSupported",
                 JWEAlgorithm::parse,
             ),
-            encryptionMethods = readNonEmptySet(
+            methodsSupported = readNonEmptySet(
                 "issuer.credentialResponseEncryption.encryptionMethods",
                 EncryptionMethod::parse,
             ),
         )
+        val isRequired = getProperty<Boolean>("issuer.credentialResponseEncryption.required") ?: false
+        if (!isRequired) {
+            CredentialResponseEncryption.Optional(parameters)
+        } else {
+            CredentialResponseEncryption.Required(parameters)
+        }
+    }
 }
 
 private fun Environment.readRequiredUrl(key: String, removeTrailingSlash: Boolean = false): HttpsUrl =

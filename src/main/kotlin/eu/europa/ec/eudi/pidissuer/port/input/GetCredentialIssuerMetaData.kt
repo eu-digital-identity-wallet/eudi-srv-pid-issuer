@@ -15,6 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
+import arrow.core.Option
+import arrow.core.none
+import arrow.core.some
 import eu.europa.ec.eudi.pidissuer.domain.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Required
@@ -38,14 +41,22 @@ data class CredentialIssuerMetaDataTO(
     val batchCredentialEndpoint: String? = null,
     @SerialName("deferred_credential_endpoint")
     val deferredCredentialEndpoint: String? = null,
-    @SerialName("credential_response_encryption_alg_values_supported")
-    val encryptionAlgorithms: List<String> = emptyList(),
-    @SerialName("credential_response_encryption_enc_values_supported")
-    val encryptionMethods: List<String> = emptyList(),
-    @SerialName("require_credential_response_encryption")
-    val encryptionRequired: Boolean = false,
-    @Required @SerialName("credential_configurations_supported") val credentialConfigurationsSupported: JsonObject,
-)
+    @SerialName("credential_response_encryption")
+    val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
+    @Required @SerialName("credential_configurations_supported")
+    val credentialConfigurationsSupported: JsonObject,
+) {
+
+    @Serializable
+    data class CredentialResponseEncryptionTO(
+        @Required @SerialName("alg_values_supported")
+        val encryptionAlgorithms: List<String>,
+        @Required @SerialName("enc_values_supported")
+        val encryptionMethods: List<String>,
+        @Required @SerialName("encryption_required")
+        val required: Boolean,
+    )
+}
 
 private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDataTO = CredentialIssuerMetaDataTO(
     credentialIssuer = id.externalForm,
@@ -53,17 +64,30 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
     credentialEndpoint = credentialEndPoint.externalForm,
     batchCredentialEndpoint = batchCredentialEndpoint?.externalForm,
     deferredCredentialEndpoint = deferredCredentialEndpoint?.externalForm,
-    encryptionAlgorithms = credentialResponseEncryption.fold(emptyList()) { required ->
-        required.algorithmsSupported.map { it.name }
-    },
-    encryptionMethods = credentialResponseEncryption.fold(emptyList()) { required ->
-        required.encryptionMethods.map { it.name }
-    },
-    encryptionRequired = credentialResponseEncryption.fold(false) { _ -> true },
+    credentialResponseEncryption = credentialResponseEncryption.toTransferObject().getOrNull(),
     credentialConfigurationsSupported = JsonObject(
         credentialConfigurationsSupported.associate { it.id.value to credentialMetaDataJson(it) },
     ),
 )
+
+private fun CredentialResponseEncryption.toTransferObject(): Option<CredentialIssuerMetaDataTO.CredentialResponseEncryptionTO> =
+    fold(
+        ifNotSupported = none(),
+        ifOptional = { optional ->
+            CredentialIssuerMetaDataTO.CredentialResponseEncryptionTO(
+                encryptionAlgorithms = optional.parameters.algorithmsSupported.map { it.name },
+                encryptionMethods = optional.parameters.methodsSupported.map { it.name },
+                required = false,
+            ).some()
+        },
+        ifRequired = { required ->
+            CredentialIssuerMetaDataTO.CredentialResponseEncryptionTO(
+                encryptionAlgorithms = required.parameters.algorithmsSupported.map { it.name },
+                encryptionMethods = required.parameters.methodsSupported.map { it.name },
+                required = true,
+            ).some()
+        },
+    )
 
 private fun CredentialConfiguration.format(): Format = when (this) {
     is JwtVcJsonCredentialConfiguration -> JWT_VS_JSON_FORMAT
