@@ -19,6 +19,7 @@ import arrow.core.NonEmptySet
 import com.nimbusds.jose.JWSAlgorithm
 import org.slf4j.LoggerFactory
 import java.net.MalformedURLException
+import java.net.URI
 import java.net.URL
 import java.util.*
 
@@ -55,6 +56,7 @@ value class Format(val value: String)
 typealias CredentialIssuerId = HttpsUrl
 
 data class ImageUrl(val url: HttpsUrl, val alternativeText: String? = null)
+data class ImageUri(val uri: URI, val alternativeText: String? = null)
 data class DisplayName(val name: String, val locale: Locale)
 typealias Color = String
 

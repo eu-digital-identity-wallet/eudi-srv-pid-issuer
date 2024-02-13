@@ -79,6 +79,11 @@ fun <T> CredentialResponseEncryption.fold(
     is CredentialResponseEncryption.Required -> ifRequired(this)
 }
 
+data class CredentialIssuerDisplay(
+    val name: DisplayName? = null,
+    val logo: ImageUri? = null,
+)
+
 /**
  * @param id The Credential Issuer's identifier
  * @param authorizationServers Identifiers of the OAuth 2.0 Authorization
@@ -93,6 +98,9 @@ fun <T> CredentialResponseEncryption.fold(
  * Deferred Credential Endpoint. This URL MUST use the https scheme and MAY contain port, path,
  * and query parameter components.
  * If omitted, the Credential Issuer does not support the Deferred Credential Endpoint
+ * @param notificationEndpoint URL of the Credential Issuer's Notification Endpoint. This URL MUST use
+ * the https scheme and MAY contain port, path, and query parameter components. If omitted, the
+ * Credential Issuer does not support the Notification Endpoint.
  * @param credentialResponseEncryption indicates whether the issuer requires the
  * Credential Response encrypted or not.
  * @param display display properties of a Credential Issuer for a certain language
@@ -104,8 +112,9 @@ data class CredentialIssuerMetaData(
     val credentialEndPoint: HttpsUrl,
     val batchCredentialEndpoint: HttpsUrl? = null,
     val deferredCredentialEndpoint: HttpsUrl? = null,
+    val notificationEndpoint: HttpsUrl? = null,
     val credentialResponseEncryption: CredentialResponseEncryption,
-    val display: Display = emptyMap(),
+    val display: List<CredentialIssuerDisplay> = emptyList(),
     val specificCredentialIssuers: List<IssueSpecificCredential<JsonElement>>,
 ) {
     val credentialConfigurationsSupported: List<CredentialConfiguration>
