@@ -20,9 +20,6 @@ import arrow.core.raise.Raise
 import arrow.core.raise.ensure
 import com.nimbusds.jose.JWSAlgorithm
 
-/**
- * @see https://vcstuff.github.io/oid4vc-haip-sd-jwt-vc/draft-oid4vc-haip-sd-jwt-vc.html#name-format-identifier
- */
 const val SD_JWT_VC_FORMAT_VALUE = "vc+sd-jwt"
 val SD_JWT_VC_FORMAT = Format(SD_JWT_VC_FORMAT_VALUE)
 
