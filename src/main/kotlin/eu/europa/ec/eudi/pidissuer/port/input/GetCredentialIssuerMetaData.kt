@@ -142,19 +142,26 @@ private fun CredentialConfiguration.format(): Format = when (this) {
 private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject = buildJsonObject {
     put("format", d.format().value)
     d.scope?.value?.let { put("scope", it) }
-    putJsonArray("cryptographic_binding_methods_supported") {
-        addAll(d.cryptographicBindingMethodsSupported.map { it.methodName() })
-    }
-    putJsonArray("credential_signing_alg_values_supported") {
-        addAll(d.credentialSigningAlgorithmsSupported.map { it.name })
-    }
-    if (d.proofTypesSupported.isNotEmpty()) {
-        putJsonObject("proof_types_supported") {
-            d.proofTypesSupported.forEach {
-                put(it.proofTypeName(), it.toJsonObject())
+    d.cryptographicBindingMethodsSupported.takeIf { it.isNotEmpty() }
+        ?.let { cryptographicBindingMethodsSupported ->
+            putJsonArray("cryptographic_binding_methods_supported") {
+                addAll(cryptographicBindingMethodsSupported.map { it.methodName() })
             }
         }
-    }
+    d.credentialSigningAlgorithmsSupported.takeIf { it.isNotEmpty() }
+        ?.let { credentialSigningAlgorithmsSupported ->
+            putJsonArray("credential_signing_alg_values_supported") {
+                addAll(credentialSigningAlgorithmsSupported.map { it.name })
+            }
+        }
+    d.proofTypesSupported.takeIf { it.isNotEmpty() }
+        ?.let { proofTypesSupported ->
+            putJsonObject("proof_types_supported") {
+                proofTypesSupported.forEach {
+                    put(it.proofTypeName(), it.toJsonObject())
+                }
+            }
+        }
     when (d) {
         is JwtVcJsonCredentialConfiguration -> TODO()
         is MsoMdocCredentialConfiguration -> d.toTransferObject(false)(this)
