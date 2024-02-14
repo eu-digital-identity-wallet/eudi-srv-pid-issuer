@@ -44,7 +44,7 @@ class ValidateProofTest {
 
         result.fold(
             ifRight = { _ -> fail("expected proof validation to fail") },
-            ifLeft = { assertEquals("Unsupported Proof: 'CWT'", it.msg) },
+            ifLeft = { assertEquals("Supporting only JWT proof", it.msg) },
         )
     }
 }

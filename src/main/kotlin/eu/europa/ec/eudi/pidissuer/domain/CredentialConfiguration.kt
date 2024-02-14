@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptySet
-import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.JWSAlgorithm
 
 /**
@@ -25,9 +24,24 @@ import com.nimbusds.jose.JWSAlgorithm
 @JvmInline
 value class CredentialConfigurationId(val value: String)
 
-enum class ProofType {
-    JWT,
-    CWT,
+sealed interface ProofType {
+
+    val signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>
+
+    /**
+     * A JWT is used as proof of possession.
+     */
+    data class Jwt(override val signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>) : ProofType
+
+    /**
+     *  A CWT is used as proof of possession.
+     */
+    data class Cwt(override val signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>) : ProofType
+
+    /**
+     * A W3C Verifiable Presentation object signed using the Data Integrity Proof is used as proof of possession.
+     */
+    data class LdpVp(override val signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>) : ProofType
 }
 
 /**
@@ -38,18 +52,7 @@ sealed interface CredentialConfiguration {
     val id: CredentialConfigurationId
     val scope: Scope?
     val display: List<CredentialDisplay>
-    val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod>
+    val cryptographicBindingMethodsSupported: Set<CryptographicBindingMethod>
+    val credentialSigningAlgorithmsSupported: Set<JWSAlgorithm>
     val proofTypesSupported: Set<ProofType>
-}
-
-fun CredentialConfiguration.cryptographicSuitesSupported(): NonEmptySet<JWSAlgorithm> {
-    val suites = cryptographicBindingMethodsSupported.map { method ->
-        when (method) {
-            is CryptographicBindingMethod.CoseKey -> method.cryptographicSuitesSupported
-            is CryptographicBindingMethod.DidAnyMethod -> method.cryptographicSuitesSupported
-            is CryptographicBindingMethod.DidMethod -> method.cryptographicSuitesSupported
-            is CryptographicBindingMethod.Jwk -> method.cryptographicSuitesSupported
-        }
-    }.flatten().toNonEmptySetOrNull()
-    return checkNotNull(suites)
 }

@@ -15,8 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
-import arrow.core.NonEmptySet
-import com.nimbusds.jose.JWSAlgorithm
 import org.slf4j.LoggerFactory
 import java.net.MalformedURLException
 import java.net.URI
@@ -55,16 +53,16 @@ value class Format(val value: String)
 
 typealias CredentialIssuerId = HttpsUrl
 
-data class ImageUrl(val url: HttpsUrl, val alternativeText: String? = null)
 data class ImageUri(val uri: URI, val alternativeText: String? = null)
 data class DisplayName(val name: String, val locale: Locale)
 typealias Color = String
 
 data class CredentialDisplay(
     val name: DisplayName,
-    val logo: ImageUrl? = null,
+    val logo: ImageUri? = null,
     val description: String? = null,
     val backgroundColor: Color? = null,
+    val backgroundImage: ImageUri? = null,
     val textColor: Color? = null,
 )
 
@@ -86,16 +84,20 @@ sealed interface CryptographicBindingMethod {
     /**
      * Support for keys in JWK format RFC7517
      */
-    data class Jwk(val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>) : CryptographicBindingMethod
+    data object Jwk : CryptographicBindingMethod
 
     /**
      * Support for keys expressed as a COSE Key object
      */
-    data class CoseKey(val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>) : CryptographicBindingMethod
-    data class DidMethod(
-        val didMethod: String,
-        val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>,
-    ) : CryptographicBindingMethod
+    data object CoseKey : CryptographicBindingMethod
 
-    data class DidAnyMethod(val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>) : CryptographicBindingMethod
+    /**
+     * Support for a specific DID method
+     */
+    data class DidMethod(val didMethod: String) : CryptographicBindingMethod
+
+    /**
+     * Support for any DID method
+     */
+    data object DidAnyMethod : CryptographicBindingMethod
 }

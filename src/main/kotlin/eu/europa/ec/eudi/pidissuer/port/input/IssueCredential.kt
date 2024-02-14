@@ -46,6 +46,9 @@ enum class ProofTypeTO {
 
     @SerialName("cwt")
     CWT,
+
+    @SerialName("ldp_vp")
+    LDP_VP,
 }
 
 @Serializable
@@ -53,6 +56,8 @@ data class ProofTo(
     @SerialName("proof_type") @Required val type: ProofTypeTO,
     val jwt: String? = null,
     val cwt: String? = null,
+    @SerialName("ldp_vp")
+    val ldpVp: String? = null,
 )
 
 interface CredentialResponseEncryptionTO {
@@ -370,6 +375,11 @@ private fun ProofTo.toDomain(): UnvalidatedProof = when (type) {
     ProofTypeTO.CWT -> {
         ensureNotNull(cwt) { MissingProof }
         UnvalidatedProof.Cwt(cwt)
+    }
+
+    ProofTypeTO.LDP_VP -> {
+        ensureNotNull(ldpVp) { MissingProof }
+        UnvalidatedProof.LdpVp(ldpVp)
     }
 }
 

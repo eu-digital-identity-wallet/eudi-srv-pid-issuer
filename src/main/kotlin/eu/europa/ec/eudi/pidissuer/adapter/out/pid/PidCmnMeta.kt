@@ -15,10 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
-import eu.europa.ec.eudi.pidissuer.domain.CredentialDisplay
-import eu.europa.ec.eudi.pidissuer.domain.DisplayName
-import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
-import eu.europa.ec.eudi.pidissuer.domain.ImageUrl
+import eu.europa.ec.eudi.pidissuer.domain.*
+import java.net.URI
 import java.util.Locale.ENGLISH
 
 internal const val PID_DOCTYPE = "eu.europa.ec.eudiw.pid"
@@ -30,8 +28,8 @@ internal fun pidDocType(v: Int?): String =
 val pidDisplay = listOf(
     CredentialDisplay(
         name = DisplayName("PID", ENGLISH),
-        logo = ImageUrl(
-            url = HttpsUrl.of("https://examplestate.com/public/mdl.png")!!,
+        logo = ImageUri(
+            uri = URI.create("https://examplestate.com/public/mdl.png"),
             alternativeText = "A square figure of a PID",
         ),
     ),

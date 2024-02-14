@@ -15,8 +15,10 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import arrow.core.NonEmptySet
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
+import com.nimbusds.jose.JWSAlgorithm
 
 /**
  * @see https://vcstuff.github.io/oid4vc-haip-sd-jwt-vc/draft-oid4vc-haip-sd-jwt-vc.html#name-format-identifier
@@ -34,10 +36,11 @@ data class SdJwtVcCredentialConfiguration(
     override val id: CredentialConfigurationId,
     val type: SdJwtVcType,
     override val scope: Scope? = null,
-    override val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod> = emptyList(),
+    override val cryptographicBindingMethodsSupported: NonEmptySet<CryptographicBindingMethod>,
+    override val credentialSigningAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
     override val display: List<CredentialDisplay>,
     val claims: List<AttributeDetails>,
-    override val proofTypesSupported: Set<ProofType>,
+    override val proofTypesSupported: NonEmptySet<ProofType>,
 ) : CredentialConfiguration
 
 //
