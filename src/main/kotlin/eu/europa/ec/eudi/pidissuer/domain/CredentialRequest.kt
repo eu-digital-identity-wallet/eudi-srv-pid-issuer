@@ -42,6 +42,11 @@ sealed interface UnvalidatedProof {
      * Proof of possession using a CWT.
      */
     data class Cwt(val cwt: String) : UnvalidatedProof
+
+    /**
+     * Proof of possession using a W3C Verifiable Presentation object signed using the Data Integrity Proof.
+     */
+    data class LdpVp(val vp: String) : UnvalidatedProof
 }
 
 /**

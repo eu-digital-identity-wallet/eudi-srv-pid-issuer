@@ -145,11 +145,15 @@ private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject = bui
     putJsonArray("cryptographic_binding_methods_supported") {
         addAll(d.cryptographicBindingMethodsSupported.map { it.methodName() })
     }
-    putJsonArray("cryptographic_suites_supported") {
-        addAll(d.cryptographicSuitesSupported().map { it.name })
+    putJsonArray("credential_signing_alg_values_supported") {
+        addAll(d.credentialSigningAlgorithmsSupported.map { it.name })
     }
-    putJsonArray("proof_types_supported") {
-        addAll(d.proofTypesSupported.map { it.proofTypeName() })
+    if (d.proofTypesSupported.isNotEmpty()) {
+        putJsonObject("proof_types_supported") {
+            d.proofTypesSupported.forEach {
+                put(it.proofTypeName(), it.toJsonObject())
+            }
+        }
     }
     when (d) {
         is JwtVcJsonCredentialConfiguration -> TODO()
@@ -168,8 +172,17 @@ private fun CryptographicBindingMethod.methodName(): String =
 
 private fun ProofType.proofTypeName(): String =
     when (this) {
-        ProofType.JWT -> "jwt"
-        ProofType.CWT -> "cwt"
+        is ProofType.Jwt -> "jwt"
+        is ProofType.Cwt -> "cwt"
+        is ProofType.LdpVp -> "ldp_vp"
+    }
+
+@OptIn(ExperimentalSerializationApi::class)
+private fun ProofType.toJsonObject(): JsonObject =
+    buildJsonObject {
+        putJsonArray("proof_signing_alg_values_supported") {
+            addAll(signingAlgorithmsSupported.map { it.name })
+        }
     }
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -216,12 +229,19 @@ internal fun CredentialDisplay.toTransferObject(): JsonObject = buildJsonObject 
     put("locale", name.locale.toString())
     logo?.let { logo ->
         putJsonObject("logo") {
-            put("url", logo.url.externalForm)
+            put("uri", logo.uri.toString())
             logo.alternativeText?.let { put("alt_text", it) }
         }
     }
-    textColor?.let { put("text_color", it) }
+    description?.let { put("description", it) }
     backgroundColor?.let { put("background_color", it) }
+    backgroundImage?.let { backgroundImage ->
+        putJsonObject("background_image") {
+            put("uri", backgroundImage.uri.toString())
+            backgroundImage.alternativeText?.let { put("alt_text", it) }
+        }
+    }
+    textColor?.let { put("text_color", it) }
 }
 
 internal val AttributeDetails.toTransferObject: JsonObjectBuilder.() -> Unit

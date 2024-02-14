@@ -85,21 +85,15 @@ private object Attributes {
     )
 }
 
-val PidSdJwtVcV1: SdJwtVcCredentialConfiguration = SdJwtVcCredentialConfiguration(
+private fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration = SdJwtVcCredentialConfiguration(
     id = CredentialConfigurationId(PidSdJwtVcScope.value),
     type = SdJwtVcType(pidDocType(1)),
     display = pidDisplay,
     claims = Attributes.pidAttributes,
-    cryptographicBindingMethodsSupported = listOf(
-        CryptographicBindingMethod.Jwk(
-            nonEmptySetOf(
-                JWSAlgorithm.RS256,
-                JWSAlgorithm.ES256,
-            ),
-        ),
-    ),
+    cryptographicBindingMethodsSupported = nonEmptySetOf(CryptographicBindingMethod.Jwk),
+    credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
     scope = PidSdJwtVcScope,
-    proofTypesSupported = setOf(ProofType.JWT),
+    proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256))),
 )
 
 typealias TimeDependant<F> = (ZonedDateTime) -> F
@@ -112,6 +106,7 @@ fun selectivelyDisclosed(
     pid: Pid,
     pidMetaData: PidMetaData,
     credentialIssuerId: CredentialIssuerId,
+    vct: SdJwtVcType,
     holderPubKey: JWK,
     iat: ZonedDateTime,
     exp: Instant,
@@ -132,7 +127,7 @@ fun selectivelyDisclosed(
         nbf?.let { nbf(it.epochSecond) }
         exp(exp.epochSecond)
         cnf(holderPubKey)
-        plain("vct", PidSdJwtVcV1.type.value)
+        plain("vct", vct.value)
 
         //
         // Selectively Disclosed claims
@@ -226,8 +221,8 @@ class IssueSdJwtVcPid(
 
     private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
     private val validateProof = ValidateProof(credentialIssuerId)
-    override val supportedCredential: CredentialConfiguration
-        get() = PidSdJwtVcV1
+
+    override val supportedCredential: SdJwtVcCredentialConfiguration = pidSdJwtVcV1(signAlg)
     override val publicKey: JWK
         get() = issuerKey.toPublicJWK()
 
@@ -251,6 +246,7 @@ class IssueSdJwtVcPid(
         val sdJwtSpec = selectivelyDisclosed(
             pid = pid,
             pidMetaData = pidMetaData,
+            vct = supportedCredential.type,
             credentialIssuerId = credentialIssuerId,
             holderPubKey = holderPubKey,
             iat = at,

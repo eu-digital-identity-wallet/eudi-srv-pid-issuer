@@ -236,23 +236,17 @@ val MobileDrivingLicenceDisplay: List<CredentialDisplay> = listOf(
     ),
 )
 
-val MobileDrivingLicenceV1: MsoMdocCredentialConfiguration = run {
-    val algorithms = nonEmptySetOf(
-        JWSAlgorithm.RS256,
-        JWSAlgorithm.ES256,
-    )
+val MobileDrivingLicenceV1: MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
         id = CredentialConfigurationId(MobileDrivingLicenceV1Scope.value),
         docType = mdlDocType(1u),
         display = MobileDrivingLicenceDisplay,
         msoClaims = mapOf(MobileDrivingLicenceV1Namespace to MobileDrivingLicenceV1Attributes),
-        cryptographicBindingMethodsSupported = listOf(
-            CryptographicBindingMethod.Jwk(algorithms),
-        ),
+        cryptographicBindingMethodsSupported = emptySet(),
+        credentialSigningAlgorithmsSupported = emptySet(),
         scope = MobileDrivingLicenceV1Scope,
-        proofTypesSupported = setOf(ProofType.JWT),
+        proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256))),
     )
-}
 
 /**
  * Issuing service for Mobile Driving Licence.
@@ -263,7 +257,7 @@ class IssueMobileDrivingLicence(
     private val encodeMobileDrivingLicenceInCbor: EncodeMobileDrivingLicenceInCbor,
 ) : IssueSpecificCredential<JsonElement> {
 
-    override val supportedCredential: CredentialConfiguration
+    override val supportedCredential: MsoMdocCredentialConfiguration
         get() = MobileDrivingLicenceV1
 
     override val publicKey: JWK?

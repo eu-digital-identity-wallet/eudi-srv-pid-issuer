@@ -132,23 +132,17 @@ private val pidAttributes = pidNameSpace(1) to listOf(
     ),
 )
 
-val PidMsoMdocV1: MsoMdocCredentialConfiguration = run {
-    val algorithms = nonEmptySetOf(
-        JWSAlgorithm.RS256,
-        JWSAlgorithm.ES256,
-    )
+val PidMsoMdocV1: MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
         id = CredentialConfigurationId(PidMsoMdocScope.value),
         docType = pidDocType(1),
         display = pidDisplay,
         msoClaims = mapOf(pidAttributes),
-        cryptographicBindingMethodsSupported = listOf(
-            CryptographicBindingMethod.Jwk(algorithms),
-        ),
+        cryptographicBindingMethodsSupported = emptySet(),
+        credentialSigningAlgorithmsSupported = emptySet(),
         scope = PidMsoMdocScope,
-        proofTypesSupported = setOf(ProofType.JWT),
+        proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256))),
     )
-}
 
 //
 // Meta
