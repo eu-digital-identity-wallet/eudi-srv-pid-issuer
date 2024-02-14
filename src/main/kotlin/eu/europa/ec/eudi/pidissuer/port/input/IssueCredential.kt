@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
+import arrow.core.Either
 import arrow.core.getOrElse
 import arrow.core.raise.*
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -67,57 +68,37 @@ data class CredentialResponseEncryptionTO(
     @SerialName("enc") @Required val method: String,
 )
 
-@OptIn(ExperimentalSerializationApi::class)
+typealias ClaimsTO = Map<String, JsonElement>
+
 @Serializable
-@JsonClassDiscriminator("format")
-sealed interface CredentialRequestTO {
-
-    @Required
-    val format: FormatTO
-    val proof: ProofTo?
-
+data class CredentialRequestTO(
+    val format: FormatTO? = null,
+    val proof: ProofTo? = null,
+    @SerialName("credential_identifier")
+    val credentialIdentifier: String? = null,
     @SerialName("credential_response_encryption")
-    val credentialResponseEncryption: CredentialResponseEncryptionTO?
-
-    /**
-     * Transfer object for an MsoMdoc credential request.
-     */
-    @Serializable
-    @SerialName(MSO_MDOC_FORMAT_VALUE)
-    data class MsoMdoc(
-        @Required override val format: FormatTO = FormatTO.MsoMdoc,
-        @SerialName("doctype") @Required
-        val docType: String,
-        val claims: Map<String, Map<String, JsonObject>>? = null,
-        override val proof: ProofTo? = null,
-        @SerialName("credential_response_encryption")
-        override val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
-    ) : CredentialRequestTO {
-        init {
-            require(format == FormatTO.MsoMdoc)
-        }
-    }
-
-    @Serializable
-    @SerialName(SD_JWT_VC_FORMAT_VALUE)
-    data class SdJwtVc(
-        @Required override val format: FormatTO = FormatTO.SdJwtVc,
-        @SerialName("vct") @Required val type: String,
-        val claims: Map<String, JsonObject>? = null,
-        override val proof: ProofTo? = null,
-        @SerialName("credential_response_encryption")
-        override val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
-    ) : CredentialRequestTO {
-        init {
-            require(format == FormatTO.SdJwtVc)
-        }
-    }
-}
+    val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
+    @SerialName("doctype")
+    val docType: String? = null,
+    @SerialName("vct")
+    val type: String? = null,
+    val claims: ClaimsTO? = null,
+)
 
 /**
  * Errors that might be raised while trying to issue a credential.
  */
 sealed interface IssueCredentialError {
+
+    /**
+     * Indicates that a 'credential_identifier' was provided. This is currently not supported.
+     */
+    data object CredentialIdentifierNotSupport : IssueCredentialError
+
+    /**
+     * Indicates that 'format' was not provided.
+     */
+    data object MissingFormat : IssueCredentialError
 
     /**
      * Indicates a credential request contained an unsupported 'format'.
@@ -132,6 +113,11 @@ sealed interface IssueCredentialError {
      * Indicates that Proof of Possession was not provided.
      */
     data object MissingProof : IssueCredentialError
+
+    /**
+     * Indicates the provided 'claims' did not have the expected structure.
+     */
+    data class InvalidClaims(val error: Throwable) : IssueCredentialError
 
     /**
      * Indicates a credential request contained an invalid 'jwt' proof.
@@ -307,35 +293,45 @@ class IssueCredential(
 //
 
 /**
- * Tries to parse a [JsonObject] as a [CredentialRequest].
+ * Tries to convert a [CredentialRequestTO] to a [CredentialRequest].
  */
 context(Raise<IssueCredentialError>)
 fun CredentialRequestTO.toDomain(
     supported: CredentialResponseEncryption,
 ): CredentialRequest {
+    ensure(credentialIdentifier == null) { CredentialIdentifierNotSupport }
+
+    val format = ensureNotNull(format) { MissingFormat }
     val proof = ensureNotNull(proof) { MissingProof }.toDomain()
-    val credentialResponseEncryption =
-        credentialResponseEncryption?.toDomain(supported) ?: RequestedResponseEncryption.NotRequired
-    return when (val req = this@toDomain) {
-        is CredentialRequestTO.MsoMdoc -> {
-            ensure(req.docType.isNotBlank()) { UnsupportedCredentialType(format = MSO_MDOC_FORMAT) }
-            MsoMdocCredentialRequest(
-                proof,
-                credentialResponseEncryption,
-                req.docType,
-                (req.claims ?: emptyMap()).mapValues { (_, v) -> v.map { it.key } },
-            )
+    val credentialResponseEncryption = credentialResponseEncryption?.toDomain(supported) ?: RequestedResponseEncryption.NotRequired
+    return when (format) {
+        FormatTO.MsoMdoc -> {
+            val docType = run {
+                ensure(!docType.isNullOrBlank()) { UnsupportedCredentialType(format = MSO_MDOC_FORMAT) }
+                docType
+            }
+            val claims = (claims ?: emptyMap()).decodeAs<Map<String, Map<String, JsonObject>>>()
+                .mapValues { (_, v) -> v.map { it.key } }
+
+            MsoMdocCredentialRequest(proof, credentialResponseEncryption, docType, claims)
         }
 
-        is CredentialRequestTO.SdJwtVc -> {
-            val type = req.type
-            ensure(!type.isNullOrBlank()) { UnsupportedCredentialType(format = SD_JWT_VC_FORMAT) }
-            ensureNotNull(proof) { MissingProof }
+        FormatTO.SdJwtVc -> {
+            val type = run {
+                ensure(!type.isNullOrBlank()) { UnsupportedCredentialType(format = SD_JWT_VC_FORMAT) }
+                type
+            }
+            val claims = (claims ?: emptyMap()).decodeAs<Map<String, JsonObject>>()
+
             // TODO extract the requested attributes
             SdJwtVcCredentialRequest(proof, credentialResponseEncryption, SdJwtVcType(type), emptyList())
         }
     }
 }
+
+context(Raise<InvalidClaims>)
+private inline fun <reified T> ClaimsTO.decodeAs(): T =
+    Either.catch { Json.decodeFromString<T>(Json.encodeToString(this)) }.getOrElse { raise(InvalidClaims(it)) }
 
 /**
  * Gets the [UnvalidatedProof] that corresponds to this [ProofTo].
@@ -452,6 +448,15 @@ private fun IssueCredentialError.toTO(nonce: CNonce): IssueCredentialResponse.Fa
 
         is Unexpected ->
             CredentialErrorTypeTo.INVALID_REQUEST to "$msg${cause?.message?.let { " : $it" } ?: ""}"
+
+        is CredentialIdentifierNotSupport ->
+            CredentialErrorTypeTo.INVALID_REQUEST to "Usage of 'credential_identifier' is currently not supported"
+
+        is MissingFormat ->
+            CredentialErrorTypeTo.INVALID_REQUEST to "Missing 'format'"
+
+        is InvalidClaims ->
+            CredentialErrorTypeTo.INVALID_REQUEST to "'claims' does not have the expected structure${error.message?.let { " : $it" } ?: ""}"
     }
     return IssueCredentialResponse.FailedTO(
         type,
