@@ -53,6 +53,7 @@ jobs:
           tags: |
             type=semver,pattern=v{{version}}
             type=edge
+            type=ref,event=branch
       - name: Debug
         run: echo ${{ steps.meta.outputs }}
       - name: Build and publish with Gradle Wrapper
@@ -75,6 +76,6 @@ jobs:
           arguments: |
             build 
             bootBuildImage
-             --imageName=${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+            --imageName=${{ fromJSON(steps.meta.outputs.json).tags[0] }}
             --publishImage
             --full-stacktrace
