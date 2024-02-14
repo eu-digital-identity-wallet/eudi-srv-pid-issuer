@@ -60,16 +60,11 @@ data class ProofTo(
     val ldpVp: String? = null,
 )
 
-interface CredentialResponseEncryptionTO {
-    val credentialResponseEncryptionKey: JsonObject?
-    val credentialResponseEncryptionAlgorithm: String?
-    val credentialResponseEncryptionMethod: String?
-}
-
 @Serializable
-data class SdJwtVcCredentialDefinition(
-    val type: String?,
-    val claims: Map<String, JsonObject>? = null,
+data class CredentialResponseEncryptionTO(
+    @SerialName("jwk") @Required val credentialResponseEncryptionKey: JsonObject,
+    @SerialName("alg") @Required val credentialResponseEncryptionAlgorithm: String,
+    @SerialName("enc") @Required val credentialResponseEncryptionMethod: String,
 )
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -81,21 +76,8 @@ sealed interface CredentialRequestTO {
     val format: FormatTO
     val proof: ProofTo?
 
-    @SerialName("credential_encryption_jwk")
-    val credentialResponseEncryptionKey: JsonObject?
-
-    @SerialName("credential_response_encryption_alg")
-    val credentialResponseEncryptionAlgorithm: String?
-
-    @SerialName("credential_response_encryption_enc")
-    val credentialResponseEncryptionMethod: String?
-    val credentialResponseEncryption
-        get() = object : CredentialResponseEncryptionTO {
-            val self = this@CredentialRequestTO
-            override val credentialResponseEncryptionKey = self.credentialResponseEncryptionKey
-            override val credentialResponseEncryptionAlgorithm = self.credentialResponseEncryptionAlgorithm
-            override val credentialResponseEncryptionMethod = self.credentialResponseEncryptionMethod
-        }
+    @SerialName("credential_response_encryption")
+    val credentialResponseEncryption: CredentialResponseEncryptionTO?
 
     /**
      * Transfer object for an MsoMdoc credential request.
@@ -108,12 +90,8 @@ sealed interface CredentialRequestTO {
         val docType: String,
         val claims: Map<String, Map<String, JsonObject>>? = null,
         override val proof: ProofTo? = null,
-        @SerialName("credential_encryption_jwk")
-        override val credentialResponseEncryptionKey: JsonObject? = null,
-        @SerialName("credential_response_encryption_alg")
-        override val credentialResponseEncryptionAlgorithm: String? = null,
-        @SerialName("credential_response_encryption_enc")
-        override val credentialResponseEncryptionMethod: String? = null,
+        @SerialName("credential_response_encryption")
+        override val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
     ) : CredentialRequestTO {
         init {
             require(format == FormatTO.MsoMdoc)
@@ -124,15 +102,11 @@ sealed interface CredentialRequestTO {
     @SerialName(SD_JWT_VC_FORMAT_VALUE)
     data class SdJwtVc(
         @Required override val format: FormatTO = FormatTO.SdJwtVc,
-        @SerialName("credential_definition") @Required
-        val credentialDefinition: SdJwtVcCredentialDefinition,
+        @SerialName("vct") @Required val type: String,
+        val claims: Map<String, JsonObject>? = null,
         override val proof: ProofTo? = null,
-        @SerialName("credential_encryption_jwk")
-        override val credentialResponseEncryptionKey: JsonObject? = null,
-        @SerialName("credential_response_encryption_alg")
-        override val credentialResponseEncryptionAlgorithm: String? = null,
-        @SerialName("credential_response_encryption_enc")
-        override val credentialResponseEncryptionMethod: String? = null,
+        @SerialName("credential_response_encryption")
+        override val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
     ) : CredentialRequestTO {
         init {
             require(format == FormatTO.SdJwtVc)
@@ -340,7 +314,8 @@ fun CredentialRequestTO.toDomain(
     supported: CredentialResponseEncryption,
 ): CredentialRequest {
     val proof = ensureNotNull(proof) { MissingProof }.toDomain()
-    val credentialResponseEncryption = credentialResponseEncryption.toDomain(supported)
+    val credentialResponseEncryption =
+        credentialResponseEncryption?.toDomain(supported) ?: RequestedResponseEncryption.NotRequired
     return when (val req = this@toDomain) {
         is CredentialRequestTO.MsoMdoc -> {
             ensure(req.docType.isNotBlank()) { UnsupportedCredentialType(format = MSO_MDOC_FORMAT) }
@@ -353,7 +328,7 @@ fun CredentialRequestTO.toDomain(
         }
 
         is CredentialRequestTO.SdJwtVc -> {
-            val type = req.credentialDefinition.type
+            val type = req.type
             ensure(!type.isNullOrBlank()) { UnsupportedCredentialType(format = SD_JWT_VC_FORMAT) }
             ensureNotNull(proof) { MissingProof }
             // TODO extract the requested attributes
