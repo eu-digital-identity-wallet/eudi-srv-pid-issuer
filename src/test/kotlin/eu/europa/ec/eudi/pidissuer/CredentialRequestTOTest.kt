@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer
 
 import eu.europa.ec.eudi.pidissuer.port.input.CredentialRequestTO
+import eu.europa.ec.eudi.pidissuer.port.input.FormatTO
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 
@@ -23,12 +24,12 @@ class CredentialRequestTOTest {
 
     @Test
     fun checkMsoMdoc() {
-        assert(Json.decodeFromString<CredentialRequestTO>(msoMdoc) is CredentialRequestTO.MsoMdoc)
+        assert(Json.decodeFromString<CredentialRequestTO>(msoMdoc).format == FormatTO.MsoMdoc)
     }
 
     @Test
     fun checkSdJwtVc() {
-        assert(Json.decodeFromString<CredentialRequestTO>(sdJwtVc) is CredentialRequestTO.SdJwtVc)
+        assert(Json.decodeFromString<CredentialRequestTO>(sdJwtVc).format == FormatTO.SdJwtVc)
     }
 }
 

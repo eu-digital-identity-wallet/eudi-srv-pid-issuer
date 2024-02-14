@@ -355,8 +355,9 @@ private fun bearerTokenAuthenticationPrincipal(
 
 private fun request(
     proof: ProofTo? = ProofTo(type = ProofTypeTO.JWT, jwt = "123456"),
-): CredentialRequestTO.MsoMdoc =
-    CredentialRequestTO.MsoMdoc(
+): CredentialRequestTO =
+    CredentialRequestTO(
+        format = FormatTO.MsoMdoc,
         docType = "eu.europa.ec.eudiw.pid.1",
         proof = proof,
     )
