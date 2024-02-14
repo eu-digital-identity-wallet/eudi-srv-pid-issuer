@@ -62,9 +62,9 @@ data class ProofTo(
 
 @Serializable
 data class CredentialResponseEncryptionTO(
-    @SerialName("jwk") @Required val credentialResponseEncryptionKey: JsonObject,
-    @SerialName("alg") @Required val credentialResponseEncryptionAlgorithm: String,
-    @SerialName("enc") @Required val credentialResponseEncryptionMethod: String,
+    @SerialName("jwk") @Required val key: JsonObject,
+    @SerialName("alg") @Required val algorithm: String,
+    @SerialName("enc") @Required val method: String,
 )
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -362,11 +362,8 @@ private fun ProofTo.toDomain(): UnvalidatedProof = when (type) {
  * Gets the [RequestedResponseEncryption] that corresponds to the provided values.
  */
 context(Raise<InvalidEncryptionParameters>)
-private fun CredentialResponseEncryptionTO.toDomain(
-    supported: CredentialResponseEncryption,
-): RequestedResponseEncryption {
-    val encryptionKey = credentialResponseEncryptionKey?.let { Json.encodeToString(it) }
-    return withError({ InvalidEncryptionParameters(it) }) {
+private fun CredentialResponseEncryptionTO.toDomain(supported: CredentialResponseEncryption): RequestedResponseEncryption.Required =
+    withError({ InvalidEncryptionParameters(it) }) {
         fun RequestedResponseEncryption.ensureIsSupported() {
             when (supported) {
                 is CredentialResponseEncryption.NotSupported -> {
@@ -406,16 +403,10 @@ private fun CredentialResponseEncryptionTO.toDomain(
             }
         }
 
-        val requested = RequestedResponseEncryption(
-            encryptionKey,
-            credentialResponseEncryptionAlgorithm,
-            credentialResponseEncryptionMethod,
-        ).bind()
-
-        requested.ensureIsSupported()
-        requested
+        RequestedResponseEncryption.Required(Json.encodeToString(key), algorithm, method)
+            .bind()
+            .also { it.ensureIsSupported() }
     }
-}
 
 fun CredentialResponse<JsonElement>.toTO(nonce: CNonce): IssueCredentialResponse.PlainTO =
     when (this) {

@@ -18,9 +18,7 @@ package eu.europa.ec.eudi.pidissuer.domain
 import arrow.core.Either
 import arrow.core.NonEmptyList
 import arrow.core.raise.Raise
-import arrow.core.raise.either
 import arrow.core.raise.ensure
-import arrow.core.raise.ensureNotNull
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.AsymmetricJWK
@@ -115,37 +113,20 @@ sealed interface RequestedResponseEncryption {
                 "encryptionAlgorithm is not an asymmetric encryption algorithm"
             }
         }
-    }
 
-    companion object {
-        operator fun invoke(
-            encryptionKey: String?,
-            encryptionAlgorithm: String?,
-            encryptionMethod: String?,
-        ): Either<Throwable, RequestedResponseEncryption> = either {
-            if (encryptionKey == null && encryptionAlgorithm == null && encryptionMethod == null) NotRequired
-            else {
-                ensureNotNull(encryptionKey) { IllegalArgumentException("Missing encryption key") }
-                ensureNotNull(encryptionAlgorithm) { IllegalArgumentException("Missing encryption algorithm") }
-                required(encryptionKey, encryptionAlgorithm, encryptionMethod).bind()
-            }
+        companion object {
+            operator fun invoke(
+                encryptionKey: String,
+                encryptionAlgorithm: String,
+                encryptionMethod: String,
+            ): Either<Throwable, Required> =
+                Either.catch {
+                    val key = JWK.parse(encryptionKey)
+                    val algorithm = JWEAlgorithm.parse(encryptionAlgorithm)
+                    val method = EncryptionMethod.parse(encryptionMethod)
+                    Required(key, algorithm, method)
+                }
         }
-
-        fun required(
-            encryptionKey: String,
-            encryptionAlgorithm: String,
-            encryptionMethod: String?,
-        ): Either<Throwable, Required> =
-            Either.catch {
-                val key = JWK.parse(encryptionKey)
-                val algorithm = JWEAlgorithm.parse(encryptionAlgorithm)
-                val method =
-                    encryptionMethod
-                        ?.let { EncryptionMethod.parse(it) }
-                        ?: EncryptionMethod.A256GCM
-
-                Required(key, algorithm, method)
-            }
     }
 }
 
