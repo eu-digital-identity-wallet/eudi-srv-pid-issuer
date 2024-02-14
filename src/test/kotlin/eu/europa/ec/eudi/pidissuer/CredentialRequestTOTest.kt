@@ -46,7 +46,11 @@ val msoMdoc = """
              "organ_donor": {}
           }
        },
-       "credential_response_encryption_alg": "Foo",
+       "credential_response_encryption": {
+        "jwk": {},
+        "alg": "ECDH-ES",
+        "enc": "A256CBC-HS512"
+       },
        "proof": {
           "proof_type": "jwt",
           "jwt": "eyJraWQiOiJkaWQ6ZXhhbXBsZ"
@@ -57,9 +61,7 @@ val msoMdoc = """
 val sdJwtVc = """
     {
        "format": "vc+sd-jwt",
-       "credential_definition": {
-          "type": "IdentityCredential"
-       },
+       "vct": "IdentityCredential",
        "proof": {
           "proof_type": "jwt",
           "jwt":"${
