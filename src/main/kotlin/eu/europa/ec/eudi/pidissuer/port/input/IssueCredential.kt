@@ -310,8 +310,9 @@ fun CredentialRequestTO.toDomain(
                 ensure(!docType.isNullOrBlank()) { UnsupportedCredentialType(format = MSO_MDOC_FORMAT) }
                 docType
             }
-            val claims = (claims ?: emptyMap()).decodeAs<Map<String, Map<String, JsonObject>>>()
-                .mapValues { (_, v) -> v.map { it.key } }
+            val claims = claims?.decodeAs<Map<String, Map<String, JsonObject>>>()
+                ?.mapValues { (_, vs) -> vs.map { it.key } }
+                ?: emptyMap()
 
             MsoMdocCredentialRequest(proof, credentialResponseEncryption, docType, claims)
         }
@@ -321,10 +322,9 @@ fun CredentialRequestTO.toDomain(
                 ensure(!type.isNullOrBlank()) { UnsupportedCredentialType(format = SD_JWT_VC_FORMAT) }
                 type
             }
-            val claims = (claims ?: emptyMap()).decodeAs<Map<String, JsonObject>>()
+            val claims = claims?.decodeAs<Map<String, JsonObject>>()?.keys ?: emptySet()
 
-            // TODO extract the requested attributes
-            SdJwtVcCredentialRequest(proof, credentialResponseEncryption, SdJwtVcType(type), emptyList())
+            SdJwtVcCredentialRequest(proof, credentialResponseEncryption, SdJwtVcType(type), claims)
         }
     }
 }
