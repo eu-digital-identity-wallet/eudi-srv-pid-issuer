@@ -47,7 +47,7 @@ data class SdJwtVcCredentialRequest(
     override val unvalidatedProof: UnvalidatedProof,
     override val credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
     val type: SdJwtVcType,
-    val claims: List<AttributeDetails> = emptyList(),
+    val claims: Set<String> = emptySet(),
 ) : CredentialRequest {
     override val format: Format = SD_JWT_VC_FORMAT
 }
@@ -59,8 +59,8 @@ internal fun SdJwtVcCredentialRequest.validate(meta: SdJwtVcCredentialConfigurat
         ensure(claims.isEmpty()) { "Requested claims should be empty. " }
     } else {
         val expectedAttributeNames = meta.claims.map { it.name }
-        claims.forEach { attr ->
-            ensure(expectedAttributeNames.contains(attr.name)) { "Unexpected attribute $attr" }
+        claims.forEach { name ->
+            ensure(name in expectedAttributeNames) { "Unexpected attribute $name" }
         }
     }
 }
