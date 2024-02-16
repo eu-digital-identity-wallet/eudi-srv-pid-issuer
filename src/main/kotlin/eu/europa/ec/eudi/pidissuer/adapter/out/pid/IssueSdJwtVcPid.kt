@@ -87,16 +87,17 @@ private object Attributes {
     )
 }
 
-private fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration = SdJwtVcCredentialConfiguration(
-    id = CredentialConfigurationId(PidSdJwtVcScope.value),
-    type = SdJwtVcType(pidDocType(1)),
-    display = pidDisplay,
-    claims = Attributes.pidAttributes,
-    cryptographicBindingMethodsSupported = nonEmptySetOf(CryptographicBindingMethod.Jwk),
-    credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
-    scope = PidSdJwtVcScope,
-    proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256))),
-)
+private fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration =
+    SdJwtVcCredentialConfiguration(
+        id = CredentialConfigurationId(PidSdJwtVcScope.value),
+        type = SdJwtVcType(pidDocType(1)),
+        display = pidDisplay,
+        claims = Attributes.pidAttributes,
+        cryptographicBindingMethodsSupported = nonEmptySetOf(CryptographicBindingMethod.Jwk),
+        credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
+        scope = PidSdJwtVcScope,
+        proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256))),
+    )
 
 typealias TimeDependant<F> = (ZonedDateTime) -> F
 
@@ -219,6 +220,7 @@ class IssueSdJwtVcPid(
     private val calculateExpiresAt: TimeDependant<Instant>,
     private val calculateNotUseBefore: TimeDependant<Instant>?,
     private val sdOption: SelectiveDisclosureOption,
+    private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredential: StoreIssuedCredential,
 ) : IssueSpecificCredential<JsonElement> {
@@ -240,12 +242,26 @@ class IssueSdJwtVcPid(
         val holderPubKey = async(Dispatchers.Default) { holderPubKey(request, expectedCNonce) }
         val pidData = async { getPidData(authorizationContext) }
         val (pid, pidMetaData) = pidData.await()
+
+        val notificationId =
+            if (notificationsEnabled) generateNotificationId()
+            else null
+        storeIssuedCredential(
+            IssuedCredential(
+                format = MSO_MDOC_FORMAT,
+                type = supportedCredential.type.value,
+                holder = with(pid) {
+                    "${familyName.value} ${givenName.value}"
+                },
+                issuedAt = clock.instant(),
+                clientId = authorizationContext.clientId,
+                notificationId = notificationId,
+            ),
+        )
+
         val sdJwt = encodePidInSdJwt(pid, pidMetaData, holderPubKey.await())
-        val notificationId = generateNotificationId()
         CredentialResponse.Issued(JsonPrimitive(sdJwt), notificationId)
             .also {
-                storeIssuedCredential(it)
-
                 log.info("Successfully issued PID")
                 log.debug("Issued PID data {}", it)
             }

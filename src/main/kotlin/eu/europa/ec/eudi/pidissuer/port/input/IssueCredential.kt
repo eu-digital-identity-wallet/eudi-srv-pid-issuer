@@ -184,8 +184,10 @@ sealed interface IssueCredentialResponse {
                 require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
                     "credential must either be a JsonObject or a string JsonPrimitive"
                 }
-                require(!notificationId.isNullOrBlank()) {
-                    "notificationId is required when credential is present"
+            }
+            if (notificationId != null) {
+                requireNotNull(credential) {
+                    "notificationId cannot be provided when credential is not"
                 }
             }
         }
@@ -416,7 +418,7 @@ fun CredentialResponse<JsonElement>.toTO(nonce: CNonce): IssueCredentialResponse
         is CredentialResponse.Issued ->
             IssueCredentialResponse.PlainTO(
                 credential = credential,
-                notificationId = notificationId.value,
+                notificationId = notificationId?.value,
                 nonce = nonce.nonce,
                 nonceExpiresIn = nonce.expiresIn.toSeconds(),
             )

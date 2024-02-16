@@ -202,7 +202,10 @@ fun beans(clock: Clock) = beans {
                         credentialIssuerId = issuerPublicUrl,
                         getPidData = ref(),
                         encodePidInCbor = ref(),
+                        notificationsEnabled = env.getProperty<Boolean>("issuer.pid.mso_mdoc.notifications.enabled")
+                            ?: true,
                         generateNotificationId = ref(),
+                        clock = clock,
                         storeIssuedCredential = ref(),
                     )
                     add(issueMsoMdocPid)
@@ -235,6 +238,8 @@ fun beans(clock: Clock) = beans {
                             }
                         },
                         sdOption = sdOption,
+                        notificationsEnabled = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled")
+                            ?: true,
                         generateNotificationId = ref(),
                         storeIssuedCredential = ref(),
                     )
@@ -247,7 +252,15 @@ fun beans(clock: Clock) = beans {
 
                 val enableMobileDrivingLicence = env.getProperty("issuer.mdl.enabled", true)
                 if (enableMobileDrivingLicence) {
-                    val mdlIssuer = IssueMobileDrivingLicence(issuerPublicUrl, ref(), ref(), ref(), ref())
+                    val mdlIssuer = IssueMobileDrivingLicence(
+                        credentialIssuerId = issuerPublicUrl,
+                        getMobileDrivingLicenceData = ref(),
+                        encodeMobileDrivingLicenceInCbor = ref(),
+                        notificationsEnabled = env.getProperty<Boolean>("issuer.mdl.notifications.enabled") ?: true,
+                        generateNotificationId = ref(),
+                        clock = clock,
+                        storeIssuedCredential = ref(),
+                    )
                     add(mdlIssuer)
                 }
             },

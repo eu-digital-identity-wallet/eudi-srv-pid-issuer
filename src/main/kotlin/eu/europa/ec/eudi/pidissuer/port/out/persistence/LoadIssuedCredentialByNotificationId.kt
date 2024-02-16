@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.persistence
 
-import eu.europa.ec.eudi.pidissuer.domain.CredentialResponse
+import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
 import eu.europa.ec.eudi.pidissuer.domain.NotificationId
 
 fun interface LoadIssuedCredentialByNotificationId {
@@ -23,5 +23,5 @@ fun interface LoadIssuedCredentialByNotificationId {
     /**
      * Loads an issued credential by its notification id.
      */
-    suspend operator fun invoke(notificationId: NotificationId): CredentialResponse.Issued<*>?
+    suspend operator fun invoke(notificationId: NotificationId): IssuedCredential?
 }

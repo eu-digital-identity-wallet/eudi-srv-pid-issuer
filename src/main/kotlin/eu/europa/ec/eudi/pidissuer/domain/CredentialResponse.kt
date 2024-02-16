@@ -35,7 +35,7 @@ sealed interface CredentialResponse<out T> {
     /**
      * An unencrypted Credential has been issued.
      */
-    data class Issued<T>(val credential: T, val notificationId: NotificationId) : CredentialResponse<T>
+    data class Issued<T>(val credential: T, val notificationId: NotificationId? = null) : CredentialResponse<T>
 
     /**
      * The issuance of the requested Credential has been deferred.

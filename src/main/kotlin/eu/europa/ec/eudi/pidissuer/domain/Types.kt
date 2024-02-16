@@ -15,10 +15,12 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import eu.europa.ec.eudi.pidissuer.port.input.ClientId
 import org.slf4j.LoggerFactory
 import java.net.MalformedURLException
 import java.net.URI
 import java.net.URL
+import java.time.Instant
 import java.util.*
 
 private val logHttpsUrl = LoggerFactory.getLogger(HttpsUrl::class.java)
@@ -101,3 +103,15 @@ sealed interface CryptographicBindingMethod {
      */
     data object DidAnyMethod : CryptographicBindingMethod
 }
+
+/**
+ * A credential that was issued by a specific issuing service.
+ */
+data class IssuedCredential(
+    val format: Format,
+    val type: String,
+    val holder: String,
+    val issuedAt: Instant,
+    val clientId: ClientId? = null,
+    val notificationId: NotificationId? = null,
+)
