@@ -35,6 +35,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
+import java.time.Clock
 import java.util.*
 
 val PidMsoMdocScope: Scope = Scope("${PID_DOCTYPE}_${MSO_MDOC_FORMAT.value}")
@@ -163,14 +164,16 @@ class IssueMsoMdocPid(
     credentialIssuerId: CredentialIssuerId,
     private val getPidData: GetPidData,
     private val encodePidInCbor: EncodePidInCbor,
+    private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
+    private val clock: Clock,
     private val storeIssuedCredential: StoreIssuedCredential,
 ) : IssueSpecificCredential<JsonElement> {
 
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
 
     private val validateProof = ValidateProof(credentialIssuerId)
-    override val supportedCredential: CredentialConfiguration
+    override val supportedCredential: MsoMdocCredentialConfiguration
         get() = PidMsoMdocV1
     override val publicKey: JWK? = null
 
@@ -184,14 +187,28 @@ class IssueMsoMdocPid(
         val holderPubKey = async(Dispatchers.Default) { holderPubKey(request, expectedCNonce) }
         val pidData = async { getPidData(authorizationContext) }
         val (pid, pidMetaData) = pidData.await()
+
+        val notificationId =
+            if (notificationsEnabled) generateNotificationId()
+            else null
+        storeIssuedCredential(
+            IssuedCredential(
+                format = MSO_MDOC_FORMAT,
+                type = supportedCredential.docType,
+                holder = with(pid) {
+                    "${familyName.value} ${givenName.value}"
+                },
+                issuedAt = clock.instant(),
+                clientId = authorizationContext.clientId,
+                notificationId = notificationId,
+            ),
+        )
+
         val cbor = encodePidInCbor(pid, pidMetaData, holderPubKey.await()).also {
             log.info("Issued $it")
         }
-        val notificationId = generateNotificationId()
         CredentialResponse.Issued(JsonPrimitive(cbor), notificationId)
             .also {
-                storeIssuedCredential(it)
-
                 log.info("Successfully issued PID")
                 log.debug("Issued PID data {}", it)
             }

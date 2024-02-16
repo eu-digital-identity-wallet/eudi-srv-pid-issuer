@@ -33,6 +33,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
+import java.time.Clock
 import java.util.*
 
 val MobileDrivingLicenceV1Scope: Scope = Scope(mdlDocType(1u))
@@ -257,7 +258,9 @@ class IssueMobileDrivingLicence(
     credentialIssuerId: CredentialIssuerId,
     private val getMobileDrivingLicenceData: GetMobileDrivingLicenceData,
     private val encodeMobileDrivingLicenceInCbor: EncodeMobileDrivingLicenceInCbor,
+    private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
+    private val clock: Clock,
     private val storeIssuedCredential: StoreIssuedCredential,
 ) : IssueSpecificCredential<JsonElement> {
 
@@ -288,12 +291,26 @@ class IssueMobileDrivingLicence(
         val licence = ensureNotNull(getMobileDrivingLicenceData(authorizationContext)) {
             IssueCredentialError.Unexpected("Unable to fetch mDL data")
         }
+
+        val notificationId =
+            if (notificationsEnabled) generateNotificationId()
+            else null
+        storeIssuedCredential(
+            IssuedCredential(
+                format = MSO_MDOC_FORMAT,
+                type = supportedCredential.docType,
+                holder = with(licence.driver) {
+                    "${familyName.latin.value} ${givenName.latin.value}"
+                },
+                issuedAt = clock.instant(),
+                clientId = authorizationContext.clientId,
+                notificationId = notificationId,
+            ),
+        )
+
         val cbor = encodeMobileDrivingLicenceInCbor(licence, holderKey)
-        val notificationId = generateNotificationId()
         return CredentialResponse.Issued(JsonPrimitive(cbor), notificationId)
             .also {
-                storeIssuedCredential(it)
-
                 log.info("Successfully issued mDL")
                 log.debug("Issued mDL data {}", it)
             }
