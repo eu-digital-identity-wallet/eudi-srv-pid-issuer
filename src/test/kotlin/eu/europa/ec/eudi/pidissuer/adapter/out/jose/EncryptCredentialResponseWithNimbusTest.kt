@@ -60,7 +60,6 @@ internal class EncryptCredentialResponseWithNimbusTest {
         val jwk = key.toPublicJWK()
         val parameters = RequestedResponseEncryption.Required(jwk, JWEAlgorithm.RSA_OAEP_512)
         val unencrypted = IssueCredentialResponse.PlainTO(
-            "pid",
             JsonPrimitive("credential"),
             null,
             "nonce",
@@ -79,7 +78,6 @@ internal class EncryptCredentialResponseWithNimbusTest {
         val jwk = key.toPublicJWK()
         val parameters = RequestedResponseEncryption.Required(jwk, JWEAlgorithm.ECDH_ES_A256KW)
         val unencrypted = IssueCredentialResponse.PlainTO(
-            "pid",
             JsonPrimitive("credential"),
             null,
             "nonce",
@@ -106,7 +104,6 @@ internal class EncryptCredentialResponseWithNimbusTest {
             jwtClaimsSetVerifier = DefaultJWTClaimsVerifier(
                 JWTClaimsSet.Builder()
                     .issuer(issuer.externalForm)
-                    .claim("format", unencrypted.format)
                     .apply {
                         unencrypted.transactionId?.let { claim("transaction_id", it) }
                         unencrypted.nonce?.let { claim("c_nonce", it) }
