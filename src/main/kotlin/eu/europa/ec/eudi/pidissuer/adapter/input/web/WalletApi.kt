@@ -25,6 +25,7 @@ import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.serialization.json.JsonElement
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.core.GrantedAuthority
@@ -40,7 +41,7 @@ class WalletApi(
     private val issueCredential: IssueCredential,
     private val getDeferredCredential: GetDeferredCredential,
     private val getPidData: GetPidData,
-
+    private val handleNotificationRequest: HandleNotificationRequest,
 ) {
 
     val route = coRouter {
@@ -58,6 +59,11 @@ class WalletApi(
             DEFERRED_ENDPOINT,
             contentType(MediaType.APPLICATION_JSON) and accept(MediaType.APPLICATION_JSON),
             this@WalletApi::handleGetDeferredCredential,
+        )
+        POST(
+            NOTIFICATION_ENDPOINT,
+            contentType(MediaType.APPLICATION_JSON) and accept(MediaType.ALL),
+            this@WalletApi::handleNotificationRequest,
         )
     }
 
@@ -100,9 +106,19 @@ class WalletApi(
         else ServerResponse.notFound().buildAndAwait()
     }
 
+    private suspend fun handleNotificationRequest(request: ServerRequest): ServerResponse =
+        when (val response = handleNotificationRequest(request.awaitBody<JsonElement>())) {
+            is NotificationResponse.Success -> ServerResponse.noContent().buildAndAwait()
+            is NotificationResponse.NotificationErrorResponseTO ->
+                ServerResponse.badRequest()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValueAndAwait(response)
+        }
+
     companion object {
         const val CREDENTIAL_ENDPOINT = "/wallet/credentialEndpoint"
         const val DEFERRED_ENDPOINT = "/wallet/deferredEndpoint"
+        const val NOTIFICATION_ENDPOINT = "/wallet/notificationEndpoint"
     }
 }
 

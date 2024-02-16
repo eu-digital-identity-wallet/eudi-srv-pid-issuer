@@ -37,10 +37,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryIssuedCredent
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOffer
-import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
-import eu.europa.ec.eudi.pidissuer.port.input.GetDeferredCredential
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
+import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
@@ -148,6 +145,7 @@ fun beans(clock: Clock) = beans {
         )
     }
     bean(::DefaultGenerateQrCode)
+    bean(::HandleNotificationRequest)
 
     //
     // Encryption of credential response
@@ -172,6 +170,7 @@ fun beans(clock: Clock) = beans {
     with(InMemoryIssuedCredentialRepository()) {
         bean { GenerateNotificationId.Random }
         bean { storeIssuedCredential }
+        bean { loadIssuedCredentialByNotificationId }
     }
 
     //
@@ -193,6 +192,7 @@ fun beans(clock: Clock) = beans {
             id = issuerPublicUrl,
             credentialEndPoint = issuerPublicUrl.appendPath(WalletApi.CREDENTIAL_ENDPOINT),
             deferredCredentialEndpoint = issuerPublicUrl.appendPath(WalletApi.DEFERRED_ENDPOINT),
+            notificationEndpoint = issuerPublicUrl.appendPath(WalletApi.NOTIFICATION_ENDPOINT),
             authorizationServers = listOf(env.readRequiredUrl("issuer.authorizationServer")),
             credentialResponseEncryption = env.credentialResponseEncryption(),
             specificCredentialIssuers = buildList {
@@ -271,7 +271,7 @@ fun beans(clock: Clock) = beans {
     //
     bean {
         val metaDataApi = MetaDataApi(ref(), ref())
-        val walletApi = WalletApi(ref(), ref(), ref())
+        val walletApi = WalletApi(ref(), ref(), ref(), ref())
         val issuerUi = IssuerUi(ref(), ref(), ref())
         val issuerApi = IssuerApi(ref())
         metaDataApi.route.and(walletApi.route).and(issuerUi.router).and(issuerApi.router)
@@ -299,6 +299,7 @@ fun beans(clock: Clock) = beans {
             authorizeExchange {
                 authorize(WalletApi.CREDENTIAL_ENDPOINT, hasAnyAuthority(*scopes.toTypedArray()))
                 authorize(WalletApi.DEFERRED_ENDPOINT, hasAnyAuthority(*scopes.toTypedArray()))
+                authorize(WalletApi.NOTIFICATION_ENDPOINT, hasAnyAuthority(*scopes.toTypedArray()))
                 authorize(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, permitAll)
                 authorize(MetaDataApi.WELL_KNOWN_JWKS, permitAll)
                 authorize(MetaDataApi.WELL_KNOWN_JWT_ISSUER, permitAll)
