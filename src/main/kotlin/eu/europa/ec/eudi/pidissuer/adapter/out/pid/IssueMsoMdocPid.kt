@@ -27,6 +27,8 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -161,6 +163,8 @@ class IssueMsoMdocPid(
     credentialIssuerId: CredentialIssuerId,
     private val getPidData: GetPidData,
     private val encodePidInCbor: EncodePidInCbor,
+    private val generateNotificationId: GenerateNotificationId,
+    private val storeIssuedCredential: StoreIssuedCredential,
 ) : IssueSpecificCredential<JsonElement> {
 
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
@@ -183,7 +187,14 @@ class IssueMsoMdocPid(
         val cbor = encodePidInCbor(pid, pidMetaData, holderPubKey.await()).also {
             log.info("Issued $it")
         }
-        CredentialResponse.Issued(JsonPrimitive(cbor))
+        val notificationId = generateNotificationId()
+        CredentialResponse.Issued(JsonPrimitive(cbor), notificationId)
+            .also {
+                storeIssuedCredential(it)
+
+                log.info("Successfully issued PID")
+                log.debug("Issued PID data {}", it)
+            }
     }
 
     context(Raise<IssueCredentialError>)

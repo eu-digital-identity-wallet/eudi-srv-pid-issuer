@@ -28,6 +28,8 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
@@ -255,6 +257,8 @@ class IssueMobileDrivingLicence(
     credentialIssuerId: CredentialIssuerId,
     private val getMobileDrivingLicenceData: GetMobileDrivingLicenceData,
     private val encodeMobileDrivingLicenceInCbor: EncodeMobileDrivingLicenceInCbor,
+    private val generateNotificationId: GenerateNotificationId,
+    private val storeIssuedCredential: StoreIssuedCredential,
 ) : IssueSpecificCredential<JsonElement> {
 
     override val supportedCredential: MsoMdocCredentialConfiguration
@@ -285,8 +289,11 @@ class IssueMobileDrivingLicence(
             IssueCredentialError.Unexpected("Unable to fetch mDL data")
         }
         val cbor = encodeMobileDrivingLicenceInCbor(licence, holderKey)
-        return CredentialResponse.Issued(JsonPrimitive(cbor))
+        val notificationId = generateNotificationId()
+        return CredentialResponse.Issued(JsonPrimitive(cbor), notificationId)
             .also {
+                storeIssuedCredential(it)
+
                 log.info("Successfully issued mDL")
                 log.debug("Issued mDL data {}", it)
             }
