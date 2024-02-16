@@ -40,6 +40,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import java.time.Clock
 import java.time.Duration
+import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.fail
@@ -64,6 +65,7 @@ internal class EncryptCredentialResponseWithNimbusTest {
             null,
             "nonce",
             Duration.ofMinutes(5L).seconds,
+            UUID.randomUUID().toString(),
         )
 
         encryptAndVerify(unencrypted, parameters, key)
@@ -82,6 +84,7 @@ internal class EncryptCredentialResponseWithNimbusTest {
             null,
             "nonce",
             Duration.ofMinutes(5L).seconds,
+            UUID.randomUUID().toString(),
         )
 
         encryptAndVerify(unencrypted, parameters, key)
@@ -108,6 +111,7 @@ internal class EncryptCredentialResponseWithNimbusTest {
                         unencrypted.transactionId?.let { claim("transaction_id", it) }
                         unencrypted.nonce?.let { claim("c_nonce", it) }
                         unencrypted.nonceExpiresIn?.let { claim("c_nonce_expires_in", it) }
+                        unencrypted.notificationId?.let { claim("notification_id", it) }
                     }
                     .build(),
                 setOf("iat") + (unencrypted.credential?.let { setOf("credential") } ?: emptySet()),

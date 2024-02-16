@@ -33,6 +33,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.GetMobileDrivingLicenceDataMo
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.IssueMobileDrivingLicence
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
+import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryIssuedCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -42,6 +43,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.GetDeferredCredential
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredential
 import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateCNonce
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import io.netty.handler.ssl.SslContextBuilder
@@ -165,6 +167,14 @@ fun beans(clock: Clock) = beans {
     }
 
     //
+    // Credentials
+    //
+    with(InMemoryIssuedCredentialRepository()) {
+        bean { GenerateNotificationId.Random }
+        bean { storeIssuedCredential }
+    }
+
+    //
     // Deferred Credentials
     //
     with(InMemoryDeferredCredentialRepository(mutableMapOf(TransactionId("foo") to null))) {
@@ -192,6 +202,8 @@ fun beans(clock: Clock) = beans {
                         credentialIssuerId = issuerPublicUrl,
                         getPidData = ref(),
                         encodePidInCbor = ref(),
+                        generateNotificationId = ref(),
+                        storeIssuedCredential = ref(),
                     )
                     add(issueMsoMdocPid)
                 }
@@ -223,6 +235,8 @@ fun beans(clock: Clock) = beans {
                             }
                         },
                         sdOption = sdOption,
+                        generateNotificationId = ref(),
+                        storeIssuedCredential = ref(),
                     )
                     val deferred = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.deferred") ?: false
                     add(
@@ -233,7 +247,7 @@ fun beans(clock: Clock) = beans {
 
                 val enableMobileDrivingLicence = env.getProperty("issuer.mdl.enabled", true)
                 if (enableMobileDrivingLicence) {
-                    val mdlIssuer = IssueMobileDrivingLicence(issuerPublicUrl, ref(), ref())
+                    val mdlIssuer = IssueMobileDrivingLicence(issuerPublicUrl, ref(), ref(), ref(), ref())
                     add(mdlIssuer)
                 }
             },

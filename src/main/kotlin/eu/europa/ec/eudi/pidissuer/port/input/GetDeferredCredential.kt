@@ -34,6 +34,7 @@ data class DeferredCredentialRequestTO(
 @Serializable
 data class CredentialTO(
     @Required val credential: JsonElement,
+    @SerialName("notification_id") @Required val notificationId: String,
 )
 
 @Serializable
@@ -63,5 +64,5 @@ context (Raise<GetDeferredCredentialErrorTO>)
 private fun LoadDeferredCredentialResult.toTo(): CredentialTO = when (this) {
     is LoadDeferredCredentialResult.IssuancePending -> raise(GetDeferredCredentialErrorTO.IssuancePending)
     is LoadDeferredCredentialResult.InvalidTransactionId -> raise(GetDeferredCredentialErrorTO.InvalidTransactionId)
-    is LoadDeferredCredentialResult.Found -> CredentialTO(credential.credential)
+    is LoadDeferredCredentialResult.Found -> CredentialTO(credential.credential, credential.notificationId.value)
 }

@@ -33,6 +33,8 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -217,6 +219,8 @@ class IssueSdJwtVcPid(
     private val calculateExpiresAt: TimeDependant<Instant>,
     private val calculateNotUseBefore: TimeDependant<Instant>?,
     private val sdOption: SelectiveDisclosureOption,
+    private val generateNotificationId: GenerateNotificationId,
+    private val storeIssuedCredential: StoreIssuedCredential,
 ) : IssueSpecificCredential<JsonElement> {
 
     private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
@@ -237,7 +241,14 @@ class IssueSdJwtVcPid(
         val pidData = async { getPidData(authorizationContext) }
         val (pid, pidMetaData) = pidData.await()
         val sdJwt = encodePidInSdJwt(pid, pidMetaData, holderPubKey.await())
-        CredentialResponse.Issued(JsonPrimitive(sdJwt))
+        val notificationId = generateNotificationId()
+        CredentialResponse.Issued(JsonPrimitive(sdJwt), notificationId)
+            .also {
+                storeIssuedCredential(it)
+
+                log.info("Successfully issued PID")
+                log.debug("Issued PID data {}", it)
+            }
     }
 
     context(Raise<IssueCredentialError>)

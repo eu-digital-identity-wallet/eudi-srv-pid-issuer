@@ -26,7 +26,10 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadCNonceByAccessToken
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.UpsertCNonce
 import kotlinx.coroutines.coroutineScope
-import kotlinx.serialization.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import org.slf4j.LoggerFactory
 import java.time.Clock
@@ -174,11 +177,15 @@ sealed interface IssueCredentialResponse {
         @SerialName("transaction_id") val transactionId: String? = null,
         @SerialName("c_nonce") val nonce: String? = null,
         @SerialName("c_nonce_expires_in") val nonceExpiresIn: Long? = null,
+        @SerialName("notification_id") val notificationId: String? = null,
     ) : IssueCredentialResponse {
         init {
             if (credential != null) {
                 require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
                     "credential must either be a JsonObject or a string JsonPrimitive"
+                }
+                require(!notificationId.isNullOrBlank()) {
+                    "notificationId is required when credential is present"
                 }
             }
         }
@@ -302,7 +309,8 @@ fun CredentialRequestTO.toDomain(
 
     val format = ensureNotNull(format) { MissingFormat }
     val proof = ensureNotNull(proof) { MissingProof }.toDomain()
-    val credentialResponseEncryption = credentialResponseEncryption?.toDomain(supported) ?: RequestedResponseEncryption.NotRequired
+    val credentialResponseEncryption =
+        credentialResponseEncryption?.toDomain(supported) ?: RequestedResponseEncryption.NotRequired
     return when (format) {
         FormatTO.MsoMdoc -> {
             val docType = run {
@@ -408,6 +416,7 @@ fun CredentialResponse<JsonElement>.toTO(nonce: CNonce): IssueCredentialResponse
         is CredentialResponse.Issued ->
             IssueCredentialResponse.PlainTO(
                 credential = credential,
+                notificationId = notificationId.value,
                 nonce = nonce.nonce,
                 nonceExpiresIn = nonce.expiresIn.toSeconds(),
             )
