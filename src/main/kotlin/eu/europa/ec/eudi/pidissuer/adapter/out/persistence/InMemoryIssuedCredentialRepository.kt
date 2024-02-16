@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.persistence
 
 import eu.europa.ec.eudi.pidissuer.domain.CredentialResponse
 import eu.europa.ec.eudi.pidissuer.domain.NotificationId
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadIssuedCredentialByNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -34,6 +35,12 @@ class InMemoryIssuedCredentialRepository(
             require(data[it.notificationId] == null) { "NotificationId ${it.notificationId} already in use" }
             data[it.notificationId] = it
             log.info("Stored ${it.notificationId} -> $it")
+        }
+    }
+
+    val loadIssuedCredentialByNotificationId: LoadIssuedCredentialByNotificationId = LoadIssuedCredentialByNotificationId {
+        mutex.withLock(this) {
+            data[it]
         }
     }
 }
