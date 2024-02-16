@@ -237,7 +237,7 @@ class IssueSdJwtVcPid(
         val pidData = async { getPidData(authorizationContext) }
         val (pid, pidMetaData) = pidData.await()
         val sdJwt = encodePidInSdJwt(pid, pidMetaData, holderPubKey.await())
-        CredentialResponse.Issued(format = SD_JWT_VC_FORMAT, credential = JsonPrimitive(sdJwt))
+        CredentialResponse.Issued(JsonPrimitive(sdJwt))
     }
 
     context(Raise<IssueCredentialError>)

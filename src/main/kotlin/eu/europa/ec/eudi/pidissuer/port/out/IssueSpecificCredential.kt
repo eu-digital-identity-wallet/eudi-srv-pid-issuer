@@ -61,7 +61,7 @@ private class DeferredIssuer(
 
         val transactionId = generateTransactionId()
         storeDeferredCredential(transactionId, credentialResponse)
-        return CredentialResponse.Deferred(credentialResponse.format, transactionId).also {
+        return CredentialResponse.Deferred(transactionId).also {
             log.info("Repackaged $credentialResponse  as $it")
         }
     }

@@ -170,7 +170,6 @@ sealed interface IssueCredentialResponse {
      */
     @Serializable
     data class PlainTO(
-        @Required val format: String,
         val credential: JsonElement? = null,
         @SerialName("transaction_id") val transactionId: String? = null,
         @SerialName("c_nonce") val nonce: String? = null,
@@ -408,7 +407,6 @@ fun CredentialResponse<JsonElement>.toTO(nonce: CNonce): IssueCredentialResponse
     when (this) {
         is CredentialResponse.Issued ->
             IssueCredentialResponse.PlainTO(
-                format = format.value,
                 credential = credential,
                 nonce = nonce.nonce,
                 nonceExpiresIn = nonce.expiresIn.toSeconds(),
@@ -416,7 +414,6 @@ fun CredentialResponse<JsonElement>.toTO(nonce: CNonce): IssueCredentialResponse
 
         is CredentialResponse.Deferred ->
             IssueCredentialResponse.PlainTO(
-                format = format.value,
                 transactionId = transactionId.value,
                 nonce = nonce.nonce,
                 nonceExpiresIn = nonce.expiresIn.toSeconds(),

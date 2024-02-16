@@ -183,7 +183,7 @@ class IssueMsoMdocPid(
         val cbor = encodePidInCbor(pid, pidMetaData, holderPubKey.await()).also {
             log.info("Issued $it")
         }
-        CredentialResponse.Issued(format = MSO_MDOC_FORMAT, credential = JsonPrimitive(cbor))
+        CredentialResponse.Issued(JsonPrimitive(cbor))
     }
 
     context(Raise<IssueCredentialError>)

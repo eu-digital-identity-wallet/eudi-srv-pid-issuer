@@ -285,7 +285,7 @@ class IssueMobileDrivingLicence(
             IssueCredentialError.Unexpected("Unable to fetch mDL data")
         }
         val cbor = encodeMobileDrivingLicenceInCbor(licence, holderKey)
-        return CredentialResponse.Issued(MSO_MDOC_FORMAT, JsonPrimitive(cbor))
+        return CredentialResponse.Issued(JsonPrimitive(cbor))
             .also {
                 log.info("Successfully issued mDL")
                 log.debug("Issued mDL data {}", it)

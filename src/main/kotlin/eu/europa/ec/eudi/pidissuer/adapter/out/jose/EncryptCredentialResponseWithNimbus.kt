@@ -68,7 +68,6 @@ class EncryptCredentialResponseWithNimbus(
         JWTClaimsSet.Builder().apply {
             issuer(issuer.externalForm)
             issueTime(Date.from(iat))
-            claim("format", format)
             claim(
                 "credential",
                 credential?.let {
