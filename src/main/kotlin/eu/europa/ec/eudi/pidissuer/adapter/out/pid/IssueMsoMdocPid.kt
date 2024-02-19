@@ -145,7 +145,6 @@ val PidMsoMdocV1: MsoMdocCredentialConfiguration =
         credentialSigningAlgorithmsSupported = emptySet(),
         scope = PidMsoMdocScope,
         proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256))),
-        credentialIdentifiers = setOf(CredentialIdentifier(PidMsoMdocScope.value)),
     )
 
 //
@@ -182,6 +181,7 @@ class IssueMsoMdocPid(
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
+        credentialIdentifier: CredentialIdentifier?,
         expectedCNonce: CNonce,
     ): CredentialResponse<JsonElement> = coroutineScope {
         log.info("Handling issuance request ...")

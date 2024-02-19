@@ -87,7 +87,7 @@ private object Attributes {
     )
 }
 
-private fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration =
+fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(
         id = CredentialConfigurationId(PidSdJwtVcScope.value),
         type = SdJwtVcType(pidDocType(1)),
@@ -97,7 +97,6 @@ private fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfi
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
         scope = PidSdJwtVcScope,
         proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256))),
-        credentialIdentifiers = setOf(CredentialIdentifier(PidSdJwtVcScope.value)),
     )
 
 typealias TimeDependant<F> = (ZonedDateTime) -> F
@@ -237,6 +236,7 @@ class IssueSdJwtVcPid(
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
+        credentialIdentifier: CredentialIdentifier?,
         expectedCNonce: CNonce,
     ): CredentialResponse<JsonElement> = coroutineScope {
         log.info("Handling issuance request ...")

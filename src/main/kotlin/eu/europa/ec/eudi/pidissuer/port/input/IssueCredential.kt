@@ -20,6 +20,7 @@ import arrow.core.raise.*
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.credential.ResolveCredentialRequestByCredentialIdentifier
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadCNonceByAccessToken
@@ -238,6 +239,7 @@ private val log = LoggerFactory.getLogger(IssueCredential::class.java)
 class IssueCredential(
     private val clock: Clock,
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
+    private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
     private val loadCNonceByAccessToken: LoadCNonceByAccessToken,
     private val genCNonce: GenerateCNonce,
     private val upsertCNonce: UpsertCNonce,
@@ -250,8 +252,15 @@ class IssueCredential(
     ): IssueCredentialResponse = coroutineScope {
         either {
             log.info("Handling issuance request for ${credentialRequestTO.format}..")
-            val request = credentialRequestTO.toDomain(credentialIssuerMetadata.credentialResponseEncryption)
-            val issued = issue(authorizationContext, request)
+            val unresolvedRequest = credentialRequestTO.toDomain(credentialIssuerMetadata.credentialResponseEncryption)
+            val (request, credentialIdentifier) =
+                when (unresolvedRequest) {
+                    is UnresolvedCredentialRequest.ByFormat ->
+                        unresolvedRequest.credentialRequest to null
+                    is UnresolvedCredentialRequest.ByCredentialIdentifier ->
+                        resolve(unresolvedRequest) to unresolvedRequest.credentialIdentifier
+                }
+            val issued = issue(authorizationContext, request, credentialIdentifier)
             successResponse(authorizationContext, request, issued)
         }.getOrElse { error ->
             errorResponse(authorizationContext, error)
@@ -259,16 +268,31 @@ class IssueCredential(
     }
 
     context(Raise<IssueCredentialError>)
+    private suspend fun resolve(
+        unresolvedRequest: UnresolvedCredentialRequest.ByCredentialIdentifier,
+    ): CredentialRequest =
+        either {
+            val resolvedRequest = resolveCredentialRequestByCredentialIdentifier(
+                unresolvedRequest.credentialIdentifier,
+                unresolvedRequest.unvalidatedProof,
+                unresolvedRequest.credentialResponseEncryption,
+            )
+            ensureNotNull(resolvedRequest) { InvalidCredentialIdentifier(unresolvedRequest.credentialIdentifier) }
+            resolvedRequest
+        }.bind()
+
+    context(Raise<IssueCredentialError>)
     private suspend fun issue(
         authorizationContext: AuthorizationContext,
         credentialRequest: CredentialRequest,
+        credentialIdentifier: CredentialIdentifier?,
     ): CredentialResponse<JsonElement> {
         val issueSpecificCredential = specificIssuerFor(credentialRequest)
         val expectedScope = issueSpecificCredential.supportedCredential.scope!!
         ensure(authorizationContext.scopes.contains(expectedScope)) { WrongScope(expectedScope) }
         val cNonce = loadCNonceByAccessToken(authorizationContext.accessToken, clock)
         ensureNotNull(cNonce) { MissingProof }
-        return issueSpecificCredential(authorizationContext, credentialRequest, cNonce)
+        return issueSpecificCredential(authorizationContext, credentialRequest, credentialIdentifier, cNonce)
     }
 
     context(Raise<IssueCredentialError>)
@@ -278,19 +302,11 @@ class IssueCredential(
                 either { credentialRequest.assertIsSupported(issuer.supportedCredential) }.isRight()
             }
         if (specificIssuer == null) {
-            when (credentialRequest) {
-                is CredentialRequest.FormatCredentialRequest -> {
-                    val types = when (credentialRequest) {
-                        is MsoMdocCredentialRequest -> listOf(credentialRequest.docType)
-                        is SdJwtVcCredentialRequest -> listOf(credentialRequest.type).map { it.value }
-                    }
-                    raise(UnsupportedCredentialType(credentialRequest.format, types))
-                }
-
-                is CredentialRequest.CredentialIdentifierCredentialRequest -> {
-                    raise(InvalidCredentialIdentifier(credentialRequest.credentialIdentifier))
-                }
+            val types = when (credentialRequest) {
+                is MsoMdocCredentialRequest -> listOf(credentialRequest.docType)
+                is SdJwtVcCredentialRequest -> listOf(credentialRequest.type).map { it.value }
             }
+            raise(UnsupportedCredentialType(credentialRequest.format, types))
         }
         return specificIssuer
     }
@@ -327,17 +343,37 @@ class IssueCredential(
 //
 
 /**
+ * An unresolved Credential Request.
+ */
+private sealed interface UnresolvedCredentialRequest {
+
+    /**
+     * A Credential Request placed by Format.
+     */
+    data class ByFormat(val credentialRequest: CredentialRequest) : UnresolvedCredentialRequest
+
+    /**
+     * A Credential Request placed by Credential Identifier.
+     */
+    data class ByCredentialIdentifier(
+        val credentialIdentifier: CredentialIdentifier,
+        val unvalidatedProof: UnvalidatedProof,
+        val credentialResponseEncryption: RequestedResponseEncryption,
+    ) : UnresolvedCredentialRequest
+}
+
+/**
  * Tries to convert a [CredentialRequestTO] to a [CredentialRequest].
  */
 context(Raise<IssueCredentialError>)
-fun CredentialRequestTO.toDomain(
+private fun CredentialRequestTO.toDomain(
     supported: CredentialResponseEncryption,
-): CredentialRequest {
+): UnresolvedCredentialRequest {
     val proof = ensureNotNull(proof) { MissingProof }.toDomain()
     val credentialResponseEncryption =
         credentialResponseEncryption?.toDomain(supported) ?: RequestedResponseEncryption.NotRequired
 
-    fun credentialRequestByFormat(format: FormatTO): CredentialRequest.FormatCredentialRequest =
+    fun credentialRequestByFormat(format: FormatTO): UnresolvedCredentialRequest.ByFormat =
         when (format) {
             FormatTO.MsoMdoc -> {
                 val docType = run {
@@ -348,7 +384,14 @@ fun CredentialRequestTO.toDomain(
                     ?.mapValues { (_, vs) -> vs.map { it.key } }
                     ?: emptyMap()
 
-                MsoMdocCredentialRequest(proof, credentialResponseEncryption, docType, claims)
+                UnresolvedCredentialRequest.ByFormat(
+                    MsoMdocCredentialRequest(
+                        proof,
+                        credentialResponseEncryption,
+                        docType,
+                        claims,
+                    ),
+                )
             }
 
             FormatTO.SdJwtVc -> {
@@ -358,23 +401,31 @@ fun CredentialRequestTO.toDomain(
                 }
                 val claims = claims?.decodeAs<Map<String, JsonObject>>()?.keys ?: emptySet()
 
-                SdJwtVcCredentialRequest(proof, credentialResponseEncryption, SdJwtVcType(type), claims)
+                UnresolvedCredentialRequest.ByFormat(
+                    SdJwtVcCredentialRequest(
+                        proof,
+                        credentialResponseEncryption,
+                        SdJwtVcType(type),
+                        claims,
+                    ),
+                )
             }
         }
 
-    fun credentialRequestByCredentialIdentifier(credentialIdentifier: String): CredentialRequest.CredentialIdentifierCredentialRequest {
+    fun credentialRequestByCredentialIdentifier(credentialIdentifier: String): UnresolvedCredentialRequest.ByCredentialIdentifier {
         ensure(docType == null) { NoCredentialFormatSpecificParametersWhenCredentialIdentifierProvided("doctype") }
         ensure(claims == null) { NoCredentialFormatSpecificParametersWhenCredentialIdentifierProvided("claims") }
         ensure(type == null) { NoCredentialFormatSpecificParametersWhenCredentialIdentifierProvided("vct") }
 
-        return CredentialRequest.CredentialIdentifierCredentialRequest(
+        return UnresolvedCredentialRequest.ByCredentialIdentifier(
             CredentialIdentifier(credentialIdentifier),
             proof,
             credentialResponseEncryption,
         )
     }
 
-    val formatOrCredentialIdentifier = Ior.fromNullables(format, credentialIdentifier) ?: raise(MissingBothFormatAndCredentialIdentifier)
+    val formatOrCredentialIdentifier =
+        Ior.fromNullables(format, credentialIdentifier) ?: raise(MissingBothFormatAndCredentialIdentifier)
     return formatOrCredentialIdentifier.fold(
         { format -> credentialRequestByFormat(format) },
         { credentialIdentifier -> credentialRequestByCredentialIdentifier(credentialIdentifier) },
