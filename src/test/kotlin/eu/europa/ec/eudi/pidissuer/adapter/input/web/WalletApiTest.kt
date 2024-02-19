@@ -33,7 +33,6 @@ import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateCNonce
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonPrimitive
@@ -65,7 +64,6 @@ import java.util.*
 import kotlin.test.*
 
 @PidIssuerApplicationTest(classes = [WalletApiTest.WalletApiTestConfig::class])
-@OptIn(ExperimentalCoroutinesApi::class)
 @TestPropertySource(properties = ["issuer.credentialResponseEncryption.required=false"])
 internal class WalletApiTest {
 
@@ -104,7 +102,7 @@ internal class WalletApiTest {
         client().post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(request())
+            .bodyValue(requestByFormat())
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isUnauthorized()
@@ -159,7 +157,7 @@ internal class WalletApiTest {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(request(null))
+            .bodyValue(requestByFormat(null))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
@@ -197,7 +195,7 @@ internal class WalletApiTest {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(request())
+            .bodyValue(requestByFormat())
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
@@ -232,7 +230,7 @@ internal class WalletApiTest {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(request())
+            .bodyValue(requestByFormat())
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
@@ -261,7 +259,7 @@ internal class WalletApiTest {
      * Verifies response values.
      */
     @Test
-    fun `issuance success`() = runTest {
+    fun `issuance success by format`() = runTest {
         val (principal, token) = bearerTokenAuthenticationPrincipal(clock = clock)
         val previousCNonce = generateCNonce(token.tokenValue, clock)
         cNonceRepository.upsertCNonce(previousCNonce)
@@ -276,7 +274,48 @@ internal class WalletApiTest {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(request(proof))
+            .bodyValue(requestByFormat(proof))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody<IssueCredentialResponse.PlainTO>()
+            .returnResult()
+            .let { assertNotNull(it.responseBody) }
+
+        val newCNonce = checkNotNull(cNonceRepository.loadCNonceByAccessToken(token.tokenValue))
+        assertNotEquals(previousCNonce, newCNonce)
+
+        val issuedCredential = assertIs<JsonPrimitive>(response.credential)
+        assertEquals("PID", issuedCredential.contentOrNull)
+        assertNull(response.transactionId)
+        assertEquals(newCNonce.nonce, response.nonce)
+        assertEquals(newCNonce.expiresIn.seconds, response.nonceExpiresIn)
+    }
+
+    /**
+     * Verifies issuance success.
+     * Creates a CNonce value before doing the request.
+     * Does the request.
+     * Verifies a new CNonce has been generated.
+     * Verifies response values.
+     */
+    @Test
+    fun `issuance success by credential identifier`() = runTest {
+        val (principal, token) = bearerTokenAuthenticationPrincipal(clock = clock)
+        val previousCNonce = generateCNonce(token.tokenValue, clock)
+        cNonceRepository.upsertCNonce(previousCNonce)
+
+        val key = ECKeyGenerator(Curve.P_256).generate()
+        val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, key) {
+            jwk(key.toPublicJWK())
+        }
+
+        val response = client()
+            .mutateWith(mockOpaqueToken().principal(principal))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(requestByCredentialIdentifier(proof))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk()
@@ -353,12 +392,20 @@ private fun bearerTokenAuthenticationPrincipal(
     ) to OAuth2AccessToken(TokenType.BEARER, "token", issuedAt, (issuedAt + expiresIn))
 }
 
-private fun request(
+private fun requestByFormat(
     proof: ProofTo? = ProofTo(type = ProofTypeTO.JWT, jwt = "123456"),
 ): CredentialRequestTO =
     CredentialRequestTO(
         format = FormatTO.MsoMdoc,
         docType = "eu.europa.ec.eudiw.pid.1",
+        proof = proof,
+    )
+
+private fun requestByCredentialIdentifier(
+    proof: ProofTo? = ProofTo(type = ProofTypeTO.JWT, jwt = "123456"),
+): CredentialRequestTO =
+    CredentialRequestTO(
+        credentialIdentifier = "eu.europa.ec.eudiw.pid_mso_mdoc",
         proof = proof,
     )
 

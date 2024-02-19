@@ -249,6 +249,7 @@ val MobileDrivingLicenceV1: MsoMdocCredentialConfiguration =
         credentialSigningAlgorithmsSupported = emptySet(),
         scope = MobileDrivingLicenceV1Scope,
         proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256))),
+        credentialIdentifiers = setOf(CredentialIdentifier(MobileDrivingLicenceV1Scope.value)),
     )
 
 /**

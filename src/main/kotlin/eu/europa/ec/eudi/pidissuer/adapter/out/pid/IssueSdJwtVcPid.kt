@@ -97,6 +97,7 @@ private fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfi
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
         scope = PidSdJwtVcScope,
         proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256))),
+        credentialIdentifiers = setOf(CredentialIdentifier(PidSdJwtVcScope.value)),
     )
 
 typealias TimeDependant<F> = (ZonedDateTime) -> F

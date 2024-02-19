@@ -145,6 +145,7 @@ val PidMsoMdocV1: MsoMdocCredentialConfiguration =
         credentialSigningAlgorithmsSupported = emptySet(),
         scope = PidMsoMdocScope,
         proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256))),
+        credentialIdentifiers = setOf(CredentialIdentifier(PidMsoMdocScope.value)),
     )
 
 //

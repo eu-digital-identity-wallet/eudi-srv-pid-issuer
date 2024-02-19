@@ -115,3 +115,9 @@ data class IssuedCredential(
     val clientId: ClientId? = null,
     val notificationId: NotificationId? = null,
 )
+
+/**
+ * The unique identifier of a Credential.
+ */
+@JvmInline
+value class CredentialIdentifier(val value: String)
