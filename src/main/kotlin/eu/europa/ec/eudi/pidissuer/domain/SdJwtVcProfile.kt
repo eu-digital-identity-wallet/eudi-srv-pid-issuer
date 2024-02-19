@@ -38,6 +38,7 @@ data class SdJwtVcCredentialConfiguration(
     override val display: List<CredentialDisplay>,
     val claims: List<AttributeDetails>,
     override val proofTypesSupported: NonEmptySet<ProofType>,
+    override val credentialIdentifiers: Set<CredentialIdentifier>,
 ) : CredentialConfiguration
 
 //
@@ -48,7 +49,7 @@ data class SdJwtVcCredentialRequest(
     override val credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
     val type: SdJwtVcType,
     val claims: Set<String> = emptySet(),
-) : CredentialRequest {
+) : CredentialRequest.FormatCredentialRequest {
     override val format: Format = SD_JWT_VC_FORMAT
 }
 

@@ -92,7 +92,7 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
     deferredCredentialEndpoint = deferredCredentialEndpoint?.externalForm,
     notificationEndpoint = notificationEndpoint?.externalForm,
     credentialResponseEncryption = credentialResponseEncryption.toTransferObject().getOrNull(),
-    credentialIdentifiersSupported = false,
+    credentialIdentifiersSupported = credentialConfigurationsSupported.flatMap { it.credentialIdentifiers }.isNotEmpty(),
     signedMetadata = null,
     display = display.map { it.toTransferObject() }.takeIf { it.isNotEmpty() },
     credentialConfigurationsSupported = JsonObject(

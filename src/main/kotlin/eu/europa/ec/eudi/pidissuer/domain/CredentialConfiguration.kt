@@ -55,4 +55,5 @@ sealed interface CredentialConfiguration {
     val cryptographicBindingMethodsSupported: Set<CryptographicBindingMethod>
     val credentialSigningAlgorithmsSupported: Set<JWSAlgorithm>
     val proofTypesSupported: Set<ProofType>
+    val credentialIdentifiers: Set<CredentialIdentifier>
 }

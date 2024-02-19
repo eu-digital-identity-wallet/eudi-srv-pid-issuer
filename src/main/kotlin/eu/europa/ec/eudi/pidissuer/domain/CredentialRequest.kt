@@ -130,20 +130,46 @@ sealed interface RequestedResponseEncryption {
     }
 }
 
+/**
+ * A Credential Request.
+ */
 sealed interface CredentialRequest {
-    val format: Format
     val unvalidatedProof: UnvalidatedProof
     val credentialResponseEncryption: RequestedResponseEncryption
-}
 
-context(Raise<String>) fun CredentialRequest.assertIsSupported(meta: CredentialConfiguration) = when (this) {
-    is MsoMdocCredentialRequest -> {
-        ensure(meta is MsoMdocCredentialConfiguration) { "Was expecting a ${MSO_MDOC_FORMAT.value}" }
-        validate(meta)
+    /**
+     * A Credential Request placed by Format.
+     */
+    sealed interface FormatCredentialRequest : CredentialRequest {
+        val format: Format
     }
 
-    is SdJwtVcCredentialRequest -> {
-        ensure(meta is SdJwtVcCredentialConfiguration) { "Was expecting a ${SD_JWT_VC_FORMAT.value}" }
-        validate(meta)
-    }
+    /**
+     * A Credential Request place by Credential Identifier.
+     */
+    data class CredentialIdentifierCredentialRequest(
+        val credentialIdentifier: CredentialIdentifier,
+        override val unvalidatedProof: UnvalidatedProof,
+        override val credentialResponseEncryption: RequestedResponseEncryption,
+    ) : CredentialRequest
 }
+
+context(Raise<String>)
+fun CredentialRequest.assertIsSupported(meta: CredentialConfiguration) =
+    when (this) {
+        is MsoMdocCredentialRequest -> {
+            ensure(meta is MsoMdocCredentialConfiguration) { "Was expecting a ${MSO_MDOC_FORMAT.value}" }
+            validate(meta)
+        }
+
+        is SdJwtVcCredentialRequest -> {
+            ensure(meta is SdJwtVcCredentialConfiguration) { "Was expecting a ${SD_JWT_VC_FORMAT.value}" }
+            validate(meta)
+        }
+
+        is CredentialRequest.CredentialIdentifierCredentialRequest -> {
+            ensure(credentialIdentifier in meta.credentialIdentifiers) {
+                "Credential Identifier '${credentialIdentifier.value}' is not supported"
+            }
+        }
+    }
