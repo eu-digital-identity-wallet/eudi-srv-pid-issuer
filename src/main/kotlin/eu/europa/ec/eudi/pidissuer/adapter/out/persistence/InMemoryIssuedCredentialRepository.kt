@@ -32,6 +32,11 @@ class InMemoryIssuedCredentialRepository(
     val storeIssuedCredential: StoreIssuedCredential =
         StoreIssuedCredential { credential ->
             mutex.withLock(this) {
+                if (credential.notificationId != null) {
+                    require(data.find { existing -> existing.notificationId == credential.notificationId } == null) {
+                        "Notification Id '${credential.notificationId}' already in use"
+                    }
+                }
                 data.add(credential)
                 log.info("Stored $credential")
             }
@@ -40,7 +45,7 @@ class InMemoryIssuedCredentialRepository(
     val loadIssuedCredentialByNotificationId: LoadIssuedCredentialByNotificationId =
         LoadIssuedCredentialByNotificationId { notificationId ->
             mutex.withLock(this) {
-                data.first { credential -> credential.notificationId == notificationId }
+                data.find { credential -> credential.notificationId == notificationId }
             }
         }
 }
