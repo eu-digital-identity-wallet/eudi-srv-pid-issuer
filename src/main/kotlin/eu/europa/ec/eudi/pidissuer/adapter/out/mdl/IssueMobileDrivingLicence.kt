@@ -249,7 +249,6 @@ val MobileDrivingLicenceV1: MsoMdocCredentialConfiguration =
         credentialSigningAlgorithmsSupported = emptySet(),
         scope = MobileDrivingLicenceV1Scope,
         proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256))),
-        credentialIdentifiers = setOf(CredentialIdentifier(MobileDrivingLicenceV1Scope.value)),
     )
 
 /**
@@ -277,6 +276,7 @@ class IssueMobileDrivingLicence(
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
+        credentialIdentifier: CredentialIdentifier?,
         expectedCNonce: CNonce,
     ): CredentialResponse<JsonElement> {
         log.info("Issuing mDL")

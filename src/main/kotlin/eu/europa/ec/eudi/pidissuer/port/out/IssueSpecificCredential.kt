@@ -34,6 +34,7 @@ interface IssueSpecificCredential<out T> {
     suspend operator fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
+        credentialIdentifier: CredentialIdentifier?,
         expectedCNonce: CNonce,
     ): CredentialResponse<T>
 }
@@ -51,12 +52,15 @@ private class DeferredIssuer(
 ) : IssueSpecificCredential<JsonElement> by issuer {
 
     private val log = LoggerFactory.getLogger(DeferredIssuer::class.java)
-    context(Raise<IssueCredentialError>) override suspend fun invoke(
+
+    context(Raise<IssueCredentialError>)
+    override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
+        credentialIdentifier: CredentialIdentifier?,
         expectedCNonce: CNonce,
     ): CredentialResponse<JsonElement> {
-        val credentialResponse = issuer.invoke(authorizationContext, request, expectedCNonce)
+        val credentialResponse = issuer.invoke(authorizationContext, request, credentialIdentifier, expectedCNonce)
         require(credentialResponse is CredentialResponse.Issued<JsonElement>) { "Actual issuer should return issued credentials" }
 
         val transactionId = generateTransactionId()

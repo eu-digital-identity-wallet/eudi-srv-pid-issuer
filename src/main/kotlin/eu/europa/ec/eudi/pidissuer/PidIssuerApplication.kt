@@ -26,11 +26,11 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerUi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CredentialRequestFactory
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultResolveCredentialRequestByCredentialIdentifier
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.DefaultExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseWithNimbus
-import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.EncodeMobileDrivingLicenceInCborWithMicroservice
-import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.GetMobileDrivingLicenceDataMock
-import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.IssueMobileDrivingLicence
+import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryIssuedCredentialRepository
@@ -146,6 +146,43 @@ fun beans(clock: Clock) = beans {
     }
     bean(::DefaultGenerateQrCode)
     bean(::HandleNotificationRequest)
+    bean {
+        val resolvers = buildMap<CredentialIdentifier, CredentialRequestFactory> {
+            this[CredentialIdentifier(MobileDrivingLicenceV1Scope.value)] =
+                { unvalidatedProof, requestedResponseEncryption ->
+                    MsoMdocCredentialRequest(
+                        unvalidatedProof = unvalidatedProof,
+                        credentialResponseEncryption = requestedResponseEncryption,
+                        docType = MobileDrivingLicenceV1.docType,
+                        claims = MobileDrivingLicenceV1.msoClaims.mapValues { entry -> entry.value.map { attribute -> attribute.name } },
+                    )
+                }
+
+            this[CredentialIdentifier(PidMsoMdocScope.value)] =
+                { unvalidatedProof, requestedResponseEncryption ->
+                    MsoMdocCredentialRequest(
+                        unvalidatedProof = unvalidatedProof,
+                        credentialResponseEncryption = requestedResponseEncryption,
+                        docType = PidMsoMdocV1.docType,
+                        claims = PidMsoMdocV1.msoClaims.mapValues { entry -> entry.value.map { attribute -> attribute.name } },
+                    )
+                }
+
+            pidSdJwtVcV1(JWSAlgorithm.ES256).let { sdJwtVcPid ->
+                this[CredentialIdentifier(PidSdJwtVcScope.value)] =
+                    { unvalidatedProof, requestedResponseEncryption ->
+                        SdJwtVcCredentialRequest(
+                            unvalidatedProof = unvalidatedProof,
+                            credentialResponseEncryption = requestedResponseEncryption,
+                            type = sdJwtVcPid.type,
+                            claims = sdJwtVcPid.claims.map { it.name }.toSet(),
+                        )
+                    }
+            }
+        }
+
+        DefaultResolveCredentialRequestByCredentialIdentifier(resolvers)
+    }
 
     //
     // Encryption of credential response
@@ -272,7 +309,7 @@ fun beans(clock: Clock) = beans {
     //
     bean(::GetCredentialIssuerMetaData)
     bean {
-        IssueCredential(clock, ref(), ref(), ref(), ref(), ref())
+        IssueCredential(clock, ref(), ref(), ref(), ref(), ref(), ref())
     }
     bean(::GetDeferredCredential)
     bean {
