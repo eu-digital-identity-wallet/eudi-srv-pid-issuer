@@ -188,6 +188,9 @@ class IssueMsoMdocPid(
         val holderPubKey = async(Dispatchers.Default) { holderPubKey(request, expectedCNonce) }
         val pidData = async { getPidData(authorizationContext) }
         val (pid, pidMetaData) = pidData.await()
+        val cbor = encodePidInCbor(pid, pidMetaData, holderPubKey.await()).also {
+            log.info("Issued $it")
+        }
 
         val notificationId =
             if (notificationsEnabled) generateNotificationId()
@@ -199,14 +202,12 @@ class IssueMsoMdocPid(
                 holder = with(pid) {
                     "${familyName.value} ${givenName.value}"
                 },
+                holderPublicKey = holderPubKey.await().toPublicJWK(),
                 issuedAt = clock.instant(),
                 notificationId = notificationId,
             ),
         )
 
-        val cbor = encodePidInCbor(pid, pidMetaData, holderPubKey.await()).also {
-            log.info("Issued $it")
-        }
         CredentialResponse.Issued(JsonPrimitive(cbor), notificationId)
             .also {
                 log.info("Successfully issued PID")
