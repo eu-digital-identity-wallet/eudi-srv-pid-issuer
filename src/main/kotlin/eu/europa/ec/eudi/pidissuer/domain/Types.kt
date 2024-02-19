@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
-import eu.europa.ec.eudi.pidissuer.port.input.ClientId
 import org.slf4j.LoggerFactory
 import java.net.MalformedURLException
 import java.net.URI
@@ -112,7 +111,6 @@ data class IssuedCredential(
     val type: String,
     val holder: String,
     val issuedAt: Instant,
-    val clientId: ClientId? = null,
     val notificationId: NotificationId? = null,
 )
 

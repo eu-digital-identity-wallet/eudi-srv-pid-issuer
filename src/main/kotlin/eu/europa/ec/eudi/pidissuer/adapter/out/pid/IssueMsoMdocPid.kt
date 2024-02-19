@@ -200,7 +200,6 @@ class IssueMsoMdocPid(
                     "${familyName.value} ${givenName.value}"
                 },
                 issuedAt = clock.instant(),
-                clientId = authorizationContext.clientId,
                 notificationId = notificationId,
             ),
         )

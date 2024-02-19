@@ -304,7 +304,6 @@ class IssueMobileDrivingLicence(
                     "${familyName.latin.value} ${givenName.latin.value}"
                 },
                 issuedAt = clock.instant(),
-                clientId = authorizationContext.clientId,
                 notificationId = notificationId,
             ),
         )
