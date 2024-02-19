@@ -243,6 +243,7 @@ class IssueSdJwtVcPid(
         val holderPubKey = async(Dispatchers.Default) { holderPubKey(request, expectedCNonce) }
         val pidData = async { getPidData(authorizationContext) }
         val (pid, pidMetaData) = pidData.await()
+        val sdJwt = encodePidInSdJwt(pid, pidMetaData, holderPubKey.await())
 
         val notificationId =
             if (notificationsEnabled) generateNotificationId()
@@ -254,12 +255,12 @@ class IssueSdJwtVcPid(
                 holder = with(pid) {
                     "${familyName.value} ${givenName.value}"
                 },
+                holderPublicKey = holderPubKey.await().toPublicJWK(),
                 issuedAt = clock.instant(),
                 notificationId = notificationId,
             ),
         )
 
-        val sdJwt = encodePidInSdJwt(pid, pidMetaData, holderPubKey.await())
         CredentialResponse.Issued(JsonPrimitive(sdJwt), notificationId)
             .also {
                 log.info("Successfully issued PID")

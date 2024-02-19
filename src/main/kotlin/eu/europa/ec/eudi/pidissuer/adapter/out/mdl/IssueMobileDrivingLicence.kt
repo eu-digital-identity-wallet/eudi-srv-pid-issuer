@@ -292,6 +292,7 @@ class IssueMobileDrivingLicence(
         val licence = ensureNotNull(getMobileDrivingLicenceData(authorizationContext)) {
             IssueCredentialError.Unexpected("Unable to fetch mDL data")
         }
+        val cbor = encodeMobileDrivingLicenceInCbor(licence, holderKey)
 
         val notificationId =
             if (notificationsEnabled) generateNotificationId()
@@ -303,12 +304,12 @@ class IssueMobileDrivingLicence(
                 holder = with(licence.driver) {
                     "${familyName.latin.value} ${givenName.latin.value}"
                 },
+                holderPublicKey = holderKey.toPublicJWK(),
                 issuedAt = clock.instant(),
                 notificationId = notificationId,
             ),
         )
 
-        val cbor = encodeMobileDrivingLicenceInCbor(licence, holderKey)
         return CredentialResponse.Issued(JsonPrimitive(cbor), notificationId)
             .also {
                 log.info("Successfully issued mDL")

@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import com.nimbusds.jose.jwk.JWK
 import org.slf4j.LoggerFactory
 import java.net.MalformedURLException
 import java.net.URI
@@ -110,6 +111,7 @@ data class IssuedCredential(
     val format: Format,
     val type: String,
     val holder: String,
+    val holderPublicKey: JWK,
     val issuedAt: Instant,
     val notificationId: NotificationId? = null,
 )
