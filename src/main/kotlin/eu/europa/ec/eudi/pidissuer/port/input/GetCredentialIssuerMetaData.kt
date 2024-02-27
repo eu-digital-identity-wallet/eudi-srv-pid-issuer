@@ -214,6 +214,7 @@ internal fun MsoMdocCredentialConfiguration.toTransferObject(isOffer: Boolean): 
 
 @OptIn(ExperimentalSerializationApi::class)
 internal fun SdJwtVcCredentialConfiguration.toTransferObject(isOffer: Boolean): JsonObjectBuilder.() -> Unit = {
+    put("vct", type.value)
     if (!isOffer) {
         if (display.isNotEmpty()) {
             putJsonArray("display") {
