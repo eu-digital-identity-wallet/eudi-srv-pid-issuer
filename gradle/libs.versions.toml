@@ -18,6 +18,7 @@ dependencyCheck = "9.0.9"
 sonarqube = "4.4.1.3373"
 bootstrap = "5.3.2"
 qrgen = "3.0.1"
+jacoco = "0.8.11"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
