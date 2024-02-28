@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.owasp.dependencycheck.gradle.extension.DependencyCheckExtension
 import org.springframework.boot.gradle.tasks.bundling.BootBuildImage
 import java.net.URI
 
@@ -12,6 +13,7 @@ plugins {
     alias(libs.plugins.kotlin.plugin.serialization)
     alias(libs.plugins.spotless)
     alias(libs.plugins.dependency.check)
+    alias(libs.plugins.sonarqube)
 }
 
 group = "eu.europa.ec.eudi"
@@ -131,4 +133,11 @@ spotless {
     kotlinGradle {
         ktlint(ktlintVersion)
     }
+}
+
+val nvdApiKey: String? = System.getenv("NVD_API_KEY") ?: properties["nvdApiKey"]?.toString()
+val dependencyCheckExtension = extensions.findByType(DependencyCheckExtension::class.java)
+dependencyCheckExtension?.apply {
+    formats = mutableListOf("XML", "HTML")
+    nvd.apiKey = nvdApiKey ?: ""
 }
