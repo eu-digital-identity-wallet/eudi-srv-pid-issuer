@@ -14,6 +14,7 @@ plugins {
     alias(libs.plugins.spotless)
     alias(libs.plugins.dependency.check)
     alias(libs.plugins.sonarqube)
+    jacoco
 }
 
 group = "eu.europa.ec.eudi"
@@ -95,12 +96,30 @@ tasks.withType<KotlinCompile>().configureEach {
     }
 }
 
+tasks.test {
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+
+    reports {
+        xml.required = true
+        csv.required = true
+        html.required = true
+    }
+}
+
 testing {
     suites {
         val test by getting(JvmTestSuite::class) {
             useJUnitJupiter()
         }
     }
+}
+
+jacoco {
+    toolVersion = libs.versions.jacoco.get()
 }
 
 springBoot {
