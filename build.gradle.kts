@@ -1,6 +1,6 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.springframework.boot.gradle.tasks.bundling.BootBuildImage
 import org.owasp.dependencycheck.gradle.extension.DependencyCheckExtension
+import org.springframework.boot.gradle.tasks.bundling.BootBuildImage
 import java.net.URI
 
 plugins {
