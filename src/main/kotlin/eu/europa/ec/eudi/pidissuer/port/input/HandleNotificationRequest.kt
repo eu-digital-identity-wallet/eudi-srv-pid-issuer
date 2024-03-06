@@ -71,11 +71,6 @@ enum class ErrorTypeTO {
     InvalidNotificationRequest,
 }
 
-@Serializable
-data class NotificationErrorResponseTO(
-    @SerialName("error") @Required val errorType: ErrorTypeTO,
-)
-
 sealed interface NotificationResponse {
 
     /**
