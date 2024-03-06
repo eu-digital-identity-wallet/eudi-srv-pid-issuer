@@ -15,12 +15,11 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import arrow.core.NonEmptySet
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
+import com.nimbusds.jose.JWSAlgorithm
 
-/**
- * @see https://vcstuff.github.io/oid4vc-haip-sd-jwt-vc/draft-oid4vc-haip-sd-jwt-vc.html#name-format-identifier
- */
 const val SD_JWT_VC_FORMAT_VALUE = "vc+sd-jwt"
 val SD_JWT_VC_FORMAT = Format(SD_JWT_VC_FORMAT_VALUE)
 
@@ -30,17 +29,16 @@ value class SdJwtVcType(val value: String)
 /**
  * @param type As defined in https://datatracker.ietf.org/doc/html/draft-ietf-oauth-sd-jwt-vc-00#type-claim
  */
-data class SdJwtVcMetaData(
-    override val id: CredentialUniqueId,
+data class SdJwtVcCredentialConfiguration(
+    override val id: CredentialConfigurationId,
     val type: SdJwtVcType,
     override val scope: Scope? = null,
-    override val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod> = emptyList(),
+    override val cryptographicBindingMethodsSupported: NonEmptySet<CryptographicBindingMethod>,
+    override val credentialSigningAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
     override val display: List<CredentialDisplay>,
     val claims: List<AttributeDetails>,
-    override val proofTypesSupported: Set<ProofType>,
-) : CredentialMetaData {
-    override val format: Format = SD_JWT_VC_FORMAT
-}
+    override val proofTypesSupported: NonEmptySet<ProofType>,
+) : CredentialConfiguration
 
 //
 // Credential Offer
@@ -49,20 +47,20 @@ data class SdJwtVcCredentialRequest(
     override val unvalidatedProof: UnvalidatedProof,
     override val credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
     val type: SdJwtVcType,
-    val claims: List<AttributeDetails> = emptyList(),
+    val claims: Set<String> = emptySet(),
 ) : CredentialRequest {
     override val format: Format = SD_JWT_VC_FORMAT
 }
 
 context(Raise<String>)
-internal fun SdJwtVcCredentialRequest.validate(meta: SdJwtVcMetaData) {
+internal fun SdJwtVcCredentialRequest.validate(meta: SdJwtVcCredentialConfiguration) {
     ensure(type == meta.type) { "doctype is $type but was expecting ${meta.type}" }
     if (meta.claims.isEmpty()) {
         ensure(claims.isEmpty()) { "Requested claims should be empty. " }
     } else {
         val expectedAttributeNames = meta.claims.map { it.name }
-        claims.forEach { attr ->
-            ensure(expectedAttributeNames.contains(attr.name)) { "Unexpected attribute $attr" }
+        claims.forEach { name ->
+            ensure(name in expectedAttributeNames) { "Unexpected attribute $name" }
         }
     }
 }

@@ -26,19 +26,21 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerUi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CredentialRequestFactory
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultResolveCredentialRequestByCredentialIdentifier
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.DefaultExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseWithNimbus
-import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.EncodeMobileDrivingLicenceInCborWithMicroservice
-import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.GetMobileDrivingLicenceDataMock
-import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.IssueMobileDrivingLicence
+import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
+import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryIssuedCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateCNonce
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import io.netty.handler.ssl.SslContextBuilder
@@ -143,6 +145,44 @@ fun beans(clock: Clock) = beans {
         )
     }
     bean(::DefaultGenerateQrCode)
+    bean(::HandleNotificationRequest)
+    bean {
+        val resolvers = buildMap<CredentialIdentifier, CredentialRequestFactory> {
+            this[CredentialIdentifier(MobileDrivingLicenceV1Scope.value)] =
+                { unvalidatedProof, requestedResponseEncryption ->
+                    MsoMdocCredentialRequest(
+                        unvalidatedProof = unvalidatedProof,
+                        credentialResponseEncryption = requestedResponseEncryption,
+                        docType = MobileDrivingLicenceV1.docType,
+                        claims = MobileDrivingLicenceV1.msoClaims.mapValues { entry -> entry.value.map { attribute -> attribute.name } },
+                    )
+                }
+
+            this[CredentialIdentifier(PidMsoMdocScope.value)] =
+                { unvalidatedProof, requestedResponseEncryption ->
+                    MsoMdocCredentialRequest(
+                        unvalidatedProof = unvalidatedProof,
+                        credentialResponseEncryption = requestedResponseEncryption,
+                        docType = PidMsoMdocV1.docType,
+                        claims = PidMsoMdocV1.msoClaims.mapValues { entry -> entry.value.map { attribute -> attribute.name } },
+                    )
+                }
+
+            pidSdJwtVcV1(JWSAlgorithm.ES256).let { sdJwtVcPid ->
+                this[CredentialIdentifier(PidSdJwtVcScope.value)] =
+                    { unvalidatedProof, requestedResponseEncryption ->
+                        SdJwtVcCredentialRequest(
+                            unvalidatedProof = unvalidatedProof,
+                            credentialResponseEncryption = requestedResponseEncryption,
+                            type = sdJwtVcPid.type,
+                            claims = sdJwtVcPid.claims.map { it.name }.toSet(),
+                        )
+                    }
+            }
+        }
+
+        DefaultResolveCredentialRequestByCredentialIdentifier(resolvers)
+    }
 
     //
     // Encryption of credential response
@@ -159,6 +199,15 @@ fun beans(clock: Clock) = beans {
         bean { loadCNonceByAccessToken }
         bean { GenerateCNonce.random(Duration.ofMinutes(5L)) }
         bean { this@with } // this is needed for test
+    }
+
+    //
+    // Credentials
+    //
+    with(InMemoryIssuedCredentialRepository()) {
+        bean { GenerateNotificationId.Random }
+        bean { storeIssuedCredential }
+        bean { loadIssuedCredentialByNotificationId }
     }
 
     //
@@ -180,6 +229,7 @@ fun beans(clock: Clock) = beans {
             id = issuerPublicUrl,
             credentialEndPoint = issuerPublicUrl.appendPath(WalletApi.CREDENTIAL_ENDPOINT),
             deferredCredentialEndpoint = issuerPublicUrl.appendPath(WalletApi.DEFERRED_ENDPOINT),
+            notificationEndpoint = issuerPublicUrl.appendPath(WalletApi.NOTIFICATION_ENDPOINT),
             authorizationServers = listOf(env.readRequiredUrl("issuer.authorizationServer")),
             credentialResponseEncryption = env.credentialResponseEncryption(),
             specificCredentialIssuers = buildList {
@@ -189,6 +239,11 @@ fun beans(clock: Clock) = beans {
                         credentialIssuerId = issuerPublicUrl,
                         getPidData = ref(),
                         encodePidInCbor = ref(),
+                        notificationsEnabled = env.getProperty<Boolean>("issuer.pid.mso_mdoc.notifications.enabled")
+                            ?: true,
+                        generateNotificationId = ref(),
+                        clock = clock,
+                        storeIssuedCredential = ref(),
                     )
                     add(issueMsoMdocPid)
                 }
@@ -220,6 +275,10 @@ fun beans(clock: Clock) = beans {
                             }
                         },
                         sdOption = sdOption,
+                        notificationsEnabled = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled")
+                            ?: true,
+                        generateNotificationId = ref(),
+                        storeIssuedCredential = ref(),
                     )
                     val deferred = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.deferred") ?: false
                     add(
@@ -230,7 +289,15 @@ fun beans(clock: Clock) = beans {
 
                 val enableMobileDrivingLicence = env.getProperty("issuer.mdl.enabled", true)
                 if (enableMobileDrivingLicence) {
-                    val mdlIssuer = IssueMobileDrivingLicence(issuerPublicUrl, ref(), ref())
+                    val mdlIssuer = IssueMobileDrivingLicence(
+                        credentialIssuerId = issuerPublicUrl,
+                        getMobileDrivingLicenceData = ref(),
+                        encodeMobileDrivingLicenceInCbor = ref(),
+                        notificationsEnabled = env.getProperty<Boolean>("issuer.mdl.notifications.enabled") ?: true,
+                        generateNotificationId = ref(),
+                        clock = clock,
+                        storeIssuedCredential = ref(),
+                    )
                     add(mdlIssuer)
                 }
             },
@@ -242,7 +309,7 @@ fun beans(clock: Clock) = beans {
     //
     bean(::GetCredentialIssuerMetaData)
     bean {
-        IssueCredential(clock, ref(), ref(), ref(), ref(), ref())
+        IssueCredential(clock, ref(), ref(), ref(), ref(), ref(), ref())
     }
     bean(::GetDeferredCredential)
     bean {
@@ -254,7 +321,7 @@ fun beans(clock: Clock) = beans {
     //
     bean {
         val metaDataApi = MetaDataApi(ref(), ref())
-        val walletApi = WalletApi(ref(), ref(), ref())
+        val walletApi = WalletApi(ref(), ref(), ref(), ref())
         val issuerUi = IssuerUi(ref(), ref(), ref())
         val issuerApi = IssuerApi(ref())
         metaDataApi.route.and(walletApi.route).and(issuerUi.router).and(issuerApi.router)
@@ -274,7 +341,7 @@ fun beans(clock: Clock) = beans {
          */
         fun Scope.springConvention() = "SCOPE_$value"
         val metaData = ref<CredentialIssuerMetaData>()
-        val scopes = metaData.credentialsSupported
+        val scopes = metaData.credentialConfigurationsSupported
             .mapNotNull { it.scope?.springConvention() }
             .distinct()
         val http = ref<ServerHttpSecurity>()
@@ -282,6 +349,7 @@ fun beans(clock: Clock) = beans {
             authorizeExchange {
                 authorize(WalletApi.CREDENTIAL_ENDPOINT, hasAnyAuthority(*scopes.toTypedArray()))
                 authorize(WalletApi.DEFERRED_ENDPOINT, hasAnyAuthority(*scopes.toTypedArray()))
+                authorize(WalletApi.NOTIFICATION_ENDPOINT, hasAnyAuthority(*scopes.toTypedArray()))
                 authorize(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, permitAll)
                 authorize(MetaDataApi.WELL_KNOWN_JWKS, permitAll)
                 authorize(MetaDataApi.WELL_KNOWN_JWT_ISSUER, permitAll)
@@ -341,20 +409,27 @@ fun beans(clock: Clock) = beans {
 }
 
 private fun Environment.credentialResponseEncryption(): CredentialResponseEncryption {
-    val isRequired = getProperty<Boolean>("issuer.credentialResponseEncryption.required") ?: false
-    return if (!isRequired)
-        CredentialResponseEncryption.NotRequired
-    else
-        CredentialResponseEncryption.Required(
+    val isSupported = getProperty<Boolean>("issuer.credentialResponseEncryption.supported") ?: false
+    return if (!isSupported) {
+        CredentialResponseEncryption.NotSupported
+    } else {
+        val parameters = CredentialResponseEncryptionSupportedParameters(
             algorithmsSupported = readNonEmptySet(
                 "issuer.credentialResponseEncryption.algorithmsSupported",
                 JWEAlgorithm::parse,
             ),
-            encryptionMethods = readNonEmptySet(
+            methodsSupported = readNonEmptySet(
                 "issuer.credentialResponseEncryption.encryptionMethods",
                 EncryptionMethod::parse,
             ),
         )
+        val isRequired = getProperty<Boolean>("issuer.credentialResponseEncryption.required") ?: false
+        if (!isRequired) {
+            CredentialResponseEncryption.Optional(parameters)
+        } else {
+            CredentialResponseEncryption.Required(parameters)
+        }
+    }
 }
 
 private fun Environment.readRequiredUrl(key: String, removeTrailingSlash: Boolean = false): HttpsUrl =

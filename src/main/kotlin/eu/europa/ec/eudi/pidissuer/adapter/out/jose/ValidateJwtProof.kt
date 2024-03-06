@@ -17,7 +17,9 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.NonEmptySet
 import arrow.core.raise.Raise
+import arrow.core.raise.ensureNotNull
 import arrow.core.raise.result
+import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -50,9 +52,18 @@ fun validateJwtProof(
     credentialIssuerId: CredentialIssuerId,
     unvalidatedProof: UnvalidatedProof.Jwt,
     expectedCNonce: CNonce,
-    credentialMetaData: CredentialMetaData,
-): CredentialKey =
-    validateJwtProof(credentialIssuerId, unvalidatedProof, expectedCNonce, credentialMetaData.cryptographicSuitesSupported())
+    credentialConfiguration: CredentialConfiguration,
+): CredentialKey {
+    val proofTypes = credentialConfiguration.proofTypesSupported
+        .filterIsInstance<ProofType.Jwt>()
+        .toNonEmptySetOrNull()
+    ensureNotNull(proofTypes) {
+        IssueCredentialError.InvalidProof("credential configuration '${credentialConfiguration.id.value}' doesn't support 'jwt' proofs")
+    }
+
+    val supportedAlgorithms = proofTypes.flatMap { it.signingAlgorithmsSupported }.toNonEmptySet()
+    return validateJwtProof(credentialIssuerId, unvalidatedProof, expectedCNonce, supportedAlgorithms)
+}
 
 context (Raise<IssueCredentialError.InvalidProof>)
 fun validateJwtProof(

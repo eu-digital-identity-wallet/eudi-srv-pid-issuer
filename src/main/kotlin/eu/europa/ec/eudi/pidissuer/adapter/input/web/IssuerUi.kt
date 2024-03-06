@@ -17,8 +17,8 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.getOrElse
 import arrow.core.raise.either
+import eu.europa.ec.eudi.pidissuer.domain.CredentialConfigurationId
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
-import eu.europa.ec.eudi.pidissuer.domain.CredentialUniqueId
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOffer
 import eu.europa.ec.eudi.pidissuer.port.out.qr.Dimensions
 import eu.europa.ec.eudi.pidissuer.port.out.qr.Format
@@ -60,7 +60,7 @@ class IssuerUi(
 
     private suspend fun handleDisplayGenerateCredentialsOfferForm(): ServerResponse {
         log.info("Displaying 'Generate Credentials Offer' page")
-        val credentialIds = metadata.credentialsSupported.map { it.id.value }
+        val credentialIds = metadata.credentialConfigurationsSupported.map { it.id.value }
         return ServerResponse.ok()
             .contentType(MediaType.TEXT_HTML)
             .renderAndAwait("generate-credentials-offer-form", mapOf("credentialIds" to credentialIds))
@@ -71,7 +71,7 @@ class IssuerUi(
         log.info("Generating Credentials Offer")
         val credentialIds = request.awaitFormData()["credentialIds"]
             .orEmpty()
-            .map(::CredentialUniqueId)
+            .map(::CredentialConfigurationId)
             .toSet()
 
         return either {

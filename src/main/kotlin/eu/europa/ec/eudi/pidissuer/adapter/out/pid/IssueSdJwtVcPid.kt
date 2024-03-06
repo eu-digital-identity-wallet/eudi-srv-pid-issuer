@@ -33,6 +33,8 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -85,22 +87,17 @@ private object Attributes {
     )
 }
 
-val PidSdJwtVcV1: SdJwtVcMetaData = SdJwtVcMetaData(
-    id = CredentialUniqueId(PidSdJwtVcScope.value),
-    type = SdJwtVcType(pidDocType(1)),
-    display = pidDisplay,
-    claims = Attributes.pidAttributes,
-    cryptographicBindingMethodsSupported = listOf(
-        CryptographicBindingMethod.Jwk(
-            nonEmptySetOf(
-                JWSAlgorithm.RS256,
-                JWSAlgorithm.ES256,
-            ),
-        ),
-    ),
-    scope = PidSdJwtVcScope,
-    proofTypesSupported = setOf(ProofType.JWT),
-)
+fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration =
+    SdJwtVcCredentialConfiguration(
+        id = CredentialConfigurationId(PidSdJwtVcScope.value),
+        type = SdJwtVcType(pidDocType(1)),
+        display = pidDisplay,
+        claims = Attributes.pidAttributes,
+        cryptographicBindingMethodsSupported = nonEmptySetOf(CryptographicBindingMethod.Jwk),
+        credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
+        scope = PidSdJwtVcScope,
+        proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256))),
+    )
 
 typealias TimeDependant<F> = (ZonedDateTime) -> F
 
@@ -112,6 +109,7 @@ fun selectivelyDisclosed(
     pid: Pid,
     pidMetaData: PidMetaData,
     credentialIssuerId: CredentialIssuerId,
+    vct: SdJwtVcType,
     holderPubKey: JWK,
     iat: ZonedDateTime,
     exp: Instant,
@@ -132,7 +130,7 @@ fun selectivelyDisclosed(
         nbf?.let { nbf(it.epochSecond) }
         exp(exp.epochSecond)
         cnf(holderPubKey)
-        plain("vct", PidSdJwtVcV1.type.value)
+        plain("vct", vct.value)
 
         //
         // Selectively Disclosed claims
@@ -222,12 +220,15 @@ class IssueSdJwtVcPid(
     private val calculateExpiresAt: TimeDependant<Instant>,
     private val calculateNotUseBefore: TimeDependant<Instant>?,
     private val sdOption: SelectiveDisclosureOption,
+    private val notificationsEnabled: Boolean,
+    private val generateNotificationId: GenerateNotificationId,
+    private val storeIssuedCredential: StoreIssuedCredential,
 ) : IssueSpecificCredential<JsonElement> {
 
     private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
     private val validateProof = ValidateProof(credentialIssuerId)
-    override val supportedCredential: CredentialMetaData
-        get() = PidSdJwtVcV1
+
+    override val supportedCredential: SdJwtVcCredentialConfiguration = pidSdJwtVcV1(signAlg)
     override val publicKey: JWK
         get() = issuerKey.toPublicJWK()
 
@@ -235,6 +236,7 @@ class IssueSdJwtVcPid(
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
+        credentialIdentifier: CredentialIdentifier?,
         expectedCNonce: CNonce,
     ): CredentialResponse<JsonElement> = coroutineScope {
         log.info("Handling issuance request ...")
@@ -242,7 +244,28 @@ class IssueSdJwtVcPid(
         val pidData = async { getPidData(authorizationContext) }
         val (pid, pidMetaData) = pidData.await()
         val sdJwt = encodePidInSdJwt(pid, pidMetaData, holderPubKey.await())
-        CredentialResponse.Issued(format = SD_JWT_VC_FORMAT, credential = JsonPrimitive(sdJwt))
+
+        val notificationId =
+            if (notificationsEnabled) generateNotificationId()
+            else null
+        storeIssuedCredential(
+            IssuedCredential(
+                format = MSO_MDOC_FORMAT,
+                type = supportedCredential.type.value,
+                holder = with(pid) {
+                    "${familyName.value} ${givenName.value}"
+                },
+                holderPublicKey = holderPubKey.await().toPublicJWK(),
+                issuedAt = clock.instant(),
+                notificationId = notificationId,
+            ),
+        )
+
+        CredentialResponse.Issued(JsonPrimitive(sdJwt), notificationId)
+            .also {
+                log.info("Successfully issued PID")
+                log.debug("Issued PID data {}", it)
+            }
     }
 
     context(Raise<IssueCredentialError>)
@@ -251,6 +274,7 @@ class IssueSdJwtVcPid(
         val sdJwtSpec = selectivelyDisclosed(
             pid = pid,
             pidMetaData = pidMetaData,
+            vct = supportedCredential.type,
             credentialIssuerId = credentialIssuerId,
             holderPubKey = holderPubKey,
             iat = at,

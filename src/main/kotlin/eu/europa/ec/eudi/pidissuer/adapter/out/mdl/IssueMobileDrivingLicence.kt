@@ -28,9 +28,12 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
+import java.time.Clock
 import java.util.*
 
 val MobileDrivingLicenceV1Scope: Scope = Scope(mdlDocType(1u))
@@ -236,24 +239,17 @@ val MobileDrivingLicenceDisplay: List<CredentialDisplay> = listOf(
     ),
 )
 
-val MobileDrivingLicenceV1: MsoMdocMetaData = run {
-    val algorithms = nonEmptySetOf(
-        JWSAlgorithm.RS256,
-        JWSAlgorithm.ES256,
-    )
-    MsoMdocMetaData(
-        id = CredentialUniqueId(MobileDrivingLicenceV1Scope.value),
+val MobileDrivingLicenceV1: MsoMdocCredentialConfiguration =
+    MsoMdocCredentialConfiguration(
+        id = CredentialConfigurationId(MobileDrivingLicenceV1Scope.value),
         docType = mdlDocType(1u),
         display = MobileDrivingLicenceDisplay,
         msoClaims = mapOf(MobileDrivingLicenceV1Namespace to MobileDrivingLicenceV1Attributes),
-        cryptographicBindingMethodsSupported = listOf(
-            CryptographicBindingMethod.Mso(algorithms),
-            CryptographicBindingMethod.Jwk(algorithms),
-        ),
+        cryptographicBindingMethodsSupported = emptySet(),
+        credentialSigningAlgorithmsSupported = emptySet(),
         scope = MobileDrivingLicenceV1Scope,
-        proofTypesSupported = setOf(ProofType.JWT),
+        proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256))),
     )
-}
 
 /**
  * Issuing service for Mobile Driving Licence.
@@ -262,9 +258,13 @@ class IssueMobileDrivingLicence(
     credentialIssuerId: CredentialIssuerId,
     private val getMobileDrivingLicenceData: GetMobileDrivingLicenceData,
     private val encodeMobileDrivingLicenceInCbor: EncodeMobileDrivingLicenceInCbor,
+    private val notificationsEnabled: Boolean,
+    private val generateNotificationId: GenerateNotificationId,
+    private val clock: Clock,
+    private val storeIssuedCredential: StoreIssuedCredential,
 ) : IssueSpecificCredential<JsonElement> {
 
-    override val supportedCredential: CredentialMetaData
+    override val supportedCredential: MsoMdocCredentialConfiguration
         get() = MobileDrivingLicenceV1
 
     override val publicKey: JWK?
@@ -276,6 +276,7 @@ class IssueMobileDrivingLicence(
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
+        credentialIdentifier: CredentialIdentifier?,
         expectedCNonce: CNonce,
     ): CredentialResponse<JsonElement> {
         log.info("Issuing mDL")
@@ -292,7 +293,24 @@ class IssueMobileDrivingLicence(
             IssueCredentialError.Unexpected("Unable to fetch mDL data")
         }
         val cbor = encodeMobileDrivingLicenceInCbor(licence, holderKey)
-        return CredentialResponse.Issued(MSO_MDOC_FORMAT, JsonPrimitive(cbor))
+
+        val notificationId =
+            if (notificationsEnabled) generateNotificationId()
+            else null
+        storeIssuedCredential(
+            IssuedCredential(
+                format = MSO_MDOC_FORMAT,
+                type = supportedCredential.docType,
+                holder = with(licence.driver) {
+                    "${familyName.latin.value} ${givenName.latin.value}"
+                },
+                holderPublicKey = holderKey.toPublicJWK(),
+                issuedAt = clock.instant(),
+                notificationId = notificationId,
+            ),
+        )
+
+        return CredentialResponse.Issued(JsonPrimitive(cbor), notificationId)
             .also {
                 log.info("Successfully issued mDL")
                 log.debug("Issued mDL data {}", it)

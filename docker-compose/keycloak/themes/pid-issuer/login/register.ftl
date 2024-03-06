@@ -252,7 +252,7 @@
             </div>
             <!-- /formatted -->
 
-            <h2>${msg("credentials")}</h2>
+            <h2>${msg("credential_configuration_ids")}</h2>
             <!-- username -->
             <#if !realm.registrationEmailAsUsername>
                 <div class="${properties.kcFormGroupClass!}">
