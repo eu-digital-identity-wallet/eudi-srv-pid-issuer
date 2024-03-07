@@ -15,7 +15,7 @@ plugins {
 }
 
 group = "eu.europa.ec.eudi"
-version = "0.1.0-SNAPSHOT"
+version = "0.1.0"
 
 repositories {
     mavenCentral()
