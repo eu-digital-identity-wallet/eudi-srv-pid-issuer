@@ -13,24 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.pid
+package eu.europa.ec.eudi.pidissuer.port.out.persistence
 
-import eu.europa.ec.eudi.pidissuer.domain.*
-import java.net.URI
-import java.util.Locale.ENGLISH
+import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
 
-internal const val PID_DOCTYPE = "eu.europa.ec.eudiw.pid"
+fun interface StoreIssuedCredential {
 
-internal fun pidDocType(v: Int?): String =
-    if (v == null) PID_DOCTYPE
-    else "$PID_DOCTYPE.$v"
-
-val pidDisplay = listOf(
-    CredentialDisplay(
-        name = DisplayName("PID", ENGLISH),
-        logo = ImageUri(
-            uri = URI.create("https://examplestate.com/public/mdl.png"),
-            alternativeText = "A square figure of a PID",
-        ),
-    ),
-)
+    /**
+     * Stores an issued credential
+     */
+    suspend operator fun invoke(credential: IssuedCredential)
+}

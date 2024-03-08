@@ -27,13 +27,14 @@ import org.slf4j.LoggerFactory
 
 interface IssueSpecificCredential<out T> {
 
-    val supportedCredential: CredentialMetaData
+    val supportedCredential: CredentialConfiguration
     val publicKey: JWK?
 
     context(Raise<IssueCredentialError>)
     suspend operator fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
+        credentialIdentifier: CredentialIdentifier?,
         expectedCNonce: CNonce,
     ): CredentialResponse<T>
 }
@@ -51,17 +52,20 @@ private class DeferredIssuer(
 ) : IssueSpecificCredential<JsonElement> by issuer {
 
     private val log = LoggerFactory.getLogger(DeferredIssuer::class.java)
-    context(Raise<IssueCredentialError>) override suspend fun invoke(
+
+    context(Raise<IssueCredentialError>)
+    override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
+        credentialIdentifier: CredentialIdentifier?,
         expectedCNonce: CNonce,
     ): CredentialResponse<JsonElement> {
-        val credentialResponse = issuer.invoke(authorizationContext, request, expectedCNonce)
+        val credentialResponse = issuer.invoke(authorizationContext, request, credentialIdentifier, expectedCNonce)
         require(credentialResponse is CredentialResponse.Issued<JsonElement>) { "Actual issuer should return issued credentials" }
 
         val transactionId = generateTransactionId()
         storeDeferredCredential(transactionId, credentialResponse)
-        return CredentialResponse.Deferred(credentialResponse.format, transactionId).also {
+        return CredentialResponse.Deferred(transactionId).also {
             log.info("Repackaged $credentialResponse  as $it")
         }
     }

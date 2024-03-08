@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.raise.Raise
-import arrow.core.raise.ensure
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 
@@ -28,28 +27,21 @@ class ValidateProof(
     operator fun invoke(
         unvalidatedProof: UnvalidatedProof,
         expectedCNonce: CNonce,
-        credentialMetaData: CredentialMetaData,
+        credentialConfiguration: CredentialConfiguration,
     ): CredentialKey {
         fun jwt(jwt: UnvalidatedProof.Jwt): CredentialKey =
-            validateJwtProof(credentialIssuerId, jwt, expectedCNonce, credentialMetaData)
+            validateJwtProof(credentialIssuerId, jwt, expectedCNonce, credentialConfiguration)
 
         fun cwt(cwt: UnvalidatedProof.Cwt): CredentialKey =
             raise(InvalidProof("Supporting only JWT proof"))
 
-        val proofType = unvalidatedProof.proofType()
-        ensure(proofType in credentialMetaData.proofTypesSupported) {
-            InvalidProof("Unsupported Proof: '$proofType'")
-        }
+        fun ldpVp(ldpVp: UnvalidatedProof.LdpVp): CredentialKey =
+            raise(InvalidProof("Supporting only JWT proof"))
 
         return when (unvalidatedProof) {
             is UnvalidatedProof.Jwt -> jwt(unvalidatedProof)
             is UnvalidatedProof.Cwt -> cwt(unvalidatedProof)
+            is UnvalidatedProof.LdpVp -> ldpVp(unvalidatedProof)
         }
     }
 }
-
-private fun UnvalidatedProof.proofType(): ProofType =
-    when (this) {
-        is UnvalidatedProof.Jwt -> ProofType.JWT
-        is UnvalidatedProof.Cwt -> ProofType.CWT
-    }

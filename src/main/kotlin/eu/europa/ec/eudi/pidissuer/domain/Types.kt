@@ -15,12 +15,12 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
-import arrow.core.NonEmptySet
-import arrow.core.toNonEmptySetOrNull
-import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.jwk.JWK
 import org.slf4j.LoggerFactory
 import java.net.MalformedURLException
+import java.net.URI
 import java.net.URL
+import java.time.Instant
 import java.util.*
 
 private val logHttpsUrl = LoggerFactory.getLogger(HttpsUrl::class.java)
@@ -55,15 +55,16 @@ value class Format(val value: String)
 
 typealias CredentialIssuerId = HttpsUrl
 
-data class ImageUrl(val url: HttpsUrl, val alternativeText: String? = null)
+data class ImageUri(val uri: URI, val alternativeText: String? = null)
 data class DisplayName(val name: String, val locale: Locale)
 typealias Color = String
 
 data class CredentialDisplay(
     val name: DisplayName,
-    val logo: ImageUrl? = null,
+    val logo: ImageUri? = null,
     val description: String? = null,
     val backgroundColor: Color? = null,
+    val backgroundImage: ImageUri? = null,
     val textColor: Color? = null,
 )
 
@@ -85,60 +86,38 @@ sealed interface CryptographicBindingMethod {
     /**
      * Support for keys in JWK format RFC7517
      */
-    data class Jwk(val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>) : CryptographicBindingMethod
+    data object Jwk : CryptographicBindingMethod
 
     /**
      * Support for keys expressed as a COSE Key object
      */
-    data class CoseKey(val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>) : CryptographicBindingMethod
-    data class Mso(val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>) : CryptographicBindingMethod
-    data class DidMethod(
-        val didMethod: String,
-        val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>,
-    ) : CryptographicBindingMethod
+    data object CoseKey : CryptographicBindingMethod
 
-    data class DidAnyMethod(val cryptographicSuitesSupported: NonEmptySet<JWSAlgorithm>) : CryptographicBindingMethod
-}
+    /**
+     * Support for a specific DID method
+     */
+    data class DidMethod(val didMethod: String) : CryptographicBindingMethod
 
-fun CryptographicBindingMethod.cryptographicSuitesSupported() = when (this) {
-    is CryptographicBindingMethod.CoseKey -> cryptographicSuitesSupported
-    is CryptographicBindingMethod.DidAnyMethod -> cryptographicSuitesSupported
-    is CryptographicBindingMethod.DidMethod -> cryptographicSuitesSupported
-    is CryptographicBindingMethod.Jwk -> cryptographicSuitesSupported
-    is CryptographicBindingMethod.Mso -> cryptographicSuitesSupported
-}
-
-enum class ProofType {
-    JWT,
-    CWT,
+    /**
+     * Support for any DID method
+     */
+    data object DidAnyMethod : CryptographicBindingMethod
 }
 
 /**
- * The unique identifier of an offered Credential.
+ * A credential that was issued by a specific issuing service.
+ */
+data class IssuedCredential(
+    val format: Format,
+    val type: String,
+    val holder: String,
+    val holderPublicKey: JWK,
+    val issuedAt: Instant,
+    val notificationId: NotificationId? = null,
+)
+
+/**
+ * The unique identifier of a Credential.
  */
 @JvmInline
-value class CredentialUniqueId(val value: String)
-
-/**
- * Representing metadata about a separate credential type
- * that the Credential Issuer can issue
- */
-sealed interface CredentialMetaData {
-    val id: CredentialUniqueId
-    val format: Format
-    val scope: Scope?
-    val display: List<CredentialDisplay>
-    val cryptographicBindingMethodsSupported: List<CryptographicBindingMethod>
-    val proofTypesSupported: Set<ProofType>
-}
-
-fun CredentialMetaData.cryptographicSuitesSupported(): NonEmptySet<JWSAlgorithm> =
-    cryptographicBindingMethodsSupported.map { method ->
-        when (method) {
-            is CryptographicBindingMethod.CoseKey -> method.cryptographicSuitesSupported
-            is CryptographicBindingMethod.DidAnyMethod -> method.cryptographicSuitesSupported
-            is CryptographicBindingMethod.DidMethod -> method.cryptographicSuitesSupported
-            is CryptographicBindingMethod.Jwk -> method.cryptographicSuitesSupported
-            is CryptographicBindingMethod.Mso -> method.cryptographicSuitesSupported
-        }
-    }.flatten().toNonEmptySetOrNull()!!
+value class CredentialIdentifier(val value: String)

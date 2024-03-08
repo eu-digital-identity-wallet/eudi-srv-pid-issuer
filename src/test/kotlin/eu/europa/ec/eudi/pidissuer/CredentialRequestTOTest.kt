@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer
 
 import eu.europa.ec.eudi.pidissuer.port.input.CredentialRequestTO
+import eu.europa.ec.eudi.pidissuer.port.input.FormatTO
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 
@@ -23,12 +24,12 @@ class CredentialRequestTOTest {
 
     @Test
     fun checkMsoMdoc() {
-        assert(Json.decodeFromString<CredentialRequestTO>(msoMdoc) is CredentialRequestTO.MsoMdoc)
+        assert(Json.decodeFromString<CredentialRequestTO>(msoMdoc).format == FormatTO.MsoMdoc)
     }
 
     @Test
     fun checkSdJwtVc() {
-        assert(Json.decodeFromString<CredentialRequestTO>(sdJwtVc) is CredentialRequestTO.SdJwtVc)
+        assert(Json.decodeFromString<CredentialRequestTO>(sdJwtVc).format == FormatTO.SdJwtVc)
     }
 }
 
@@ -46,7 +47,11 @@ val msoMdoc = """
              "organ_donor": {}
           }
        },
-       "credential_response_encryption_alg": "Foo",
+       "credential_response_encryption": {
+        "jwk": {},
+        "alg": "ECDH-ES",
+        "enc": "A256CBC-HS512"
+       },
        "proof": {
           "proof_type": "jwt",
           "jwt": "eyJraWQiOiJkaWQ6ZXhhbXBsZ"
@@ -57,9 +62,7 @@ val msoMdoc = """
 val sdJwtVc = """
     {
        "format": "vc+sd-jwt",
-       "credential_definition": {
-          "type": "IdentityCredential"
-       },
+       "vct": "IdentityCredential",
        "proof": {
           "proof_type": "jwt",
           "jwt":"${

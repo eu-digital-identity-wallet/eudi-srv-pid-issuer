@@ -68,17 +68,16 @@ class EncryptCredentialResponseWithNimbus(
         JWTClaimsSet.Builder().apply {
             issuer(issuer.externalForm)
             issueTime(Date.from(iat))
-            claim("format", format)
-            claim(
-                "credential",
-                credential?.let {
+            credential?.let {
+                val value: Any =
                     if (it is JsonPrimitive) it.content
                     else JSONObjectUtils.parse(Json.encodeToString(it))
-                },
-            )
-            claim("transaction_id", transactionId)
+                claim("credential", value)
+            }
+            transactionId?.let { claim("transaction_id", it) }
             claim("c_nonce", nonce)
             claim("c_nonce_expires_in", nonceExpiresIn)
+            notificationId?.let { claim("notification_id", it) }
         }.build()
 
     private fun EncryptedJWT.encrypt(jwk: JWK) {

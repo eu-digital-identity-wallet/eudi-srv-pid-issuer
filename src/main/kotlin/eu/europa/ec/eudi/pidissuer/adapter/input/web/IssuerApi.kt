@@ -17,7 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.getOrElse
 import arrow.core.raise.either
-import eu.europa.ec.eudi.pidissuer.domain.CredentialUniqueId
+import eu.europa.ec.eudi.pidissuer.domain.CredentialConfigurationId
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOffer
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError
 import kotlinx.serialization.SerialName
@@ -43,7 +43,7 @@ class IssuerApi(
         val credentialIds = request.awaitBodyOrNull<CreateCredentialsOfferRequestTO>()
             ?.credentialIds
             .orEmpty()
-            .map(::CredentialUniqueId)
+            .map(::CredentialConfigurationId)
             .toSet()
 
         return either {

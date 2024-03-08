@@ -16,6 +16,12 @@
 package eu.europa.ec.eudi.pidissuer.domain
 
 /**
+ * String identifying an issued Credential that the Wallet includes in the Notification Request.
+ */
+@JvmInline
+value class NotificationId(val value: String)
+
+/**
  * The identifier of a deferred issuance transaction.
  */
 @JvmInline
@@ -25,19 +31,17 @@ value class TransactionId(val value: String)
  * The response to a Credential Request.
  */
 sealed interface CredentialResponse<out T> {
-    val format: Format
 
     /**
      * An unencrypted Credential has been issued.
      */
-    data class Issued<T>(override val format: Format, val credential: T) : CredentialResponse<T>
+    data class Issued<T>(val credential: T, val notificationId: NotificationId? = null) : CredentialResponse<T>
 
     /**
      * The issuance of the requested Credential has been deferred.
      * The deferred transaction can be identified by [transactionId].
      */
     data class Deferred(
-        override val format: Format,
         val transactionId: TransactionId,
     ) : CredentialResponse<Nothing>
 }

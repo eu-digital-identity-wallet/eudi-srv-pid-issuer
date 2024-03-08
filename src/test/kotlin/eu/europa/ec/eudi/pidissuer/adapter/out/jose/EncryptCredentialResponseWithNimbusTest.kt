@@ -40,6 +40,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import java.time.Clock
 import java.time.Duration
+import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.fail
@@ -60,11 +61,11 @@ internal class EncryptCredentialResponseWithNimbusTest {
         val jwk = key.toPublicJWK()
         val parameters = RequestedResponseEncryption.Required(jwk, JWEAlgorithm.RSA_OAEP_512)
         val unencrypted = IssueCredentialResponse.PlainTO(
-            "pid",
             JsonPrimitive("credential"),
             null,
             "nonce",
             Duration.ofMinutes(5L).seconds,
+            UUID.randomUUID().toString(),
         )
 
         encryptAndVerify(unencrypted, parameters, key)
@@ -79,11 +80,11 @@ internal class EncryptCredentialResponseWithNimbusTest {
         val jwk = key.toPublicJWK()
         val parameters = RequestedResponseEncryption.Required(jwk, JWEAlgorithm.ECDH_ES_A256KW)
         val unencrypted = IssueCredentialResponse.PlainTO(
-            "pid",
             JsonPrimitive("credential"),
             null,
             "nonce",
             Duration.ofMinutes(5L).seconds,
+            UUID.randomUUID().toString(),
         )
 
         encryptAndVerify(unencrypted, parameters, key)
@@ -106,11 +107,11 @@ internal class EncryptCredentialResponseWithNimbusTest {
             jwtClaimsSetVerifier = DefaultJWTClaimsVerifier(
                 JWTClaimsSet.Builder()
                     .issuer(issuer.externalForm)
-                    .claim("format", unencrypted.format)
                     .apply {
                         unencrypted.transactionId?.let { claim("transaction_id", it) }
                         unencrypted.nonce?.let { claim("c_nonce", it) }
                         unencrypted.nonceExpiresIn?.let { claim("c_nonce_expires_in", it) }
+                        unencrypted.notificationId?.let { claim("notification_id", it) }
                     }
                     .build(),
                 setOf("iat") + (unencrypted.credential?.let { setOf("credential") } ?: emptySet()),

@@ -27,12 +27,15 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
+import java.time.Clock
 import java.util.*
 
 val PidMsoMdocScope: Scope = Scope("${PID_DOCTYPE}_${MSO_MDOC_FORMAT.value}")
@@ -132,24 +135,17 @@ private val pidAttributes = pidNameSpace(1) to listOf(
     ),
 )
 
-val PidMsoMdocV1: MsoMdocMetaData = run {
-    val algorithms = nonEmptySetOf(
-        JWSAlgorithm.RS256,
-        JWSAlgorithm.ES256,
-    )
-    MsoMdocMetaData(
-        id = CredentialUniqueId(PidMsoMdocScope.value),
+val PidMsoMdocV1: MsoMdocCredentialConfiguration =
+    MsoMdocCredentialConfiguration(
+        id = CredentialConfigurationId(PidMsoMdocScope.value),
         docType = pidDocType(1),
         display = pidDisplay,
         msoClaims = mapOf(pidAttributes),
-        cryptographicBindingMethodsSupported = listOf(
-            CryptographicBindingMethod.Mso(algorithms),
-            CryptographicBindingMethod.Jwk(algorithms),
-        ),
+        cryptographicBindingMethodsSupported = emptySet(),
+        credentialSigningAlgorithmsSupported = emptySet(),
         scope = PidMsoMdocScope,
-        proofTypesSupported = setOf(ProofType.JWT),
+        proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256))),
     )
-}
 
 //
 // Meta
@@ -168,12 +164,16 @@ class IssueMsoMdocPid(
     credentialIssuerId: CredentialIssuerId,
     private val getPidData: GetPidData,
     private val encodePidInCbor: EncodePidInCbor,
+    private val notificationsEnabled: Boolean,
+    private val generateNotificationId: GenerateNotificationId,
+    private val clock: Clock,
+    private val storeIssuedCredential: StoreIssuedCredential,
 ) : IssueSpecificCredential<JsonElement> {
 
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
 
     private val validateProof = ValidateProof(credentialIssuerId)
-    override val supportedCredential: CredentialMetaData
+    override val supportedCredential: MsoMdocCredentialConfiguration
         get() = PidMsoMdocV1
     override val publicKey: JWK? = null
 
@@ -181,6 +181,7 @@ class IssueMsoMdocPid(
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
+        credentialIdentifier: CredentialIdentifier?,
         expectedCNonce: CNonce,
     ): CredentialResponse<JsonElement> = coroutineScope {
         log.info("Handling issuance request ...")
@@ -190,7 +191,28 @@ class IssueMsoMdocPid(
         val cbor = encodePidInCbor(pid, pidMetaData, holderPubKey.await()).also {
             log.info("Issued $it")
         }
-        CredentialResponse.Issued(format = MSO_MDOC_FORMAT, credential = JsonPrimitive(cbor))
+
+        val notificationId =
+            if (notificationsEnabled) generateNotificationId()
+            else null
+        storeIssuedCredential(
+            IssuedCredential(
+                format = MSO_MDOC_FORMAT,
+                type = supportedCredential.docType,
+                holder = with(pid) {
+                    "${familyName.value} ${givenName.value}"
+                },
+                holderPublicKey = holderPubKey.await().toPublicJWK(),
+                issuedAt = clock.instant(),
+                notificationId = notificationId,
+            ),
+        )
+
+        CredentialResponse.Issued(JsonPrimitive(cbor), notificationId)
+            .also {
+                log.info("Successfully issued PID")
+                log.debug("Issued PID data {}", it)
+            }
     }
 
     context(Raise<IssueCredentialError>)
