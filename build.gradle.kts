@@ -23,12 +23,6 @@ version = "0.2.0-SNAPSHOT"
 repositories {
     mavenCentral()
     maven {
-        url = URI.create("https://s01.oss.sonatype.org/content/repositories/snapshots/")
-        this.mavenContent {
-            snapshotsOnly()
-        }
-    }
-    maven {
         url = URI.create("https://jitpack.io")
     }
 }
