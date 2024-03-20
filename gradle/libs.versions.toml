@@ -2,7 +2,7 @@
 coroutines = "1.7.3"
 dokka = "1.9.10"
 kotlin = "1.9.23"
-arrow = "1.2.1"
+arrow = "1.2.3"
 foojay = "0.8.0"
 springboot = "3.2.3"
 springDependencyManagement = "1.1.4"
