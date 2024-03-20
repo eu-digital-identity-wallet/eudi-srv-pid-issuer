@@ -5,7 +5,6 @@ import java.net.URI
 
 plugins {
     base
-    alias(libs.plugins.dokka)
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
     alias(libs.plugins.kotlin.jvm)
