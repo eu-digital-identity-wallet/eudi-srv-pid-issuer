@@ -70,7 +70,6 @@ import org.springframework.security.web.server.authentication.HttpStatusServerEn
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
-import java.net.URI
 import java.time.Clock
 import java.time.Duration
 
@@ -313,7 +312,7 @@ fun beans(clock: Clock) = beans {
     }
     bean(::GetDeferredCredential)
     bean {
-        CreateCredentialsOffer(ref(), env.getRequiredProperty<URI>("issuer.credentialOffer.uri"))
+        CreateCredentialsOffer(ref(), env.getRequiredProperty<String>("issuer.credentialOffer.uri"))
     }
 
     //

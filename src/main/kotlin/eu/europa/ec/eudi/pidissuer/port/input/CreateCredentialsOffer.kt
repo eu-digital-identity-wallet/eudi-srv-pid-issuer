@@ -108,7 +108,7 @@ private data class CredentialsOfferTO(
  */
 class CreateCredentialsOffer(
     private val metadata: CredentialIssuerMetaData,
-    private val credentialsOfferUri: URI,
+    private val credentialsOfferUri: String,
 ) {
 
     context(Raise<CreateCredentialsOfferError>)
@@ -118,7 +118,7 @@ class CreateCredentialsOffer(
             authorizationCodeGrantOffer(credentialConfigurationIds)
         }
 
-        return UriComponentsBuilder.fromUri(credentialsOfferUri)
+        return UriComponentsBuilder.fromUriString(credentialsOfferUri)
             .queryParam("credential_offer", Json.encodeToString(offer))
             .build()
             .toUri()

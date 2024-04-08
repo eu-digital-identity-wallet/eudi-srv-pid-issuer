@@ -16,9 +16,6 @@ plugins {
     jacoco
 }
 
-group = "eu.europa.ec.eudi"
-version = "0.2.0-SNAPSHOT"
-
 repositories {
     mavenCentral()
     maven {
