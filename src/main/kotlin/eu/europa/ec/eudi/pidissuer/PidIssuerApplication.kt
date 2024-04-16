@@ -182,6 +182,7 @@ fun beans(clock: Clock) = beans {
     val enableMobileDrivingLicence = env.getProperty("issuer.mdl.enabled", true)
     val enableMsoMdocPid = env.getProperty<Boolean>("issuer.pid.mso_mdoc.enabled") ?: true
     val enableSdJwtVcPid = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.enabled") ?: true
+    val enableJwtVcJsonPseudonym = env.getProperty<Boolean>("issuer.pseudonym.jwt_vc_json.enabled") ?: true
 
     //
     // Signing key
@@ -390,7 +391,6 @@ fun beans(clock: Clock) = beans {
         GenerateUserPseudonym { UUID.randomUUID().toString() }
     }
 
-
     //
     // Specific Issuers
     //
@@ -465,7 +465,6 @@ fun beans(clock: Clock) = beans {
                     add(mdlIssuer)
                 }
 
-                val enableJwtVcJsonPseudonym = env.getProperty<Boolean>("issuer.pseudonym.jwt_vc_json.enabled") ?: true
                 if (enableJwtVcJsonPseudonym) {
                     val jwtVcJsonIssuer = IssueJwtVcJsonUserPseudonym(
                         credentialIssuerId = issuerPublicUrl,
