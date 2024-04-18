@@ -21,6 +21,9 @@ repositories {
     maven {
         url = URI.create("https://jitpack.io")
     }
+    maven {
+        url = URI.create("https://repo.danubetech.com/repository/maven-public")
+    }
 }
 
 dependencies {
@@ -58,6 +61,15 @@ dependencies {
     }
     implementation(libs.qrgen) {
         because("To generate a QR Code for Credentials Offer URI")
+    }
+    implementation(libs.did.common) {
+        because("To support parsing of DID URLs")
+    }
+    implementation(libs.multiformat) {
+        because("To support resolution of did:key")
+    }
+    implementation(libs.result.monad) {
+        because("Optional dependency from org.erwinkok.multiformat:multiformat that we require")
     }
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)

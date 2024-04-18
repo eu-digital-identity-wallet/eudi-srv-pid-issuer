@@ -19,11 +19,14 @@ import arrow.core.Either
 import arrow.core.NonEmptyList
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
+import arrow.core.raise.result
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.AsymmetricJWK
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.KeyUse
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.resolveDidUrl
+import foundation.identity.did.DIDURL
 import java.security.cert.X509Certificate
 
 /**
@@ -58,8 +61,27 @@ sealed interface CredentialKey {
      * If the Credential shall be bound to a DID, the kid refers to a DID URL
      * which identifies a particular key in the DID Document that the Credential shall be bound to
      */
-    @JvmInline
-    value class DIDUrl(val value: String) : CredentialKey
+    data class DIDUrl(val url: DIDURL, val jwk: JWK) : CredentialKey {
+        init {
+            require(!jwk.isPrivate) { "jwk must not contain a private key" }
+            require(jwk is AsymmetricJWK) { "'jwk' must be asymmetric" }
+        }
+
+        companion object {
+
+            /**
+             * Resolves the provided DID url. Currently supports 'key' and 'jwk' methods.
+             */
+            operator fun invoke(value: String): Result<DIDUrl> = result {
+                val url = DIDURL.fromString(value)
+                val method = url.did.methodName
+                require(method == "key" || method == "jwk") { "Unsupported DID method '$method'" }
+
+                val jwk = resolveDidUrl(url).bind()
+                DIDUrl(url, jwk)
+            }
+        }
+    }
 
     @JvmInline
     value class Jwk(val value: JWK) : CredentialKey {
