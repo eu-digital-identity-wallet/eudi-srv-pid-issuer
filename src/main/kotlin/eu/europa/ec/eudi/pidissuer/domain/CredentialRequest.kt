@@ -19,11 +19,13 @@ import arrow.core.Either
 import arrow.core.NonEmptyList
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
+import arrow.core.raise.result
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.AsymmetricJWK
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.KeyUse
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.resolveDidUrl
 import foundation.identity.did.DIDURL
 import java.security.cert.X509Certificate
 
@@ -63,6 +65,21 @@ sealed interface CredentialKey {
         init {
             require(!jwk.isPrivate) { "jwk must not contain a private key" }
             require(jwk is AsymmetricJWK) { "'jwk' must be asymmetric" }
+        }
+
+        companion object {
+
+            /**
+             * Resolves the provided DID url. Currently supports 'key' and 'jwk' methods.
+             */
+            operator fun invoke(value: String): Result<DIDUrl> = result {
+                val url = DIDURL.fromString(value)
+                val method = url.did.methodName
+                require(method == "key" || method == "jwk") { "Unsupported DID method '$method'" }
+
+                val jwk = resolveDidUrl(url).bind()
+                DIDUrl(url, jwk)
+            }
         }
     }
 

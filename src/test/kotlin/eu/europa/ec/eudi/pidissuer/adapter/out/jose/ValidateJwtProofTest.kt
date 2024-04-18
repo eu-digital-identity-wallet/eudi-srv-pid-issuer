@@ -167,7 +167,7 @@ internal class ValidateJwtProofTest {
         val nonce = generateCNonce()
         val signedJwt =
             generateSignedJwt(key, nonce) {
-                keyID("did:jwk:${Base64URL.encode(key.toPublicJWK().toJSONString())}")
+                keyID("did:jwk:${Base64URL.encode(key.toPublicJWK().toJSONString())}#0")
             }
 
         either {
@@ -235,7 +235,7 @@ internal class ValidateJwtProofTest {
         val nonce = generateCNonce()
         val signedJwt =
             generateSignedJwt(key, nonce) {
-                keyID("did:jwk:${Base64URL.encode(incorrectKey.toPublicJWK().toJSONString())}")
+                keyID("did:jwk:${Base64URL.encode(incorrectKey.toPublicJWK().toJSONString())}#0")
             }
 
         val result = either {

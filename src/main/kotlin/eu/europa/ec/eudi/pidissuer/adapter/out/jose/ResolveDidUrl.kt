@@ -48,9 +48,27 @@ fun resolveDidUrl(url: DIDURL): Result<JWK> = result {
     when (val method = url.did.methodName) {
         "key" -> resolveDidKey(url)
         "jwk" -> resolveDidJwk(url)
-        else -> throw IllegalArgumentException("Unsupported DID method '$method'")
+        else -> error("Unsupported DID method '$method'")
     }
 }
+
+private val supportedDidKeyTypes = setOf(
+    Multicodec.SECP256K1_PUB,
+    Multicodec.X25519_PUB,
+    Multicodec.ED25519_PUB,
+    Multicodec.P256_PUB,
+    Multicodec.P384_PUB,
+    Multicodec.P521_PUB,
+    Multicodec.RSA_PUB,
+)
+
+private val expectedDidKeySizes = mapOf(
+    Multicodec.SECP256K1_PUB to 33,
+    Multicodec.X25519_PUB to 32,
+    Multicodec.ED25519_PUB to 32,
+    Multicodec.P256_PUB to 33,
+    Multicodec.P384_PUB to 49,
+)
 
 private fun resolveDidKey(url: DIDURL): JWK {
     require(url.did.methodName == "key") {
@@ -73,32 +91,16 @@ private fun resolveDidKey(url: DIDURL): JWK {
             type to key
         }
 
-    val supportedTypes = setOf(
-        Multicodec.SECP256K1_PUB,
-        Multicodec.X25519_PUB,
-        Multicodec.ED25519_PUB,
-        Multicodec.P256_PUB,
-        Multicodec.P384_PUB,
-        Multicodec.P521_PUB,
-        Multicodec.RSA_PUB,
-    )
-    require(type in supportedTypes) {
+    require(type in supportedDidKeyTypes) {
         "Unsupported type '${type.typeName}'. Expected on of '${
-            supportedTypes.joinToString(
+            supportedDidKeyTypes.joinToString(
                 separator = ", ",
                 transform = { it.typeName },
             )
         }'."
     }
 
-    val expectedKeySizes = mapOf(
-        Multicodec.SECP256K1_PUB to 33,
-        Multicodec.X25519_PUB to 32,
-        Multicodec.ED25519_PUB to 32,
-        Multicodec.P256_PUB to 33,
-        Multicodec.P384_PUB to 49,
-    )
-    expectedKeySizes[type]?.let { expectedKeySize ->
+    expectedDidKeySizes[type]?.let { expectedKeySize ->
         require(expectedKeySize == key.size) {
             "Expected a key size of '$expectedKeySize' for type '${type.typeName}'. Got '${key.size}' instead."
         }
@@ -124,17 +126,17 @@ private fun resolveDidKey(url: DIDURL): JWK {
         return RSAKey.Builder(publicKey).build()
     }
 
-    return when {
-        Multicodec.SECP256K1_PUB == type -> decodeEcPublicKey(Curve.SECP256K1, key)
-        Multicodec.X25519_PUB == type -> decodeOctetPublicKey(Curve.X25519, key)
-        Multicodec.ED25519_PUB == type -> decodeOctetPublicKey(Curve.Ed25519, key)
-        Multicodec.P256_PUB == type -> decodeEcPublicKey(Curve.P_256, key)
-        Multicodec.P384_PUB == type -> decodeEcPublicKey(Curve.P_384, key)
-        Multicodec.P521_PUB == type -> decodeEcPublicKey(Curve.P_521, key)
-        Multicodec.RSA_PUB == type -> decodeRsaPublicKey(key)
-        else -> throw IllegalArgumentException(
+    return when (type) {
+        Multicodec.SECP256K1_PUB -> decodeEcPublicKey(Curve.SECP256K1, key)
+        Multicodec.X25519_PUB -> decodeOctetPublicKey(Curve.X25519, key)
+        Multicodec.ED25519_PUB -> decodeOctetPublicKey(Curve.Ed25519, key)
+        Multicodec.P256_PUB -> decodeEcPublicKey(Curve.P_256, key)
+        Multicodec.P384_PUB -> decodeEcPublicKey(Curve.P_384, key)
+        Multicodec.P521_PUB -> decodeEcPublicKey(Curve.P_521, key)
+        Multicodec.RSA_PUB -> decodeRsaPublicKey(key)
+        else -> error(
             "Unsupported type '${type.typeName}'. Expected on of '${
-                supportedTypes.joinToString(
+                supportedDidKeyTypes.joinToString(
                     separator = ", ",
                     transform = { it.typeName },
                 )
@@ -147,9 +149,12 @@ private fun resolveDidJwk(url: DIDURL): JWK {
     require(url.did.methodName == "jwk") {
         "Expected 'key' method. Got '${url.did.methodName}' instead."
     }
-    require(url.fragment.isNullOrBlank()) {
-        "Invalid fragment. Expected no fragment but got '${url.fragment}' instead."
+    require(url.fragment == "0") {
+        "Invalid fragment. Expected '0' but got '${url.fragment}' instead."
     }
 
     return JWK.parse(Base64URL.from(url.did.methodSpecificId).decodeToString())
+        .also {
+            require(!it.isPrivate) { "jwk cannot contain a private key" }
+        }
 }

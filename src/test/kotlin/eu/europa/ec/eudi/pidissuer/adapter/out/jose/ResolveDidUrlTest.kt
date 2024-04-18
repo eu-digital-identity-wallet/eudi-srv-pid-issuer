@@ -193,7 +193,7 @@ internal class ResolveDidUrlTest {
                 }
             """.trimIndent(),
         "did:jwk:${"eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwieCI6ImFjYklRaXVNczNpOF91c3pFakoydHBUdFJNNEVVM3l6OTFQSDZDZEgy" +
-            "VjAiLCJ5IjoiX0tjeUxqOXZXTXB0bm1LdG00NkdxRHo4d2Y3NEk1TEtncmwyR3pIM25TRSJ9"}" to
+            "VjAiLCJ5IjoiX0tjeUxqOXZXTXB0bm1LdG00NkdxRHo4d2Y3NEk1TEtncmwyR3pIM25TRSJ9#0"}" to
             """
                 {
                     "crv": "P-256",
@@ -203,7 +203,7 @@ internal class ResolveDidUrlTest {
                 }
             """.trimIndent(),
         "did:jwk:${"eyJrdHkiOiJPS1AiLCJjcnYiOiJYMjU1MTkiLCJ1c2UiOiJlbmMiLCJ4IjoiM3A3YmZYdDl3YlRUVzJIQzdPUTFOei1EUThoYm" +
-            "VHZE5yZngtRkctSUswOCJ9"}" to
+            "VHZE5yZngtRkctSUswOCJ9#0"}" to
             """
                 {
                     "kty": "OKP",

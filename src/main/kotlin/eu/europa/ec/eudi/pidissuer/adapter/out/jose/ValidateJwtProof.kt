@@ -38,7 +38,6 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import com.nimbusds.jwt.proc.JWTProcessor
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import foundation.identity.did.DIDURL
 import java.security.interfaces.ECPublicKey
 import java.security.interfaces.EdECPublicKey
 import java.security.interfaces.RSAPublicKey
@@ -92,10 +91,7 @@ private fun algorithmAndCredentialKey(
     val x5c = header.x509CertChain
 
     val key = when {
-        kid != null && jwk == null && x5c.isNullOrEmpty() -> {
-            val url = DIDURL.fromString(kid)
-            CredentialKey.DIDUrl(url, resolveDidUrl(url).getOrThrow())
-        }
+        kid != null && jwk == null && x5c.isNullOrEmpty() -> CredentialKey.DIDUrl(kid).getOrThrow()
         kid == null && jwk != null && x5c.isNullOrEmpty() -> CredentialKey.Jwk(jwk)
         kid == null && jwk == null && !x5c.isNullOrEmpty() -> CredentialKey.X5c.parseDer(x5c).getOrThrow()
 
