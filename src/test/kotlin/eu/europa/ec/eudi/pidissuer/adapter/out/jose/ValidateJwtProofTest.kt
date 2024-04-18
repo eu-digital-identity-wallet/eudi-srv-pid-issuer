@@ -26,6 +26,7 @@ import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jose.util.Base64
+import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
@@ -161,6 +162,31 @@ internal class ValidateJwtProofTest {
     }
 
     @Test
+    internal fun `proof validation with 'kid' in header succeeds`() = runTest {
+        val key = loadKey()
+        val nonce = generateCNonce()
+        val signedJwt =
+            generateSignedJwt(key, nonce) {
+                keyID("did:jwk:${Base64URL.encode(key.toPublicJWK().toJSONString())}")
+            }
+
+        either {
+            validateJwtProof(
+                issuer,
+                UnvalidatedProof.Jwt(signedJwt.serialize()),
+                nonce,
+                checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
+            )
+        }.fold(
+            ifLeft = { fail("Unexpected $it") },
+            ifRight = { credentialKey ->
+                val jwk = assertIs<CredentialKey.DIDUrl>(credentialKey, "expected 'jwk' credential key")
+                assertEquals(key.toPublicJWK(), jwk.jwk)
+            },
+        )
+    }
+
+    @Test
     internal fun `proof validation fails with incorrect 'jwk' in header`() = runTest {
         val key = loadKey()
         val incorrectKey = RSAKeyGenerator(2048, false).generate()
@@ -189,6 +215,27 @@ internal class ValidateJwtProofTest {
         val signedJwt =
             generateSignedJwt(key, nonce) {
                 x509CertChain(incorrectKey.toPublicJWK().x509CertChain)
+            }
+
+        val result = either {
+            validateJwtProof(
+                issuer,
+                UnvalidatedProof.Jwt(signedJwt.serialize()),
+                nonce,
+                checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
+            )
+        }
+        assertTrue { result.isLeft() }
+    }
+
+    @Test
+    internal fun `proof validation fails with incorrect 'kid' in header`() = runTest {
+        val key = loadKey()
+        val incorrectKey = RSAKeyGenerator(2048, false).generate()
+        val nonce = generateCNonce()
+        val signedJwt =
+            generateSignedJwt(key, nonce) {
+                keyID("did:jwk:${Base64URL.encode(incorrectKey.toPublicJWK().toJSONString())}")
             }
 
         val result = either {

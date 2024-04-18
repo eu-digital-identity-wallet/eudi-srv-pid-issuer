@@ -25,7 +25,7 @@ object DefaultExtractJwkFromCredentialKey : ExtractJwkFromCredentialKey {
             when (key) {
                 is CredentialKey.Jwk -> key.value
                 is CredentialKey.X5c -> JWK.parse(key.certificate)
-                is CredentialKey.DIDUrl -> raise(IllegalArgumentException("CredentialKey.DIDUrl is not yet supported"))
+                is CredentialKey.DIDUrl -> key.jwk
             }
         }
 }

@@ -26,10 +26,7 @@ import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.crypto.Ed25519Signer
 import com.nimbusds.jose.crypto.RSASSASigner
-import com.nimbusds.jose.jwk.AsymmetricJWK
-import com.nimbusds.jose.jwk.ECKey
-import com.nimbusds.jose.jwk.OctetKeyPair
-import com.nimbusds.jose.jwk.RSAKey
+import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
 import com.nimbusds.jose.proc.JWSKeySelector
 import com.nimbusds.jose.proc.SecurityContext
@@ -41,6 +38,7 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import com.nimbusds.jwt.proc.JWTProcessor
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import foundation.identity.did.DIDURL
 import java.security.interfaces.ECPublicKey
 import java.security.interfaces.EdECPublicKey
 import java.security.interfaces.RSAPublicKey
@@ -94,7 +92,10 @@ private fun algorithmAndCredentialKey(
     val x5c = header.x509CertChain
 
     val key = when {
-        kid != null && jwk == null && x5c.isNullOrEmpty() -> CredentialKey.DIDUrl(kid)
+        kid != null && jwk == null && x5c.isNullOrEmpty() -> {
+            val url = DIDURL.fromString(kid)
+            CredentialKey.DIDUrl(url, resolveDidUrl(url).getOrThrow())
+        }
         kid == null && jwk != null && x5c.isNullOrEmpty() -> CredentialKey.Jwk(jwk)
         kid == null && jwk == null && !x5c.isNullOrEmpty() -> CredentialKey.X5c.parseDer(x5c).getOrThrow()
 
@@ -105,20 +106,22 @@ private fun algorithmAndCredentialKey(
 }
 
 private fun CredentialKey.ensureCompatibleWith(algorithm: JWSAlgorithm) {
-    when (this) {
-        is CredentialKey.DIDUrl -> TODO("CredentialKey.DIDUrl is not yet supported")
-        is CredentialKey.Jwk -> {
-            val supportedAlgorithms =
-                when (value) {
-                    is RSAKey -> RSASSASigner.SUPPORTED_ALGORITHMS
-                    is ECKey -> ECDSASigner.SUPPORTED_ALGORITHMS
-                    is OctetKeyPair -> Ed25519Signer.SUPPORTED_ALGORITHMS
-                    else -> error("unsupported key type '${value.keyType.value}'")
-                }
-            require(algorithm in supportedAlgorithms) {
-                "key type '${value.keyType.value}' is not compatible with signing algorithm '${algorithm.name}'"
+    fun JWK.ensureCompatibleWith(algorithm: JWSAlgorithm) {
+        val supportedAlgorithms =
+            when (this) {
+                is RSAKey -> RSASSASigner.SUPPORTED_ALGORITHMS
+                is ECKey -> ECDSASigner.SUPPORTED_ALGORITHMS
+                is OctetKeyPair -> Ed25519Signer.SUPPORTED_ALGORITHMS
+                else -> error("unsupported key type '${keyType.value}'")
             }
+        require(algorithm in supportedAlgorithms) {
+            "key type '${keyType.value}' is not compatible with signing algorithm '${algorithm.name}'"
         }
+    }
+
+    when (this) {
+        is CredentialKey.DIDUrl -> jwk.ensureCompatibleWith(algorithm)
+        is CredentialKey.Jwk -> value.ensureCompatibleWith(algorithm)
 
         is CredentialKey.X5c -> {
             val supportedAlgorithms =
@@ -138,17 +141,19 @@ private fun CredentialKey.ensureCompatibleWith(algorithm: JWSAlgorithm) {
 private fun keySelector(
     credentialKey: CredentialKey,
     algorithm: JWSAlgorithm,
-): JWSKeySelector<SecurityContext> =
-    when (credentialKey) {
-        is CredentialKey.DIDUrl -> TODO("CredentialKey.DIDUrl is not yet supported")
-        is CredentialKey.Jwk ->
-            when (credentialKey.value) {
-                is AsymmetricJWK -> SingleKeyJWSKeySelector(algorithm, credentialKey.value.toPublicKey())
-                else -> TODO("CredentialKey.Jwk with non AsymmetricJWK is not yet supported")
-            }
+): JWSKeySelector<SecurityContext> {
+    fun <C : SecurityContext> JWK.keySelector(algorithm: JWSAlgorithm): SingleKeyJWSKeySelector<C> =
+        when (this) {
+            is AsymmetricJWK -> SingleKeyJWSKeySelector(algorithm, toPublicKey())
+            else -> TODO("CredentialKey.Jwk with non AsymmetricJWK is not yet supported")
+        }
 
+    return when (credentialKey) {
+        is CredentialKey.DIDUrl -> credentialKey.jwk.keySelector(algorithm)
+        is CredentialKey.Jwk -> credentialKey.value.keySelector(algorithm)
         is CredentialKey.X5c -> SingleKeyJWSKeySelector(algorithm, credentialKey.certificate.publicKey)
     }
+}
 
 private val expectedType = JOSEObjectType("openid4vci-proof+jwt")
 private val maxSkew = 30.seconds

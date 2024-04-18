@@ -24,6 +24,7 @@ import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.AsymmetricJWK
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.KeyUse
+import foundation.identity.did.DIDURL
 import java.security.cert.X509Certificate
 
 /**
@@ -58,8 +59,12 @@ sealed interface CredentialKey {
      * If the Credential shall be bound to a DID, the kid refers to a DID URL
      * which identifies a particular key in the DID Document that the Credential shall be bound to
      */
-    @JvmInline
-    value class DIDUrl(val value: String) : CredentialKey
+    data class DIDUrl(val url: DIDURL, val jwk: JWK) : CredentialKey {
+        init {
+            require(!jwk.isPrivate) { "jwk must not contain a private key" }
+            require(jwk is AsymmetricJWK) { "'jwk' must be asymmetric" }
+        }
+    }
 
     @JvmInline
     value class Jwk(val value: JWK) : CredentialKey {

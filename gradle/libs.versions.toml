@@ -18,6 +18,9 @@ sonarqube = "5.0.0.4638"
 bootstrap = "5.3.3"
 qrgen = "3.0.1"
 jacoco = "0.8.11"
+didCommon = "1.11.0"
+multiformat = "1.1.0"
+resultMonad = "1.4.0"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -31,7 +34,10 @@ nimbus-oauth2 = { module = "com.nimbusds:oauth2-oidc-sdk", version.ref = "nimbus
 eudi-sdjwt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-sdjwt-kt", version.ref = "eudiSdJwt" }
 bouncy-castle = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncyCastle" }
 bootstrap = { module = "org.webjars:bootstrap", version.ref = "bootstrap" }
-qrgen = { module = "com.github.kenglxn.QRGen:javase", version.ref = "qrgen"}
+qrgen = { module = "com.github.kenglxn.QRGen:javase", version.ref = "qrgen" }
+did-common = { module = "decentralized-identity:did-common-java", version.ref = "didCommon" }
+multiformat = { module = "org.erwinkok.multiformat:multiformat", version.ref = "multiformat" }
+result-monad = { module = "org.erwinkok.result:result-monad", version.ref = "resultMonad" }
 
 [plugins]
 foojay-resolver-convention = { id = "org.gradle.toolchains.foojay-resolver-convention", version.ref = "foojay" }
