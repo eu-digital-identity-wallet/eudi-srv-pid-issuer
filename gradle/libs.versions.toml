@@ -21,6 +21,7 @@ jacoco = "0.8.11"
 didCommon = "1.13.0"
 multiformat = "1.1.0"
 resultMonad = "1.4.0"
+keycloak = "24.0.3"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -38,6 +39,7 @@ qrgen = { module = "com.github.kenglxn.QRGen:javase", version.ref = "qrgen" }
 did-common = { module = "decentralized-identity:did-common-java", version.ref = "didCommon" }
 multiformat = { module = "org.erwinkok.multiformat:multiformat", version.ref = "multiformat" }
 result-monad = { module = "org.erwinkok.result:result-monad", version.ref = "resultMonad" }
+keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version.ref = "keycloak" }
 
 [plugins]
 foojay-resolver-convention = { id = "org.gradle.toolchains.foojay-resolver-convention", version.ref = "foojay" }

@@ -29,7 +29,7 @@ internal class GetMobileDrivingLicenceDataMockTest {
     internal fun `get mDL success`() = runTest {
         val getMobileDrivingLicenceData = GetMobileDrivingLicenceDataMock()
         either {
-            getMobileDrivingLicenceData(AuthorizationContext("access-token", nonEmptySetOf(Scope("test"))))
+            getMobileDrivingLicenceData(AuthorizationContext("username", "access-token", nonEmptySetOf(Scope("test"))))
         }.getOrElse { throw RuntimeException(it.msg, it.cause) }
     }
 }

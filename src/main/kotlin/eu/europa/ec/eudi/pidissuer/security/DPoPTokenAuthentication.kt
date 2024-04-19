@@ -38,6 +38,7 @@ class DPoPTokenAuthentication private constructor(
 
     override fun getCredentials(): Pair<SignedJWT, DPoPAccessToken> = dpop to accessToken
     override fun getPrincipal(): OAuth2AuthenticatedPrincipal? = _principal
+    override fun getName(): String = _principal?.attributes?.get("username") as? String ?: ""
 
     /**
      * Gets a new _authenticated_ [DPoPTokenAuthentication] that contains the provided [principal].

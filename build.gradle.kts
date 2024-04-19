@@ -74,6 +74,9 @@ dependencies {
     implementation(libs.nimbus.oauth2) {
         because("To support DPoP")
     }
+    implementation(libs.keycloak.admin.client) {
+        because("To be able to fetch user attributes")
+    }
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation("org.springframework.boot:spring-boot-starter-test")

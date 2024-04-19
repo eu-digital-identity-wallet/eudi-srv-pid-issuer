@@ -19,13 +19,14 @@ import arrow.core.raise.Raise
 import arrow.core.raise.ensureNotNull
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import eu.europa.ec.eudi.pidissuer.port.input.Username
 
 fun interface GetPidData {
-    suspend operator fun invoke(accessToken: String): Pair<Pid, PidMetaData>?
+    suspend operator fun invoke(username: Username): Pair<Pid, PidMetaData>?
 
     context (Raise<IssueCredentialError.Unexpected>)
     suspend operator fun invoke(authorizationContext: AuthorizationContext): Pair<Pid, PidMetaData> {
-        val data = invoke(authorizationContext.accessToken)
+        val data = invoke(authorizationContext.username)
         return ensureNotNull(data) { IssueCredentialError.Unexpected("Cannot obtain data") }
     }
 }

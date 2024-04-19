@@ -18,10 +18,13 @@ package eu.europa.ec.eudi.pidissuer.port.input
 import arrow.core.NonEmptySet
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 
+typealias Username = String
+typealias AccessToken = String
 typealias ClientId = String
 
 data class AuthorizationContext(
-    val accessToken: String,
+    val username: Username,
+    val accessToken: AccessToken,
     val scopes: NonEmptySet<Scope>,
     val clientId: ClientId? = null,
 )

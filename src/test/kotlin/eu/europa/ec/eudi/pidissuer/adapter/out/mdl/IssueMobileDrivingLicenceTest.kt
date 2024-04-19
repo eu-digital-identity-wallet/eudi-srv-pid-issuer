@@ -43,7 +43,7 @@ private val holderKey: ECKey by lazy {
 
 fun main() {
     runBlocking {
-        val context = AuthorizationContext("access-token", nonEmptySetOf(MobileDrivingLicenceV1Scope))
+        val context = AuthorizationContext("username", "access-token", nonEmptySetOf(MobileDrivingLicenceV1Scope))
         either {
             val licence = requireNotNull(getMobileDrivingLicenceData(context))
             encodeMobileDrivingLicenceInCbor(licence, holderKey)

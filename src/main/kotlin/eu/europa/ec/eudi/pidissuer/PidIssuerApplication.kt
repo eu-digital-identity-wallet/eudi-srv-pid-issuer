@@ -48,11 +48,18 @@ import eu.europa.ec.eudi.pidissuer.security.*
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import io.netty.handler.ssl.SslContextBuilder
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
+import jakarta.ws.rs.client.Client
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
+import org.apache.http.conn.ssl.TrustAllStrategy
+import org.apache.http.ssl.SSLContextBuilder
+import org.keycloak.OAuth2Constants
+import org.keycloak.admin.client.KeycloakBuilder
+import org.keycloak.admin.client.spi.ResteasyClientClassicProvider
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties
+import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
 import org.springframework.boot.web.codec.CodecCustomizer
@@ -75,6 +82,7 @@ import org.springframework.security.web.server.authentication.ServerAuthenticati
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
+import java.net.URL
 import java.time.Clock
 import java.time.Duration
 
@@ -115,6 +123,30 @@ internal object WebClients {
     }
 }
 
+/**
+ * [Client] instances for usage within the application.
+ */
+internal object RestEasyClients {
+
+    /**
+     * A [Client].
+     */
+    val Default: Client by lazy {
+        ResteasyClientClassicProvider().newRestEasyClient(null, null, false)
+    }
+
+    /**
+     * A [Client] that trusts *all* certificates.
+     */
+    val Insecure: Client by lazy {
+        log.warn("Using insecure RestEasy Client trusting all certificates")
+        val sslContext = SSLContextBuilder.create()
+            .loadTrustMaterial(TrustAllStrategy())
+            .build()
+        ResteasyClientClassicProvider().newRestEasyClient(null, sslContext, true)
+    }
+}
+
 @OptIn(ExperimentalSerializationApi::class)
 fun beans(clock: Clock) = beans {
     //
@@ -129,11 +161,29 @@ fun beans(clock: Clock) = beans {
         }
     }
     bean {
+        if ("insecure" in env.activeProfiles) {
+            RestEasyClients.Insecure
+        } else {
+            RestEasyClients.Default
+        }
+    }
+    bean {
+        val keycloakProperties = ref<KeycloakConfigurationProperties>()
+        val keycloak = KeycloakBuilder.builder()
+            .serverUrl(keycloakProperties.serverUrl.toExternalForm())
+            .realm(keycloakProperties.authenticationRealm)
+            .clientId(keycloakProperties.clientId)
+            .grantType(OAuth2Constants.PASSWORD)
+            .username(keycloakProperties.username)
+            .password(keycloakProperties.password)
+            .resteasyClient(ref())
+            .build()
+
         GetPidDataFromAuthServer(
-            env.readRequiredUrl("issuer.authorizationServer.userinfo"),
             env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
             clock,
-            ref(),
+            keycloak,
+            keycloakProperties.userRealm,
         )
     }
     bean {
@@ -486,11 +536,32 @@ private fun HttpsUrl.appendPath(path: String): HttpsUrl =
             .toUriString(),
     )
 
+/**
+ * Configuration properties for Keycloak.
+ */
+@ConfigurationProperties("keycloak")
+data class KeycloakConfigurationProperties(
+    val serverUrl: URL,
+    val authenticationRealm: String,
+    val clientId: String,
+    val username: String,
+    val password: String,
+    val userRealm: String,
+) {
+    init {
+        require(authenticationRealm.isNotBlank()) { "'keycloak.authentication-realm' cannot be blank" }
+        require(clientId.isNotBlank()) { "'keycloak.client-id' cannot be blank" }
+        require(username.isNotBlank()) { "'keycloak.username' cannot be blank" }
+        require(password.isNotBlank()) { "'keycloak.password' cannot be blank" }
+        require(userRealm.isNotBlank()) { "'keycloak.user-realm' cannot be blank" }
+    }
+}
+
 fun BeanDefinitionDsl.initializer(): ApplicationContextInitializer<GenericApplicationContext> =
     ApplicationContextInitializer<GenericApplicationContext> { initialize(it) }
 
 @SpringBootApplication
-@EnableConfigurationProperties(DPoPConfigurationProperties::class)
+@EnableConfigurationProperties(value = [DPoPConfigurationProperties::class, KeycloakConfigurationProperties::class])
 class PidIssuerApplication
 
 fun main(args: Array<String>) {

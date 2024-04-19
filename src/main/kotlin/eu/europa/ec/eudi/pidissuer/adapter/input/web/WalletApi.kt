@@ -99,7 +99,7 @@ class WalletApi(
 
     private suspend fun handleHelloHolder(req: ServerRequest): ServerResponse = coroutineScope {
         val context = async { req.authorizationContext().getOrThrow() }
-        val pid = getPidData(context.await().accessToken)
+        val pid = getPidData(context.await().username)
         if (null != pid) ServerResponse.ok().json().bodyValueAndAwait(pid)
         else ServerResponse.notFound().buildAndAwait()
     }
@@ -138,5 +138,5 @@ private suspend fun ServerRequest.authorizationContext(): Result<AuthorizationCo
         val clientId = principal.principal?.attributes?.get(OAuth2TokenIntrospectionClaimNames.CLIENT_ID)
         ensure(clientId is String) { IllegalArgumentException("Unexpected client_id claim type '${clientId?.let { it::class.java }}'") }
 
-        AuthorizationContext(principal.accessToken.toAuthorizationHeader(), scopes, clientId)
+        AuthorizationContext(principal.name, principal.accessToken.toAuthorizationHeader(), scopes, clientId)
     }
