@@ -22,6 +22,8 @@ import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
+import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPProtectedResourceRequestVerifier
+import com.nimbusds.oauth2.sdk.dpop.verifiers.DefaultDPoPSingleUseChecker
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerUi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
@@ -42,6 +44,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
+import eu.europa.ec.eudi.pidissuer.security.*
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import io.netty.handler.ssl.SslContextBuilder
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
@@ -50,6 +53,7 @@ import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
 import org.springframework.boot.web.codec.CodecCustomizer
 import org.springframework.context.ApplicationContextInitializer
@@ -59,14 +63,15 @@ import org.springframework.context.support.beans
 import org.springframework.core.env.Environment
 import org.springframework.core.env.getProperty
 import org.springframework.core.env.getRequiredProperty
-import org.springframework.http.HttpStatus
 import org.springframework.http.client.reactive.ReactorClientHttpConnector
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
 import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
+import org.springframework.security.config.web.server.SecurityWebFiltersOrder
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.config.web.server.invoke
 import org.springframework.security.oauth2.server.resource.introspection.SpringReactiveOpaqueTokenIntrospector
-import org.springframework.security.web.server.authentication.HttpStatusServerEntryPoint
+import org.springframework.security.web.server.authentication.AuthenticationWebFilter
+import org.springframework.security.web.server.authentication.ServerAuthenticationEntryPointFailureHandler
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
@@ -370,24 +375,44 @@ fun beans(clock: Clock) = beans {
                 disable()
             }
 
+            val dPoPProperties = ref<DPoPConfigurationProperties>()
+            val entryPoint = DPoPTokenServerAuthenticationEntryPoint(dPoPProperties.realm)
+
             exceptionHandling {
-                authenticationEntryPoint = HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED)
+                authenticationEntryPoint = entryPoint
+                accessDeniedHandler = DPoPTokenServerAccessDeniedHandler(dPoPProperties.realm)
             }
 
-            oauth2ResourceServer {
-                opaqueToken {
-                    val properties = ref<OAuth2ResourceServerProperties>()
-                    introspector = SpringReactiveOpaqueTokenIntrospector(
-                        properties.opaquetoken.introspectionUri,
-                        ref<WebClient>()
-                            .mutate()
-                            .defaultHeaders {
-                                it.setBasicAuth(properties.opaquetoken.clientId, properties.opaquetoken.clientSecret)
-                            }
-                            .build(),
-                    )
-                }
+            val introspectionProperties = ref<OAuth2ResourceServerProperties>()
+            val introspector = SpringReactiveOpaqueTokenIntrospector(
+                introspectionProperties.opaquetoken.introspectionUri,
+                ref<WebClient>()
+                    .mutate()
+                    .defaultHeaders {
+                        it.setBasicAuth(
+                            introspectionProperties.opaquetoken.clientId,
+                            introspectionProperties.opaquetoken.clientSecret,
+                        )
+                    }
+                    .build(),
+            )
+
+            val dPoPVerifier = DPoPProtectedResourceRequestVerifier(
+                dPoPProperties.jwsAlgorithms(),
+                dPoPProperties.proofMaxAge.toSeconds(),
+                DefaultDPoPSingleUseChecker(
+                    dPoPProperties.proofMaxAge.toSeconds(),
+                    dPoPProperties.cachePurgeInterval.toSeconds(),
+                ),
+            )
+
+            val authenticationManager = DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier)
+            val dPoPFilter = AuthenticationWebFilter(authenticationManager).apply {
+                setServerAuthenticationConverter(ServerDPoPAuthenticationTokenAuthenticationConverter())
+                setAuthenticationFailureHandler(ServerAuthenticationEntryPointFailureHandler(entryPoint))
             }
+
+            http.addFilterAt(dPoPFilter, SecurityWebFiltersOrder.AUTHENTICATION)
         }
     }
 
@@ -465,6 +490,7 @@ fun BeanDefinitionDsl.initializer(): ApplicationContextInitializer<GenericApplic
     ApplicationContextInitializer<GenericApplicationContext> { initialize(it) }
 
 @SpringBootApplication
+@EnableConfigurationProperties(DPoPConfigurationProperties::class)
 class PidIssuerApplication
 
 fun main(args: Array<String>) {

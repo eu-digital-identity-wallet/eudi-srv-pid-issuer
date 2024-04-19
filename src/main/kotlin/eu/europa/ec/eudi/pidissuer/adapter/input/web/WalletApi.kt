@@ -23,16 +23,14 @@ import arrow.core.toNonEmptySetOrNull
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.port.input.*
+import eu.europa.ec.eudi.pidissuer.security.DPoPTokenAuthentication
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonElement
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.core.GrantedAuthority
-import org.springframework.security.oauth2.core.OAuth2AccessToken
-import org.springframework.security.oauth2.core.OAuth2AccessToken.TokenType
 import org.springframework.security.oauth2.core.OAuth2TokenIntrospectionClaimNames
-import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthentication
 import org.springframework.web.reactive.function.server.*
 
 private val APPLICATION_JWT = MediaType.parseMediaType("application/jwt")
@@ -126,12 +124,7 @@ private suspend fun ServerRequest.authorizationContext(): Result<AuthorizationCo
     result {
         val principal = awaitPrincipal()
         ensureNotNull(principal) { IllegalArgumentException("Principal is expected") }
-        ensure(principal is BearerTokenAuthentication) { IllegalArgumentException("Unexpected Principal type '${principal::class.java}'") }
-
-        val accessToken: OAuth2AccessToken = principal.token
-        ensure(accessToken.tokenType == TokenType.BEARER) {
-            IllegalArgumentException("Unexpected AccessToken type '${accessToken.tokenType.value}'")
-        }
+        ensure(principal is DPoPTokenAuthentication) { IllegalArgumentException("Unexpected Principal type '${principal::class.java}'") }
 
         fun fromSpring(authority: GrantedAuthority): Scope? =
             authority.authority
@@ -142,8 +135,8 @@ private suspend fun ServerRequest.authorizationContext(): Result<AuthorizationCo
         val scopes = principal.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull()
         ensureNotNull(scopes) { IllegalArgumentException("OAuth2 scopes are expected") }
 
-        val clientId = principal.tokenAttributes[OAuth2TokenIntrospectionClaimNames.CLIENT_ID]
+        val clientId = principal.principal?.attributes?.get(OAuth2TokenIntrospectionClaimNames.CLIENT_ID)
         ensure(clientId is String) { IllegalArgumentException("Unexpected client_id claim type '${clientId?.let { it::class.java }}'") }
 
-        AuthorizationContext(accessToken.tokenValue, scopes, clientId)
+        AuthorizationContext(principal.accessToken.toAuthorizationHeader(), scopes, clientId)
     }
