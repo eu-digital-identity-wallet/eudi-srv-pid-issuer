@@ -472,6 +472,8 @@ fun beans(clock: Clock) = beans {
                         notificationsEnabled = env.getProperty<Boolean>("issuer.pseudonym.jwt_vc_json.notifications.enabled") ?: true,
                         generateNotificationId = ref(),
                         extractJwkFromCredentialKey = DefaultExtractJwkFromCredentialKey,
+                        issuerKey = signingKey,
+                        signAlg = signingAlgorithm,
                         clock = clock,
                         storeIssuedCredential = ref(),
                     )

@@ -17,15 +17,15 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pseudonym
 
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
-import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.PlainHeader
+import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
-import com.nimbusds.jwt.JWTClaimsSet
-import com.nimbusds.jwt.PlainJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidDisplay
+import eu.europa.ec.eudi.pidissuer.adapter.out.w3c.JwtVcJsonRealizer
+import eu.europa.ec.eudi.pidissuer.adapter.out.w3c.ProofMechanism
+import eu.europa.ec.eudi.pidissuer.adapter.out.w3c.buildCredential
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
@@ -70,6 +70,8 @@ class IssueJwtVcJsonUserPseudonym(
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
+    private val signAlg: JWSAlgorithm,
+    private val issuerKey: ECKey,
     private val clock: Clock,
     private val storeIssuedCredential: StoreIssuedCredential,
 ) : IssueSpecificCredential<JsonElement> {
@@ -93,8 +95,8 @@ class IssueJwtVcJsonUserPseudonym(
         log.info("Handling issuance request ...")
 
         val holderPubKey = async(Dispatchers.Default) { holderPubKey(request, expectedCNonce) }
-        val userPseudonym = generateUserPseudonym()
-        val jwt = encodePseudonymToJwt(userPseudonym, supportedCredential, holderPubKey.await())
+
+        val jwt = encodePseudonymToJwtVcJson()
 
         val notificationId =
             if (notificationsEnabled) generateNotificationId()
@@ -118,25 +120,23 @@ class IssueJwtVcJsonUserPseudonym(
             }
     }
 
-    private fun encodePseudonymToJwt(
-        userPseudonym: UserPseudonym,
-        supportedCredential: JwtVcJsonCredentialConfiguration,
-        holderPubKey: JWK,
-    ): String {
-        val header = PlainHeader.Builder()
-        header.type(JOSEObjectType.JWT)
+    private fun encodePseudonymToJwtVcJson(): String {
+        val _now = clock.instant()
 
-        val now = clock.instant()
-        val claimsSet = JWTClaimsSet.Builder()
-//        claimsSet.issuer(iss) // iss MUST represent the issuer property of a verifiable credential or the holder property of a verifiable presentation.
-        claimsSet.expirationTime(Date.from(now.plusSeconds(86400)))
-        claimsSet.notBeforeTime(Date.from(now))
-//        claimsSet.jwtID() // jti MUST represent the id property of the verifiable credential or verifiable presentation.
-//        claimsSet.subject() // sub MUST represent the id property contained in the credentialSubject
-        claimsSet.claim("vc", vcClaim(userPseudonym, supportedCredential))
+        val credential = buildCredential {
+            credentialMetadata {
+                type("PseudonymCredential")
+                issuer(credentialIssuerId.value.toString())
+                issueDate(_now)
+                expirationDate(_now.plusSeconds(86400))
+            }
+            credentialSubject {
+                addClaim("user_pseudonym", generateUserPseudonym())
+            }
+        }
 
-        val plainJWT = PlainJWT(header.build(), claimsSet.build())
-        return plainJWT.serialize()
+        val verifiableCredential = JwtVcJsonRealizer().realize(credential, ProofMechanism.JWT(issuerKey, signAlg))
+        return verifiableCredential.credential.serialize()
     }
 
     private fun vcClaim(
