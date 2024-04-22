@@ -29,7 +29,7 @@ data class DPoPConfigurationProperties(
 ) {
     init {
         require(JWSAlgorithm.Family.SIGNATURE.containsAll(algorithms)) { "'algorithms' contains invalid values" }
-        require(!proofMaxAge.isZero) { "'proofMaxAge' cannot be zero" }
-        require(!cachePurgeInterval.isZero) { "'cachePurgeInterval' cannot be zero" }
+        require(!proofMaxAge.isZero && !proofMaxAge.isNegative) { "'proofMaxAge' must be positive" }
+        require(!cachePurgeInterval.isZero && !cachePurgeInterval.isNegative) { "'cachePurgeInterval' must be positive" }
     }
 }
