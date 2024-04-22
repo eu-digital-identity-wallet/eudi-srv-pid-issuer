@@ -30,6 +30,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerUi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
+import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CredentialRequestFactory
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultResolveCredentialRequestByCredentialIdentifier
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.DefaultExtractJwkFromCredentialKey
@@ -46,7 +47,6 @@ import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
-import eu.europa.ec.eudi.pidissuer.security.*
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import io.netty.handler.ssl.SslContextBuilder
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
@@ -477,8 +477,8 @@ fun beans(clock: Clock) = beans {
             val dPoPProperties = ref<DPoPConfigurationProperties>()
             val enableDPoP = dPoPProperties.algorithms.isNotEmpty()
 
-            val dPoPTokenConverter = ServerDPoPAuthenticationTokenAuthenticationConverter()
-            val dPoPEntryPoint = DPoPTokenServerAuthenticationEntryPoint(dPoPProperties.realm)
+            val dPoPTokenConverter by lazy { ServerDPoPAuthenticationTokenAuthenticationConverter() }
+            val dPoPEntryPoint by lazy { DPoPTokenServerAuthenticationEntryPoint(dPoPProperties.realm) }
 
             val bearerTokenConverter = ServerBearerTokenAuthenticationConverter()
             val bearerTokenEntryPoint = BearerTokenServerAuthenticationEntryPoint()
@@ -555,8 +555,10 @@ fun beans(clock: Clock) = beans {
                     val authenticationManager = DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier)
 
                     AuthenticationWebFilter(authenticationManager).apply {
-                        setServerAuthenticationConverter(dPoPTokenConverter)
-                        setAuthenticationFailureHandler(ServerAuthenticationEntryPointFailureHandler(dPoPEntryPoint))
+                        setServerAuthenticationConverter(ServerDPoPAuthenticationTokenAuthenticationConverter())
+                        setAuthenticationFailureHandler(
+                            ServerAuthenticationEntryPointFailureHandler(HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED)),
+                        )
                     }
                 }
 
@@ -567,8 +569,10 @@ fun beans(clock: Clock) = beans {
                 val authenticationManager = OpaqueTokenReactiveAuthenticationManager(introspector)
 
                 AuthenticationWebFilter(authenticationManager).apply {
-                    setServerAuthenticationConverter(bearerTokenConverter)
-                    setAuthenticationFailureHandler(ServerAuthenticationEntryPointFailureHandler(bearerTokenEntryPoint))
+                    setServerAuthenticationConverter(ServerBearerTokenAuthenticationConverter())
+                    setAuthenticationFailureHandler(
+                        ServerAuthenticationEntryPointFailureHandler(HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED)),
+                    )
                 }
             }
             http.addFilterAfter(bearerTokenFilter, SecurityWebFiltersOrder.AUTHENTICATION)
