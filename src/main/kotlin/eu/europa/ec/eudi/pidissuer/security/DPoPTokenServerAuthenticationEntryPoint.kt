@@ -29,15 +29,16 @@ import reactor.core.publisher.Mono
  * Uses information from the [DPoPTokenError] to set the HTTP status code and populate the WWW-Authenticate header.
  */
 class DPoPTokenServerAuthenticationEntryPoint(
-    private val realm: String,
+    private val realm: String? = null,
 ) : ServerAuthenticationEntryPoint {
 
     override fun commence(exchange: ServerWebExchange, ex: AuthenticationException): Mono<Void> {
-        val details = (listOf("realm" to realm) + ex.details())
-            .joinToString(
-                separator = ", ",
-                transform = { "${it.first}=\"${it.second}\"" },
-            )
+        val details = buildList {
+            if (!realm.isNullOrBlank()) {
+                add("realm" to realm)
+            }
+            addAll(ex.details())
+        }.joinToString(separator = ", ", transform = { "${it.first}=\"${it.second}\"" })
         val wwwAuthenticate = "${AccessTokenType.DPOP.value} $details"
         return exchange.response
             .apply {

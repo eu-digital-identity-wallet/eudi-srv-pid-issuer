@@ -25,12 +25,11 @@ data class DPoPConfigurationProperties(
     val algorithms: Set<JWSAlgorithm>,
     val proofMaxAge: Duration,
     val cachePurgeInterval: Duration,
-    val realm: String,
+    val realm: String?,
 ) {
     init {
         require(JWSAlgorithm.Family.SIGNATURE.containsAll(algorithms)) { "'algorithms' contains invalid values" }
         require(!proofMaxAge.isZero) { "'proofMaxAge' cannot be zero" }
         require(!cachePurgeInterval.isZero) { "'cachePurgeInterval' cannot be zero" }
-        require(realm.isNotBlank()) { "'realm' cannot be blank" }
     }
 }

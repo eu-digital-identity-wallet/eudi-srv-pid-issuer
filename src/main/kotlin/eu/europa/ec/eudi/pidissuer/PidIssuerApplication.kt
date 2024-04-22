@@ -412,7 +412,7 @@ fun beans(clock: Clock) = beans {
             ?: emptySet()
         val proofMaxAge = env.getProperty("issuer.dpop.proof-max-age", "PT1M").let { Duration.parse(it) }
         val cachePurgeInterval = env.getProperty("issuer.dpop.cache-purge-interval", "PT10M").let { Duration.parse(it) }
-        val realm = env.getProperty("issuer.dpop.realm", "pid-issuer")
+        val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
 
         DPoPConfigurationProperties(algorithms, proofMaxAge, cachePurgeInterval, realm)
     }

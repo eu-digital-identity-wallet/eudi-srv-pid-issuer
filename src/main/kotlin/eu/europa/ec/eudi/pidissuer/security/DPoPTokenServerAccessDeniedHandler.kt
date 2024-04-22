@@ -29,16 +29,18 @@ import reactor.core.publisher.Mono
  * Returns an insufficient scope error indicating the DPoP scheme requirement for this [realm].
  */
 class DPoPTokenServerAccessDeniedHandler(
-    private val realm: String,
+    private val realm: String? = null,
 ) : ServerAccessDeniedHandler {
 
     override fun handle(exchange: ServerWebExchange, denied: AccessDeniedException): Mono<Void> {
-        val details = listOf(
-            "realm" to realm,
-            "error" to OAuth2ErrorCodes.INSUFFICIENT_SCOPE,
-            "error_description" to "The request requires higher privileges than provided by the access token.",
-            "error_uri" to "https://tools.ietf.org/html/rfc6750#section-3.1",
-        ).joinToString(separator = ", ", transform = { "${it.first}=\"${it.second}\"" })
+        val details = buildList {
+            if (!realm.isNullOrBlank()) {
+                add("realm" to realm)
+            }
+            add("error" to OAuth2ErrorCodes.INSUFFICIENT_SCOPE)
+            add("error_description" to "The request requires higher privileges than provided by the access token.")
+            add("error_uri" to "https://tools.ietf.org/html/rfc6750#section-3.1")
+        }.joinToString(separator = ", ", transform = { "${it.first}=\"${it.second}\"" })
         val wwwAuthenticate = "${AccessTokenType.DPOP.value} $details"
 
         return exchange.response
