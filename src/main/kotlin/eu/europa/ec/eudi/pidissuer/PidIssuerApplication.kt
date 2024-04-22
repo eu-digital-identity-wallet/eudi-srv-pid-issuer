@@ -70,6 +70,7 @@ import org.springframework.context.support.beans
 import org.springframework.core.env.Environment
 import org.springframework.core.env.getProperty
 import org.springframework.core.env.getRequiredProperty
+import org.springframework.http.HttpStatus
 import org.springframework.http.client.reactive.ReactorClientHttpConnector
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
 import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
@@ -84,7 +85,9 @@ import org.springframework.security.oauth2.server.resource.web.server.authentica
 import org.springframework.security.web.server.DelegatingServerAuthenticationEntryPoint
 import org.springframework.security.web.server.authentication.AuthenticationConverterServerWebExchangeMatcher
 import org.springframework.security.web.server.authentication.AuthenticationWebFilter
+import org.springframework.security.web.server.authentication.HttpStatusServerEntryPoint
 import org.springframework.security.web.server.authentication.ServerAuthenticationEntryPointFailureHandler
+import org.springframework.security.web.server.authorization.HttpStatusServerAccessDeniedHandler
 import org.springframework.security.web.server.authorization.ServerWebExchangeDelegatingServerAccessDeniedHandler
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.util.UriComponentsBuilder
@@ -450,7 +453,10 @@ fun beans(clock: Clock) = beans {
                         AuthenticationConverterServerWebExchangeMatcher(bearerTokenConverter),
                         bearerTokenEntryPoint,
                     ),
-                )
+                ).apply {
+                    setDefaultEntryPoint(HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED))
+                }
+
                 accessDeniedHandler = ServerWebExchangeDelegatingServerAccessDeniedHandler(
                     ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry(
                         AuthenticationConverterServerWebExchangeMatcher(dPoPTokenConverter),
@@ -460,7 +466,9 @@ fun beans(clock: Clock) = beans {
                         AuthenticationConverterServerWebExchangeMatcher(bearerTokenConverter),
                         BearerTokenServerAccessDeniedHandler(),
                     ),
-                )
+                ).apply {
+                    setDefaultAccessDeniedHandler(HttpStatusServerAccessDeniedHandler(HttpStatus.FORBIDDEN))
+                }
             }
 
             val introspectionProperties = ref<OAuth2ResourceServerProperties>()
