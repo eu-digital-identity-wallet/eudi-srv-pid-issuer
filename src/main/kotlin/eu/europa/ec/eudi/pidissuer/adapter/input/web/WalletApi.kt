@@ -21,6 +21,8 @@ import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import arrow.core.raise.result
 import arrow.core.toNonEmptySetOrNull
+import com.nimbusds.oauth2.sdk.token.AccessToken
+import com.nimbusds.oauth2.sdk.token.BearerAccessToken
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.port.input.*
@@ -137,7 +139,7 @@ private suspend fun ServerRequest.authorizationContext(): Result<AuthorizationCo
             val scopes: NonEmptySet<Scope>? = null,
             val clientId: Any? = null,
             val username: Any? = null,
-            val accessToken: String,
+            val accessToken: AccessToken,
         )
 
         val (scopes, clientId, username, accessToken) = when (authentication) {
@@ -146,7 +148,7 @@ private suspend fun ServerRequest.authorizationContext(): Result<AuthorizationCo
                     authentication.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull(),
                     authentication.principal?.attributes?.get(OAuth2TokenIntrospectionClaimNames.CLIENT_ID),
                     authentication.name,
-                    authentication.accessToken.toAuthorizationHeader(),
+                    authentication.accessToken,
                 )
 
             is BearerTokenAuthentication ->
@@ -154,7 +156,7 @@ private suspend fun ServerRequest.authorizationContext(): Result<AuthorizationCo
                     authentication.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull(),
                     authentication.tokenAttributes[OAuth2TokenIntrospectionClaimNames.CLIENT_ID],
                     authentication.tokenAttributes[OAuth2TokenIntrospectionClaimNames.USERNAME],
-                    "${authentication.token.tokenType.value} ${authentication.token.tokenValue}",
+                    BearerAccessToken.parse("${authentication.token.tokenType.value} ${authentication.token.tokenValue}"),
                 )
 
             else -> error("Unexpected Authentication type '${authentication::class.java}'")

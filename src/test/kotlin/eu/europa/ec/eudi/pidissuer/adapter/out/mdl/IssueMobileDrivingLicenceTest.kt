@@ -21,6 +21,7 @@ import arrow.core.raise.either
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
+import com.nimbusds.oauth2.sdk.token.BearerAccessToken
 import eu.europa.ec.eudi.pidissuer.WebClients
 import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
@@ -43,7 +44,8 @@ private val holderKey: ECKey by lazy {
 
 fun main() {
     runBlocking {
-        val context = AuthorizationContext("username", "access-token", nonEmptySetOf(MobileDrivingLicenceV1Scope))
+        val context =
+            AuthorizationContext("username", BearerAccessToken.parse("Bearer access-token"), nonEmptySetOf(MobileDrivingLicenceV1Scope))
         either {
             val licence = requireNotNull(getMobileDrivingLicenceData(context))
             encodeMobileDrivingLicenceInCbor(licence, holderKey)
