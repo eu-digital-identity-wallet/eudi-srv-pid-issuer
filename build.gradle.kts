@@ -71,12 +71,17 @@ dependencies {
     implementation(libs.result.monad) {
         because("Optional dependency from org.erwinkok.multiformat:multiformat that we require")
     }
+    implementation(libs.nimbus.oauth2) {
+        because("To support DPoP")
+    }
+    implementation(libs.keycloak.admin.client) {
+        because("To be able to fetch user attributes")
+    }
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("io.projectreactor:reactor-test")
-    testImplementation(libs.nimbus.oauth2)
 }
 
 java {

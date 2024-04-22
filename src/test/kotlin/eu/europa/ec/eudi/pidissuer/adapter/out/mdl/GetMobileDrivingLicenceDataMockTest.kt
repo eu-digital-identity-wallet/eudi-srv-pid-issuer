@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 import arrow.core.getOrElse
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
+import com.nimbusds.oauth2.sdk.token.BearerAccessToken
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import kotlinx.coroutines.test.runTest
@@ -29,7 +30,9 @@ internal class GetMobileDrivingLicenceDataMockTest {
     internal fun `get mDL success`() = runTest {
         val getMobileDrivingLicenceData = GetMobileDrivingLicenceDataMock()
         either {
-            getMobileDrivingLicenceData(AuthorizationContext("access-token", nonEmptySetOf(Scope("test"))))
+            getMobileDrivingLicenceData(
+                AuthorizationContext("username", BearerAccessToken.parse("Bearer access-token"), nonEmptySetOf(Scope("test"))),
+            )
         }.getOrElse { throw RuntimeException(it.msg, it.cause) }
     }
 }

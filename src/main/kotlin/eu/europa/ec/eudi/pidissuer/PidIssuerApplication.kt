@@ -22,10 +22,15 @@ import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
+import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPProtectedResourceRequestVerifier
+import com.nimbusds.oauth2.sdk.dpop.verifiers.DefaultDPoPSingleUseChecker
+import com.nimbusds.oauth2.sdk.id.Issuer
+import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerUi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
+import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CredentialRequestFactory
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultResolveCredentialRequestByCredentialIdentifier
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.DefaultExtractJwkFromCredentialKey
@@ -45,8 +50,15 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import io.netty.handler.ssl.SslContextBuilder
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
+import jakarta.ws.rs.client.Client
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
+import org.apache.http.conn.ssl.NoopHostnameVerifier
+import org.apache.http.conn.ssl.TrustAllStrategy
+import org.apache.http.ssl.SSLContextBuilder
+import org.keycloak.OAuth2Constants
+import org.keycloak.admin.client.KeycloakBuilder
+import org.keycloak.admin.client.spi.ResteasyClientClassicProvider
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties
@@ -63,13 +75,25 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.client.reactive.ReactorClientHttpConnector
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
 import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
+import org.springframework.security.config.web.server.SecurityWebFiltersOrder
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.config.web.server.invoke
+import org.springframework.security.oauth2.server.resource.authentication.OpaqueTokenReactiveAuthenticationManager
 import org.springframework.security.oauth2.server.resource.introspection.SpringReactiveOpaqueTokenIntrospector
+import org.springframework.security.oauth2.server.resource.web.access.server.BearerTokenServerAccessDeniedHandler
+import org.springframework.security.oauth2.server.resource.web.server.BearerTokenServerAuthenticationEntryPoint
+import org.springframework.security.oauth2.server.resource.web.server.authentication.ServerBearerTokenAuthenticationConverter
+import org.springframework.security.web.server.DelegatingServerAuthenticationEntryPoint
+import org.springframework.security.web.server.authentication.AuthenticationConverterServerWebExchangeMatcher
+import org.springframework.security.web.server.authentication.AuthenticationWebFilter
 import org.springframework.security.web.server.authentication.HttpStatusServerEntryPoint
+import org.springframework.security.web.server.authentication.ServerAuthenticationEntryPointFailureHandler
+import org.springframework.security.web.server.authorization.HttpStatusServerAccessDeniedHandler
+import org.springframework.security.web.server.authorization.ServerWebExchangeDelegatingServerAccessDeniedHandler
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
+import java.net.URL
 import java.time.Clock
 import java.time.Duration
 
@@ -110,6 +134,30 @@ internal object WebClients {
     }
 }
 
+/**
+ * [Client] instances for usage within the application.
+ */
+internal object RestEasyClients {
+
+    /**
+     * A [Client].
+     */
+    val Default: Client by lazy {
+        ResteasyClientClassicProvider().newRestEasyClient(null, null, false)
+    }
+
+    /**
+     * A [Client] that trusts *all* certificates.
+     */
+    val Insecure: Client by lazy {
+        log.warn("Using insecure RestEasy Client trusting all certificates")
+        val sslContext = SSLContextBuilder.create()
+            .loadTrustMaterial(TrustAllStrategy())
+            .build()
+        ResteasyClientClassicProvider().newRestEasyClient(null, sslContext, true)
+    }
+}
+
 @OptIn(ExperimentalSerializationApi::class)
 fun beans(clock: Clock) = beans {
     //
@@ -124,11 +172,39 @@ fun beans(clock: Clock) = beans {
         }
     }
     bean {
+        if ("insecure" in env.activeProfiles) {
+            RestEasyClients.Insecure
+        } else {
+            RestEasyClients.Default
+        }
+    }
+    bean {
+        KeycloakConfigurationProperties(
+            env.getRequiredProperty("issuer.keycloak.server-url", URL::class.java),
+            env.getRequiredProperty("issuer.keycloak.authentication-realm"),
+            env.getRequiredProperty("issuer.keycloak.client-id"),
+            env.getRequiredProperty("issuer.keycloak.username"),
+            env.getRequiredProperty("issuer.keycloak.password"),
+            env.getRequiredProperty("issuer.keycloak.user-realm"),
+        )
+    }
+    bean {
+        val keycloakProperties = ref<KeycloakConfigurationProperties>()
+        val keycloak = KeycloakBuilder.builder()
+            .serverUrl(keycloakProperties.serverUrl.toExternalForm())
+            .realm(keycloakProperties.authenticationRealm)
+            .clientId(keycloakProperties.clientId)
+            .grantType(OAuth2Constants.PASSWORD)
+            .username(keycloakProperties.username)
+            .password(keycloakProperties.password)
+            .resteasyClient(ref())
+            .build()
+
         GetPidDataFromAuthServer(
-            env.readRequiredUrl("issuer.authorizationServer.userinfo"),
             env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
             clock,
-            ref(),
+            keycloak,
+            keycloakProperties.userRealm,
         )
     }
     bean {
@@ -330,6 +406,34 @@ fun beans(clock: Clock) = beans {
     // Security
     //
     bean {
+        val algorithms = runCatching {
+            OIDCProviderMetadata.resolve(
+                Issuer.parse(env.getRequiredProperty("issuer.authorizationServer")),
+            ) { request ->
+                if ("insecure" in env.activeProfiles) {
+                    request.sslSocketFactory = SSLContextBuilder.create()
+                        .loadTrustMaterial(TrustAllStrategy())
+                        .build()
+                        .socketFactory
+                    request.hostnameVerifier = NoopHostnameVerifier.INSTANCE
+                }
+                request.connectTimeout = 5000
+                request.readTimeout = 5000
+            }.dPoPJWSAlgs?.toSet() ?: emptySet()
+        }.getOrElse {
+            log.warn("Unable to fetch Authorization Server metadata. DPoP support will be disabled.", it)
+            emptySet()
+        }.also {
+            if (it.isEmpty()) log.warn("DPoP support will not be enabled. Authorization Server does not support DPoP.")
+            else log.info("DPoP support will be enabled. Supported algorithms: $it")
+        }
+        val proofMaxAge = env.getProperty("issuer.dpop.proof-max-age", "PT1M").let { Duration.parse(it) }
+        val cachePurgeInterval = env.getProperty("issuer.dpop.cache-purge-interval", "PT10M").let { Duration.parse(it) }
+        val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
+
+        DPoPConfigurationProperties(algorithms, proofMaxAge, cachePurgeInterval, realm)
+    }
+    bean {
         /*
          * This is a Spring naming convention
          * A prefix of SCOPE_xyz will grant a SimpleAuthority(xyz)
@@ -370,24 +474,108 @@ fun beans(clock: Clock) = beans {
                 disable()
             }
 
+            val dPoPProperties = ref<DPoPConfigurationProperties>()
+            val enableDPoP = dPoPProperties.algorithms.isNotEmpty()
+
+            val dPoPTokenConverter by lazy { ServerDPoPAuthenticationTokenAuthenticationConverter() }
+            val dPoPEntryPoint by lazy { DPoPTokenServerAuthenticationEntryPoint(dPoPProperties.realm) }
+
+            val bearerTokenConverter = ServerBearerTokenAuthenticationConverter()
+            val bearerTokenEntryPoint = BearerTokenServerAuthenticationEntryPoint()
+
             exceptionHandling {
-                authenticationEntryPoint = HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED)
+                authenticationEntryPoint = DelegatingServerAuthenticationEntryPoint(
+                    buildList {
+                        if (enableDPoP) {
+                            add(
+                                DelegatingServerAuthenticationEntryPoint.DelegateEntry(
+                                    AuthenticationConverterServerWebExchangeMatcher(dPoPTokenConverter),
+                                    dPoPEntryPoint,
+                                ),
+                            )
+                        }
+
+                        add(
+                            DelegatingServerAuthenticationEntryPoint.DelegateEntry(
+                                AuthenticationConverterServerWebExchangeMatcher(bearerTokenConverter),
+                                bearerTokenEntryPoint,
+                            ),
+                        )
+                    },
+                ).apply {
+                    setDefaultEntryPoint(HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED))
+                }
+
+                accessDeniedHandler = ServerWebExchangeDelegatingServerAccessDeniedHandler(
+                    buildList {
+                        if (enableDPoP) {
+                            ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry(
+                                AuthenticationConverterServerWebExchangeMatcher(dPoPTokenConverter),
+                                DPoPTokenServerAccessDeniedHandler(dPoPProperties.realm),
+                            )
+                        }
+
+                        add(
+                            ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry(
+                                AuthenticationConverterServerWebExchangeMatcher(bearerTokenConverter),
+                                BearerTokenServerAccessDeniedHandler(),
+                            ),
+                        )
+                    },
+                ).apply {
+                    setDefaultAccessDeniedHandler(HttpStatusServerAccessDeniedHandler(HttpStatus.FORBIDDEN))
+                }
             }
 
-            oauth2ResourceServer {
-                opaqueToken {
-                    val properties = ref<OAuth2ResourceServerProperties>()
-                    introspector = SpringReactiveOpaqueTokenIntrospector(
-                        properties.opaquetoken.introspectionUri,
-                        ref<WebClient>()
-                            .mutate()
-                            .defaultHeaders {
-                                it.setBasicAuth(properties.opaquetoken.clientId, properties.opaquetoken.clientSecret)
-                            }
-                            .build(),
+            val introspectionProperties = ref<OAuth2ResourceServerProperties>()
+            val introspector = SpringReactiveOpaqueTokenIntrospector(
+                introspectionProperties.opaquetoken.introspectionUri,
+                ref<WebClient>()
+                    .mutate()
+                    .defaultHeaders {
+                        it.setBasicAuth(
+                            introspectionProperties.opaquetoken.clientId,
+                            introspectionProperties.opaquetoken.clientSecret,
+                        )
+                    }
+                    .build(),
+            )
+
+            if (enableDPoP) {
+                val dPoPFilter = run {
+                    val dPoPVerifier = DPoPProtectedResourceRequestVerifier(
+                        dPoPProperties.algorithms,
+                        dPoPProperties.proofMaxAge.toSeconds(),
+                        DefaultDPoPSingleUseChecker(
+                            dPoPProperties.proofMaxAge.toSeconds(),
+                            dPoPProperties.cachePurgeInterval.toSeconds(),
+                        ),
+                    )
+
+                    val authenticationManager = DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier)
+
+                    AuthenticationWebFilter(authenticationManager).apply {
+                        setServerAuthenticationConverter(ServerDPoPAuthenticationTokenAuthenticationConverter())
+                        setAuthenticationFailureHandler(
+                            ServerAuthenticationEntryPointFailureHandler(HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED)),
+                        )
+                    }
+                }
+
+                http.addFilterAt(dPoPFilter, SecurityWebFiltersOrder.AUTHENTICATION)
+            }
+
+            val bearerTokenFilter = run {
+                val authenticationManager = OpaqueTokenReactiveAuthenticationManager(introspector)
+
+                AuthenticationWebFilter(authenticationManager).apply {
+                    setServerAuthenticationConverter(ServerBearerTokenAuthenticationConverter())
+                    setAuthenticationFailureHandler(
+                        ServerAuthenticationEntryPointFailureHandler(HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED)),
                     )
                 }
             }
+            http.addFilterAfter(bearerTokenFilter, SecurityWebFiltersOrder.AUTHENTICATION)
         }
     }
 
@@ -460,6 +648,26 @@ private fun HttpsUrl.appendPath(path: String): HttpsUrl =
             .build()
             .toUriString(),
     )
+
+/**
+ * Configuration properties for Keycloak.
+ */
+data class KeycloakConfigurationProperties(
+    val serverUrl: URL,
+    val authenticationRealm: String,
+    val clientId: String,
+    val username: String,
+    val password: String,
+    val userRealm: String,
+) {
+    init {
+        require(authenticationRealm.isNotBlank()) { "'authenticationRealm' cannot be blank" }
+        require(clientId.isNotBlank()) { "'clientId' cannot be blank" }
+        require(username.isNotBlank()) { "'username' cannot be blank" }
+        require(password.isNotBlank()) { "'password' cannot be blank" }
+        require(userRealm.isNotBlank()) { "'userRealm' cannot be blank" }
+    }
+}
 
 fun BeanDefinitionDsl.initializer(): ApplicationContextInitializer<GenericApplicationContext> =
     ApplicationContextInitializer<GenericApplicationContext> { initialize(it) }

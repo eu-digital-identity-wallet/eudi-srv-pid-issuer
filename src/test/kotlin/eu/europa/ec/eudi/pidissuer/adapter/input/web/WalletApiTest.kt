@@ -24,7 +24,9 @@ import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
+import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import eu.europa.ec.eudi.pidissuer.PidIssuerApplicationTest
+import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.domain.CNonce
@@ -42,20 +44,20 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
+import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.oauth2.core.DefaultOAuth2AuthenticatedPrincipal
-import org.springframework.security.oauth2.core.OAuth2AccessToken
 import org.springframework.security.oauth2.core.OAuth2AccessToken.TokenType
-import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal
 import org.springframework.security.oauth2.core.OAuth2TokenIntrospectionClaimNames
-import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockOpaqueToken
+import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockAuthentication
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.springSecurity
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.reactive.server.WebTestClient
 import org.springframework.test.web.reactive.server.expectBody
+import java.net.URI
 import java.time.Clock
 import java.time.Duration
 import java.time.LocalDate
@@ -121,10 +123,10 @@ internal class WalletApiTest {
             }
         """.trimIndent()
 
-        val (principal, _) = bearerTokenAuthenticationPrincipal(clock = clock)
+        val authentication = dPoPTokenAuthentication(clock = clock)
 
         client()
-            .mutateWith(mockOpaqueToken().principal(principal))
+            .mutateWith(mockAuthentication(authentication))
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
@@ -150,10 +152,10 @@ internal class WalletApiTest {
      */
     @Test
     fun `fails when proof is not provided`() = runTest {
-        val (principal, token) = bearerTokenAuthenticationPrincipal(clock = clock)
+        val authentication = dPoPTokenAuthentication(clock = clock)
 
         val response = client()
-            .mutateWith(mockOpaqueToken().principal(principal))
+            .mutateWith(mockAuthentication(authentication))
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
@@ -165,7 +167,8 @@ internal class WalletApiTest {
             .returnResult()
             .responseBody
 
-        val cNonce = assertNotNull(cNonceRepository.loadCNonceByAccessToken(token.tokenValue))
+        val cNonce =
+            assertNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
 
         assertEquals(
             IssueCredentialResponse.FailedTO(
@@ -185,13 +188,13 @@ internal class WalletApiTest {
      */
     @Test
     fun `fails when using incorrect scope`() = runTest {
-        val (principal, token) = bearerTokenAuthenticationPrincipal(
+        val authentication = dPoPTokenAuthentication(
             clock = clock,
             scopes = listOf(PidSdJwtVcScope),
         )
 
         val response = client()
-            .mutateWith(mockOpaqueToken().principal(principal))
+            .mutateWith(mockAuthentication(authentication))
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
@@ -203,7 +206,8 @@ internal class WalletApiTest {
             .returnResult()
             .responseBody
 
-        val cNonce = assertNotNull(cNonceRepository.loadCNonceByAccessToken(token.tokenValue))
+        val cNonce =
+            assertNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
 
         assertEquals(
             IssueCredentialResponse.FailedTO(
@@ -223,10 +227,10 @@ internal class WalletApiTest {
      */
     @Test
     fun `fails when using no c_nonce is active`() = runTest {
-        val (principal, token) = bearerTokenAuthenticationPrincipal(clock = clock)
+        val authentication = dPoPTokenAuthentication(clock = clock)
 
         val response = client()
-            .mutateWith(mockOpaqueToken().principal(principal))
+            .mutateWith(mockAuthentication(authentication))
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
@@ -238,7 +242,8 @@ internal class WalletApiTest {
             .returnResult()
             .responseBody
 
-        val cNonce = assertNotNull(cNonceRepository.loadCNonceByAccessToken(token.tokenValue))
+        val cNonce =
+            assertNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
 
         assertEquals(
             IssueCredentialResponse.FailedTO(
@@ -260,8 +265,8 @@ internal class WalletApiTest {
      */
     @Test
     fun `issuance success by format`() = runTest {
-        val (principal, token) = bearerTokenAuthenticationPrincipal(clock = clock)
-        val previousCNonce = generateCNonce(token.tokenValue, clock)
+        val authentication = dPoPTokenAuthentication(clock = clock)
+        val previousCNonce = generateCNonce(authentication.accessToken.toAuthorizationHeader(), clock)
         cNonceRepository.upsertCNonce(previousCNonce)
 
         val key = ECKeyGenerator(Curve.P_256).generate()
@@ -270,7 +275,7 @@ internal class WalletApiTest {
         }
 
         val response = client()
-            .mutateWith(mockOpaqueToken().principal(principal))
+            .mutateWith(mockAuthentication(authentication))
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
@@ -282,7 +287,8 @@ internal class WalletApiTest {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        val newCNonce = checkNotNull(cNonceRepository.loadCNonceByAccessToken(token.tokenValue))
+        val newCNonce =
+            checkNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
         assertNotEquals(previousCNonce, newCNonce)
 
         val issuedCredential = assertIs<JsonPrimitive>(response.credential)
@@ -301,8 +307,8 @@ internal class WalletApiTest {
      */
     @Test
     fun `issuance success by credential identifier`() = runTest {
-        val (principal, token) = bearerTokenAuthenticationPrincipal(clock = clock)
-        val previousCNonce = generateCNonce(token.tokenValue, clock)
+        val authentication = dPoPTokenAuthentication(clock = clock)
+        val previousCNonce = generateCNonce(authentication.accessToken.toAuthorizationHeader(), clock)
         cNonceRepository.upsertCNonce(previousCNonce)
 
         val key = ECKeyGenerator(Curve.P_256).generate()
@@ -311,7 +317,7 @@ internal class WalletApiTest {
         }
 
         val response = client()
-            .mutateWith(mockOpaqueToken().principal(principal))
+            .mutateWith(mockAuthentication(authentication))
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
@@ -323,7 +329,8 @@ internal class WalletApiTest {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        val newCNonce = checkNotNull(cNonceRepository.loadCNonceByAccessToken(token.tokenValue))
+        val newCNonce =
+            checkNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
         assertNotEquals(previousCNonce, newCNonce)
 
         val issuedCredential = assertIs<JsonPrimitive>(response.credential)
@@ -366,15 +373,15 @@ internal class WalletApiTest {
     }
 }
 
-private fun bearerTokenAuthenticationPrincipal(
+private fun dPoPTokenAuthentication(
     subject: String = "user",
     clock: Clock,
     expiresIn: Duration = Duration.ofMinutes(10L),
     scopes: List<Scope> = listOf(PidMsoMdocScope, PidSdJwtVcScope),
     authorities: List<GrantedAuthority> = listOf(SimpleGrantedAuthority("ROLE_USER")),
-): Pair<OAuth2AuthenticatedPrincipal, OAuth2AccessToken> {
+): DPoPTokenAuthentication {
     val issuedAt = clock.instant()
-    return DefaultOAuth2AuthenticatedPrincipal(
+    val principal = DefaultOAuth2AuthenticatedPrincipal(
         subject,
         mapOf(
             OAuth2TokenIntrospectionClaimNames.ACTIVE to true,
@@ -389,7 +396,15 @@ private fun bearerTokenAuthenticationPrincipal(
             OAuth2TokenIntrospectionClaimNames.JTI to UUID.randomUUID().toString(),
         ),
         authorities + scopes.map { SimpleGrantedAuthority("SCOPE_${it.value}") },
-    ) to OAuth2AccessToken(TokenType.BEARER, "token", issuedAt, (issuedAt + expiresIn))
+    )
+    val accessToken = DPoPAccessToken("token")
+
+    return DPoPTokenAuthentication.unauthenticated(
+        SignedJWT(JWSHeader.Builder(JWSAlgorithm.RS256).build(), JWTClaimsSet.Builder().build()),
+        accessToken,
+        HttpMethod.GET,
+        URI.create("/"),
+    ).authenticate(principal)
 }
 
 private fun requestByFormat(

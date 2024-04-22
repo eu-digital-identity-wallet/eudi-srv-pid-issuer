@@ -17,47 +17,88 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAddressClaim
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAssurancePlaceOfBirth
-import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
+import eu.europa.ec.eudi.pidissuer.port.input.Username
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.keycloak.admin.client.Keycloak
+import org.keycloak.representations.idm.UserRepresentation
 import org.slf4j.LoggerFactory
-import org.springframework.http.MediaType
-import org.springframework.web.reactive.function.client.WebClient
-import org.springframework.web.reactive.function.client.awaitBody
 import java.time.Clock
 import java.time.LocalDate
 
 private val log = LoggerFactory.getLogger(GetPidDataFromAuthServer::class.java)
 
 class GetPidDataFromAuthServer(
-    private val authorizationServerUserInfoEndPoint: HttpsUrl,
     private val issuerCountry: IsoCountry,
     private val clock: Clock,
-    private val webClient: WebClient,
+    private val keycloak: Keycloak,
+    private val userRealm: String,
 ) : GetPidData {
 
     private val jsonSupport: Json by lazy {
         Json { prettyPrint = true }
     }
 
-    override suspend fun invoke(accessToken: String): Pair<Pid, PidMetaData>? {
-        log.info("Trying to get PID Data from userinfo endpoint ...")
-        val userInfo = userInfo(accessToken).also {
+    override suspend fun invoke(username: Username): Pair<Pid, PidMetaData>? {
+        log.info("Trying to get PID Data from Keycloak ...")
+        val userInfo = userInfo(username).also {
             if (log.isInfoEnabled) log.info(jsonSupport.encodeToString(it))
         }
-        return pid(userInfo)
+        return userInfo?.let { pid(it) }
     }
 
-    private suspend fun userInfo(accessToken: String): UserInfo =
-        webClient.get()
-            .uri(authorizationServerUserInfoEndPoint.externalForm)
-            .accept(MediaType.APPLICATION_JSON)
-            .headers { headers -> headers.setBearerAuth(accessToken) }
-            .retrieve()
-            .awaitBody<UserInfo>()
+    private suspend fun userInfo(username: Username): UserInfo? {
+        fun UserRepresentation.address(): OidcAddressClaim? {
+            val street = attributes["street"]?.firstOrNull()
+            val locality = attributes["locality"]?.firstOrNull()
+            val region = attributes["region"]?.firstOrNull()
+            val postalCode = attributes["postal_code"]?.firstOrNull()
+            val country = attributes["country"]?.firstOrNull()
+            val formatted = attributes["formatted"]?.firstOrNull()
+
+            return if (street != null || locality != null || region != null || postalCode != null || country != null || formatted != null) {
+                OidcAddressClaim(
+                    street = street,
+                    locality = locality,
+                    region = region,
+                    postalCode = postalCode,
+                    country = country,
+                    formatted = formatted,
+                )
+            } else {
+                null
+            }
+        }
+
+        return withContext(Dispatchers.IO) {
+            val users = keycloak.realm(userRealm)
+                .users()
+                .search(username)
+
+            if (users.size != 1) {
+                null
+            } else {
+                val user = users[0]
+                UserInfo(
+                    familyName = user.lastName,
+                    givenName = user.firstName,
+                    sub = user.username,
+                    email = user.email,
+                    address = user.address(),
+                    birthDate = user.attributes["birthdate"]?.firstOrNull(),
+                    gender = user.attributes["gender"]?.firstOrNull()?.toUInt(),
+                    placeOfBirth = null,
+                    ageOver18 = user.attributes["age_over_18"]?.firstOrNull()?.toBoolean(),
+                    picture = null,
+                )
+            }
+        }
+    }
 
     private fun genPidMetaData(): PidMetaData {
         val issuanceDate = LocalDate.now(clock)

@@ -290,7 +290,7 @@ class IssueCredential(
         val issueSpecificCredential = specificIssuerFor(credentialRequest)
         val expectedScope = issueSpecificCredential.supportedCredential.scope!!
         ensure(authorizationContext.scopes.contains(expectedScope)) { WrongScope(expectedScope) }
-        val cNonce = loadCNonceByAccessToken(authorizationContext.accessToken, clock)
+        val cNonce = loadCNonceByAccessToken(authorizationContext.accessToken.toAuthorizationHeader(), clock)
         ensureNotNull(cNonce) { MissingProof }
         return issueSpecificCredential(authorizationContext, credentialRequest, credentialIdentifier, cNonce)
     }
@@ -334,7 +334,7 @@ class IssueCredential(
     }
 
     private suspend fun newCNonce(authorizationContext: AuthorizationContext): CNonce {
-        val newCNonce = genCNonce(authorizationContext.accessToken, clock)
+        val newCNonce = genCNonce(authorizationContext.accessToken.toAuthorizationHeader(), clock)
         return newCNonce.also { upsertCNonce(it) }
     }
 }

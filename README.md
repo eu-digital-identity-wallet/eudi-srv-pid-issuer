@@ -145,6 +145,49 @@ Variable: `ISSUER_PID_ISSUING_COUNTRY`
 Description: Code of the Country issuing the PID  
 Default value: N/A
 
+Variable: `ISSUER_KEYCLOAK_SERVER_URL`  
+Description: URL of the Keycloak authorization server  
+Default value: N/A  
+Example: https://localhost/idp  
+
+Variable: `ISSUER_KEYCLOAK_AUTHENTICATION_REALM`  
+Description: Authentication realm for the administrator user of Keycloak  
+Default value: N/A  
+Example: master  
+
+Variable: `ISSUER_KEYCLOAK_CLIENT_ID`  
+Description: Id of the OAuth2 client used for management of Keycloak   
+Default value: N/A  
+Example: admin-cli  
+
+Variable: `ISSUER_KEYCLOAK_USERNAME`  
+Description: Username of the Keycloak administrator user  
+Default value: N/A  
+Example: admin  
+
+Variable: `ISSUER_KEYCLOAK_PASSWORD`  
+Description: Password of the Keycloak administrator user  
+Default value: N/A  
+Example: password
+
+Variable: `ISSUER_KEYCLOAK_USER_REALM`  
+Description: Realm of the administered users in Keycloak   
+Default value: N/A  
+Example: password
+
+Variable: `ISSUER_DPOP_MAX_PROOF_AGE`  
+Description: Max duration a DPoP Access Token is considered active      
+Default value: PT1M  
+
+Variable: `ISSUER_DPOP_CACHE_PURGE_INTERVAL`  
+Description: Interval after which cached DPoP Access Tokens are deleted         
+Default value: PT10M
+
+Variable: `ISSUER_DPOP_REALM`  
+Description: Realm to report in the WWW-Authenticate header in case of DPoP authentication/authorization failure         
+Default value: N/A  
+Example: pid-issuer
+
 ## Endpoints
 
 ### Credential Issuer MetaData
