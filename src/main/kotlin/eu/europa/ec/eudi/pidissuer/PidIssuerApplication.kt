@@ -24,6 +24,8 @@ import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPProtectedResourceRequestVerifier
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DefaultDPoPSingleUseChecker
+import com.nimbusds.oauth2.sdk.id.Issuer
+import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerUi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
@@ -51,6 +53,7 @@ import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import jakarta.ws.rs.client.Client
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
+import org.apache.http.conn.ssl.NoopHostnameVerifier
 import org.apache.http.conn.ssl.TrustAllStrategy
 import org.apache.http.ssl.SSLContextBuilder
 import org.keycloak.OAuth2Constants
@@ -403,13 +406,27 @@ fun beans(clock: Clock) = beans {
     // Security
     //
     bean {
-        val algorithms = env.getProperty("issuer.dpop.algorithms", "")
-            .takeIf { it.isNotBlank() }
-            ?.trim()
-            ?.split(",")
-            ?.map { algorithm -> JWSAlgorithm.parse(algorithm.trim()) }
-            ?.toSet()
-            ?: emptySet()
+        val algorithms = runCatching {
+            OIDCProviderMetadata.resolve(
+                Issuer.parse(env.getRequiredProperty("issuer.authorizationServer")),
+            ) { request ->
+                if ("insecure" in env.activeProfiles) {
+                    request.sslSocketFactory = SSLContextBuilder.create()
+                        .loadTrustMaterial(TrustAllStrategy())
+                        .build()
+                        .socketFactory
+                    request.hostnameVerifier = NoopHostnameVerifier.INSTANCE
+                }
+                request.connectTimeout = 5000
+                request.readTimeout = 5000
+            }.dPoPJWSAlgs?.toSet() ?: emptySet()
+        }.getOrElse {
+            log.warn("Unable to fetch Authorization Server metadata. DPoP support will be disabled.", it)
+            emptySet()
+        }.also {
+            if (it.isEmpty()) log.warn("DPoP support will not be enabled. Authorization Server does not support DPoP.")
+            else log.info("DPoP support will be enabled. Supported algorithms: $it")
+        }
         val proofMaxAge = env.getProperty("issuer.dpop.proof-max-age", "PT1M").let { Duration.parse(it) }
         val cachePurgeInterval = env.getProperty("issuer.dpop.cache-purge-interval", "PT10M").let { Duration.parse(it) }
         val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
@@ -458,6 +475,7 @@ fun beans(clock: Clock) = beans {
             }
 
             val dPoPProperties = ref<DPoPConfigurationProperties>()
+            val enableDPoP = dPoPProperties.algorithms.isNotEmpty()
 
             val dPoPTokenConverter = ServerDPoPAuthenticationTokenAuthenticationConverter()
             val dPoPEntryPoint = DPoPTokenServerAuthenticationEntryPoint(dPoPProperties.realm)
@@ -467,27 +485,43 @@ fun beans(clock: Clock) = beans {
 
             exceptionHandling {
                 authenticationEntryPoint = DelegatingServerAuthenticationEntryPoint(
-                    DelegatingServerAuthenticationEntryPoint.DelegateEntry(
-                        AuthenticationConverterServerWebExchangeMatcher(dPoPTokenConverter),
-                        dPoPEntryPoint,
-                    ),
-                    DelegatingServerAuthenticationEntryPoint.DelegateEntry(
-                        AuthenticationConverterServerWebExchangeMatcher(bearerTokenConverter),
-                        bearerTokenEntryPoint,
-                    ),
+                    buildList {
+                        if (enableDPoP) {
+                            add(
+                                DelegatingServerAuthenticationEntryPoint.DelegateEntry(
+                                    AuthenticationConverterServerWebExchangeMatcher(dPoPTokenConverter),
+                                    dPoPEntryPoint,
+                                ),
+                            )
+                        }
+
+                        add(
+                            DelegatingServerAuthenticationEntryPoint.DelegateEntry(
+                                AuthenticationConverterServerWebExchangeMatcher(bearerTokenConverter),
+                                bearerTokenEntryPoint,
+                            ),
+                        )
+                    },
                 ).apply {
                     setDefaultEntryPoint(HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED))
                 }
 
                 accessDeniedHandler = ServerWebExchangeDelegatingServerAccessDeniedHandler(
-                    ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry(
-                        AuthenticationConverterServerWebExchangeMatcher(dPoPTokenConverter),
-                        DPoPTokenServerAccessDeniedHandler(dPoPProperties.realm),
-                    ),
-                    ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry(
-                        AuthenticationConverterServerWebExchangeMatcher(bearerTokenConverter),
-                        BearerTokenServerAccessDeniedHandler(),
-                    ),
+                    buildList {
+                        if (enableDPoP) {
+                            ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry(
+                                AuthenticationConverterServerWebExchangeMatcher(dPoPTokenConverter),
+                                DPoPTokenServerAccessDeniedHandler(dPoPProperties.realm),
+                            )
+                        }
+
+                        add(
+                            ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry(
+                                AuthenticationConverterServerWebExchangeMatcher(bearerTokenConverter),
+                                BearerTokenServerAccessDeniedHandler(),
+                            ),
+                        )
+                    },
                 ).apply {
                     setDefaultAccessDeniedHandler(HttpStatusServerAccessDeniedHandler(HttpStatus.FORBIDDEN))
                 }
@@ -507,22 +541,26 @@ fun beans(clock: Clock) = beans {
                     .build(),
             )
 
-            val dPoPFilter = run {
-                val dPoPVerifier = DPoPProtectedResourceRequestVerifier(
-                    dPoPProperties.algorithms,
-                    dPoPProperties.proofMaxAge.toSeconds(),
-                    DefaultDPoPSingleUseChecker(
+            if (enableDPoP) {
+                val dPoPFilter = run {
+                    val dPoPVerifier = DPoPProtectedResourceRequestVerifier(
+                        dPoPProperties.algorithms,
                         dPoPProperties.proofMaxAge.toSeconds(),
-                        dPoPProperties.cachePurgeInterval.toSeconds(),
-                    ),
-                )
+                        DefaultDPoPSingleUseChecker(
+                            dPoPProperties.proofMaxAge.toSeconds(),
+                            dPoPProperties.cachePurgeInterval.toSeconds(),
+                        ),
+                    )
 
-                val authenticationManager = DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier)
+                    val authenticationManager = DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier)
 
-                AuthenticationWebFilter(authenticationManager).apply {
-                    setServerAuthenticationConverter(dPoPTokenConverter)
-                    setAuthenticationFailureHandler(ServerAuthenticationEntryPointFailureHandler(dPoPEntryPoint))
+                    AuthenticationWebFilter(authenticationManager).apply {
+                        setServerAuthenticationConverter(dPoPTokenConverter)
+                        setAuthenticationFailureHandler(ServerAuthenticationEntryPointFailureHandler(dPoPEntryPoint))
+                    }
                 }
+
+                http.addFilterAt(dPoPFilter, SecurityWebFiltersOrder.AUTHENTICATION)
             }
 
             val bearerTokenFilter = run {
@@ -533,8 +571,6 @@ fun beans(clock: Clock) = beans {
                     setAuthenticationFailureHandler(ServerAuthenticationEntryPointFailureHandler(bearerTokenEntryPoint))
                 }
             }
-
-            http.addFilterAt(dPoPFilter, SecurityWebFiltersOrder.AUTHENTICATION)
             http.addFilterAfter(bearerTokenFilter, SecurityWebFiltersOrder.AUTHENTICATION)
         }
     }
