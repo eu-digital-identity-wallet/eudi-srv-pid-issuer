@@ -15,41 +15,22 @@
  */
 package eu.europa.ec.eudi.pidissuer.security
 
-import arrow.core.NonEmptySet
-import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.JWSAlgorithm
-import org.springframework.boot.context.properties.ConfigurationProperties
 import java.time.Duration
 
 /**
  * Properties for configuring DPoP.
  */
-@ConfigurationProperties("spring.security.oauth2.resourceserver.dpop")
 data class DPoPConfigurationProperties(
-    val algorithms: Set<String>,
+    val algorithms: Set<JWSAlgorithm>,
     val proofMaxAge: Duration,
     val cachePurgeInterval: Duration,
     val realm: String,
 ) {
     init {
-        require(algorithms.isNotEmpty()) { "'spring.security.oauth2.resourceserver.dpop.algorithms' is required" }
-        require(JWSAlgorithm.Family.SIGNATURE.map { it.name }.containsAll(algorithms)) {
-            "'spring.security.oauth2.resourceserver.dpop.algorithms' contains invalid values"
-        }
-        require(!proofMaxAge.isZero) {
-            "'spring.security.oauth2.resourceserver.dpop.proof-max-age' cannot be zero"
-        }
-        require(!cachePurgeInterval.isZero) {
-            "'spring.security.oauth2.resourceserver.dpop.cache-purge-interval' cannot be zero"
-        }
-        require(realm.isNotBlank()) {
-            "'spring.security.oauth2.resourceserver.dpop.realm' cannot be blank"
-        }
+        require(JWSAlgorithm.Family.SIGNATURE.containsAll(algorithms)) { "'algorithms' contains invalid values" }
+        require(!proofMaxAge.isZero) { "'proofMaxAge' cannot be zero" }
+        require(!cachePurgeInterval.isZero) { "'cachePurgeInterval' cannot be zero" }
+        require(realm.isNotBlank()) { "'realm' cannot be blank" }
     }
-
-    /**
-     * Gets the supported [algorithms][JWSAlgorithm].
-     */
-    fun jwsAlgorithms(): NonEmptySet<JWSAlgorithm> =
-        algorithms.map { JWSAlgorithm.parse(it) }.toNonEmptySetOrNull()!!
 }

@@ -59,8 +59,6 @@ import org.keycloak.admin.client.spi.ResteasyClientClassicProvider
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties
-import org.springframework.boot.context.properties.ConfigurationProperties
-import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
 import org.springframework.boot.web.codec.CodecCustomizer
 import org.springframework.context.ApplicationContextInitializer
@@ -176,6 +174,16 @@ fun beans(clock: Clock) = beans {
         } else {
             RestEasyClients.Default
         }
+    }
+    bean {
+        KeycloakConfigurationProperties(
+            env.getRequiredProperty("issuer.keycloak.server-url", URL::class.java),
+            env.getRequiredProperty("issuer.keycloak.authentication-realm"),
+            env.getRequiredProperty("issuer.keycloak.client-id"),
+            env.getRequiredProperty("issuer.keycloak.username"),
+            env.getRequiredProperty("issuer.keycloak.password"),
+            env.getRequiredProperty("issuer.keycloak.user-realm"),
+        )
     }
     bean {
         val keycloakProperties = ref<KeycloakConfigurationProperties>()
@@ -395,6 +403,20 @@ fun beans(clock: Clock) = beans {
     // Security
     //
     bean {
+        val algorithms = env.getProperty("issuer.dpop.algorithms", "")
+            .takeIf { it.isNotBlank() }
+            ?.trim()
+            ?.split(",")
+            ?.map { algorithm -> JWSAlgorithm.parse(algorithm.trim()) }
+            ?.toSet()
+            ?: emptySet()
+        val proofMaxAge = env.getProperty("issuer.dpop.proof-max-age", "PT1M").let { Duration.parse(it) }
+        val cachePurgeInterval = env.getProperty("issuer.dpop.cache-purge-interval", "PT10M").let { Duration.parse(it) }
+        val realm = env.getProperty("issuer.dpop.realm", "pid-issuer")
+
+        DPoPConfigurationProperties(algorithms, proofMaxAge, cachePurgeInterval, realm)
+    }
+    bean {
         /*
          * This is a Spring naming convention
          * A prefix of SCOPE_xyz will grant a SimpleAuthority(xyz)
@@ -487,7 +509,7 @@ fun beans(clock: Clock) = beans {
 
             val dPoPFilter = run {
                 val dPoPVerifier = DPoPProtectedResourceRequestVerifier(
-                    dPoPProperties.jwsAlgorithms(),
+                    dPoPProperties.algorithms,
                     dPoPProperties.proofMaxAge.toSeconds(),
                     DefaultDPoPSingleUseChecker(
                         dPoPProperties.proofMaxAge.toSeconds(),
@@ -590,7 +612,6 @@ private fun HttpsUrl.appendPath(path: String): HttpsUrl =
 /**
  * Configuration properties for Keycloak.
  */
-@ConfigurationProperties("keycloak")
 data class KeycloakConfigurationProperties(
     val serverUrl: URL,
     val authenticationRealm: String,
@@ -600,11 +621,11 @@ data class KeycloakConfigurationProperties(
     val userRealm: String,
 ) {
     init {
-        require(authenticationRealm.isNotBlank()) { "'keycloak.authentication-realm' cannot be blank" }
-        require(clientId.isNotBlank()) { "'keycloak.client-id' cannot be blank" }
-        require(username.isNotBlank()) { "'keycloak.username' cannot be blank" }
-        require(password.isNotBlank()) { "'keycloak.password' cannot be blank" }
-        require(userRealm.isNotBlank()) { "'keycloak.user-realm' cannot be blank" }
+        require(authenticationRealm.isNotBlank()) { "'authenticationRealm' cannot be blank" }
+        require(clientId.isNotBlank()) { "'clientId' cannot be blank" }
+        require(username.isNotBlank()) { "'username' cannot be blank" }
+        require(password.isNotBlank()) { "'password' cannot be blank" }
+        require(userRealm.isNotBlank()) { "'userRealm' cannot be blank" }
     }
 }
 
@@ -612,7 +633,6 @@ fun BeanDefinitionDsl.initializer(): ApplicationContextInitializer<GenericApplic
     ApplicationContextInitializer<GenericApplicationContext> { initialize(it) }
 
 @SpringBootApplication
-@EnableConfigurationProperties(value = [DPoPConfigurationProperties::class, KeycloakConfigurationProperties::class])
 class PidIssuerApplication
 
 fun main(args: Array<String>) {
