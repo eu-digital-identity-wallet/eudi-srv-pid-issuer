@@ -76,9 +76,16 @@ import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.config.web.server.invoke
+import org.springframework.security.oauth2.server.resource.authentication.OpaqueTokenReactiveAuthenticationManager
 import org.springframework.security.oauth2.server.resource.introspection.SpringReactiveOpaqueTokenIntrospector
+import org.springframework.security.oauth2.server.resource.web.access.server.BearerTokenServerAccessDeniedHandler
+import org.springframework.security.oauth2.server.resource.web.server.BearerTokenServerAuthenticationEntryPoint
+import org.springframework.security.oauth2.server.resource.web.server.authentication.ServerBearerTokenAuthenticationConverter
+import org.springframework.security.web.server.DelegatingServerAuthenticationEntryPoint
+import org.springframework.security.web.server.authentication.AuthenticationConverterServerWebExchangeMatcher
 import org.springframework.security.web.server.authentication.AuthenticationWebFilter
 import org.springframework.security.web.server.authentication.ServerAuthenticationEntryPointFailureHandler
+import org.springframework.security.web.server.authorization.ServerWebExchangeDelegatingServerAccessDeniedHandler
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
@@ -426,11 +433,34 @@ fun beans(clock: Clock) = beans {
             }
 
             val dPoPProperties = ref<DPoPConfigurationProperties>()
-            val entryPoint = DPoPTokenServerAuthenticationEntryPoint(dPoPProperties.realm)
+
+            val dPoPTokenConverter = ServerDPoPAuthenticationTokenAuthenticationConverter()
+            val dPoPEntryPoint = DPoPTokenServerAuthenticationEntryPoint(dPoPProperties.realm)
+
+            val bearerTokenConverter = ServerBearerTokenAuthenticationConverter()
+            val bearerTokenEntryPoint = BearerTokenServerAuthenticationEntryPoint()
 
             exceptionHandling {
-                authenticationEntryPoint = entryPoint
-                accessDeniedHandler = DPoPTokenServerAccessDeniedHandler(dPoPProperties.realm)
+                authenticationEntryPoint = DelegatingServerAuthenticationEntryPoint(
+                    DelegatingServerAuthenticationEntryPoint.DelegateEntry(
+                        AuthenticationConverterServerWebExchangeMatcher(dPoPTokenConverter),
+                        dPoPEntryPoint,
+                    ),
+                    DelegatingServerAuthenticationEntryPoint.DelegateEntry(
+                        AuthenticationConverterServerWebExchangeMatcher(bearerTokenConverter),
+                        bearerTokenEntryPoint,
+                    ),
+                )
+                accessDeniedHandler = ServerWebExchangeDelegatingServerAccessDeniedHandler(
+                    ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry(
+                        AuthenticationConverterServerWebExchangeMatcher(dPoPTokenConverter),
+                        DPoPTokenServerAccessDeniedHandler(dPoPProperties.realm),
+                    ),
+                    ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry(
+                        AuthenticationConverterServerWebExchangeMatcher(bearerTokenConverter),
+                        BearerTokenServerAccessDeniedHandler(),
+                    ),
+                )
             }
 
             val introspectionProperties = ref<OAuth2ResourceServerProperties>()
@@ -447,22 +477,35 @@ fun beans(clock: Clock) = beans {
                     .build(),
             )
 
-            val dPoPVerifier = DPoPProtectedResourceRequestVerifier(
-                dPoPProperties.jwsAlgorithms(),
-                dPoPProperties.proofMaxAge.toSeconds(),
-                DefaultDPoPSingleUseChecker(
+            val dPoPFilter = run {
+                val dPoPVerifier = DPoPProtectedResourceRequestVerifier(
+                    dPoPProperties.jwsAlgorithms(),
                     dPoPProperties.proofMaxAge.toSeconds(),
-                    dPoPProperties.cachePurgeInterval.toSeconds(),
-                ),
-            )
+                    DefaultDPoPSingleUseChecker(
+                        dPoPProperties.proofMaxAge.toSeconds(),
+                        dPoPProperties.cachePurgeInterval.toSeconds(),
+                    ),
+                )
 
-            val authenticationManager = DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier)
-            val dPoPFilter = AuthenticationWebFilter(authenticationManager).apply {
-                setServerAuthenticationConverter(ServerDPoPAuthenticationTokenAuthenticationConverter())
-                setAuthenticationFailureHandler(ServerAuthenticationEntryPointFailureHandler(entryPoint))
+                val authenticationManager = DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier)
+
+                AuthenticationWebFilter(authenticationManager).apply {
+                    setServerAuthenticationConverter(dPoPTokenConverter)
+                    setAuthenticationFailureHandler(ServerAuthenticationEntryPointFailureHandler(dPoPEntryPoint))
+                }
+            }
+
+            val bearerTokenFilter = run {
+                val authenticationManager = OpaqueTokenReactiveAuthenticationManager(introspector)
+
+                AuthenticationWebFilter(authenticationManager).apply {
+                    setServerAuthenticationConverter(bearerTokenConverter)
+                    setAuthenticationFailureHandler(ServerAuthenticationEntryPointFailureHandler(bearerTokenEntryPoint))
+                }
             }
 
             http.addFilterAt(dPoPFilter, SecurityWebFiltersOrder.AUTHENTICATION)
+            http.addFilterAfter(bearerTokenFilter, SecurityWebFiltersOrder.AUTHENTICATION)
         }
     }
 

@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
+import arrow.core.NonEmptySet
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
@@ -31,6 +32,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.oauth2.core.OAuth2TokenIntrospectionClaimNames
+import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthentication
 import org.springframework.web.reactive.function.server.*
 
 private val APPLICATION_JWT = MediaType.parseMediaType("application/jwt")
@@ -122,9 +124,8 @@ class WalletApi(
 
 private suspend fun ServerRequest.authorizationContext(): Result<AuthorizationContext> =
     result {
-        val principal = awaitPrincipal()
-        ensureNotNull(principal) { IllegalArgumentException("Principal is expected") }
-        ensure(principal is DPoPTokenAuthentication) { IllegalArgumentException("Unexpected Principal type '${principal::class.java}'") }
+        val authentication = awaitPrincipal()
+        ensureNotNull(authentication) { IllegalArgumentException("Authentication is expected") }
 
         fun fromSpring(authority: GrantedAuthority): Scope? =
             authority.authority
@@ -132,11 +133,36 @@ private suspend fun ServerRequest.authorizationContext(): Result<AuthorizationCo
                 ?.replaceFirst("SCOPE_", "")
                 ?.let { Scope(it) }
 
-        val scopes = principal.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull()
+        data class AuthenticationDetails(
+            val scopes: NonEmptySet<Scope>? = null,
+            val clientId: Any? = null,
+            val username: Any? = null,
+            val accessToken: String,
+        )
+
+        val (scopes, clientId, username, accessToken) = when (authentication) {
+            is DPoPTokenAuthentication ->
+                AuthenticationDetails(
+                    authentication.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull(),
+                    authentication.principal?.attributes?.get(OAuth2TokenIntrospectionClaimNames.CLIENT_ID),
+                    authentication.name,
+                    authentication.accessToken.toAuthorizationHeader(),
+                )
+
+            is BearerTokenAuthentication ->
+                AuthenticationDetails(
+                    authentication.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull(),
+                    authentication.tokenAttributes[OAuth2TokenIntrospectionClaimNames.CLIENT_ID],
+                    authentication.tokenAttributes[OAuth2TokenIntrospectionClaimNames.USERNAME],
+                    "${authentication.token.tokenType.value} ${authentication.token.tokenValue}",
+                )
+
+            else -> error("Unexpected Authentication type '${authentication::class.java}'")
+        }
+
         ensureNotNull(scopes) { IllegalArgumentException("OAuth2 scopes are expected") }
-
-        val clientId = principal.principal?.attributes?.get(OAuth2TokenIntrospectionClaimNames.CLIENT_ID)
         ensure(clientId is String) { IllegalArgumentException("Unexpected client_id claim type '${clientId?.let { it::class.java }}'") }
+        ensure(username is String) { IllegalArgumentException("Unexpected username claim type '${username?.let { it::class.java }}'") }
 
-        AuthorizationContext(principal.name, principal.accessToken.toAuthorizationHeader(), scopes, clientId)
+        AuthorizationContext(username, accessToken, scopes, clientId)
     }
