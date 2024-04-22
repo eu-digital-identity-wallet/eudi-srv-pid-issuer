@@ -53,13 +53,18 @@ services:
       - SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENT_ID=pid-issuer-srv
       - SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENT_SECRET=zIKAV9DIIIaJCzHCVBPlySgU8KgY68U2
       - ISSUER_PUBLICURL=https://localhost/pid-issuer
-      - ISSUER_AUTHORIZATIONSERVER=https://localhost/idp/realms/pid-issuer-realm
+      - ISSUER_AUTHORIZATIONSERVER_PUBLICURL=https://localhost/idp/realms/pid-issuer-realm
+      - ISSUER_AUTHORIZATIONSERVER=https://keycloak:8443/idp/realms/pid-issuer-realm
       - ISSUER_AUTHORIZATIONSERVER_INTROSPECTION=https://keycloak:8443/idp/realms/pid-issuer-realm/protocol/openid-connect/token/introspect
-      - ISSUER_AUTHORIZATIONSERVER_USERINFO=https://keycloak:8443/idp/realms/pid-issuer-realm/protocol/openid-connect/userinfo
       - ISSUER_PID_MSO_MDOC_ENABLED=true
       - ISSUER_PID_SD_JWT_VC_ENABLED=true
       - ISSUER_PID_SD_JWT_VC_DEFERRED=true
       - ISSUER_PID_ISSUING_COUNTRY=GR
+      - ISSUER_KEYCLOAK_SERVER_URL=https://keycloak:8443/idp
+      - ISSUER_KEYCLOAK_AUTHENTICATION_REALM=master
+      - ISSUER_KEYCLOAK_USERNAME=admin
+      - ISSUER_KEYCLOAK_PASSWORD=password
+      - ISSUER_KEYCLOAK_USER_REALM=pid-issuer-realm
     networks:
       - default
 

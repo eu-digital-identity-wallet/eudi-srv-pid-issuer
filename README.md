@@ -117,7 +117,11 @@ Variable: `ISSUER_PUBLICURL`
 Description: URL the PID Issuer application is accessible from  
 Default value: `http://localhost:${SERVER_PORT}${SPRING_WEBFLUX_BASE_PATH}`
 
-Variable: `ISSUER_AUTHORIZATIONSERVER`  
+Variable: `ISSUER_AUTHORIZATIONSERVER_PUBLICURL`  
+Description: URL of the Authorization Server advertised via the issuer metadata    
+Default value: Value of `ISSUER_AUTHORIZATIONSERVER`  
+
+Variable: `ISSUER_AUTHORIZATIONSERVER`    
 Description: URL of the Authorization Server  
 Default value: N/A
 
