@@ -113,24 +113,26 @@ Variable: `SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENT_SECRET`
 Description: Client Server of the OAuth2 client registered in the Authorization Server  
 Default value: N/A
 
+Variable: `SERVER_FORWARD_HEADERS_STRATEGY`  
+Description: Whether the server should consider X-Forwarded headers. In case the application is behind a reverse proxy,
+set this to `FRAMEWORK`.  
+Possible values: `FRAMEWORK`, `NONE`  
+Default value: `FRAMEWORK`  
+
 Variable: `ISSUER_PUBLICURL`  
 Description: URL the PID Issuer application is accessible from  
 Default value: `http://localhost:${SERVER_PORT}${SPRING_WEBFLUX_BASE_PATH}`
 
 Variable: `ISSUER_AUTHORIZATIONSERVER_PUBLICURL`  
 Description: URL of the Authorization Server advertised via the issuer metadata    
-Default value: Value of `ISSUER_AUTHORIZATIONSERVER`  
+Default value: N/A  
 
-Variable: `ISSUER_AUTHORIZATIONSERVER`    
-Description: URL of the Authorization Server  
+Variable: `ISSUER_AUTHORIZATIONSERVER_METADATA`  
+Description: URL used to fetch the metadata of the Authorization Server      
 Default value: N/A
 
 Variable: `ISSUER_AUTHORIZATIONSERVER_INTROSPECTION`  
 Description: URL of the Token Introspection endpoint of the Authorization Server  
-Default value: N/A
-
-Variable: `ISSUER_AUTHORIZATIONSERVER_USERINFO`  
-Description: URL of the UserInfo endpoint of the Authorization Server  
 Default value: N/A
 
 Variable: `ISSUER_PID_MSO_MDOC_ENABLED`  

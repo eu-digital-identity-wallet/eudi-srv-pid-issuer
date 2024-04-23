@@ -24,7 +24,6 @@ import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPProtectedResourceRequestVerifier
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DefaultDPoPSingleUseChecker
-import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerUi
@@ -51,9 +50,10 @@ import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import io.netty.handler.ssl.SslContextBuilder
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import jakarta.ws.rs.client.Client
+import kotlinx.coroutines.reactor.awaitSingle
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
-import org.apache.http.conn.ssl.NoopHostnameVerifier
 import org.apache.http.conn.ssl.TrustAllStrategy
 import org.apache.http.ssl.SSLContextBuilder
 import org.keycloak.OAuth2Constants
@@ -72,6 +72,7 @@ import org.springframework.core.env.Environment
 import org.springframework.core.env.getProperty
 import org.springframework.core.env.getRequiredProperty
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.http.client.reactive.ReactorClientHttpConnector
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
 import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
@@ -407,18 +408,16 @@ fun beans(clock: Clock) = beans {
     //
     bean {
         val algorithms = runCatching {
-            OIDCProviderMetadata.resolve(
-                Issuer.parse(env.getRequiredProperty("issuer.authorizationServer")),
-            ) { request ->
-                if ("insecure" in env.activeProfiles) {
-                    request.sslSocketFactory = SSLContextBuilder.create()
-                        .loadTrustMaterial(TrustAllStrategy())
-                        .build()
-                        .socketFactory
-                    request.hostnameVerifier = NoopHostnameVerifier.INSTANCE
-                }
-                request.connectTimeout = 5000
-                request.readTimeout = 5000
+            runBlocking {
+                val client = ref<WebClient>()
+                val metadata = client.get()
+                    .uri(env.getRequiredProperty("issuer.authorizationServer.metadata"))
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .bodyToMono(String::class.java)
+                    .timeout(Duration.ofSeconds(5L))
+                    .awaitSingle()
+                OIDCProviderMetadata.parse(metadata)
             }.dPoPJWSAlgs?.toSet() ?: emptySet()
         }.getOrElse {
             log.warn("Unable to fetch Authorization Server metadata. DPoP support will be disabled.", it)
