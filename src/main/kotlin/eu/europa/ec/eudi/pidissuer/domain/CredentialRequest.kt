@@ -25,7 +25,7 @@ import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.AsymmetricJWK
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.KeyUse
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.resolveDidUrl
+import eu.europa.ec.eudi.pidissuer.adapter.out.did.resolveDidUrl
 import foundation.identity.did.DIDURL
 import java.security.cert.X509Certificate
 

@@ -20,6 +20,8 @@ import arrow.core.raise.Raise
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
+import eu.europa.ec.eudi.pidissuer.adapter.out.did.DidMethod
+import eu.europa.ec.eudi.pidissuer.adapter.out.did.createDidUrl
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidDisplay
@@ -96,7 +98,7 @@ class IssueJwtVcJsonUserPseudonym(
 
         val holderPubKey = async(Dispatchers.Default) { holderPubKey(request, expectedCNonce) }
 
-        val jwt = encodePseudonymToJwtVcJson()
+        val jwt = encodePseudonymToJwtVcJson(holderPubKey.await())
 
         val notificationId =
             if (notificationsEnabled) generateNotificationId()
@@ -120,7 +122,7 @@ class IssueJwtVcJsonUserPseudonym(
             }
     }
 
-    private fun encodePseudonymToJwtVcJson(): String {
+    private fun encodePseudonymToJwtVcJson(holderKey: JWK): String {
         val _now = clock.instant()
 
         val credential = buildCredential {
@@ -131,6 +133,8 @@ class IssueJwtVcJsonUserPseudonym(
                 expirationDate(_now.plusSeconds(86400))
             }
             credentialSubject {
+                val didUrl = createDidUrl(holderKey, DidMethod.KEY).getOrThrow()
+                id(didUrl.toString())
                 addClaim("user_pseudonym", generateUserPseudonym())
             }
         }
@@ -138,18 +142,6 @@ class IssueJwtVcJsonUserPseudonym(
         val verifiableCredential = JwtVcJsonRealizer().realize(credential, ProofMechanism.JWT(issuerKey, signAlg))
         return verifiableCredential.credential.serialize()
     }
-
-    private fun vcClaim(
-        userPseudonym: UserPseudonym,
-        supportedCredential: JwtVcJsonCredentialConfiguration,
-    ): Map<String, Any> =
-        mapOf(
-            "@context" to listOf("https://www.w3.org/2018/credentials/v1"),
-            "type" to supportedCredential.credentialDefinition.type,
-            "credentialSubject" to mapOf(
-                "user_pseudonym" to userPseudonym,
-            ),
-        )
 
     context(Raise<InvalidProof>)
     private suspend fun holderPubKey(
