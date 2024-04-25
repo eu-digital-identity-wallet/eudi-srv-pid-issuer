@@ -74,17 +74,6 @@ private fun createFromRSAPublicKey(key: RSAKey): DIDURL {
     return keyBytes.didUrl(Multicodec.RSA_PUB)
 }
 
-private fun ByteArray.didUrl(codec: Multicodec): DIDURL {
-    val byteArrayOutputStream = ByteArrayOutputStream()
-    val bytes = byteArrayOutputStream.use { stream ->
-        stream.writeUnsignedVarInt(codec.code)
-        stream.writeBytes(this)
-        stream.toByteArray()
-    }
-    val base58BTCEncoded = Multibase.BASE58_BTC.encode(bytes)
-    return DIDURL.fromString("did:key:$base58BTCEncoded")
-}
-
 private fun createFromECPublicKey(key: ECKey): DIDURL {
     val curve = key.curve
     require(curve in supportedEcKeyCurves) { "Unsupported EC key curve $curve" }
@@ -97,6 +86,17 @@ fun createFromOctet(key: OctetKeyPair): DIDURL {
     require(curve in supportedEcKeyCurves) { "Unsupported Octet key curve $curve" }
     val keyBytes = key.toPublicJWK().decodedX
     return keyBytes.didUrl(curve.multiCodec())
+}
+
+private fun ByteArray.didUrl(codec: Multicodec): DIDURL {
+    val byteArrayOutputStream = ByteArrayOutputStream()
+    val bytes = byteArrayOutputStream.use { stream ->
+        stream.writeUnsignedVarInt(codec.code)
+        stream.writeBytes(this)
+        stream.toByteArray()
+    }
+    val base58BTCEncoded = Multibase.BASE58_BTC.encode(bytes)
+    return DIDURL.fromString("did:key:$base58BTCEncoded")
 }
 
 private fun Curve.multiCodec(): Multicodec = when (this) {

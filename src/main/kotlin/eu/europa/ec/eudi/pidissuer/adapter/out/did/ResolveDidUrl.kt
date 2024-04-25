@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.did
 
 import arrow.core.raise.result
-import com.nimbusds.jose.crypto.bc.BouncyCastleProviderSingleton
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.util.Base64URL
 import foundation.identity.did.DIDURL
@@ -28,10 +27,6 @@ import org.erwinkok.multiformat.util.readUnsignedVarInt
 import org.erwinkok.result.flatMap
 import org.erwinkok.result.getOrThrow
 import java.io.ByteArrayInputStream
-import java.security.KeyFactory
-import java.security.interfaces.ECPublicKey
-import java.security.interfaces.RSAPublicKey
-import java.security.spec.RSAPublicKeySpec
 import org.bouncycastle.asn1.pkcs.RSAPublicKey as ANS1RSAPublicKey
 
 /**
@@ -113,17 +108,19 @@ private fun resolveDidKey(url: DIDURL): JWK {
         val spec = ECNamedCurveTable.getParameterSpec(curve.stdName)
         val point = spec.curve.decodePoint(publicKey)
         val keySpec = ECPublicKeySpec(point, spec)
-        val factory = KeyFactory.getInstance("EC", BouncyCastleProviderSingleton.getInstance())
-        val ecPublicKey = factory.generatePublic(keySpec) as ECPublicKey
-        return ECKey.Builder(curve, ecPublicKey).build()
+        return ECKey.Builder(
+            curve,
+            Base64URL.encode(keySpec.q.xCoord.toBigInteger()),
+            Base64URL.encode(keySpec.q.yCoord.toBigInteger()),
+        ).build()
     }
 
     fun decodeRsaPublicKey(encodedPublicKey: ByteArray): RSAKey {
         val ans1PublicKey = ANS1RSAPublicKey.getInstance(encodedPublicKey)
-        val keySpec = RSAPublicKeySpec(ans1PublicKey.modulus, ans1PublicKey.publicExponent)
-        val factory = KeyFactory.getInstance("RSA", BouncyCastleProviderSingleton.getInstance())
-        val publicKey = factory.generatePublic(keySpec) as RSAPublicKey
-        return RSAKey.Builder(publicKey).build()
+        return RSAKey.Builder(
+            Base64URL.encode(ans1PublicKey.modulus),
+            Base64URL.encode(ans1PublicKey.publicExponent)
+        ).build()
     }
 
     return when (type) {
