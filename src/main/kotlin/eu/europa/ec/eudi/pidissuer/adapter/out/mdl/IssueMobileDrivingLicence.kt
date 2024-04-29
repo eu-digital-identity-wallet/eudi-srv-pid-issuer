@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
-import arrow.core.raise.catch
 import arrow.core.raise.ensureNotNull
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.ECKey
@@ -248,7 +247,7 @@ val MobileDrivingLicenceV1: MsoMdocCredentialConfiguration =
         cryptographicBindingMethodsSupported = emptySet(),
         credentialSigningAlgorithmsSupported = emptySet(),
         scope = MobileDrivingLicenceV1Scope,
-        proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256))),
+        proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.ES256))),
     )
 
 /**
@@ -280,15 +279,7 @@ class IssueMobileDrivingLicence(
         expectedCNonce: CNonce,
     ): CredentialResponse<JsonElement> {
         log.info("Issuing mDL")
-        val holderKey =
-            catch({
-                val credentialKey = validateProof(request.unvalidatedProof, expectedCNonce, supportedCredential)
-                when (credentialKey) {
-                    is CredentialKey.DIDUrl -> raise(InvalidProof("DID not supported"))
-                    is CredentialKey.Jwk -> credentialKey.value.toECKey()
-                    is CredentialKey.X5c -> ECKey.parse(credentialKey.certificate)
-                }
-            }) { raise(InvalidProof("Only EC Key is supported", it)) }
+        val holderKey = holderPubKey(request, expectedCNonce)
         val licence = ensureNotNull(getMobileDrivingLicenceData(authorizationContext)) {
             IssueCredentialError.Unexpected("Unable to fetch mDL data")
         }
@@ -315,6 +306,20 @@ class IssueMobileDrivingLicence(
                 log.info("Successfully issued mDL")
                 log.debug("Issued mDL data {}", it)
             }
+    }
+
+    context(Raise<IssueCredentialError>)
+    private fun holderPubKey(request: CredentialRequest, expectedCNonce: CNonce): ECKey {
+        fun ecKeyOrFail(provider: () -> ECKey) = try {
+            provider.invoke()
+        } catch (t: Throwable) {
+            raise(InvalidProof("Only EC Key is supported"))
+        }
+        return when (val key = validateProof(request.unvalidatedProof, expectedCNonce, supportedCredential)) {
+            is CredentialKey.DIDUrl -> ecKeyOrFail { key.jwk.toECKey() }
+            is CredentialKey.Jwk -> ecKeyOrFail { key.value.toECKey() }
+            is CredentialKey.X5c -> ecKeyOrFail { ECKey.parse(key.certificate) }
+        }
     }
 
     companion object {
