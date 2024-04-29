@@ -248,7 +248,7 @@ val MobileDrivingLicenceV1: MsoMdocCredentialConfiguration =
         cryptographicBindingMethodsSupported = emptySet(),
         credentialSigningAlgorithmsSupported = emptySet(),
         scope = MobileDrivingLicenceV1Scope,
-        proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256))),
+        proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.ES256))),
     )
 
 /**

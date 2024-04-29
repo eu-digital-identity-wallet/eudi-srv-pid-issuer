@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
-import arrow.core.raise.withError
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
@@ -144,7 +143,7 @@ val PidMsoMdocV1: MsoMdocCredentialConfiguration =
         cryptographicBindingMethodsSupported = emptySet(),
         credentialSigningAlgorithmsSupported = emptySet(),
         scope = PidMsoMdocScope,
-        proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256))),
+        proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.ES256))),
     )
 
 //
@@ -217,13 +216,15 @@ class IssueMsoMdocPid(
 
     context(Raise<IssueCredentialError>)
     private fun holderPubKey(request: CredentialRequest, expectedCNonce: CNonce): ECKey {
-        val key = validateProof(request.unvalidatedProof, expectedCNonce, supportedCredential)
-        return withError({ _: Throwable -> InvalidProof("Only EC Key is supported") }) {
-            when (key) {
-                is CredentialKey.DIDUrl -> raise(InvalidProof("DID not supported"))
-                is CredentialKey.Jwk -> key.value.toECKey()
-                is CredentialKey.X5c -> ECKey.parse(key.certificate)
-            }
+        fun ecKeyOrFail(provider: () -> ECKey) = try {
+            provider.invoke()
+        } catch (t: Throwable) {
+            raise(InvalidProof("Only EC Key is supported"))
+        }
+        return when (val key = validateProof(request.unvalidatedProof, expectedCNonce, supportedCredential)) {
+            is CredentialKey.DIDUrl -> ecKeyOrFail { key.jwk.toECKey() }
+            is CredentialKey.Jwk -> ecKeyOrFail { key.value.toECKey() }
+            is CredentialKey.X5c -> ecKeyOrFail { ECKey.parse(key.certificate) }
         }
     }
 }
