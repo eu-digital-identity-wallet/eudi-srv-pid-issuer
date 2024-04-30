@@ -26,7 +26,6 @@ repositories {
     maven {
         url = uri("https://maven.waltid.dev/releases")
         mavenContent {
-
         }
     }
 }

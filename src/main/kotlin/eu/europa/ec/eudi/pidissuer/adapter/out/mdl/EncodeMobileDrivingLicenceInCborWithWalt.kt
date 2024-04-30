@@ -15,18 +15,24 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
+import COSE.AlgorithmID
 import COSE.OneKey
 import arrow.core.raise.Raise
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.domain.AttributeDetails
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
+import id.walt.mdoc.COSECryptoProviderKeyInfo
+import id.walt.mdoc.SimpleCOSECryptoProvider
 import id.walt.mdoc.dataelement.*
 import id.walt.mdoc.doc.MDocBuilder
 import id.walt.mdoc.mso.DeviceKeyInfo
 import id.walt.mdoc.mso.ValidityInfo
 import kotlinx.datetime.toKotlinInstant
 import kotlinx.datetime.toKotlinLocalDate
+import java.security.KeyPair
 import java.security.PublicKey
+import java.security.cert.X509Certificate
+import java.security.interfaces.ECPublicKey
 import java.time.Clock
 import java.time.LocalDate
 import kotlin.time.Duration
@@ -34,9 +40,14 @@ import kotlin.time.Duration.Companion.days
 
 class EncodeMobileDrivingLicenceInCborWithWalt(
     private val clock: Clock,
-    private val validityDuration: Duration = 5.days
+    private val issuerKey: ECKey,
+    private val issuerKeyId: String,
+    private val validityDuration: Duration = 5.days,
 ) : EncodeMobileDrivingLicenceInCbor {
 
+    val issuerCryptoProvider: SimpleCOSECryptoProvider by lazy {
+        TODO()
+    }
 
     context(Raise<Unexpected>) override suspend fun invoke(
         licence: MobileDrivingLicence,
@@ -46,13 +57,12 @@ class EncodeMobileDrivingLicenceInCborWithWalt(
         val deviceKeyInfo: DeviceKeyInfo = getDeviceKeyInfo(holderKey.toPublicKey())
         with(MDocBuilder(MobileDrivingLicenceV1.docType)) {
             addItemsToSign(licence)
-            val mdoc = sign(validityInfo, deviceKeyInfo, issuerCryptoProvider, KEY_ID_ISSUER)
+            val mdoc = sign(validityInfo, deviceKeyInfo, issuerCryptoProvider, issuerKeyId)
             mdoc.toCBORHex()
         }
     } catch (t: Throwable) {
         raise(Unexpected("Failed to encode mDL", t))
     }
-
 
     private fun getDeviceKeyInfo(deviceKey: PublicKey): DeviceKeyInfo {
         val key: OneKey = getDeviceKey(deviceKey)
@@ -64,7 +74,38 @@ class EncodeMobileDrivingLicenceInCborWithWalt(
         return OneKey(deviceKey, null)
     }
 
+    fun issuerCryptoProvider(
+        issuerKey: KeyPair,
+        issuerCertificateChain: List<X509Certificate?>?,
+    ): SimpleCOSECryptoProvider {
+        val publicKey = issuerKey.public
+        if (publicKey is ECPublicKey) {
+            return SimpleCOSECryptoProvider(
+                java.util.List.of<COSECryptoProviderKeyInfo>(
+                    COSECryptoProviderKeyInfo(
+                        keyID = issuerKeyId,
+                        getAlgorithmId(publicKey),
+                        publicKey,
+                        issuerKey.private,
+                        emptyList(),
+                        emptyList<X509Certificate>(),
+                    ),
+                ),
+            )
+        } else {
+            throw IllegalArgumentException("Invalid key type. An Elliptic Curve key is required by ISO/IEC 18013-5:2021.")
+        }
+    }
 
+    private fun getAlgorithmId(ecPublicKey: ECPublicKey): AlgorithmID {
+        val bitLength = ecPublicKey.params.order.bitLength()
+        return when (bitLength) {
+            256 -> AlgorithmID.ECDSA_256
+            384 -> AlgorithmID.ECDSA_384
+            521 -> AlgorithmID.ECDSA_512
+            else -> throw IllegalArgumentException("Unsupported key size: $bitLength")
+        }
+    }
 }
 
 private fun MDocBuilder.addItemsToSign(licence: MobileDrivingLicence) {
@@ -95,4 +136,3 @@ private fun validityInfo(clock: Clock, duration: Duration): ValidityInfo {
     val validTo = signedAt.plus(duration)
     return ValidityInfo(signed = signedAt, validFrom = signedAt, validUntil = validTo, expectedUpdate = null)
 }
-
