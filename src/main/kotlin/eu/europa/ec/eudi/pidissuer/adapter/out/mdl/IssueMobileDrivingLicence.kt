@@ -39,32 +39,37 @@ val MobileDrivingLicenceV1Scope: Scope = Scope(mdlDocType(1u))
 
 val MobileDrivingLicenceV1Namespace: MsoNameSpace = mdlNamespace(1u)
 
+val FamilyName = AttributeDetails(
+    name = "family_name",
+    mandatory = true,
+    display = mapOf(Locale.ENGLISH to "Last name, surname, or primary identifier of the mDL holder."),
+)
+val GivenName = AttributeDetails(
+    name = "given_name",
+    mandatory = true,
+    display = mapOf(Locale.ENGLISH to "First name(s), other name(s), or secondary identifier, of the mDL holder."),
+)
+val BirthDate = AttributeDetails(
+    name = "birth_date",
+    mandatory = true,
+    display = mapOf(Locale.ENGLISH to "Day, month and year on which the mDL holder was born."),
+)
+val IssueDate = AttributeDetails(
+    name = "issue_date",
+    mandatory = true,
+    display = mapOf(Locale.ENGLISH to "Date when mDL was issued."),
+)
+val ExpiryDate = AttributeDetails(
+    name = "expiry_date",
+    mandatory = true,
+    display = mapOf(Locale.ENGLISH to "Date when mDL expires."),
+)
 val MobileDrivingLicenceV1Attributes: List<AttributeDetails> = listOf(
-    AttributeDetails(
-        name = "family_name",
-        mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Last name, surname, or primary identifier of the mDL holder."),
-    ),
-    AttributeDetails(
-        name = "given_name",
-        mandatory = true,
-        display = mapOf(Locale.ENGLISH to "First name(s), other name(s), or secondary identifier, of the mDL holder."),
-    ),
-    AttributeDetails(
-        name = "birth_date",
-        mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Day, month and year on which the mDL holder was born."),
-    ),
-    AttributeDetails(
-        name = "issue_date",
-        mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Date when mDL was issued."),
-    ),
-    AttributeDetails(
-        name = "expiry_date",
-        mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Date when mDL expires."),
-    ),
+    FamilyName,
+    GivenName,
+    BirthDate,
+    IssueDate,
+    ExpiryDate,
     AttributeDetails(
         name = "issuing_country",
         mandatory = true,
