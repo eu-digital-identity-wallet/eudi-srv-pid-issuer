@@ -105,6 +105,8 @@ import java.security.KeyStore
 import java.security.cert.X509Certificate
 import java.time.Clock
 import java.time.Duration
+import kotlin.time.Duration.Companion.days
+import kotlin.time.toKotlinDuration
 
 private val log = LoggerFactory.getLogger(PidIssuerApplication::class.java)
 
@@ -170,6 +172,31 @@ internal object RestEasyClients {
 @OptIn(ExperimentalSerializationApi::class)
 fun beans(clock: Clock) = beans {
     //
+    // Signing key
+    //
+    bean<Pair<ECKey, JWSAlgorithm>>(name = "signing-key", isLazyInit = true) {
+        when (env.getProperty<KeyOption>("issuer.signing-key")) {
+            null, KeyOption.GenerateRandom -> {
+                log.info("Generating random signing key for issuance")
+                ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate() to JWSAlgorithm.ES256
+            }
+
+            KeyOption.LoadFromKeystore -> {
+                log.info("Loading signing key from keystore for issuance")
+
+                val key = loadJwkFromKeystore(env, "issuer.signing-key")
+                require(key is ECKey) { "Only ECKeys are supported for signing" }
+
+                val algorithm = env.getRequiredProperty("issuer.signing-algorithm")
+                    .let { JWSAlgorithm.parse(it) }
+                require(algorithm in JWSAlgorithm.Family.EC) { "An EC JWSAlgorithm is required" }
+
+                key to algorithm
+            }
+        }
+    }
+
+    //
     // Adapters (out ports)
     //
     bean { clock }
@@ -222,11 +249,30 @@ fun beans(clock: Clock) = beans {
     bean {
         GetMobileDrivingLicenceDataMock()
     }
-    bean {
-        EncodeMobileDrivingLicenceInCborWithMicroservice(
-            ref(),
-            env.readRequiredUrl("issuer.mdl.mso_mdoc.encoderUrl"),
-        )
+    bean<EncodeMobileDrivingLicenceInCbor>(isLazyInit = true) {
+        when (env.getProperty<MsoMdocEncoderOption>("issuer.mdl.mso_mdoc.encoder")) {
+            null, MsoMdocEncoderOption.Microservice -> {
+                log.info("Using microservice to encode mDL in CBOR")
+                EncodeMobileDrivingLicenceInCborWithMicroservice(
+                    ref(),
+                    env.readRequiredUrl("issuer.mdl.mso_mdoc.encoderUrl"),
+                )
+            }
+
+            MsoMdocEncoderOption.Internal -> {
+                log.info("Using internal encoder to encode mDL in CBOR")
+                val (signingKey, signingAlgorithm) = ref<Pair<ECKey, JWSAlgorithm>>("signing-key")
+                val duration = env.getProperty("issuer.mdl.mso_mdoc.encoder.duration")
+                    ?.let { Duration.parse(it).toKotlinDuration() }
+                    ?: 5.days
+                EncodeMobileDrivingLicenceInCborWithWalt(
+                    clock,
+                    signingKey,
+                    signingAlgorithm,
+                    duration,
+                )
+            }
+        }
     }
     bean(::DefaultGenerateQrCode)
     bean(::HandleNotificationRequest)
@@ -308,27 +354,6 @@ fun beans(clock: Clock) = beans {
     //
     bean {
         val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl", removeTrailingSlash = true)
-        val (signingKey, signingAlgorithm) =
-            when (env.getProperty<KeyOption>("issuer.signing-key")) {
-                null, KeyOption.GenerateRandom -> {
-                    log.info("Generating random signing key for issuance")
-                    ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate() to JWSAlgorithm.ES256
-                }
-
-                KeyOption.LoadFromKeystore -> {
-                    log.info("Loading signing key from keystore for issuance")
-
-                    val key = loadJwkFromKeystore(env, "issuer.signing-key")
-                    require(key is ECKey) { "Only ECKeys are supported for signing" }
-
-                    val algorithm = env.getRequiredProperty("issuer.signing-algorithm")
-                        .let { JWSAlgorithm.parse(it) }
-                    require(algorithm in JWSAlgorithm.Family.EC) { "An EC JWSAlgorithm is required" }
-
-                    key to algorithm
-                }
-            }
-
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
             credentialEndPoint = issuerPublicUrl.appendPath(WalletApi.CREDENTIAL_ENDPOINT),
@@ -363,6 +388,7 @@ fun beans(clock: Clock) = beans {
                         env.getProperty<SelectiveDisclosureOption>("issuer.pid.sd_jwt_vc.complexObjectsSdOption")
                             ?: SelectiveDisclosureOption.Structured
 
+                    val (signingKey, signingAlgorithm) = ref<Pair<ECKey, JWSAlgorithm>>("signing-key")
                     val issueSdJwtVcPid = IssueSdJwtVcPid(
                         hashAlgorithm = HashAlgorithm.SHA3_256,
                         issuerKey = signingKey,
@@ -765,6 +791,14 @@ private fun JWK.withCertificateChain(chain: List<X509Certificate>): JWK {
 private enum class KeyOption {
     GenerateRandom,
     LoadFromKeystore,
+}
+
+/**
+ * Indicates which CBOR encoder to use.
+ */
+private enum class MsoMdocEncoderOption {
+    Internal,
+    Microservice,
 }
 
 /**
