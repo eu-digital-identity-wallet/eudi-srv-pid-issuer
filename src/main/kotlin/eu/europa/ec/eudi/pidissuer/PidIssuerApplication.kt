@@ -16,12 +16,15 @@
 package eu.europa.ec.eudi.pidissuer
 
 import arrow.core.NonEmptySet
+import arrow.core.recover
+import arrow.core.some
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.jwk.Curve
+import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
+import com.nimbusds.jose.util.Base64
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPProtectedResourceRequestVerifier
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DefaultDPoPSingleUseChecker
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
@@ -71,6 +74,9 @@ import org.springframework.context.support.beans
 import org.springframework.core.env.Environment
 import org.springframework.core.env.getProperty
 import org.springframework.core.env.getRequiredProperty
+import org.springframework.core.io.DefaultResourceLoader
+import org.springframework.core.io.FileSystemResource
+import org.springframework.core.io.Resource
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.client.reactive.ReactorClientHttpConnector
@@ -95,6 +101,8 @@ import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
 import java.net.URL
+import java.security.KeyStore
+import java.security.cert.X509Certificate
 import java.time.Clock
 import java.time.Duration
 
@@ -300,6 +308,26 @@ fun beans(clock: Clock) = beans {
     //
     bean {
         val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl", removeTrailingSlash = true)
+        val (signingKey, signingAlgorithm) =
+            when (env.getProperty<KeyOption>("issuer.signing-key")) {
+                null, KeyOption.GenerateRandom -> {
+                    log.info("Generating random signing key for issuance")
+                    ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate() to JWSAlgorithm.ES256
+                }
+
+                KeyOption.LoadFromKeystore -> {
+                    log.info("Loading signing key from keystore for issuance")
+
+                    val key = loadJwkFromKeystore(env, "issuer.signing-key")
+                    require(key is ECKey) { "Only ECKeys are supported for signing" }
+
+                    val algorithm = env.getRequiredProperty("issuer.signing-algorithm")
+                        .let { JWSAlgorithm.parse(it) }
+                    require(algorithm in JWSAlgorithm.Family.EC) { "An EC JWSAlgorithm is required" }
+
+                    key to algorithm
+                }
+            }
 
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
@@ -337,10 +365,10 @@ fun beans(clock: Clock) = beans {
 
                     val issueSdJwtVcPid = IssueSdJwtVcPid(
                         hashAlgorithm = HashAlgorithm.SHA3_256,
-                        issuerKey = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate(),
+                        issuerKey = signingKey,
                         getPidData = ref(),
                         clock = clock,
-                        signAlg = JWSAlgorithm.ES256,
+                        signAlg = signingAlgorithm,
                         credentialIssuerId = issuerPublicUrl,
                         extractJwkFromCredentialKey = DefaultExtractJwkFromCredentialKey,
                         calculateExpiresAt = { iat -> iat.plusDays(30).toInstant() },
@@ -356,6 +384,7 @@ fun beans(clock: Clock) = beans {
                         generateNotificationId = ref(),
                         storeIssuedCredential = ref(),
                     )
+
                     val deferred = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.deferred") ?: false
                     add(
                         if (deferred) issueSdJwtVcPid.asDeferred(ref(), ref())
@@ -647,6 +676,96 @@ private fun HttpsUrl.appendPath(path: String): HttpsUrl =
             .build()
             .toUriString(),
     )
+
+private const val keystoreDefaultLocation = "/keystore.jks"
+
+/**
+ * Loads a key pair alongside its associated certificate chain as a JWK.
+ *
+ * This method expects to find the following properties in the provided [environment].
+ * - [prefix].keystore -> location of the keystore as a Spring [Resource] URL
+ * - [prefix].keystore.type -> type of the keystore, e.g. JKS
+ * - [prefix].keystore.password -> password used to open the keystore
+ * - [prefix].alias -> alias of the key pair to load
+ * - [prefix].password -> password of the key pair
+ *
+ * In case no keystore is found in the configured location, this methods tries to find a keystore at the location `/keystore.jks`.
+ */
+@Suppress("SameParameterValue")
+private fun loadJwkFromKeystore(environment: Environment, prefix: String): JWK {
+    fun property(property: String): String =
+        when {
+            prefix.isBlank() -> property
+            prefix.endsWith(".") -> "$prefix$property"
+            else -> "$prefix.$property"
+        }
+
+    val keystoreResource = run {
+        val keystoreLocation = environment.getRequiredProperty(property("keystore"))
+        log.info("Will try to load Keystore from: '{}'", keystoreLocation)
+        val keystoreResource = DefaultResourceLoader().getResource(keystoreLocation).some()
+            .filter { it.exists() }
+            .recover {
+                log.warn("Could not find Keystore at '{}'. Fallback to '{}'", keystoreLocation, keystoreDefaultLocation)
+                FileSystemResource(keystoreDefaultLocation).some()
+                    .filter { it.exists() }
+                    .bind()
+            }
+            .getOrNull()
+        checkNotNull(keystoreResource) { "Could not load Keystore either from '$keystoreLocation' or '$keystoreDefaultLocation'" }
+    }
+
+    val keystoreType = environment.getProperty(property("keystore.type"), KeyStore.getDefaultType())
+    val keystorePassword = environment.getProperty(property("keystore.password"))?.takeIf { it.isNotBlank() }
+    val keyAlias = environment.getRequiredProperty(property("alias"))
+    val keyPassword = environment.getProperty(property("password"))?.takeIf { it.isNotBlank() }
+
+    return keystoreResource.inputStream.use { inputStream ->
+        val keystore = KeyStore.getInstance(keystoreType)
+        keystore.load(inputStream, keystorePassword?.toCharArray())
+
+        val jwk = JWK.load(keystore, keyAlias, keyPassword?.toCharArray())
+        val chain = keystore.getCertificateChain(keyAlias).orEmpty()
+            .map { certificate -> certificate as X509Certificate }
+            .toList()
+
+        when {
+            chain.isNotEmpty() -> jwk.withCertificateChain(chain)
+            else -> jwk
+        }
+    }
+}
+
+/**
+ * Creates a copy of this [JWK] and sets the provided [X509Certificate] certificate chain.
+ * For the operation to succeed, the following must hold true:
+ * 1. [chain] cannot be empty
+ * 2. The leaf certificate of the [chain] must match the leaf certificate of this [JWK]
+ */
+private fun JWK.withCertificateChain(chain: List<X509Certificate>): JWK {
+    require(this.parsedX509CertChain.isNotEmpty()) { "jwk must have a leaf certificate" }
+    require(chain.isNotEmpty()) { "chain cannot be empty" }
+    require(this.parsedX509CertChain.first() == chain.first()) {
+        "leaf certificate of provided chain does not match leaf certificate of jwk"
+    }
+
+    val encodedChain = chain.map { Base64.encode(it.encoded) }
+    return when (this) {
+        is RSAKey -> RSAKey.Builder(this).x509CertChain(encodedChain).build()
+        is ECKey -> ECKey.Builder(this).x509CertChain(encodedChain).build()
+        is OctetKeyPair -> OctetKeyPair.Builder(this).x509CertChain(encodedChain).build()
+        is OctetSequenceKey -> OctetSequenceKey.Builder(this).x509CertChain(encodedChain).build()
+        else -> error("Unexpected JWK type '${this.keyType.value}'/'${this.javaClass}'")
+    }
+}
+
+/**
+ * Indicates whether a random key pairs should be generated, or a key pair should be loaded from a keystore.
+ */
+private enum class KeyOption {
+    GenerateRandom,
+    LoadFromKeystore,
+}
 
 /**
  * Configuration properties for Keycloak.
