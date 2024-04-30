@@ -308,6 +308,26 @@ fun beans(clock: Clock) = beans {
     //
     bean {
         val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl", removeTrailingSlash = true)
+        val (signingKey, signingAlgorithm) =
+            when (env.getProperty<KeyOption>("issuer.signing-key")) {
+                null, KeyOption.GenerateRandom -> {
+                    log.info("Generating random signing key for issuance")
+                    ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate() to JWSAlgorithm.ES256
+                }
+
+                KeyOption.LoadFromKeystore -> {
+                    log.info("Loading signing key from keystore for issuance")
+
+                    val key = loadJwkFromKeystore(env, "issuer.signing-key")
+                    require(key is ECKey) { "Only ECKeys are supported for signing" }
+
+                    val algorithm = env.getRequiredProperty("issuer.signing-algorithm")
+                        .let { JWSAlgorithm.parse(it) }
+                    require(algorithm in JWSAlgorithm.Family.EC) { "An EC JWSAlgorithm is required" }
+
+                    key to algorithm
+                }
+            }
 
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
@@ -343,50 +363,28 @@ fun beans(clock: Clock) = beans {
                         env.getProperty<SelectiveDisclosureOption>("issuer.pid.sd_jwt_vc.complexObjectsSdOption")
                             ?: SelectiveDisclosureOption.Structured
 
-                    val issueSdJwtVcPid = run {
-                        val (signingKey, signingAlgorithm) =
-                            when (env.getProperty<KeyOption>("issuer.pid.sd_jwt_vc.signing-key")) {
-                                null, KeyOption.GenerateRandom -> {
-                                    log.info("Generating random signing key for SD-JWT issuance")
-                                    ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate() to JWSAlgorithm.ES256
-                                }
-
-                                KeyOption.LoadFromKeystore -> {
-                                    log.info("Loading signing key from keystore for SD-JWT issuance")
-
-                                    val key = loadJwkFromKeystore(env, "issuer.pid.sd_jwt_vc.signing-key")
-                                    require(key is ECKey) { "Only ECKeys are supported for SD-JWT signing" }
-
-                                    val algorithm = env.getRequiredProperty("issuer.pid.sd_jwt_vc.signing-algorithm")
-                                        .let { JWSAlgorithm.parse(it) }
-                                    require(algorithm in JWSAlgorithm.Family.EC) { "An EC JWSAlgorithm is required" }
-
-                                    key to algorithm
-                                }
+                    val issueSdJwtVcPid = IssueSdJwtVcPid(
+                        hashAlgorithm = HashAlgorithm.SHA3_256,
+                        issuerKey = signingKey,
+                        getPidData = ref(),
+                        clock = clock,
+                        signAlg = signingAlgorithm,
+                        credentialIssuerId = issuerPublicUrl,
+                        extractJwkFromCredentialKey = DefaultExtractJwkFromCredentialKey,
+                        calculateExpiresAt = { iat -> iat.plusDays(30).toInstant() },
+                        calculateNotUseBefore = notUseBefore?.let { duration ->
+                            {
+                                    iat ->
+                                iat.plusSeconds(duration.seconds).toInstant()
                             }
+                        },
+                        sdOption = sdOption,
+                        notificationsEnabled = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled")
+                            ?: true,
+                        generateNotificationId = ref(),
+                        storeIssuedCredential = ref(),
+                    )
 
-                        IssueSdJwtVcPid(
-                            hashAlgorithm = HashAlgorithm.SHA3_256,
-                            issuerKey = signingKey,
-                            getPidData = ref(),
-                            clock = clock,
-                            signAlg = signingAlgorithm,
-                            credentialIssuerId = issuerPublicUrl,
-                            extractJwkFromCredentialKey = DefaultExtractJwkFromCredentialKey,
-                            calculateExpiresAt = { iat -> iat.plusDays(30).toInstant() },
-                            calculateNotUseBefore = notUseBefore?.let { duration ->
-                                {
-                                        iat ->
-                                    iat.plusSeconds(duration.seconds).toInstant()
-                                }
-                            },
-                            sdOption = sdOption,
-                            notificationsEnabled = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled")
-                                ?: true,
-                            generateNotificationId = ref(),
-                            storeIssuedCredential = ref(),
-                        )
-                    }
                     val deferred = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.deferred") ?: false
                     add(
                         if (deferred) issueSdJwtVcPid.asDeferred(ref(), ref())

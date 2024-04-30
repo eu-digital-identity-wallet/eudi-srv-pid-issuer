@@ -144,40 +144,40 @@ Description: Whether to enable support for PID issuance in *SD JWT VC* format
 Default value: `true`
 
 Variable: `ISSUER_PID_SD_JWT_VC_DEFERRED`  
-Description: Whether PID issueance in *SD JWT VC* format should be *deferred* or *immediate*  
+Description: Whether PID issuance in *SD JWT VC* format should be *deferred* or *immediate*  
 Default value: `false` (i.e. immediate issuance)
-
-Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY`  
-Description: Whether to generate a new, or use an existing key-pair for SD-JWT signing.    
-Possible values: `GenerateRandom`, `LoadFromKeystore`  
-Default value: `GenerateRandom`
-
-Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY_KEYSTORE`  
-Description: Location of the keystore from which to load the key-pair for SD-JWT singing. Uses Spring Resource URL syntax.       
-Default value: N/A
-
-Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY_KEYSTORE_TYPE`  
-Description: Type of the keystore from which to load the key-pair for SD-JWT singing.       
-Default value: N/A
-
-Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY_KEYSTORE_PASSWORD`  
-Description: Password of the keystore from which to load the key-pair for SD-JWT singing.       
-Default value: N/A
-
-Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY_ALIAS`  
-Description: Alias of the key-pair for SD-JWT singing.       
-Default value: N/A
-
-Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY_PASSWORD`  
-Description: Password of the key-pair for SD-JWT singing.       
-Default value: N/A
-
-Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_ALGORITHM`  
-Description: Algorithm used for SD-JWT singing. Required when `ISSUER_PID_SD_JWT_VC_SIGNING_KEY` is set to `LoadFromKeystore`.         
-Default value: N/A
 
 Variable: `ISSUER_PID_ISSUING_COUNTRY`  
 Description: Code of the Country issuing the PID  
+Default value: N/A
+
+Variable: `ISSUER_SIGNING_KEY`  
+Description: Whether to generate a new, or use an existing key-pair for signing.    
+Possible values: `GenerateRandom`, `LoadFromKeystore`  
+Default value: `GenerateRandom`
+
+Variable: `ISSUER_SIGNING_KEY_KEYSTORE`  
+Description: Location of the keystore from which to load the key-pair for signing. Uses Spring Resource URL syntax.       
+Default value: N/A
+
+Variable: `ISSUER_SIGNING_KEY_KEYSTORE_TYPE`  
+Description: Type of the keystore from which to load the key-pair for signing.       
+Default value: N/A
+
+Variable: `ISSUER_SIGNING_KEY_KEYSTORE_PASSWORD`  
+Description: Password of the keystore from which to load the key-pair for signing.       
+Default value: N/A
+
+Variable: `ISSUER_SIGNING_KEY_ALIAS`  
+Description: Alias of the key-pair for signing.       
+Default value: N/A
+
+Variable: `ISSUER_SIGNING_KEY_PASSWORD`  
+Description: Password of the key-pair for signing.       
+Default value: N/A
+
+Variable: `ISSUER_SIGNING_ALGORITHM`  
+Description: Algorithm used for signing. Required when `ISSUER_SIGNING_KEY` is set to `LoadFromKeystore`.         
 Default value: N/A
 
 Variable: `ISSUER_KEYCLOAK_SERVER_URL`  
