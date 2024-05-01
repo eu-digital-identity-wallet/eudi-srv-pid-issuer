@@ -290,37 +290,49 @@ fun beans(clock: Clock) = beans {
     bean(::HandleNotificationRequest)
     bean {
         val resolvers = buildMap<CredentialIdentifier, CredentialRequestFactory> {
-            this[CredentialIdentifier(MobileDrivingLicenceV1Scope.value)] =
-                { unvalidatedProof, requestedResponseEncryption ->
-                    MsoMdocCredentialRequest(
-                        unvalidatedProof = unvalidatedProof,
-                        credentialResponseEncryption = requestedResponseEncryption,
-                        docType = MobileDrivingLicenceV1.docType,
-                        claims = MobileDrivingLicenceV1.msoClaims.mapValues { entry -> entry.value.map { attribute -> attribute.name } },
-                    )
-                }
-
-            this[CredentialIdentifier(PidMsoMdocScope.value)] =
-                { unvalidatedProof, requestedResponseEncryption ->
-                    MsoMdocCredentialRequest(
-                        unvalidatedProof = unvalidatedProof,
-                        credentialResponseEncryption = requestedResponseEncryption,
-                        docType = PidMsoMdocV1.docType,
-                        claims = PidMsoMdocV1.msoClaims.mapValues { entry -> entry.value.map { attribute -> attribute.name } },
-                    )
-                }
-
-            val signingAlgorithm = ref<Pair<ECKey, JWSAlgorithm>>("signing-key").second
-            pidSdJwtVcV1(signingAlgorithm).let { sdJwtVcPid ->
-                this[CredentialIdentifier(PidSdJwtVcScope.value)] =
+            val enableMobileDrivingLicence = env.getProperty("issuer.mdl.enabled", true)
+            if (enableMobileDrivingLicence) {
+                this[CredentialIdentifier(MobileDrivingLicenceV1Scope.value)] =
                     { unvalidatedProof, requestedResponseEncryption ->
-                        SdJwtVcCredentialRequest(
+                        MsoMdocCredentialRequest(
                             unvalidatedProof = unvalidatedProof,
                             credentialResponseEncryption = requestedResponseEncryption,
-                            type = sdJwtVcPid.type,
-                            claims = sdJwtVcPid.claims.map { it.name }.toSet(),
+                            docType = MobileDrivingLicenceV1.docType,
+                            claims = MobileDrivingLicenceV1.msoClaims.mapValues {
+                                    entry ->
+                                entry.value.map { attribute -> attribute.name }
+                            },
                         )
                     }
+            }
+
+            val enableMsoMdocPid = env.getProperty<Boolean>("issuer.pid.mso_mdoc.enabled") ?: true
+            if (enableMsoMdocPid) {
+                this[CredentialIdentifier(PidMsoMdocScope.value)] =
+                    { unvalidatedProof, requestedResponseEncryption ->
+                        MsoMdocCredentialRequest(
+                            unvalidatedProof = unvalidatedProof,
+                            credentialResponseEncryption = requestedResponseEncryption,
+                            docType = PidMsoMdocV1.docType,
+                            claims = PidMsoMdocV1.msoClaims.mapValues { entry -> entry.value.map { attribute -> attribute.name } },
+                        )
+                    }
+            }
+
+            val enableSdJwtVcPid = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.enabled") ?: true
+            if (enableSdJwtVcPid) {
+                val signingAlgorithm = ref<Pair<ECKey, JWSAlgorithm>>("signing-key").second
+                pidSdJwtVcV1(signingAlgorithm).let { sdJwtVcPid ->
+                    this[CredentialIdentifier(PidSdJwtVcScope.value)] =
+                        { unvalidatedProof, requestedResponseEncryption ->
+                            SdJwtVcCredentialRequest(
+                                unvalidatedProof = unvalidatedProof,
+                                credentialResponseEncryption = requestedResponseEncryption,
+                                type = sdJwtVcPid.type,
+                                claims = sdJwtVcPid.claims.map { it.name }.toSet(),
+                            )
+                        }
+                }
             }
         }
 
