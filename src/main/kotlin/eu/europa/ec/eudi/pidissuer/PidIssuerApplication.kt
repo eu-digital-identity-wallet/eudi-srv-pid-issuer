@@ -35,6 +35,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerUi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CredentialRequestFactory
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultResolveCredentialRequestByCredentialIdentifier
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.DefaultExtractJwkFromCredentialKey
@@ -183,7 +184,8 @@ fun beans(clock: Clock) = beans {
     //
     // Signing key
     //
-    bean<Pair<ECKey, JWSAlgorithm>>(name = "signing-key", isLazyInit = true) {
+
+    bean(isLazyInit = true) {
         fun ECKey.signingAlgorithm() =
             when (val curve = curve) {
                 Curve.P_256 -> JWSAlgorithm.ES256
@@ -191,7 +193,6 @@ fun beans(clock: Clock) = beans {
                 Curve.P_521 -> JWSAlgorithm.ES512
                 else -> error("Unsupported ECKey Curve '$curve'")
             }
-
         val signingKey = when (env.getProperty<KeyOption>("issuer.signing-key")) {
             null, KeyOption.GenerateRandom -> {
                 log.info("Generating random signing key and self-signed certificate for issuance")
@@ -214,8 +215,7 @@ fun beans(clock: Clock) = beans {
             }
         }
         require(signingKey is ECKey) { "Only ECKeys are supported for signing" }
-
-        signingKey to signingKey.signingAlgorithm()
+        IssuerSigningKey(signingKey, signingKey.signingAlgorithm())
     }
 
     //
@@ -274,11 +274,11 @@ fun beans(clock: Clock) = beans {
 
             MsoMdocEncoderOption.Internal -> {
                 log.info("Using internal encoder to encode PID in CBOR")
-                val (signingKey, signingAlgorithm) = ref<Pair<ECKey, JWSAlgorithm>>("signing-key")
+                val issuerSigningKey = ref<IssuerSigningKey>()
                 val duration = env.getProperty("issuer.pid.mso_mdoc.encoder.duration")
                     ?.let { Duration.parse(it).toKotlinDuration() }
                     ?: 30.days
-                EncodePidInCborWithWalt(clock, signingKey, signingAlgorithm, duration)
+                EncodePidInCborWithWalt(clock, issuerSigningKey, duration)
             }
         }
     }
@@ -297,11 +297,11 @@ fun beans(clock: Clock) = beans {
 
             MsoMdocEncoderOption.Internal -> {
                 log.info("Using internal encoder to encode mDL in CBOR")
-                val (signingKey, signingAlgorithm) = ref<Pair<ECKey, JWSAlgorithm>>("signing-key")
+                val issuerSigningKey = ref<IssuerSigningKey>()
                 val duration = env.getProperty("issuer.mdl.mso_mdoc.encoder.duration")
                     ?.let { Duration.parse(it).toKotlinDuration() }
                     ?: 5.days
-                EncodeMobileDrivingLicenceInCborWithWalt(clock, signingKey, signingAlgorithm, duration)
+                EncodeMobileDrivingLicenceInCborWithWalt(clock, issuerSigningKey, duration)
             }
         }
     }
@@ -336,7 +336,7 @@ fun beans(clock: Clock) = beans {
             }
 
             if (enableSdJwtVcPid) {
-                val signingAlgorithm = ref<Pair<ECKey, JWSAlgorithm>>("signing-key").second
+                val (_, signingAlgorithm) = ref<IssuerSigningKey>()
                 pidSdJwtVcV1(signingAlgorithm).let { sdJwtVcPid ->
                     this[CredentialIdentifier(PidSdJwtVcScope.value)] =
                         { unvalidatedProof, requestedResponseEncryption ->
@@ -426,13 +426,12 @@ fun beans(clock: Clock) = beans {
                         env.getProperty<SelectiveDisclosureOption>("issuer.pid.sd_jwt_vc.complexObjectsSdOption")
                             ?: SelectiveDisclosureOption.Structured
 
-                    val (signingKey, signingAlgorithm) = ref<Pair<ECKey, JWSAlgorithm>>("signing-key")
+                    val issuerSigningKey = ref<IssuerSigningKey>()
                     val issueSdJwtVcPid = IssueSdJwtVcPid(
                         hashAlgorithm = HashAlgorithm.SHA3_256,
-                        issuerKey = signingKey,
+                        issuerSigningKey = issuerSigningKey,
                         getPidData = ref(),
                         clock = clock,
-                        signAlg = signingAlgorithm,
                         credentialIssuerId = issuerPublicUrl,
                         extractJwkFromCredentialKey = DefaultExtractJwkFromCredentialKey,
                         calculateExpiresAt = { iat -> iat.plusDays(30).toInstant() },

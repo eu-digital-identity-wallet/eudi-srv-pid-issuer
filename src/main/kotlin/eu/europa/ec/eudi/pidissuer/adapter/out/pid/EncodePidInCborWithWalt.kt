@@ -15,13 +15,11 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
-import COSE.AlgorithmID
 import COSE.OneKey
-import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.ECKey
-import com.nimbusds.jose.util.X509CertChainUtils
+import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
+import eu.europa.ec.eudi.pidissuer.adapter.out.cryptoProvider
 import eu.europa.ec.eudi.pidissuer.domain.AttributeDetails
-import id.walt.mdoc.COSECryptoProviderKeyInfo
 import id.walt.mdoc.SimpleCOSECryptoProvider
 import id.walt.mdoc.dataelement.DataElement
 import id.walt.mdoc.dataelement.MapElement
@@ -39,30 +37,12 @@ import kotlin.time.Duration
 @OptIn(ExperimentalEncodingApi::class)
 internal class EncodePidInCborWithWalt(
     private val clock: Clock,
-    private val issuerKey: ECKey,
-    private val algorithm: JWSAlgorithm,
+    private val issuerSigningKey: IssuerSigningKey,
     private val validityDuration: Duration,
 ) : EncodePidInCbor {
-    init {
-        require(issuerKey.isPrivate) { "a private key is required for signing" }
-        require(!issuerKey.keyID.isNullOrBlank()) { "issuer key must have kid" }
-        require(!issuerKey.x509CertChain.isNullOrEmpty()) { "issuer key must have an x5c certificate chain" }
-        require(algorithm in JWSAlgorithm.Family.EC) { "signing algorithm must be an EC algorithm" }
-    }
 
     private val issuerCryptoProvider: SimpleCOSECryptoProvider by lazy {
-        SimpleCOSECryptoProvider(
-            listOf(
-                COSECryptoProviderKeyInfo(
-                    keyID = issuerKey.keyID,
-                    algorithmID = algorithm.asAlgorithmId(),
-                    publicKey = issuerKey.toECPublicKey(),
-                    privateKey = issuerKey.toECPrivateKey(),
-                    x5Chain = X509CertChainUtils.parse(issuerKey.x509CertChain),
-                    trustedRootCAs = emptyList(),
-                ),
-            ),
-        )
+        issuerSigningKey.cryptoProvider()
     }
 
     override suspend fun invoke(
@@ -75,18 +55,10 @@ internal class EncodePidInCborWithWalt(
         val mdoc = MDocBuilder(PidMsoMdocV1.docType).apply {
             addItemsToSign(pid)
             addItemsToSign(pidMetaData)
-        }.sign(validityInfo, deviceKeyInfo, issuerCryptoProvider, issuerKey.keyID)
+        }.sign(validityInfo, deviceKeyInfo, issuerCryptoProvider, issuerSigningKey.key.keyID)
         return Base64.UrlSafe.encode(mdoc.toCBOR())
     }
 }
-
-private fun JWSAlgorithm.asAlgorithmId(): AlgorithmID =
-    when (this) {
-        JWSAlgorithm.ES256 -> AlgorithmID.ECDSA_256
-        JWSAlgorithm.ES384 -> AlgorithmID.ECDSA_384
-        JWSAlgorithm.ES512 -> AlgorithmID.ECDSA_512
-        else -> error("Unsupported JWSAlgorithm $this")
-    }
 
 private fun validityInfo(clock: Clock, duration: Duration): ValidityInfo {
     val signedAt = clock.instant().toKotlinInstant()

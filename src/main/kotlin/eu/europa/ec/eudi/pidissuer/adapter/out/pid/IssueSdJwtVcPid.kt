@@ -23,6 +23,7 @@ import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.*
@@ -213,8 +214,7 @@ class IssueSdJwtVcPid(
     private val credentialIssuerId: CredentialIssuerId,
     private val clock: Clock,
     private val hashAlgorithm: HashAlgorithm,
-    private val signAlg: JWSAlgorithm,
-    private val issuerKey: ECKey,
+    private val issuerSigningKey: IssuerSigningKey,
     private val getPidData: GetPidData,
     private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
     private val calculateExpiresAt: TimeDependant<Instant>,
@@ -228,9 +228,9 @@ class IssueSdJwtVcPid(
     private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
     private val validateProof = ValidateProof(credentialIssuerId)
 
-    override val supportedCredential: SdJwtVcCredentialConfiguration = pidSdJwtVcV1(signAlg)
+    override val supportedCredential: SdJwtVcCredentialConfiguration = pidSdJwtVcV1(issuerSigningKey.algorithm)
     override val publicKey: JWK
-        get() = issuerKey.toPublicJWK()
+        get() = issuerSigningKey.key.toPublicJWK()
 
     context(Raise<IssueCredentialError>)
     override suspend fun invoke(
@@ -317,11 +317,11 @@ class IssueSdJwtVcPid(
         // SD-JWT VC requires no decoys
 
         val sdJwtFactory = SdJwtFactory(hashAlgorithm = hashAlgorithm, numOfDecoysLimit = 0)
-        val signer = ECDSASigner(issuerKey)
-        SdJwtIssuer.nimbus(sdJwtFactory, signer, signAlg) {
+        val signer = ECDSASigner(issuerSigningKey.key)
+        SdJwtIssuer.nimbus(sdJwtFactory, signer, issuerSigningKey.algorithm) {
             // SD-JWT VC requires the kid & typ header attributes
             // Check [here](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-01.html#name-jose-header)
-            keyID(issuerKey.keyID)
+            keyID(issuerSigningKey.key.keyID)
             type(JOSEObjectType("vc+sd-jwt"))
         }
     }

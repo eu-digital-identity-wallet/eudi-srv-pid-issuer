@@ -15,17 +15,15 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
-import COSE.AlgorithmID
 import COSE.OneKey
 import arrow.core.raise.Raise
-import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.ECKey
-import com.nimbusds.jose.util.X509CertChainUtils
+import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
+import eu.europa.ec.eudi.pidissuer.adapter.out.cryptoProvider
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.GenericRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.ParameterizedRestriction
 import eu.europa.ec.eudi.pidissuer.domain.AttributeDetails
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
-import id.walt.mdoc.COSECryptoProviderKeyInfo
 import id.walt.mdoc.SimpleCOSECryptoProvider
 import id.walt.mdoc.dataelement.DataElement
 import id.walt.mdoc.dataelement.MapElement
@@ -43,30 +41,12 @@ import kotlin.time.Duration
 @OptIn(ExperimentalEncodingApi::class)
 class EncodeMobileDrivingLicenceInCborWithWalt(
     private val clock: Clock,
-    private val issuerKey: ECKey,
-    private val algorithm: JWSAlgorithm,
+    private val issuerSigningKey: IssuerSigningKey,
     private val validityDuration: Duration,
 ) : EncodeMobileDrivingLicenceInCbor {
-    init {
-        require(issuerKey.isPrivate) { "a private key is required for signing" }
-        require(!issuerKey.keyID.isNullOrBlank()) { "issuer key must have kid" }
-        require(!issuerKey.x509CertChain.isNullOrEmpty()) { "issuer key must have an x5c certificate chain" }
-        require(algorithm in JWSAlgorithm.Family.EC) { "signing algorithm must be an EC algorithm" }
-    }
 
     private val issuerCryptoProvider: SimpleCOSECryptoProvider by lazy {
-        SimpleCOSECryptoProvider(
-            listOf(
-                COSECryptoProviderKeyInfo(
-                    keyID = issuerKey.keyID,
-                    algorithmID = algorithm.asAlgorithmId(),
-                    publicKey = issuerKey.toECPublicKey(),
-                    privateKey = issuerKey.toECPrivateKey(),
-                    x5Chain = X509CertChainUtils.parse(issuerKey.x509CertChain),
-                    trustedRootCAs = emptyList(),
-                ),
-            ),
-        )
+        issuerSigningKey.cryptoProvider()
     }
 
     context(Raise<Unexpected>)
@@ -76,20 +56,12 @@ class EncodeMobileDrivingLicenceInCborWithWalt(
             val deviceKeyInfo: DeviceKeyInfo = getDeviceKeyInfo(holderKey)
             val mdoc = MDocBuilder(MobileDrivingLicenceV1.docType).apply {
                 addItemsToSign(licence)
-            }.sign(validityInfo, deviceKeyInfo, issuerCryptoProvider, issuerKey.keyID)
+            }.sign(validityInfo, deviceKeyInfo, issuerCryptoProvider, issuerSigningKey.key.keyID)
             Base64.UrlSafe.encode(mdoc.toCBOR())
         } catch (t: Throwable) {
             raise(Unexpected("Failed to encode mDL", t))
         }
 }
-
-private fun JWSAlgorithm.asAlgorithmId(): AlgorithmID =
-    when (this) {
-        JWSAlgorithm.ES256 -> AlgorithmID.ECDSA_256
-        JWSAlgorithm.ES384 -> AlgorithmID.ECDSA_384
-        JWSAlgorithm.ES512 -> AlgorithmID.ECDSA_512
-        else -> error("Unsupported JWSAlgorithm $this")
-    }
 
 private fun validityInfo(clock: Clock, duration: Duration): ValidityInfo {
     val signedAt = clock.instant().toKotlinInstant()
