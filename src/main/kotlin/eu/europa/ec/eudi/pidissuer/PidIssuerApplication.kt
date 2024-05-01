@@ -27,6 +27,8 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPProtectedResourceRequestVerifier
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DefaultDPoPSingleUseChecker
+import com.nimbusds.oauth2.sdk.id.Issuer
+import com.nimbusds.oauth2.sdk.util.X509CertificateUtils
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerUi
@@ -105,7 +107,9 @@ import java.security.KeyStore
 import java.security.cert.X509Certificate
 import java.time.Clock
 import java.time.Duration
+import java.util.*
 import kotlin.time.Duration.Companion.days
+import kotlin.time.toJavaDuration
 import kotlin.time.toKotlinDuration
 
 private val log = LoggerFactory.getLogger(PidIssuerApplication::class.java)
@@ -171,6 +175,8 @@ internal object RestEasyClients {
 
 @OptIn(ExperimentalSerializationApi::class)
 fun beans(clock: Clock) = beans {
+    val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl", removeTrailingSlash = true)
+
     //
     // Signing key
     //
@@ -185,12 +191,22 @@ fun beans(clock: Clock) = beans {
 
         val signingKey = when (env.getProperty<KeyOption>("issuer.signing-key")) {
             null, KeyOption.GenerateRandom -> {
-                log.info("Generating random signing key for issuance")
-                ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate()
+                log.info("Generating random signing key and self-signed certificate for issuance")
+                val key = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate()
+                val certificate = X509CertificateUtils.generateSelfSigned(
+                    Issuer(issuerPublicUrl.value.host),
+                    Date.from(clock.instant()),
+                    Date.from(clock.instant() + 365.days.toJavaDuration()),
+                    key.toECPublicKey(),
+                    key.toECPrivateKey(),
+                )
+                ECKey.Builder(key)
+                    .x509CertChain(listOf(Base64.encode(certificate.encoded)))
+                    .build()
             }
 
             KeyOption.LoadFromKeystore -> {
-                log.info("Loading signing key from keystore for issuance")
+                log.info("Loading signing key and certificate for issuance from keystore")
                 loadJwkFromKeystore(env, "issuer.signing-key")
             }
         }
@@ -298,8 +314,7 @@ fun beans(clock: Clock) = beans {
                             unvalidatedProof = unvalidatedProof,
                             credentialResponseEncryption = requestedResponseEncryption,
                             docType = MobileDrivingLicenceV1.docType,
-                            claims = MobileDrivingLicenceV1.msoClaims.mapValues {
-                                    entry ->
+                            claims = MobileDrivingLicenceV1.msoClaims.mapValues { entry ->
                                 entry.value.map { attribute -> attribute.name }
                             },
                         )
@@ -378,7 +393,6 @@ fun beans(clock: Clock) = beans {
     // Specific Issuers
     //
     bean {
-        val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl", removeTrailingSlash = true)
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
             credentialEndPoint = issuerPublicUrl.appendPath(WalletApi.CREDENTIAL_ENDPOINT),
