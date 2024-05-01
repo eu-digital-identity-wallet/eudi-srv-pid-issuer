@@ -39,27 +39,27 @@ val MobileDrivingLicenceV1Scope: Scope = Scope(mdlDocType(1u))
 
 val MobileDrivingLicenceV1Namespace: MsoNameSpace = mdlNamespace(1u)
 
-val FamilyName = AttributeDetails(
+val FamilyNameAttribute = AttributeDetails(
     name = "family_name",
     mandatory = true,
     display = mapOf(Locale.ENGLISH to "Last name, surname, or primary identifier of the mDL holder."),
 )
-val GivenName = AttributeDetails(
+val GivenNameAttribute = AttributeDetails(
     name = "given_name",
     mandatory = true,
     display = mapOf(Locale.ENGLISH to "First name(s), other name(s), or secondary identifier, of the mDL holder."),
 )
-val BirthDate = AttributeDetails(
+val BirthDateAttribute = AttributeDetails(
     name = "birth_date",
     mandatory = true,
     display = mapOf(Locale.ENGLISH to "Day, month and year on which the mDL holder was born."),
 )
-val IssueDate = AttributeDetails(
+val IssueDateAttribute = AttributeDetails(
     name = "issue_date",
     mandatory = true,
     display = mapOf(Locale.ENGLISH to "Date when mDL was issued."),
 )
-val ExpiryDate = AttributeDetails(
+val ExpiryDateAttribute = AttributeDetails(
     name = "expiry_date",
     mandatory = true,
     display = mapOf(Locale.ENGLISH to "Date when mDL expires."),
@@ -69,7 +69,7 @@ val PortraitAttribute = AttributeDetails(
     mandatory = true,
     display = mapOf(Locale.ENGLISH to "A reproduction of the mDL holder’s portrait."),
 )
-val PortraitCaptureDate = AttributeDetails(
+val PortraitCaptureDateAttribute = AttributeDetails(
     name = "portrait_capture_date",
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "Date when portrait was taken."),
@@ -79,12 +79,12 @@ val SexAttribute = AttributeDetails(
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "mDL holder’s sex using values as defined in ISO/IEC 5218."),
 )
-val Height = AttributeDetails(
+val HeightAttribute = AttributeDetails(
     name = "height",
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "mDL holder’s height in centimetres."),
 )
-val Weight = AttributeDetails(
+val WeightAttribute = AttributeDetails(
     name = "weight",
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "mDL holder’s weight in kilograms."),
@@ -94,12 +94,12 @@ val HairColourAttribute = AttributeDetails(
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "mDL holder’s hair colour."),
 )
-val BirthPlace = AttributeDetails(
+val BirthPlaceAttribute = AttributeDetails(
     name = "birth_place",
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "Country and municipality or state/province where the mDL holder was born."),
 )
-val ResidentAddress = AttributeDetails(
+val ResidentAddressAttribute = AttributeDetails(
     name = "resident_address",
     mandatory = false,
     display = buildMap {
@@ -114,22 +114,22 @@ val EyeColourAttribute = AttributeDetails(
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "mDL holder’s eye colour."),
 )
-val ResidentCity = AttributeDetails(
+val ResidentCityAttribute = AttributeDetails(
     name = "resident_city",
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "The city where the mDL holder lives."),
 )
-val ResidentState = AttributeDetails(
+val ResidentStateAttribute = AttributeDetails(
     name = "resident_state",
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "The state/province/district where the mDL holder lives."),
 )
-val ResidentPostalCode = AttributeDetails(
+val ResidentPostalCodeAttribute = AttributeDetails(
     name = "resident_postal_code",
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "The postal code of the mDL holder."),
 )
-val ResidentCountry = AttributeDetails(
+val ResidentCountryAttribute = AttributeDetails(
     name = "resident_country",
     mandatory = false,
     display = buildMap {
@@ -139,27 +139,27 @@ val ResidentCountry = AttributeDetails(
         )
     },
 )
-val AgeInYears = AttributeDetails(
+val AgeInYearsAttribute = AttributeDetails(
     name = "age_in_years",
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "The age of the mDL holder."),
 )
-val AgeBirthYear = AttributeDetails(
+val AgeBirthYearAttribute = AttributeDetails(
     name = "age_birth_year",
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "The year when the mDL holder was born."),
 )
-val AgeOver18 = AttributeDetails(
+val AgeOver18Attribute = AttributeDetails(
     name = "age_over_18",
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "Whether the mDL holder is over 18 years old."),
 )
-val AgeOver21 = AttributeDetails(
+val AgeOver21Attribute = AttributeDetails(
     name = "age_over_21",
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "Whether the mDL holder is over 21 years old."),
 )
-val Nationality = AttributeDetails(
+val NationalityAttribute = AttributeDetails(
     name = "nationality",
     mandatory = false,
     display = buildMap {
@@ -169,17 +169,17 @@ val Nationality = AttributeDetails(
         )
     },
 )
-val FamilyNameNationalCharacter = AttributeDetails(
+val FamilyNameNationalCharacterAttribute = AttributeDetails(
     name = "family_name_national_character",
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "The family name of the mDL holder using full UTF-8 character set."),
 )
-val GivenNameNationalCharacter = AttributeDetails(
+val GivenNameNationalCharacterAttribute = AttributeDetails(
     name = "given_name_national_character",
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "The given name of the mDL holder using full UTF-8 character set."),
 )
-val SignatureUsualMark = AttributeDetails(
+val SignatureUsualMarkAttribute = AttributeDetails(
     name = "signature_usual_mark",
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "Image of the signature or usual mark of the mDL holder."),
@@ -194,17 +194,17 @@ val IssuingCountryAttribute = AttributeDetails(
         )
     },
 )
-val IssuingAuthority = AttributeDetails(
+val IssuingAuthorityAttribute = AttributeDetails(
     name = "issuing_authority",
     mandatory = true,
     display = mapOf(Locale.ENGLISH to "Issuing authority name."),
 )
-val IssuingCountryDistinguishingSign = AttributeDetails(
+val IssuingCountryDistinguishingSignAttribute = AttributeDetails(
     name = "un_distinguishing_sign",
     mandatory = true,
     display = mapOf(Locale.ENGLISH to "Distinguishing sign of the issuing country according to ISO/IEC 18013-1:2018, Annex F."),
 )
-val IssuingJurisdiction = AttributeDetails(
+val IssuingJurisdictionAttribute = AttributeDetails(
     name = "issuing_jurisdiction",
     mandatory = false,
     display = buildMap {
@@ -214,55 +214,55 @@ val IssuingJurisdiction = AttributeDetails(
         )
     },
 )
-val DocumentNumber = AttributeDetails(
+val DocumentNumberAttribute = AttributeDetails(
     name = "document_number",
     mandatory = true,
     display = mapOf(Locale.ENGLISH to "The number assigned or calculated by the issuing authority."),
 )
-val AdministrativeNumber = AttributeDetails(
+val AdministrativeNumberAttribute = AttributeDetails(
     name = "administrative_number",
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "An audit control number assigned by the issuing authority."),
 )
-val DrivingPrivileges = AttributeDetails(
+val DrivingPrivilegesAttribute = AttributeDetails(
     name = "driving_privileges",
     mandatory = true,
     display = mapOf(Locale.ENGLISH to "Driving privileges of the mDL holder."),
 )
 val MobileDrivingLicenceV1Attributes: List<AttributeDetails> = listOf(
-    FamilyName,
-    GivenName,
-    BirthDate,
-    IssueDate,
-    ExpiryDate,
+    FamilyNameAttribute,
+    GivenNameAttribute,
+    BirthDateAttribute,
+    IssueDateAttribute,
+    ExpiryDateAttribute,
     IssuingCountryAttribute,
-    IssuingAuthority,
-    DocumentNumber,
+    IssuingAuthorityAttribute,
+    DocumentNumberAttribute,
     PortraitAttribute,
-    DrivingPrivileges,
-    IssuingCountryDistinguishingSign,
-    AdministrativeNumber,
+    DrivingPrivilegesAttribute,
+    IssuingCountryDistinguishingSignAttribute,
+    AdministrativeNumberAttribute,
     SexAttribute,
-    Height,
-    Weight,
+    HeightAttribute,
+    WeightAttribute,
     EyeColourAttribute,
     HairColourAttribute,
-    BirthPlace,
-    ResidentAddress,
-    PortraitCaptureDate,
-    AgeInYears,
-    AgeBirthYear,
-    AgeOver18,
-    AgeOver21,
-    IssuingJurisdiction,
-    Nationality,
-    ResidentCity,
-    ResidentState,
-    ResidentPostalCode,
-    ResidentCountry,
-    FamilyNameNationalCharacter,
-    GivenNameNationalCharacter,
-    SignatureUsualMark,
+    BirthPlaceAttribute,
+    ResidentAddressAttribute,
+    PortraitCaptureDateAttribute,
+    AgeInYearsAttribute,
+    AgeBirthYearAttribute,
+    AgeOver18Attribute,
+    AgeOver21Attribute,
+    IssuingJurisdictionAttribute,
+    NationalityAttribute,
+    ResidentCityAttribute,
+    ResidentStateAttribute,
+    ResidentPostalCodeAttribute,
+    ResidentCountryAttribute,
+    FamilyNameNationalCharacterAttribute,
+    GivenNameNationalCharacterAttribute,
+    SignatureUsualMarkAttribute,
 )
 
 val MobileDrivingLicenceDisplay: List<CredentialDisplay> = listOf(

@@ -86,9 +86,9 @@ class EncodeMobileDrivingLicenceInCborWithMicroservice(
                         addDriver(licence.driver)
                         addIssueAndExpiry(licence.issueAndExpiry)
                         addIssuer(licence.issuer)
-                        put("document_number", licence.documentNumber.value)
+                        put(DocumentNumberAttribute.name, licence.documentNumber.value)
                         addDrivingPrivileges(licence.privileges)
-                        licence.administrativeNumber?.let { put("administrative_number", it.value) }
+                        licence.administrativeNumber?.let { put(AdministrativeNumberAttribute.name, it.value) }
                     }
                 }
             }
@@ -96,57 +96,57 @@ class EncodeMobileDrivingLicenceInCborWithMicroservice(
         @OptIn(ExperimentalEncodingApi::class)
         private fun JsonObjectBuilder.addDriver(driver: Driver) {
             with(driver) {
-                put("family_name", familyName.latin.value)
-                put("given_name", givenName.latin.value)
-                put("birth_date", birthDate.toString())
+                put(FamilyNameAttribute.name, familyName.latin.value)
+                put(GivenNameAttribute.name, givenName.latin.value)
+                put(BirthDateAttribute.name, birthDate.toString())
                 with(portrait) {
-                    put("portrait", Base64.UrlSafe.encode(image.content))
-                    capturedAt?.let { put("portrait_capture_date", it.toString()) }
+                    put(PortraitAttribute.name, Base64.UrlSafe.encode(image.content))
+                    capturedAt?.let { put(PortraitCaptureDateAttribute.name, it.toString()) }
                 }
-                sex?.let { put("sex", it.code.toInt()) }
-                height?.let { put("height", it.value.toInt()) }
-                weight?.let { put("weight", it.value.toInt()) }
-                eyeColour?.let { put("eye_colour", it.code) }
-                hairColour?.let { put("hair_colour", it.code) }
-                birthPlace?.let { put("birth_place", it.value) }
+                sex?.let { put(SexAttribute.name, it.code.toInt()) }
+                height?.let { put(HeightAttribute.name, it.value.toInt()) }
+                weight?.let { put(WeightAttribute.name, it.value.toInt()) }
+                eyeColour?.let { put(EyeColourAttribute.name, it.code) }
+                hairColour?.let { put(HairColourAttribute.name, it.code) }
+                birthPlace?.let { put(BirthPlaceAttribute.name, it.value) }
                 residence?.let { residence ->
-                    residence.address?.let { put("resident_address", it.value) }
-                    residence.city?.let { put("resident_city", it.value) }
-                    residence.state?.let { put("resident_state", it.value) }
-                    residence.postalCode?.let { put("resident_postal_code", it.value) }
-                    put("resident_country", residence.country.code)
+                    residence.address?.let { put(ResidentAddressAttribute.name, it.value) }
+                    residence.city?.let { put(ResidentCityAttribute.name, it.value) }
+                    residence.state?.let { put(ResidentStateAttribute.name, it.value) }
+                    residence.postalCode?.let { put(ResidentPostalCodeAttribute.name, it.value) }
+                    put(ResidentCountryAttribute.name, residence.country.code)
                 }
                 age?.let { age ->
-                    put("age_in_years", age.value.value.toInt())
-                    age.birthYear?.let { put("age_birth_year", it.value.toInt()) }
-                    put("age_over_18", age.over18)
-                    put("age_over_21", age.over21)
+                    put(AgeInYearsAttribute.name, age.value.value.toInt())
+                    age.birthYear?.let { put(AgeBirthYearAttribute.name, it.value.toInt()) }
+                    put(AgeOver18Attribute.name, age.over18)
+                    put(AgeOver21Attribute.name, age.over21)
                 }
-                nationality?.let { put("nationality", it.code) }
-                familyName.utf8?.let { put("family_name_national_character", it) }
-                givenName.utf8?.let { put("given_name_national_character", it) }
-                signature?.let { put("signature_usual_mark", Base64.UrlSafe.encode(it.content)) }
+                nationality?.let { put(NationalityAttribute.name, it.code) }
+                familyName.utf8?.let { put(FamilyNameNationalCharacterAttribute.name, it) }
+                givenName.utf8?.let { put(GivenNameNationalCharacterAttribute.name, it) }
+                signature?.let { put(SignatureUsualMarkAttribute.name, Base64.UrlSafe.encode(it.content)) }
             }
         }
 
         private fun JsonObjectBuilder.addIssueAndExpiry(issueAndExpiry: IssueAndExpiry) {
             with(issueAndExpiry) {
-                put("issue_date", issuedAt.toString())
-                put("expiry_date", expiresAt.toString())
+                put(IssueDateAttribute.name, issuedAt.toString())
+                put(ExpiryDateAttribute.name, expiresAt.toString())
             }
         }
 
         private fun JsonObjectBuilder.addIssuer(issuer: Issuer) {
             with(issuer) {
-                put("issuing_country", country.countryCode.code)
-                put("issuing_authority", authority.value)
-                put("un_distinguishing_sign", country.distinguishingSign.code)
-                jurisdiction?.let { put("issuing_jurisdiction", it.value) }
+                put(IssuingCountryAttribute.name, country.countryCode.code)
+                put(IssuingAuthorityAttribute.name, authority.value)
+                put(IssuingCountryDistinguishingSignAttribute.name, country.distinguishingSign.code)
+                jurisdiction?.let { put(IssuingJurisdictionAttribute.name, it.value) }
             }
         }
 
         private fun JsonObjectBuilder.addDrivingPrivileges(privileges: Set<DrivingPrivilege>) {
-            putJsonArray("driving_privileges") {
+            putJsonArray(DrivingPrivilegesAttribute.name) {
                 privileges.forEach { drivingPrivilege ->
                     addJsonObject {
                         put("vehicle_category_code", drivingPrivilege.vehicleCategory.code)
