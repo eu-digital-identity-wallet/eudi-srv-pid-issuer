@@ -151,8 +151,22 @@ Variable: `ISSUER_PID_ISSUING_COUNTRY`
 Description: Code of the Country issuing the PID  
 Default value: N/A
 
+Variable: `ISSUER_PID_MSO_MDOC_ENCODER`    
+Description: Configures the CBOR encoder to use for encoding PIDs. Either `Internal` or `Microservice`.    
+Default value: `Microservice`
+
+Variable: `ISSUER_PID_MSO_MDOC_ENCODER_DURATION`    
+Description: Configures the validity of issued PIDs when using the internal encoder. Uses Period syntax.
+Required when `ISSUER_PID_MSO_MDOC_ENCODER` is set to `Internal`.  
+Default value: `P30D`
+
+Variable: `ISSUER_PID_MSO_MDOC_ENCODER_URL`  
+Description: URL of the CBOR encoder microservice to use for PIDs. Required when `ISSUER_PID_MSO_MDOC_ENCODER` is
+set to `Microservice`   
+Default value: `https://preprod.issuer.eudiw.dev/formatter/cbor`
+
 Variable: `ISSUER_MDL_MSO_MDOC_ENCODER`    
-Description: Configures the CBOR encoder to use. Either `Internal` or `Microservice`.    
+Description: Configures the CBOR encoder to use for encoding mDLs. Either `Internal` or `Microservice`.    
 Default value: `Microservice`
 
 Variable: `ISSUER_MDL_MSO_MDOC_ENCODER_DURATION`    

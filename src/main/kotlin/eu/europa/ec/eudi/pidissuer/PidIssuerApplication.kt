@@ -243,8 +243,22 @@ fun beans(clock: Clock) = beans {
             keycloakProperties.userRealm,
         )
     }
-    bean {
-        EncodePidInCborWithMicroService(env.readRequiredUrl("issuer.pid.mso_mdoc.encoderUrl"), ref())
+    bean<EncodePidInCbor>(isLazyInit = true) {
+        when (env.getProperty<MsoMdocEncoderOption>("issuer.pid.mso_mdoc.encoder")) {
+            null, MsoMdocEncoderOption.Microservice -> {
+                log.info("Using microservice to encode PID in CBOR")
+                EncodePidInCborWithMicroService(env.readRequiredUrl("issuer.pid.mso_mdoc.encoderUrl"), ref())
+            }
+
+            MsoMdocEncoderOption.Internal -> {
+                log.info("Using internal encoder to encode PID in CBOR")
+                val (signingKey, signingAlgorithm) = ref<Pair<ECKey, JWSAlgorithm>>("signing-key")
+                val duration = env.getProperty("issuer.pid.mso_mdoc.encoder.duration")
+                    ?.let { Duration.parse(it).toKotlinDuration() }
+                    ?: 30.days
+                EncodePidInCborWithWalt(clock, signingKey, signingAlgorithm, duration)
+            }
+        }
     }
     bean {
         GetMobileDrivingLicenceDataMock()
@@ -265,12 +279,7 @@ fun beans(clock: Clock) = beans {
                 val duration = env.getProperty("issuer.mdl.mso_mdoc.encoder.duration")
                     ?.let { Duration.parse(it).toKotlinDuration() }
                     ?: 5.days
-                EncodeMobileDrivingLicenceInCborWithWalt(
-                    clock,
-                    signingKey,
-                    signingAlgorithm,
-                    duration,
-                )
+                EncodeMobileDrivingLicenceInCborWithWalt(clock, signingKey, signingAlgorithm, duration)
             }
         }
     }

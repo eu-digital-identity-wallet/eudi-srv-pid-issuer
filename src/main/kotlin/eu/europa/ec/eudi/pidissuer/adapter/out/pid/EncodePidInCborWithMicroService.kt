@@ -21,7 +21,10 @@ import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.client.WebClient
@@ -72,22 +75,41 @@ internal fun createMsoMdocReq(
             check(nameSpaces.isNotEmpty())
             val defaultNameSpace = nameSpaces.iterator().next()
             putJsonObject(defaultNameSpace) {
-                put("given_name", pid.givenName.value)
-                put("family_name", pid.familyName.value)
-                put("birth_date", pid.birthDate.toString())
-                pid.familyNameBirth?.let { put("birth_family_name", it.value) }
-                pid.givenNameBirth?.let { put("birth_given_name", it.value) }
-                pid.gender?.let { put("gender", it.value.toInt()) }
-                pid.nationality?.let { put("nationalities", JsonArray(listOf(JsonPrimitive(it.value)))) }
-                put("age_over_18", pid.ageOver18)
-                pid.ageBirthYear?.let { put("age_birth_year", it.value) }
-                put("issuance_date", pidMetaData.issuanceDate.toString())
-                put("expiry_date", pidMetaData.expiryDate.toString())
+                put(GivenNameAttribute.name, pid.givenName.value)
+                put(FamilyNameAttribute.name, pid.familyName.value)
+                put(BirthDateAttribute.name, pid.birthDate.toString())
+                pid.familyNameBirth?.let { put(FamilyNameBirthAttribute.name, it.value) }
+                pid.givenNameBirth?.let { put(GivenNameBirthAttribute.name, it.value) }
+                pid.gender?.let { put(GenderAttribute.name, it.value.toInt()) }
+                pid.nationality?.let { put(NationalityAttribute.name, it.value) }
+                pid.ageOver18?.let { put(AgeOver18Attribute.name, it) }
+                pid.ageBirthYear?.let { put(AgeBirthYearAttribute.name, it.value) }
+                pid.ageInYears?.let { put(AgeInYearsAttribute.name, it.toInt()) }
+                pid.birthPlace?.let { put(BirthPlaceAttribute.name, it) }
+                pid.birthCountry?.let { put(BirthCountryAttribute.name, it.value) }
+                pid.birthState?.let { put(BirthStateAttribute.name, it.value) }
+                pid.birthCity?.let { put(BirthCountryAttribute.name, it.value) }
+                pid.residentAddress?.let { put(ResidenceAddress.name, it) }
+                pid.residentCountry?.let { put(ResidenceCountryAttribute.name, it.value) }
+                pid.residentState?.let { put(ResidenceStateAttribute.name, it.value) }
+                pid.residentCity?.let { put(ResidenceCityAttribute.name, it.value) }
+                pid.residentPostalCode?.let { put(ResidencePostalCodeAttribute.name, it.value) }
+                pid.residentStreet?.let { put(ResidenceStreetAttribute.name, it.value) }
+                pid.residentHouseNumber?.let { put(ResidenceHouseNumberAttribute.name, it) }
+
+                put(IssuanceDateAttribute.name, pidMetaData.issuanceDate.toString())
+                put(ExpiryDateAttribute.name, pidMetaData.expiryDate.toString())
                 when (val issuingAuthority = pidMetaData.issuingAuthority) {
-                    is IssuingAuthority.MemberState -> put("issuing_authority", issuingAuthority.code.value)
-                    is IssuingAuthority.AdministrativeAuthority -> put("issuing_authority", issuingAuthority.value)
+                    is IssuingAuthority.MemberState -> put(IssuanceDateAttribute.name, issuingAuthority.code.value)
+                    is IssuingAuthority.AdministrativeAuthority -> put(
+                        IssuanceDateAttribute.name,
+                        issuingAuthority.value,
+                    )
                 }
-                put("issuing_country", pidMetaData.issuingCountry.value)
+                pidMetaData.documentNumber?.let { put(DocumentNumberAttribute.name, it.value) }
+                pidMetaData.administrativeNumber?.let { put(AdministrativeNumberAttribute.name, it.value) }
+                put(IssuingCountryAttribute.name, pidMetaData.issuingCountry.value)
+                pidMetaData.issuingJurisdiction?.let { put(IssuingJurisdictionAttribute.name, it) }
             }
         }
     }

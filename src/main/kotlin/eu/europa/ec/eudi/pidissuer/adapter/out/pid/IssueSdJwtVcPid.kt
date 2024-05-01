@@ -140,7 +140,7 @@ fun selectivelyDisclosed(
         sd(OidcGivenName.name, pid.givenName.value)
         sd(OidcFamilyName.name, pid.familyName.value)
         sd(OidcBirthDate.name, pid.birthDate.toString())
-        sd(Attributes.AgeOver18.name, pid.ageOver18)
+        pid.ageOver18?.let { sd(Attributes.AgeOver18.name, it) }
         // TODO
         //  Here we need a mapping in OIDC gender can be male, female on null
         //  In PID the use iso

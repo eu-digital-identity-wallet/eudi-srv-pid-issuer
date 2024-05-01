@@ -373,7 +373,6 @@ internal class WalletApiTest {
                     administrativeNumber = null,
                     issuingCountry = issuingCountry,
                     issuingJurisdiction = null,
-                    portrait = null,
                 )
                 pid to pidMetaData
             }

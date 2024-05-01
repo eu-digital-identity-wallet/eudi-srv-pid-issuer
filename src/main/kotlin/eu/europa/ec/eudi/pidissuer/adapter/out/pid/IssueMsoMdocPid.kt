@@ -39,99 +39,190 @@ import java.util.*
 
 val PidMsoMdocScope: Scope = Scope("${PID_DOCTYPE}_${MSO_MDOC_FORMAT.value}")
 
-private val pidAttributes = pidNameSpace(1) to listOf(
+val PidMsoMdocNamespace: MsoNameSpace = pidNameSpace(1)
 
-    AttributeDetails(
-        name = "family_name",
-        display = mapOf(Locale.ENGLISH to "Current Family Name"),
+val GivenNameAttribute = AttributeDetails(
+    name = "given_name",
+    mandatory = true,
+    display = mapOf(Locale.ENGLISH to "Current First Names"),
+)
+val FamilyNameAttribute = AttributeDetails(
+    name = "family_name",
+    mandatory = true,
+    display = mapOf(Locale.ENGLISH to "Current Family Name"),
+)
+val BirthDateAttribute = AttributeDetails(
+    name = "birth_date",
+    mandatory = true,
+    display = mapOf(Locale.ENGLISH to "Date of Birth"),
+)
+val FamilyNameBirthAttribute = AttributeDetails(
+    name = "family_name_birth",
+    mandatory = false,
+    display = mapOf(Locale.ENGLISH to "Last name(s) or surname(s) of the PID User at the time of birth."),
+)
+val GivenNameBirthAttribute = AttributeDetails(
+    name = "given_name_birth",
+    mandatory = false,
+    display = mapOf(Locale.ENGLISH to "First name(s), including middle name(s), of the PID User at the time of birth."),
+)
+val GenderAttribute = AttributeDetails(
+    name = "gender",
+    mandatory = false,
+    display = mapOf(Locale.ENGLISH to "PID User’s gender, using a value as defined in ISO/IEC 5218."),
+)
+val AgeOver18Attribute = AttributeDetails(
+    name = "age_over_18",
+    mandatory = false,
+    display = mapOf(Locale.ENGLISH to "Attesting whether the PID User is currently an adult (true) or a minor (false)."),
+)
+val AgeBirthYearAttribute = AttributeDetails(
+    name = "age_birth_year",
+    mandatory = false,
+    display = mapOf(Locale.ENGLISH to "The year when the PID User was born."),
+)
+val AgeInYearsAttribute = AttributeDetails(
+    name = "age_in_years",
+    mandatory = false,
+    display = mapOf(Locale.ENGLISH to "The current age of the PID User in years."),
+)
+val NationalityAttribute = AttributeDetails(
+    name = "nationality",
+    mandatory = false,
+    display = mapOf(Locale.ENGLISH to "Alpha-2 country code, representing the nationality of the PID User."),
+)
+val IssuanceDateAttribute = AttributeDetails(
+    name = "issuance_date",
+    mandatory = true,
+    display = mapOf(Locale.ENGLISH to "Date (and possibly time) when the PID was issued."),
+)
+val ExpiryDateAttribute = AttributeDetails(
+    name = "expiry_date",
+    mandatory = true,
+    display = mapOf(Locale.ENGLISH to "Date (and possibly time) when the PID will expire."),
+)
+val IssuingAuthorityAttribute = AttributeDetails(
+    name = "issuing_authority",
+    mandatory = true,
+    display = mapOf(
+        Locale.ENGLISH to "Name of the administrative authority that has issued this PID instance, " +
+            "or the ISO 3166 Alpha-2 country code of the respective Member State if there is " +
+            "no separate authority authorized to issue PIDs.",
     ),
-    AttributeDetails(
-        name = "given_name",
-        display = mapOf(Locale.ENGLISH to "Current First Names"),
+)
+val BirthPlaceAttribute = AttributeDetails(
+    name = "birth_place",
+    mandatory = false,
+    display = mapOf(Locale.ENGLISH to "The country, state, and city where the PID User was born."),
+)
+val BirthCountryAttribute = AttributeDetails(
+    name = "birth_country",
+    mandatory = false,
+    display = mapOf(Locale.ENGLISH to "The country where the PID User was born, as an Alpha-2 country code."),
+)
+val BirthStateAttribute = AttributeDetails(
+    name = "birth_state",
+    mandatory = false,
+    display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User was born. "),
+)
+val BirthCityAttribute = AttributeDetails(
+    name = "birth_city",
+    mandatory = false,
+    display = mapOf(Locale.ENGLISH to "The municipality, city, town, or village where the PID User was born. "),
+)
+val ResidenceAddress = AttributeDetails(
+    name = "resident_address",
+    mandatory = false,
+    display = mapOf(
+        Locale.ENGLISH to "The full address of the place where the PID User currently resides and/or " +
+            "can be contacted (street name, house number, city etc.).",
     ),
-    AttributeDetails(
-        name = "birth_date",
-        display = mapOf(Locale.ENGLISH to "Date of Birth"),
+)
+val ResidenceCountryAttribute = AttributeDetails(
+    name = "resident_country",
+    mandatory = false,
+    display = mapOf(
+        Locale.ENGLISH to "he country where the PID User currently resides, as an Alpha-2 country code as specified in ISO 3166-1.",
     ),
-    AttributeDetails(
-        name = "age_over_18",
-        display = mapOf(Locale.ENGLISH to "Adult or minor"),
+)
+val ResidenceStateAttribute = AttributeDetails(
+    name = "resident_state",
+    mandatory = false,
+    display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User currently resides"),
+)
+val ResidenceCityAttribute = AttributeDetails(
+    name = "resident_city",
+    mandatory = false,
+    display = mapOf(Locale.ENGLISH to "The municipality, city, town, or village where the PID User currently resides."),
+)
+val ResidencePostalCodeAttribute = AttributeDetails(
+    name = "resident_postal_code",
+    mandatory = false,
+    display = mapOf(Locale.ENGLISH to "Postal code of the place where the PID User currently resides."),
+)
+val ResidenceStreetAttribute = AttributeDetails(
+    name = "resident_street",
+    mandatory = false,
+    display = mapOf(Locale.ENGLISH to "The name of the street where the PID User currently resides"),
+)
+val ResidenceHouseNumberAttribute = AttributeDetails(
+    name = "resident_house_number",
+    mandatory = false,
+    display = mapOf(Locale.ENGLISH to "The house number where the PID User currently resides, including any affix or suffix."),
+)
+val DocumentNumberAttribute = AttributeDetails(
+    name = "document_number",
+    mandatory = false,
+    display = mapOf(Locale.ENGLISH to "A number for the PID, assigned by the PID Provider."),
+)
+val AdministrativeNumberAttribute = AttributeDetails(
+    name = "document_number",
+    mandatory = false,
+    display = mapOf(Locale.ENGLISH to "A number for the PID, assigned by the PID Provider."),
+)
+val IssuingCountryAttribute = AttributeDetails(
+    name = "issuing_country",
+    mandatory = true,
+    display = mapOf(Locale.ENGLISH to "Alpha-2 country code, as defined in ISO 3166-1, of the PID Provider’s country or territory."),
+)
+val IssuingJurisdictionAttribute = AttributeDetails(
+    name = "issuing_jurisdiction",
+    mandatory = false,
+    display = mapOf(
+        Locale.ENGLISH to "Country subdivision code of the jurisdiction that issued the PID, " +
+            "as defined in ISO 3166-2:2020, Clause 8. The first part of the code SHALL be the same " +
+            "as the value for issuing_country.",
     ),
-    AttributeDetails(
-        name = "age_birth_year",
-    ),
-    AttributeDetails(
-        name = "family_name_birth",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Last name(s) or surname(s) of the PID User at the time of birth."),
-    ),
-    AttributeDetails(
-        name = "given_name_birth",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "First name(s), including middle name(s), of the PID User at the time of birth."),
-    ),
-    AttributeDetails(
-        name = "birth_place",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "The country, state, and city where the PID User was born."),
-    ),
-    AttributeDetails(
-        name = "birth_country",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "The country where the PID User was born, as an Alpha-2 country code."),
-    ),
-    AttributeDetails(
-        name = "birth_state",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User was born. "),
-    ),
-    AttributeDetails(
-        name = "birth_city",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "The municipality, city, town, or village where the PID User was born. "),
-    ),
-    AttributeDetails(
-        name = "resident_country",
-        mandatory = false,
-        display = mapOf(
-            Locale.ENGLISH to "he country where the PID User currently resides, as an Alpha-2 country code as specified in ISO 3166-1.",
-        ),
-    ),
-    AttributeDetails(
-        name = "resident_state",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User currently resides"),
-    ),
-    AttributeDetails(
-        name = "resident_city",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "The municipality, city, town, or village where the PID User currently resides."),
-    ),
-    AttributeDetails(
-        name = "resident_postal_code",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Postal code of the place where the PID User currently resides."),
-    ),
-    AttributeDetails(
-        name = "resident_street",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "The name of the street where the PID User currently resides"),
-    ),
-    AttributeDetails(
-        name = "resident_house_number",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "The house number where the PID User currently resides, including any affix or suffix."),
-    ),
-    AttributeDetails(
-        name = "gender",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "PID User’s gender, using a value as defined in ISO/IEC 5218."),
-    ),
-    AttributeDetails(
-        name = "nationality",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Alpha-2 country code, representing the nationality of the PID User."),
-    ),
+)
+private val pidAttributes = PidMsoMdocNamespace to listOf(
+    FamilyNameAttribute,
+    GivenNameAttribute,
+    BirthDateAttribute,
+    AgeOver18Attribute,
+    AgeBirthYearAttribute,
+    AgeInYearsAttribute,
+    FamilyNameBirthAttribute,
+    GivenNameBirthAttribute,
+    BirthPlaceAttribute,
+    BirthCountryAttribute,
+    BirthStateAttribute,
+    BirthCityAttribute,
+    ResidenceAddress,
+    ResidenceCountryAttribute,
+    ResidenceStateAttribute,
+    ResidenceCityAttribute,
+    ResidencePostalCodeAttribute,
+    ResidenceStreetAttribute,
+    ResidenceHouseNumberAttribute,
+    GenderAttribute,
+    NationalityAttribute,
+    IssuanceDateAttribute,
+    ExpiryDateAttribute,
+    IssuingAuthorityAttribute,
+    DocumentNumberAttribute,
+    AdministrativeNumberAttribute,
+    IssuingCountryAttribute,
+    IssuingJurisdictionAttribute,
 )
 
 val PidMsoMdocV1: MsoMdocCredentialConfiguration =
@@ -215,6 +306,7 @@ class IssueMsoMdocPid(
     }
 
     context(Raise<IssueCredentialError>)
+    @Suppress("DuplicatedCode")
     private fun holderPubKey(request: CredentialRequest, expectedCNonce: CNonce): ECKey {
         fun ecKeyOrFail(provider: () -> ECKey) = try {
             provider.invoke()
