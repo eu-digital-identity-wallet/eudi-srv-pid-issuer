@@ -7,7 +7,8 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 
 * [Overview](#overview)
 * [OpenId4VCI coverage](#openid4vci-coverage)
-* [How to use docker]()
+* [How to use docker](#how-to-use-docker)
+* [Configuration](#configuration)
 * [Endpoints](#endpoints)
 * [How to contribute](#how-to-contribute)
 * [License](#license)
@@ -246,6 +247,48 @@ Variable: `ISSUER_DPOP_REALM`
 Description: Realm to report in the WWW-Authenticate header in case of DPoP authentication/authorization failure         
 Default value: N/A  
 Example: pid-issuer
+
+### Signing Key
+
+When either PID issuance in SD-JWT is enabled, or the internal MSO MDoc encoder is used, an EC Key is required 
+for signing the issued credentials.
+
+By default, the server generates a random EC Key alongside a self-signed certificate using the *P-256/secp256r1* 
+curve on startup. If the server is restarted, a new EC Key and self-signed certificate is generated.
+
+In case you opt to use your own EC Key and certificate make sure to use an EC Key that uses one of the following curves:
+* *P-256/secp256r1*
+* *P-384/secp384r1*
+* *P-521/secp521r1*
+
+The signing algorithm is determined by the EC Key used. The server will use one of the following signing algorithms:
+* *ES256*
+* *ES384*
+* *ES512*
+
+To generate an EC Key and self-signed certificate using `keytool` you can use the following command:
+
+```bash
+keytool -genkeypair \
+  -alias signingKey \
+  -keyalg EC \
+  -groupname secp256r1 \
+  -sigalg SHA256withECDSA \
+  -validity 365 \
+  -dname "CN=pid-issuer" \
+  -storetype JKS \
+  -keystore signingKey.jks \
+  -storepass 123456 \
+  -keypass 654321
+```
+
+This command will create a *JKS* keystore named *signingKey.jks* in the current directory, protected by the 
+password *123456*. The keystore will contain an EC Key generated using the curve *P-256/secp256r1* and a self-signed
+certificate signed using the algorithm *SHA256withECDSA*, with the alias *signingKey*, protected with the 
+password *654321*.
+
+__Note__: When loading an EC Key and certificate from a keystore, make sure the certificate chain is associated with
+the EC Key alias.
 
 ## Endpoints
 
