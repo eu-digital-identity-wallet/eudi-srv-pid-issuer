@@ -15,64 +15,43 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
-import COSE.OneKey
 import arrow.core.raise.Raise
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.cryptoProvider
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.GenericRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.ParameterizedRestriction
+import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.MsoMdocSigner
 import eu.europa.ec.eudi.pidissuer.domain.AttributeDetails
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
-import id.walt.mdoc.SimpleCOSECryptoProvider
 import id.walt.mdoc.dataelement.DataElement
-import id.walt.mdoc.dataelement.MapElement
 import id.walt.mdoc.dataelement.toDE
 import id.walt.mdoc.doc.MDocBuilder
-import id.walt.mdoc.mso.DeviceKeyInfo
-import id.walt.mdoc.mso.ValidityInfo
-import kotlinx.datetime.toKotlinInstant
 import kotlinx.datetime.toKotlinLocalDate
 import java.time.Clock
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.time.Duration
 
-@OptIn(ExperimentalEncodingApi::class)
 class EncodeMobileDrivingLicenceInCborWithWalt(
-    private val clock: Clock,
-    private val issuerSigningKey: IssuerSigningKey,
-    private val validityDuration: Duration,
+    clock: Clock,
+    issuerSigningKey: IssuerSigningKey,
+    validityDuration: Duration,
 ) : EncodeMobileDrivingLicenceInCbor {
 
-    private val issuerCryptoProvider: SimpleCOSECryptoProvider by lazy {
-        issuerSigningKey.cryptoProvider()
+    private val signer = MsoMdocSigner<MobileDrivingLicence>(
+        clock = clock,
+        issuerSigningKey = issuerSigningKey,
+        validityDuration = validityDuration,
+        docType = MobileDrivingLicenceV1.docType,
+    ) { licence ->
+        addItemsToSign(licence)
     }
 
     context(Raise<Unexpected>)
     override suspend fun invoke(licence: MobileDrivingLicence, holderKey: ECKey): String =
         try {
-            val validityInfo = validityInfo(clock, validityDuration)
-            val deviceKeyInfo: DeviceKeyInfo = getDeviceKeyInfo(holderKey)
-            val mdoc = MDocBuilder(MobileDrivingLicenceV1.docType).apply {
-                addItemsToSign(licence)
-            }.sign(validityInfo, deviceKeyInfo, issuerCryptoProvider, issuerSigningKey.key.keyID)
-            Base64.UrlSafe.encode(mdoc.toCBOR())
+            signer.sign(licence, holderKey)
         } catch (t: Throwable) {
             raise(Unexpected("Failed to encode mDL", t))
         }
-}
-
-private fun validityInfo(clock: Clock, duration: Duration): ValidityInfo {
-    val signedAt = clock.instant().toKotlinInstant()
-    val validTo = signedAt.plus(duration)
-    return ValidityInfo(signed = signedAt, validFrom = signedAt, validUntil = validTo, expectedUpdate = null)
-}
-
-private fun getDeviceKeyInfo(deviceKey: ECKey): DeviceKeyInfo {
-    val key = OneKey(deviceKey.toECPublicKey(), null)
-    val deviceKeyDataElement: MapElement = DataElement.fromCBOR(key.AsCBOR().EncodeToBytes())
-    return DeviceKeyInfo(deviceKeyDataElement, null, null)
 }
 
 private fun MDocBuilder.addItemsToSign(licence: MobileDrivingLicence) {

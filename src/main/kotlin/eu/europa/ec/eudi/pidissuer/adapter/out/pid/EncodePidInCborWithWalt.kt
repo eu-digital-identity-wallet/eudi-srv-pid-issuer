@@ -15,61 +15,39 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
-import COSE.OneKey
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.cryptoProvider
+import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.MsoMdocSigner
 import eu.europa.ec.eudi.pidissuer.domain.AttributeDetails
-import id.walt.mdoc.SimpleCOSECryptoProvider
 import id.walt.mdoc.dataelement.DataElement
-import id.walt.mdoc.dataelement.MapElement
 import id.walt.mdoc.dataelement.toDE
 import id.walt.mdoc.doc.MDocBuilder
-import id.walt.mdoc.mso.DeviceKeyInfo
-import id.walt.mdoc.mso.ValidityInfo
-import kotlinx.datetime.toKotlinInstant
 import kotlinx.datetime.toKotlinLocalDate
 import java.time.Clock
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.time.Duration
 
-@OptIn(ExperimentalEncodingApi::class)
 internal class EncodePidInCborWithWalt(
-    private val clock: Clock,
-    private val issuerSigningKey: IssuerSigningKey,
-    private val validityDuration: Duration,
+    clock: Clock,
+    issuerSigningKey:
+        IssuerSigningKey,
+    validityDuration: Duration,
 ) : EncodePidInCbor {
 
-    private val issuerCryptoProvider: SimpleCOSECryptoProvider by lazy {
-        issuerSigningKey.cryptoProvider()
+    private val signer = MsoMdocSigner<Pair<Pid, PidMetaData>>(
+        clock = clock,
+        issuerSigningKey = issuerSigningKey,
+        validityDuration = validityDuration,
+        docType = PidMsoMdocV1.docType,
+    ) { (pid, pidMetaData) ->
+        addItemsToSign(pid)
+        addItemsToSign(pidMetaData)
     }
 
     override suspend fun invoke(
         pid: Pid,
         pidMetaData: PidMetaData,
         holderKey: ECKey,
-    ): String {
-        val validityInfo = validityInfo(clock, validityDuration)
-        val deviceKeyInfo = getDeviceKeyInfo(holderKey)
-        val mdoc = MDocBuilder(PidMsoMdocV1.docType).apply {
-            addItemsToSign(pid)
-            addItemsToSign(pidMetaData)
-        }.sign(validityInfo, deviceKeyInfo, issuerCryptoProvider, issuerSigningKey.key.keyID)
-        return Base64.UrlSafe.encode(mdoc.toCBOR())
-    }
-}
-
-private fun validityInfo(clock: Clock, duration: Duration): ValidityInfo {
-    val signedAt = clock.instant().toKotlinInstant()
-    val validTo = signedAt.plus(duration)
-    return ValidityInfo(signed = signedAt, validFrom = signedAt, validUntil = validTo, expectedUpdate = null)
-}
-
-private fun getDeviceKeyInfo(deviceKey: ECKey): DeviceKeyInfo {
-    val key = OneKey(deviceKey.toECPublicKey(), null)
-    val deviceKeyDataElement: MapElement = DataElement.fromCBOR(key.AsCBOR().EncodeToBytes())
-    return DeviceKeyInfo(deviceKeyDataElement, null, null)
+    ): String = signer.sign(pid to pidMetaData, holderKey)
 }
 
 private fun MDocBuilder.addItemsToSign(pid: Pid) {
