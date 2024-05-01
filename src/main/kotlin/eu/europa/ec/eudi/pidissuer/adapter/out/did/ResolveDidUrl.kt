@@ -119,7 +119,7 @@ private fun resolveDidKey(url: DIDURL): JWK {
         val ans1PublicKey = ANS1RSAPublicKey.getInstance(encodedPublicKey)
         return RSAKey.Builder(
             Base64URL.encode(ans1PublicKey.modulus),
-            Base64URL.encode(ans1PublicKey.publicExponent)
+            Base64URL.encode(ans1PublicKey.publicExponent),
         ).build()
     }
 
