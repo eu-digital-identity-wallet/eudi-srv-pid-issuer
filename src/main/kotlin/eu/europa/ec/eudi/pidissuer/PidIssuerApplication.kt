@@ -175,25 +175,28 @@ fun beans(clock: Clock) = beans {
     // Signing key
     //
     bean<Pair<ECKey, JWSAlgorithm>>(name = "signing-key", isLazyInit = true) {
-        when (env.getProperty<KeyOption>("issuer.signing-key")) {
+        fun ECKey.signingAlgorithm() =
+            when (val curve = curve) {
+                Curve.P_256 -> JWSAlgorithm.ES256
+                Curve.P_384 -> JWSAlgorithm.ES384
+                Curve.P_521 -> JWSAlgorithm.ES512
+                else -> error("Unsupported ECKey Curve '$curve'")
+            }
+
+        val signingKey = when (env.getProperty<KeyOption>("issuer.signing-key")) {
             null, KeyOption.GenerateRandom -> {
                 log.info("Generating random signing key for issuance")
-                ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate() to JWSAlgorithm.ES256
+                ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate()
             }
 
             KeyOption.LoadFromKeystore -> {
                 log.info("Loading signing key from keystore for issuance")
-
-                val key = loadJwkFromKeystore(env, "issuer.signing-key")
-                require(key is ECKey) { "Only ECKeys are supported for signing" }
-
-                val algorithm = env.getRequiredProperty("issuer.signing-algorithm")
-                    .let { JWSAlgorithm.parse(it) }
-                require(algorithm in JWSAlgorithm.Family.EC) { "An EC JWSAlgorithm is required" }
-
-                key to algorithm
+                loadJwkFromKeystore(env, "issuer.signing-key")
             }
         }
+        require(signingKey is ECKey) { "Only ECKeys are supported for signing" }
+
+        signingKey to signingKey.signingAlgorithm()
     }
 
     //
@@ -491,7 +494,8 @@ fun beans(clock: Clock) = beans {
             else log.info("DPoP support will be enabled. Supported algorithms: $it")
         }
         val proofMaxAge = env.getProperty("issuer.dpop.proof-max-age", "PT1M").let { Duration.parse(it) }
-        val cachePurgeInterval = env.getProperty("issuer.dpop.cache-purge-interval", "PT10M").let { Duration.parse(it) }
+        val cachePurgeInterval =
+            env.getProperty("issuer.dpop.cache-purge-interval", "PT10M").let { Duration.parse(it) }
         val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
 
         DPoPConfigurationProperties(algorithms, proofMaxAge, cachePurgeInterval, realm)
@@ -741,7 +745,11 @@ private fun loadJwkFromKeystore(environment: Environment, prefix: String): JWK {
         val keystoreResource = DefaultResourceLoader().getResource(keystoreLocation).some()
             .filter { it.exists() }
             .recover {
-                log.warn("Could not find Keystore at '{}'. Fallback to '{}'", keystoreLocation, keystoreDefaultLocation)
+                log.warn(
+                    "Could not find Keystore at '{}'. Fallback to '{}'",
+                    keystoreLocation,
+                    keystoreDefaultLocation,
+                )
                 FileSystemResource(keystoreDefaultLocation).some()
                     .filter { it.exists() }
                     .bind()

@@ -204,10 +204,6 @@ Variable: `ISSUER_SIGNING_KEY_PASSWORD`
 Description: Password of the key-pair for signing.       
 Default value: N/A
 
-Variable: `ISSUER_SIGNING_ALGORITHM`  
-Description: Algorithm used for signing. Required when `ISSUER_SIGNING_KEY` is set to `LoadFromKeystore`.         
-Default value: N/A
-
 Variable: `ISSUER_KEYCLOAK_SERVER_URL`  
 Description: URL of the Keycloak authorization server  
 Default value: N/A  
