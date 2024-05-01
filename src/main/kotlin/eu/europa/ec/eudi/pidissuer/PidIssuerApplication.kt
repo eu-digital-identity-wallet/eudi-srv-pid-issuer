@@ -310,7 +310,8 @@ fun beans(clock: Clock) = beans {
                     )
                 }
 
-            pidSdJwtVcV1(JWSAlgorithm.ES256).let { sdJwtVcPid ->
+            val signingAlgorithm = ref<Pair<ECKey, JWSAlgorithm>>("signing-key").second
+            pidSdJwtVcV1(signingAlgorithm).let { sdJwtVcPid ->
                 this[CredentialIdentifier(PidSdJwtVcScope.value)] =
                     { unvalidatedProof, requestedResponseEncryption ->
                         SdJwtVcCredentialRequest(
