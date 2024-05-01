@@ -764,6 +764,23 @@ private fun loadJwkFromKeystore(environment: Environment, prefix: String): JWK {
             else -> "$prefix.$property"
         }
 
+    fun JWK.withCertificateChain(chain: List<X509Certificate>): JWK {
+        require(this.parsedX509CertChain.isNotEmpty()) { "jwk must have a leaf certificate" }
+        require(chain.isNotEmpty()) { "chain cannot be empty" }
+        require(this.parsedX509CertChain.first() == chain.first()) {
+            "leaf certificate of provided chain does not match leaf certificate of jwk"
+        }
+
+        val encodedChain = chain.map { Base64.encode(it.encoded) }
+        return when (this) {
+            is RSAKey -> RSAKey.Builder(this).x509CertChain(encodedChain).build()
+            is ECKey -> ECKey.Builder(this).x509CertChain(encodedChain).build()
+            is OctetKeyPair -> OctetKeyPair.Builder(this).x509CertChain(encodedChain).build()
+            is OctetSequenceKey -> OctetSequenceKey.Builder(this).x509CertChain(encodedChain).build()
+            else -> error("Unexpected JWK type '${this.keyType.value}'/'${this.javaClass}'")
+        }
+    }
+
     val keystoreResource = run {
         val keystoreLocation = environment.getRequiredProperty(property("keystore"))
         log.info("Will try to load Keystore from: '{}'", keystoreLocation)
@@ -801,29 +818,6 @@ private fun loadJwkFromKeystore(environment: Environment, prefix: String): JWK {
             chain.isNotEmpty() -> jwk.withCertificateChain(chain)
             else -> jwk
         }
-    }
-}
-
-/**
- * Creates a copy of this [JWK] and sets the provided [X509Certificate] certificate chain.
- * For the operation to succeed, the following must hold true:
- * 1. [chain] cannot be empty
- * 2. The leaf certificate of the [chain] must match the leaf certificate of this [JWK]
- */
-private fun JWK.withCertificateChain(chain: List<X509Certificate>): JWK {
-    require(this.parsedX509CertChain.isNotEmpty()) { "jwk must have a leaf certificate" }
-    require(chain.isNotEmpty()) { "chain cannot be empty" }
-    require(this.parsedX509CertChain.first() == chain.first()) {
-        "leaf certificate of provided chain does not match leaf certificate of jwk"
-    }
-
-    val encodedChain = chain.map { Base64.encode(it.encoded) }
-    return when (this) {
-        is RSAKey -> RSAKey.Builder(this).x509CertChain(encodedChain).build()
-        is ECKey -> ECKey.Builder(this).x509CertChain(encodedChain).build()
-        is OctetKeyPair -> OctetKeyPair.Builder(this).x509CertChain(encodedChain).build()
-        is OctetSequenceKey -> OctetSequenceKey.Builder(this).x509CertChain(encodedChain).build()
-        else -> error("Unexpected JWK type '${this.keyType.value}'/'${this.javaClass}'")
     }
 }
 
