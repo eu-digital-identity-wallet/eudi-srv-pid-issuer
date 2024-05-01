@@ -176,6 +176,9 @@ internal object RestEasyClients {
 @OptIn(ExperimentalSerializationApi::class)
 fun beans(clock: Clock) = beans {
     val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl", removeTrailingSlash = true)
+    val enableMobileDrivingLicence = env.getProperty("issuer.mdl.enabled", true)
+    val enableMsoMdocPid = env.getProperty<Boolean>("issuer.pid.mso_mdoc.enabled") ?: true
+    val enableSdJwtVcPid = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.enabled") ?: true
 
     //
     // Signing key
@@ -306,7 +309,6 @@ fun beans(clock: Clock) = beans {
     bean(::HandleNotificationRequest)
     bean {
         val resolvers = buildMap<CredentialIdentifier, CredentialRequestFactory> {
-            val enableMobileDrivingLicence = env.getProperty("issuer.mdl.enabled", true)
             if (enableMobileDrivingLicence) {
                 this[CredentialIdentifier(MobileDrivingLicenceV1Scope.value)] =
                     { unvalidatedProof, requestedResponseEncryption ->
@@ -321,7 +323,6 @@ fun beans(clock: Clock) = beans {
                     }
             }
 
-            val enableMsoMdocPid = env.getProperty<Boolean>("issuer.pid.mso_mdoc.enabled") ?: true
             if (enableMsoMdocPid) {
                 this[CredentialIdentifier(PidMsoMdocScope.value)] =
                     { unvalidatedProof, requestedResponseEncryption ->
@@ -334,7 +335,6 @@ fun beans(clock: Clock) = beans {
                     }
             }
 
-            val enableSdJwtVcPid = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.enabled") ?: true
             if (enableSdJwtVcPid) {
                 val signingAlgorithm = ref<Pair<ECKey, JWSAlgorithm>>("signing-key").second
                 pidSdJwtVcV1(signingAlgorithm).let { sdJwtVcPid ->
@@ -401,7 +401,6 @@ fun beans(clock: Clock) = beans {
             authorizationServers = listOf(env.readRequiredUrl("issuer.authorizationServer.publicUrl")),
             credentialResponseEncryption = env.credentialResponseEncryption(),
             specificCredentialIssuers = buildList {
-                val enableMsoMdocPid = env.getProperty<Boolean>("issuer.pid.mso_mdoc.enabled") ?: true
                 if (enableMsoMdocPid) {
                     val issueMsoMdocPid = IssueMsoMdocPid(
                         credentialIssuerId = issuerPublicUrl,
@@ -415,7 +414,7 @@ fun beans(clock: Clock) = beans {
                     )
                     add(issueMsoMdocPid)
                 }
-                val enableSdJwtVcPid = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.enabled") ?: true
+
                 if (enableSdJwtVcPid) {
                     val notUseBefore = env.getProperty("issuer.pid.sd_jwt_vc.notUseBefore")?.let {
                         runCatching {
@@ -457,7 +456,6 @@ fun beans(clock: Clock) = beans {
                     )
                 }
 
-                val enableMobileDrivingLicence = env.getProperty("issuer.mdl.enabled", true)
                 if (enableMobileDrivingLicence) {
                     val mdlIssuer = IssueMobileDrivingLicence(
                         credentialIssuerId = issuerPublicUrl,
