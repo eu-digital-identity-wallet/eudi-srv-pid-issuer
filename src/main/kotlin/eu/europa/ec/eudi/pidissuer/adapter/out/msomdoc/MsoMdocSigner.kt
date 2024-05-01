@@ -35,36 +35,40 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.time.Duration
 
 @OptIn(ExperimentalEncodingApi::class)
-internal class MsoMdocSigner<in C>(
+internal class MsoMdocSigner<in Credential>(
     private val clock: Clock,
     private val issuerSigningKey: IssuerSigningKey,
     private val validityDuration: Duration,
     private val docType: MsoDocType,
-    private val usage: MDocBuilder.(C) -> Unit,
+    private val usage: MDocBuilder.(Credential) -> Unit,
 ) {
+
+    init {
+        require(validityDuration.isPositive()) { "Validity duration must be positive" }
+    }
 
     private val issuerCryptoProvider: SimpleCOSECryptoProvider by lazy {
         issuerSigningKey.cryptoProvider()
     }
 
-    suspend fun sign(cred: C, deviceKey: ECKey): String =
+    suspend fun sign(credential: Credential, deviceKey: ECKey): String =
         withContext(Dispatchers.IO) {
-            val validityInfo = validityInfo(clock, validityDuration)
-            val deviceKeyInfo = getDeviceKeyInfo(deviceKey)
+            val validityInfo = validityInfo()
+            val deviceKeyInfo = deviceKeyInfo(deviceKey)
             val mdoc = MDocBuilder(docType)
-                .apply { usage(cred) }
+                .apply { usage(credential) }
                 .sign(validityInfo, deviceKeyInfo, issuerCryptoProvider, issuerSigningKey.key.keyID)
             Base64.UrlSafe.encode(mdoc.toCBOR())
         }
+
+    private fun validityInfo(): ValidityInfo {
+        val signedAt = clock.instant().toKotlinInstant()
+        val validTo = signedAt + validityDuration
+        return ValidityInfo(signed = signedAt, validFrom = signedAt, validUntil = validTo, expectedUpdate = null)
+    }
 }
 
-private fun validityInfo(clock: Clock, duration: Duration): ValidityInfo {
-    val signedAt = clock.instant().toKotlinInstant()
-    val validTo = signedAt.plus(duration)
-    return ValidityInfo(signed = signedAt, validFrom = signedAt, validUntil = validTo, expectedUpdate = null)
-}
-
-private fun getDeviceKeyInfo(deviceKey: ECKey): DeviceKeyInfo {
+private fun deviceKeyInfo(deviceKey: ECKey): DeviceKeyInfo {
     val key = OneKey(deviceKey.toECPublicKey(), null)
     val deviceKeyDataElement: MapElement = DataElement.fromCBOR(key.AsCBOR().EncodeToBytes())
     return DeviceKeyInfo(deviceKeyDataElement, null, null)
