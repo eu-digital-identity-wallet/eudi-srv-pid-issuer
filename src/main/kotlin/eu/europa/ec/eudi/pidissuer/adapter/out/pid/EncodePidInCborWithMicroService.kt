@@ -32,6 +32,9 @@ import org.springframework.web.reactive.function.client.awaitBody
 
 private val log = LoggerFactory.getLogger(EncodePidInCborWithMicroService::class.java)
 
+@Deprecated(
+    message = "Introduces a dependency to external service",
+)
 class EncodePidInCborWithMicroService(
     private val creatorUrl: HttpsUrl,
     private val webClient: WebClient,

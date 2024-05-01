@@ -26,7 +26,7 @@ import kotlinx.datetime.toKotlinLocalDate
 import java.time.Clock
 import kotlin.time.Duration
 
-internal class EncodePidInCborWithWalt(
+internal class DefaultEncodePidInCbor(
     clock: Clock,
     issuerSigningKey:
         IssuerSigningKey,

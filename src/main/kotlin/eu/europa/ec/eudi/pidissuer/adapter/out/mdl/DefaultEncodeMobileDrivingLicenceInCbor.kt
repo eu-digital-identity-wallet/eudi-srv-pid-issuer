@@ -30,7 +30,7 @@ import kotlinx.datetime.toKotlinLocalDate
 import java.time.Clock
 import kotlin.time.Duration
 
-class EncodeMobileDrivingLicenceInCborWithWalt(
+class DefaultEncodeMobileDrivingLicenceInCbor(
     clock: Clock,
     issuerSigningKey: IssuerSigningKey,
     validityDuration: Duration,

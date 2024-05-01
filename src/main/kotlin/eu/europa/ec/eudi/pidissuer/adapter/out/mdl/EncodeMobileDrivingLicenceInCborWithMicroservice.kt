@@ -41,6 +41,9 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 /**
  * Implementation of [EncodeMobileDrivingLicenceInCbor] using a microservice.
  */
+@Deprecated(
+    message = "Introduces a dependency to external service",
+)
 class EncodeMobileDrivingLicenceInCborWithMicroservice(
     private val webClient: WebClient,
     private val service: HttpsUrl,
