@@ -65,7 +65,7 @@ private fun MDocBuilder.addItemsToSign(pid: Pid) {
     pid.birthCountry?.let { addItemToSign(BirthCountryAttribute, it.value.toDE()) }
     pid.birthState?.let { addItemToSign(BirthStateAttribute, it.value.toDE()) }
     pid.birthCity?.let { addItemToSign(BirthCityAttribute, it.value.toDE()) }
-    pid.residentAddress?.let { addItemToSign(ResidenceAddress, it.toDE()) }
+    pid.residentAddress?.let { addItemToSign(ResidenceAddressAttribute, it.toDE()) }
     pid.residentCountry?.let { addItemToSign(ResidenceCountryAttribute, it.value.toDE()) }
     pid.residentState?.let { addItemToSign(ResidenceStateAttribute, it.value.toDE()) }
     pid.residentCity?.let { addItemToSign(ResidenceCityAttribute, it.value.toDE()) }
