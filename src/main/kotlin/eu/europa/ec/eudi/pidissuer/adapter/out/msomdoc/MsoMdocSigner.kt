@@ -23,6 +23,7 @@ import eu.europa.ec.eudi.pidissuer.domain.MsoDocType
 import id.walt.mdoc.SimpleCOSECryptoProvider
 import id.walt.mdoc.dataelement.DataElement
 import id.walt.mdoc.dataelement.MapElement
+import id.walt.mdoc.dataretrieval.DeviceResponse
 import id.walt.mdoc.doc.MDocBuilder
 import id.walt.mdoc.mso.DeviceKeyInfo
 import id.walt.mdoc.mso.ValidityInfo
@@ -58,7 +59,8 @@ internal class MsoMdocSigner<in Credential>(
             val mdoc = MDocBuilder(docType)
                 .apply { usage(credential) }
                 .sign(validityInfo, deviceKeyInfo, issuerCryptoProvider, issuerSigningKey.key.keyID)
-            Base64.UrlSafe.encode(mdoc.toCBOR())
+            val deviceResponse = DeviceResponse(documents = listOf(mdoc))
+            Base64.UrlSafe.encode(deviceResponse.toCBOR())
         }
 
     private fun validityInfo(): ValidityInfo {
