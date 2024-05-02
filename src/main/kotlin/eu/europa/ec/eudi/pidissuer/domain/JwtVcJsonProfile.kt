@@ -15,6 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import arrow.core.raise.Raise
+import arrow.core.raise.ensure
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 
@@ -22,8 +24,8 @@ import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 // Credential MetaData
 //
 
-const val JWT_VS_JSON_FORMAT_VALUE = "jwt_vc_json"
-val JWT_VS_JSON_FORMAT = Format(JWT_VS_JSON_FORMAT_VALUE)
+const val JWT_VC_JSON_FORMAT_VALUE = "jwt_vc_json"
+val JWT_VC_JSON_FORMAT = Format(JWT_VC_JSON_FORMAT_VALUE)
 
 /**
  * W3C VC signed as a JWT, not using JSON-LD (jwt_vc_json)
@@ -35,7 +37,46 @@ data class JwtVcJsonCredentialConfiguration(
     override val credentialSigningAlgorithmsSupported: Set<JWSAlgorithm>,
     override val display: List<CredentialDisplay>,
     override val proofTypesSupported: Set<ProofType>,
+    val credentialDefinition: CredentialDefinition,
+    val order: List<String>? = null,
 ) : CredentialConfiguration
+
+data class CredentialDefinition(
+    val type: List<String>,
+    val credentialSubject: List<AttributeDetails>?,
+)
+
+//
+// Credential Request
+//
+data class JwtVcJsonCredentialRequest(
+    override val unvalidatedProof: UnvalidatedProof,
+    override val credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
+    val credentialDefinition: CredentialDefinitionRequested,
+) : CredentialRequest {
+    override val format: Format = JWT_VC_JSON_FORMAT
+}
+
+data class CredentialDefinitionRequested(
+    val type: List<String>,
+    val credentialSubject: List<String>?,
+)
+
+context(Raise<String>)
+internal fun JwtVcJsonCredentialRequest.validate(meta: JwtVcJsonCredentialConfiguration) {
+    ensure(meta.credentialDefinition.type.containsAll(credentialDefinition.type)) {
+        "type is ${credentialDefinition.type} but was expecting ${meta.credentialDefinition.type}"
+    }
+    if (meta.credentialDefinition.credentialSubject.isNullOrEmpty()) {
+        ensure(credentialDefinition.credentialSubject.isNullOrEmpty()) { "Requested claims should be empty." }
+    } else {
+        val submittedClaims = credentialDefinition.credentialSubject
+        val expectedClaims = meta.credentialDefinition.credentialSubject.map { it.name }
+        submittedClaims?.let {
+            ensure(expectedClaims.containsAll(submittedClaims)) { "Unexpected claim name requested" }
+        }
+    }
+}
 
 //
 // Credential Offer

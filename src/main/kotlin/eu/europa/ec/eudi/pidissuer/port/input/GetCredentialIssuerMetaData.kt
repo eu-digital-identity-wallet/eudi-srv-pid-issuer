@@ -133,7 +133,7 @@ private fun ImageUri.toTransferObject(): DisplayTO.LogoTO =
     )
 
 private fun CredentialConfiguration.format(): Format = when (this) {
-    is JwtVcJsonCredentialConfiguration -> JWT_VS_JSON_FORMAT
+    is JwtVcJsonCredentialConfiguration -> JWT_VC_JSON_FORMAT
     is MsoMdocCredentialConfiguration -> MSO_MDOC_FORMAT
     is SdJwtVcCredentialConfiguration -> SD_JWT_VC_FORMAT
 }
@@ -163,7 +163,7 @@ private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject = bui
             }
         }
     when (d) {
-        is JwtVcJsonCredentialConfiguration -> TODO()
+        is JwtVcJsonCredentialConfiguration -> d.toTransferObject(false)(this)
         is MsoMdocCredentialConfiguration -> d.toTransferObject(false)(this)
         is SdJwtVcCredentialConfiguration -> d.toTransferObject(false)(this)
     }
@@ -229,6 +229,30 @@ internal fun SdJwtVcCredentialConfiguration.toTransferObject(isOffer: Boolean): 
                 claims.forEach { attribute -> attribute.toTransferObject(this) }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalSerializationApi::class)
+internal fun JwtVcJsonCredentialConfiguration.toTransferObject(isOffer: Boolean): JsonObjectBuilder.() -> Unit = {
+    if (!isOffer) {
+        if (display.isNotEmpty()) {
+            putJsonArray("display") {
+                addAll(display.map { it.toTransferObject() })
+            }
+        }
+    }
+    putJsonObject("credential_definition") {
+        putJsonArray("type") { addAll(credentialDefinition.type) }
+        if (!isOffer) {
+            credentialDefinition.credentialSubject?.let {
+                putJsonObject("credentialSubject") {
+                    it.forEach { attribute -> attribute.toTransferObject(this) }
+                }
+            }
+        }
+    }
+    order?.let {
+        putJsonArray("order") { addAll(it) }
     }
 }
 

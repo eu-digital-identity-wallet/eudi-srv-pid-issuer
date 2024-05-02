@@ -173,4 +173,9 @@ fun CredentialRequest.assertIsSupported(meta: CredentialConfiguration) =
             ensure(meta is SdJwtVcCredentialConfiguration) { "Was expecting a ${SD_JWT_VC_FORMAT.value}" }
             validate(meta)
         }
+
+        is JwtVcJsonCredentialRequest -> {
+            ensure(meta is JwtVcJsonCredentialConfiguration) { "Was expecting a ${JWT_VC_JSON_FORMAT.value}" }
+            validate(meta)
+        }
     }

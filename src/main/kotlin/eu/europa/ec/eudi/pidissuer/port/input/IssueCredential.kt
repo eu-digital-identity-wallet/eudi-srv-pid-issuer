@@ -41,6 +41,9 @@ enum class FormatTO {
 
     @SerialName(SD_JWT_VC_FORMAT_VALUE)
     SdJwtVc,
+
+    @SerialName(JWT_VC_JSON_FORMAT_VALUE)
+    JwtVcJson,
 }
 
 @Serializable
@@ -74,6 +77,12 @@ data class CredentialResponseEncryptionTO(
 typealias ClaimsTO = Map<String, JsonElement>
 
 @Serializable
+data class CredentialDefinitionTO(
+    @SerialName("type") val type: List<String>,
+    @SerialName("credentialSubject") val credentialSubject: Map<String, ClaimsTO>? = null,
+)
+
+@Serializable
 data class CredentialRequestTO(
     val format: FormatTO? = null,
     val proof: ProofTo? = null,
@@ -86,6 +95,8 @@ data class CredentialRequestTO(
     @SerialName("vct")
     val type: String? = null,
     val claims: ClaimsTO? = null,
+    @SerialName("credential_definition")
+    val credentialDefinition: CredentialDefinitionTO? = null,
 )
 
 /**
@@ -257,6 +268,7 @@ class IssueCredential(
                 when (unresolvedRequest) {
                     is UnresolvedCredentialRequest.ByFormat ->
                         unresolvedRequest.credentialRequest to null
+
                     is UnresolvedCredentialRequest.ByCredentialIdentifier ->
                         resolve(unresolvedRequest) to unresolvedRequest.credentialIdentifier
                 }
@@ -305,6 +317,7 @@ class IssueCredential(
             val types = when (credentialRequest) {
                 is MsoMdocCredentialRequest -> listOf(credentialRequest.docType)
                 is SdJwtVcCredentialRequest -> listOf(credentialRequest.type).map { it.value }
+                is JwtVcJsonCredentialRequest -> credentialRequest.credentialDefinition.type
             }
             raise(UnsupportedCredentialType(credentialRequest.format, types))
         }
@@ -407,6 +420,22 @@ private fun CredentialRequestTO.toDomain(
                         credentialResponseEncryption,
                         SdJwtVcType(type),
                         claims,
+                    ),
+                )
+            }
+
+            FormatTO.JwtVcJson -> {
+                ensure(credentialDefinition != null && !credentialDefinition.type.isEmpty()) {
+                    UnsupportedCredentialType(format = JWT_VC_JSON_FORMAT)
+                }
+                UnresolvedCredentialRequest.ByFormat(
+                    JwtVcJsonCredentialRequest(
+                        proof,
+                        credentialResponseEncryption,
+                        CredentialDefinitionRequested(
+                            type = credentialDefinition.type,
+                            credentialSubject = credentialDefinition.credentialSubject?.keys?.toList(),
+                        ),
                     ),
                 )
             }

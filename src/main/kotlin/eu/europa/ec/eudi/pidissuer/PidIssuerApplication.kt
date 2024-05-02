@@ -44,6 +44,8 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceReposit
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryIssuedCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.pseudonym.GenerateUserPseudonym
+import eu.europa.ec.eudi.pidissuer.adapter.out.pseudonym.IssueJwtVcJsonUserPseudonym
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -382,6 +384,14 @@ fun beans(clock: Clock) = beans {
     }
 
     //
+    // Pseudonyms
+    //
+    bean {
+        GenerateUserPseudonym { UUID.randomUUID().toString() }
+    }
+
+
+    //
     // Specific Issuers
     //
     bean {
@@ -453,6 +463,20 @@ fun beans(clock: Clock) = beans {
                         storeIssuedCredential = ref(),
                     )
                     add(mdlIssuer)
+                }
+
+                val enableJwtVcJsonPseudonym = env.getProperty<Boolean>("issuer.pseudonym.jwt_vc_json.enabled") ?: true
+                if (enableJwtVcJsonPseudonym) {
+                    val jwtVcJsonIssuer = IssueJwtVcJsonUserPseudonym(
+                        credentialIssuerId = issuerPublicUrl,
+                        generateUserPseudonym = ref(),
+                        notificationsEnabled = env.getProperty<Boolean>("issuer.pseudonym.jwt_vc_json.notifications.enabled") ?: true,
+                        generateNotificationId = ref(),
+                        extractJwkFromCredentialKey = DefaultExtractJwkFromCredentialKey,
+                        clock = clock,
+                        storeIssuedCredential = ref(),
+                    )
+                    add(jwtVcJsonIssuer)
                 }
             },
         )
