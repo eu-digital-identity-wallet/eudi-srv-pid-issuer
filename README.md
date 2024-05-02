@@ -95,8 +95,8 @@ docker compose up -d
 The PID Issuer application can be configured using the following *environment* variables:
 
 Variable: `SPRING_PROFILES_ACTIVE`  
-Description: Spring profiles to enable  
-Default value: None. Enable `insecure` profile to disable SSL certificates verification
+Description: Spring profiles to enable. Enable `insecure` profile to disable SSL certificates verification.  
+Default value: N/A 
 
 Variable: `SPRING_WEBFLUX_BASE_PATH`  
 Description: Context path for the PID issuer application.  
@@ -136,25 +136,29 @@ Variable: `ISSUER_AUTHORIZATIONSERVER_INTROSPECTION`
 Description: URL of the Token Introspection endpoint of the Authorization Server  
 Default value: N/A
 
+Variable: `ISSUER_CREDENTIALRESPONSEENCRYPTION_SUPPORTED`  
+Description: Whether to enable support for credential response encryption.    
+Default value: `true`
+
+Variable: `ISSUER_CREDENTIALRESPONSEENCRYPTION_REQUIRED`  
+Description: Whether credential response encryption is required.  
+Default value: `true`
+
+Variable: `ISSUER_CREDENTIALRESPONSEENCRYPTION_ALGORITHMSSUPPORTED`  
+Description: Comma separated list of supported encryption algorithms for credential response encryption.      
+Default value: `RSA-OAEP-256`
+
+Variable: `ISSUER_CREDENTIALRESPONSEENCRYPTION_ENCRYPTIONMETHODS`  
+Description: Comma separated list of supported encryption method for credential response encryption.      
+Default value: `A128CBC-HS256`
+
 Variable: `ISSUER_PID_MSO_MDOC_ENABLED`  
 Description: Whether to enable support for PID issuance in *MSO MDOC* format  
 Default value: `true`
 
-Variable: `ISSUER_PID_SD_JWT_VC_ENABLED`  
-Description: Whether to enable support for PID issuance in *SD JWT VC* format  
-Default value: `true`
-
-Variable: `ISSUER_PID_SD_JWT_VC_DEFERRED`  
-Description: Whether PID issuance in *SD JWT VC* format should be *deferred* or *immediate*  
-Default value: `false` (i.e. immediate issuance)
-
-Variable: `ISSUER_PID_ISSUING_COUNTRY`  
-Description: Code of the Country issuing the PID  
-Default value: N/A
-
 Variable: `ISSUER_PID_MSO_MDOC_ENCODER`    
 Description: Configures the CBOR encoder to use for encoding PIDs. Either `Internal` or `Microservice`.    
-Default value: `Microservice`
+Default value: `Internal`
 
 Variable: `ISSUER_PID_MSO_MDOC_ENCODER_DURATION`    
 Description: Configures the validity of issued PIDs when using the internal encoder. Uses Period syntax.
@@ -164,11 +168,44 @@ Default value: `P30D`
 Variable: `ISSUER_PID_MSO_MDOC_ENCODER_URL`  
 Description: URL of the CBOR encoder microservice to use for PIDs. Required when `ISSUER_PID_MSO_MDOC_ENCODER` is
 set to `Microservice`   
-Default value: `https://preprod.issuer.eudiw.dev/formatter/cbor`
+Default value: N/A
+
+Variable: `ISSUER_PID_MSO_MDOC_NOTIFICATIONS_ENABLED`  
+Description: Whether to enabled Notifications Endpoint support for PIDs issued in *MSO MDOC*.     
+Default value: `true`
+
+Variable: `ISSUER_PID_SD_JWT_VC_ENABLED`  
+Description: Whether to enable support for PID issuance in *SD JWT VC* format.  
+Default value: `true`
+
+Variable: `ISSUER_PID_SD_JWT_VC_NOTUSEBEFORE`  
+Description: Period after which a PID issued in *SD JWT VC* becomes valid. Used to calculate the value of the `nbf` claim.  
+Default value: `PT20`
+
+Variable: `ISSUER_PID_SD_JWT_VC_COMPLEXOBJECTSSDOPTION`  
+Description: Configured how complex objects should be selectively disclosed in the PID issued in *SD JWT VC*.  
+Possible values: `Flat`, `Structured`, `Recursive`  
+Default value: `Structured`
+
+Variable: `ISSUER_PID_SD_JWT_VC_DEFERRED`  
+Description: Whether PID issuance in *SD JWT VC* format should be *deferred* or *immediate*.  
+Default value: `true` (i.e. deferred issuance)
+
+Variable: `ISSUER_PID_SD_JWT_VC_NOTIFICATIONS_ENABLED`  
+Description: Whether to enabled Notifications Endpoint support for PIDs issued in *SD JWT VC*.  
+Default value: `true`
+
+Variable: `ISSUER_PID_ISSUING_COUNTRY`  
+Description: Code of the Country issuing the PID  
+Default value: `GR`
+
+Variable: `ISSUER_MDL_ENABLED`    
+Description: Whether to enable support for issuing mDL.    
+Default value: `true`
 
 Variable: `ISSUER_MDL_MSO_MDOC_ENCODER`    
 Description: Configures the CBOR encoder to use for encoding mDLs. Either `Internal` or `Microservice`.    
-Default value: `Microservice`
+Default value: `Internal`
 
 Variable: `ISSUER_MDL_MSO_MDOC_ENCODER_DURATION`    
 Description: Configures the validity of issued mDLs when using the internal encoder. Uses Period syntax. 
@@ -178,7 +215,15 @@ Default value: `P5D`
 Variable: `ISSUER_MDL_MSO_MDOC_ENCODER_URL`  
 Description: URL of the CBOR encoder microservice to use. Required when `ISSUER_MDL_MSO_MDOC_ENCODER` is 
 set to `Microservice`   
-Default value: `https://preprod.issuer.eudiw.dev/formatter/cbor`
+Default value: N/A
+
+Variable: `ISSUER_MDL_NOTIFICATIONS_ENABLED`    
+Description: Whether to enabled Notifications Endpoint support for mDLs.    
+Default value: `true`
+
+Variable: `ISSUER_CREDENTIALOFFER_URI`    
+Description: URI to use when generating Credential Offers.    
+Default value: `eudi-openid4ci://`
 
 Variable: `ISSUER_SIGNING_KEY`  
 Description: Whether to generate a new, or use an existing key-pair for signing.    
@@ -235,18 +280,17 @@ Description: Realm of the administered users in Keycloak
 Default value: N/A  
 Example: password
 
-Variable: `ISSUER_DPOP_MAX_PROOF_AGE`  
+Variable: `ISSUER_DPOP_PROOF_MAX_AGE`  
 Description: Max duration a DPoP Access Token is considered active      
-Default value: PT1M  
+Default value: `PT1M`  
 
 Variable: `ISSUER_DPOP_CACHE_PURGE_INTERVAL`  
 Description: Interval after which cached DPoP Access Tokens are deleted         
-Default value: PT10M
+Default value: `PT10M`
 
 Variable: `ISSUER_DPOP_REALM`  
 Description: Realm to report in the WWW-Authenticate header in case of DPoP authentication/authorization failure         
-Default value: N/A  
-Example: pid-issuer
+Default value: `pid-issuer`
 
 ### Signing Key
 
