@@ -91,8 +91,8 @@ internal fun createMsoMdocReq(
                 pid.birthPlace?.let { put(BirthPlaceAttribute.name, it) }
                 pid.birthCountry?.let { put(BirthCountryAttribute.name, it.value) }
                 pid.birthState?.let { put(BirthStateAttribute.name, it.value) }
-                pid.birthCity?.let { put(BirthCountryAttribute.name, it.value) }
-                pid.residentAddress?.let { put(ResidenceAddress.name, it) }
+                pid.birthCity?.let { put(BirthCityAttribute.name, it.value) }
+                pid.residentAddress?.let { put(ResidenceAddressAttribute.name, it) }
                 pid.residentCountry?.let { put(ResidenceCountryAttribute.name, it.value) }
                 pid.residentState?.let { put(ResidenceStateAttribute.name, it.value) }
                 pid.residentCity?.let { put(ResidenceCityAttribute.name, it.value) }
@@ -103,9 +103,9 @@ internal fun createMsoMdocReq(
                 put(IssuanceDateAttribute.name, pidMetaData.issuanceDate.toString())
                 put(ExpiryDateAttribute.name, pidMetaData.expiryDate.toString())
                 when (val issuingAuthority = pidMetaData.issuingAuthority) {
-                    is IssuingAuthority.MemberState -> put(IssuanceDateAttribute.name, issuingAuthority.code.value)
+                    is IssuingAuthority.MemberState -> put(IssuingAuthorityAttribute.name, issuingAuthority.code.value)
                     is IssuingAuthority.AdministrativeAuthority -> put(
-                        IssuanceDateAttribute.name,
+                        IssuingAuthorityAttribute.name,
                         issuingAuthority.value,
                     )
                 }

@@ -130,7 +130,7 @@ val BirthCityAttribute = AttributeDetails(
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "The municipality, city, town, or village where the PID User was born. "),
 )
-val ResidenceAddress = AttributeDetails(
+val ResidenceAddressAttribute = AttributeDetails(
     name = "resident_address",
     mandatory = false,
     display = mapOf(
@@ -207,7 +207,7 @@ private val pidAttributes = PidMsoMdocNamespace to listOf(
     BirthCountryAttribute,
     BirthStateAttribute,
     BirthCityAttribute,
-    ResidenceAddress,
+    ResidenceAddressAttribute,
     ResidenceCountryAttribute,
     ResidenceStateAttribute,
     ResidenceCityAttribute,
