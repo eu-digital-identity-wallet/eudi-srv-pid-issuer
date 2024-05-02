@@ -18,13 +18,14 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pseudonym
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
 import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
+import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.did.DidMethod
 import eu.europa.ec.eudi.pidissuer.adapter.out.did.createDidUrl
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidDisplay
+import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.adapter.out.w3c.JwtVcJsonRealizer
 import eu.europa.ec.eudi.pidissuer.adapter.out.w3c.ProofMechanism
 import eu.europa.ec.eudi.pidissuer.adapter.out.w3c.buildCredential
@@ -72,8 +73,7 @@ class IssueJwtVcJsonUserPseudonym(
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
-    private val signAlg: JWSAlgorithm,
-    private val issuerKey: ECKey,
+    private val issuerSigningKey: IssuerSigningKey,
     private val clock: Clock,
     private val storeIssuedCredential: StoreIssuedCredential,
 ) : IssueSpecificCredential<JsonElement> {
@@ -139,7 +139,10 @@ class IssueJwtVcJsonUserPseudonym(
             }
         }
 
-        val verifiableCredential = JwtVcJsonRealizer().realize(credential, ProofMechanism.JWT(issuerKey, signAlg))
+        val verifiableCredential = JwtVcJsonRealizer().realize(
+            credential,
+            ProofMechanism.JWT(issuerSigningKey.key, issuerSigningKey.signingAlgorithm),
+        )
         return verifiableCredential.credential.serialize()
     }
 

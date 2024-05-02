@@ -123,7 +123,7 @@ sealed interface ProofMechanism {
         val alg: JWSAlgorithm,
     ) : ProofMechanism
 
-    object DataIntegrity : ProofMechanism
+    data object DataIntegrity : ProofMechanism
 }
 
 sealed interface W3CVerifiableCredential {

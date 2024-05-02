@@ -402,7 +402,9 @@ fun beans(clock: Clock) = beans {
             notificationEndpoint = issuerPublicUrl.appendPath(WalletApi.NOTIFICATION_ENDPOINT),
             authorizationServers = listOf(env.readRequiredUrl("issuer.authorizationServer.publicUrl")),
             credentialResponseEncryption = env.credentialResponseEncryption(),
+
             specificCredentialIssuers = buildList {
+                val issuerSigningKey = ref<IssuerSigningKey>()
                 if (enableMsoMdocPid) {
                     val issueMsoMdocPid = IssueMsoMdocPid(
                         credentialIssuerId = issuerPublicUrl,
@@ -472,8 +474,7 @@ fun beans(clock: Clock) = beans {
                         notificationsEnabled = env.getProperty<Boolean>("issuer.pseudonym.jwt_vc_json.notifications.enabled") ?: true,
                         generateNotificationId = ref(),
                         extractJwkFromCredentialKey = DefaultExtractJwkFromCredentialKey,
-                        issuerKey = signingKey,
-                        signAlg = signingAlgorithm,
+                        issuerSigningKey = issuerSigningKey,
                         clock = clock,
                         storeIssuedCredential = ref(),
                     )
