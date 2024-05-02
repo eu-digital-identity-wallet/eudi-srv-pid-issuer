@@ -28,6 +28,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.Printer.prettyPrint
+import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
@@ -228,7 +229,7 @@ class IssueSdJwtVcPid(
     private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
     private val validateProof = ValidateProof(credentialIssuerId)
 
-    override val supportedCredential: SdJwtVcCredentialConfiguration = pidSdJwtVcV1(issuerSigningKey.algorithm)
+    override val supportedCredential: SdJwtVcCredentialConfiguration = pidSdJwtVcV1(issuerSigningKey.signingAlgorithm)
     override val publicKey: JWK
         get() = issuerSigningKey.key.toPublicJWK()
 
@@ -318,7 +319,7 @@ class IssueSdJwtVcPid(
 
         val sdJwtFactory = SdJwtFactory(hashAlgorithm = hashAlgorithm, numOfDecoysLimit = 0)
         val signer = ECDSASigner(issuerSigningKey.key)
-        SdJwtIssuer.nimbus(sdJwtFactory, signer, issuerSigningKey.algorithm) {
+        SdJwtIssuer.nimbus(sdJwtFactory, signer, issuerSigningKey.signingAlgorithm) {
             // SD-JWT VC requires the kid & typ header attributes
             // Check [here](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-01.html#name-jose-header)
             keyID(issuerSigningKey.key.keyID)

@@ -21,7 +21,6 @@ import arrow.core.some
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
-import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64
@@ -46,6 +45,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCrede
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryIssuedCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
+import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
@@ -186,13 +186,6 @@ fun beans(clock: Clock) = beans {
     //
 
     bean(isLazyInit = true) {
-        fun ECKey.signingAlgorithm() =
-            when (val curve = curve) {
-                Curve.P_256 -> JWSAlgorithm.ES256
-                Curve.P_384 -> JWSAlgorithm.ES384
-                Curve.P_521 -> JWSAlgorithm.ES512
-                else -> error("Unsupported ECKey Curve '$curve'")
-            }
         val signingKey = when (env.getProperty<KeyOption>("issuer.signing-key")) {
             null, KeyOption.GenerateRandom -> {
                 log.info("Generating random signing key and self-signed certificate for issuance")
@@ -215,7 +208,7 @@ fun beans(clock: Clock) = beans {
             }
         }
         require(signingKey is ECKey) { "Only ECKeys are supported for signing" }
-        IssuerSigningKey(signingKey, signingKey.signingAlgorithm())
+        IssuerSigningKey(signingKey)
     }
 
     //
@@ -335,7 +328,7 @@ fun beans(clock: Clock) = beans {
             }
 
             if (enableSdJwtVcPid) {
-                val (_, signingAlgorithm) = ref<IssuerSigningKey>()
+                val signingAlgorithm = ref<IssuerSigningKey>().signingAlgorithm
                 pidSdJwtVcV1(signingAlgorithm).let { sdJwtVcPid ->
                     this[CredentialIdentifier(PidSdJwtVcScope.value)] =
                         { unvalidatedProof, requestedResponseEncryption ->

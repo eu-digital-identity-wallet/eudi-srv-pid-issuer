@@ -17,33 +17,43 @@ package eu.europa.ec.eudi.pidissuer.adapter.out
 
 import COSE.AlgorithmID
 import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.util.X509CertChainUtils
 import id.walt.mdoc.COSECryptoProviderKeyInfo
 import id.walt.mdoc.SimpleCOSECryptoProvider
 
-data class IssuerSigningKey(val key: ECKey, val algorithm: JWSAlgorithm) {
+@JvmInline
+value class IssuerSigningKey(val key: ECKey) {
     init {
         require(key.isPrivate) { "a private key is required for signing" }
         require(!key.keyID.isNullOrBlank()) { "issuer key must have kid" }
         require(!key.x509CertChain.isNullOrEmpty()) { "issuer key must have an x5c certificate chain" }
-        require(algorithm in JWSAlgorithm.Family.EC) { "signing algorithm must be an EC algorithm" }
     }
 }
 
+internal val IssuerSigningKey.signingAlgorithm: JWSAlgorithm
+    get() = when (val curve = key.curve) {
+        Curve.P_256 -> JWSAlgorithm.ES256
+        Curve.P_384 -> JWSAlgorithm.ES384
+        Curve.P_521 -> JWSAlgorithm.ES512
+        else -> error("Unsupported ECKey Curve '$curve'")
+    }
+
+internal val IssuerSigningKey.algorithmId: AlgorithmID
+    get() = when (val curve = key.curve) {
+        Curve.P_256 -> AlgorithmID.ECDSA_256
+        Curve.P_384 -> AlgorithmID.ECDSA_384
+        Curve.P_521 -> AlgorithmID.ECDSA_512
+        else -> error("Unsupported ECKey Curve '$curve'")
+    }
+
 internal fun IssuerSigningKey.cryptoProvider(): SimpleCOSECryptoProvider {
-    fun JWSAlgorithm.asAlgorithmId(): AlgorithmID =
-        when (this) {
-            JWSAlgorithm.ES256 -> AlgorithmID.ECDSA_256
-            JWSAlgorithm.ES384 -> AlgorithmID.ECDSA_384
-            JWSAlgorithm.ES512 -> AlgorithmID.ECDSA_512
-            else -> error("Unsupported JWSAlgorithm $this")
-        }
     return SimpleCOSECryptoProvider(
         listOf(
             COSECryptoProviderKeyInfo(
                 keyID = key.keyID,
-                algorithmID = algorithm.asAlgorithmId(),
+                algorithmID = algorithmId,
                 publicKey = key.toECPublicKey(),
                 privateKey = key.toECPrivateKey(),
                 x5Chain = X509CertChainUtils.parse(key.x509CertChain),
