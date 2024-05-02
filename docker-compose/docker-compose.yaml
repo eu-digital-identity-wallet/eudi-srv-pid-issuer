@@ -41,7 +41,7 @@ services:
       - default
 
   pid-issuer:
-    image: ghcr.io/eu-digital-identity-wallet/eudi-srv-pid-issuer:edge
+    image: ghcr.io/eu-digital-identity-wallet/eudi-srv-pid-issuer:v0.2.0
     pull_policy: always
     container_name: pid-issuer
     depends_on:
