@@ -44,6 +44,8 @@ value class City(val value: String)
 @JvmInline
 value class PostalCode(val value: String)
 
+typealias Address = String
+
 /**
  * Gender, using a value as defined in ISO/IEC 5218.
  */
@@ -61,6 +63,7 @@ typealias Nationality = IsoCountry
  * minor (false).
  * @param ageBirthYear The year when the PID User was born. If unknown, approximate
  * year.
+ * @param ageInYears The current age of the PID User in years.
  * @param familyNameBirth First name(s), including middle name(s), of the PID User at the
  * time of birth.
  * @param givenNameBirth First name(s), including middle name(s), of the PID User at the time of birth.
@@ -70,6 +73,8 @@ typealias Nationality = IsoCountry
  * @param birthState The state, province, district, or local area where the PID User was
  * born.
  * @param birthCity The municipality, city, town, or village where the PID User was born
+ * @param residentAddress The full address of the place where the PID User currently resides and/or can be
+ * contacted (street name, house number, city etc.).
  * @param residentCountry The country where the PID User currently resides, as an Alpha-2
  * country code as specified in ISO 3166-1.
  * @param residentState The state, province, district, or local area where the PID User
@@ -82,14 +87,16 @@ data class Pid(
     val familyName: FamilyName,
     val givenName: GivenName,
     val birthDate: LocalDate,
-    val ageOver18: Boolean,
+    val ageOver18: Boolean? = null,
     val ageBirthYear: Year? = null,
+    val ageInYears: UInt? = null,
     val familyNameBirth: FamilyName? = null,
     val givenNameBirth: GivenName? = null,
     val birthPlace: String? = null,
     val birthCountry: IsoCountry? = null,
     val birthState: State? = null,
     val birthCity: City? = null,
+    val residentAddress: Address? = null,
     val residentStreet: Street? = null,
     val residentCountry: IsoCountry? = null,
     val residentState: State? = null,
@@ -149,7 +156,8 @@ typealias IsoCountrySubdivision = String
  * @param documentNumber A number for the PID, assigned by the PID Provider
  * @param administrativeNumber A number assigned by the PID Provider for audit control or other purposes.
  * @param issuingCountry Alpha-2 country code, as defined in ISO 3166-1, of the PID Provider’s country or territory.
- * @param issuingJurisdiction
+ * @param issuingJurisdiction Country subdivision code of the jurisdiction that issued the PID, as defined
+ * in ISO 3166-2:2020, Clause 8. The first part of the code SHALL be the same as the value for issuing_country.
  */
 data class PidMetaData(
     val issuanceDate: LocalDate,
@@ -159,7 +167,6 @@ data class PidMetaData(
     val administrativeNumber: AdministrativeNumber? = null,
     val issuingCountry: IsoCountry,
     val issuingJurisdiction: IsoCountrySubdivision? = null,
-    val portrait: Portrait? = null,
 ) {
     init {
         require(issuanceDate.isBefore(expiryDate)) { "Issuance date should be before expiry date" }

@@ -21,18 +21,20 @@ import arrow.core.some
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
-import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPProtectedResourceRequestVerifier
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DefaultDPoPSingleUseChecker
+import com.nimbusds.oauth2.sdk.id.Issuer
+import com.nimbusds.oauth2.sdk.util.X509CertificateUtils
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerUi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CredentialRequestFactory
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultResolveCredentialRequestByCredentialIdentifier
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.DefaultExtractJwkFromCredentialKey
@@ -43,6 +45,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCrede
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryIssuedCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
+import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
@@ -105,6 +108,10 @@ import java.security.KeyStore
 import java.security.cert.X509Certificate
 import java.time.Clock
 import java.time.Duration
+import java.util.*
+import kotlin.time.Duration.Companion.days
+import kotlin.time.toJavaDuration
+import kotlin.time.toKotlinDuration
 
 private val log = LoggerFactory.getLogger(PidIssuerApplication::class.java)
 
@@ -169,6 +176,41 @@ internal object RestEasyClients {
 
 @OptIn(ExperimentalSerializationApi::class)
 fun beans(clock: Clock) = beans {
+    val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl", removeTrailingSlash = true)
+    val enableMobileDrivingLicence = env.getProperty("issuer.mdl.enabled", true)
+    val enableMsoMdocPid = env.getProperty<Boolean>("issuer.pid.mso_mdoc.enabled") ?: true
+    val enableSdJwtVcPid = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.enabled") ?: true
+
+    //
+    // Signing key
+    //
+
+    bean(isLazyInit = true) {
+        val signingKey = when (env.getProperty<KeyOption>("issuer.signing-key")) {
+            null, KeyOption.GenerateRandom -> {
+                log.info("Generating random signing key and self-signed certificate for issuance")
+                val key = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate()
+                val certificate = X509CertificateUtils.generateSelfSigned(
+                    Issuer(issuerPublicUrl.value.host),
+                    Date.from(clock.instant()),
+                    Date.from(clock.instant() + 365.days.toJavaDuration()),
+                    key.toECPublicKey(),
+                    key.toECPrivateKey(),
+                )
+                ECKey.Builder(key)
+                    .x509CertChain(listOf(Base64.encode(certificate.encoded)))
+                    .build()
+            }
+
+            KeyOption.LoadFromKeystore -> {
+                log.info("Loading signing key and certificate for issuance from keystore")
+                loadJwkFromKeystore(env, "issuer.signing-key")
+            }
+        }
+        require(signingKey is ECKey) { "Only ECKeys are supported for signing" }
+        IssuerSigningKey(signingKey)
+    }
+
     //
     // Adapters (out ports)
     //
@@ -216,52 +258,88 @@ fun beans(clock: Clock) = beans {
             keycloakProperties.userRealm,
         )
     }
-    bean {
-        EncodePidInCborWithMicroService(env.readRequiredUrl("issuer.pid.mso_mdoc.encoderUrl"), ref())
+    bean<EncodePidInCbor>(isLazyInit = true) {
+        when (env.getProperty<MsoMdocEncoderOption>("issuer.pid.mso_mdoc.encoder")) {
+            MsoMdocEncoderOption.Microservice -> {
+                val url = env.readRequiredUrl("issuer.pid.mso_mdoc.encoderUrl")
+                log.info("Using external microservice to encode PID in CBOR listening to $url")
+                EncodePidInCborWithMicroService(url, ref())
+            }
+
+            null, MsoMdocEncoderOption.Internal -> {
+                log.info("Using internal encoder to encode PID in CBOR")
+                val issuerSigningKey = ref<IssuerSigningKey>()
+                val duration = env.getProperty("issuer.pid.mso_mdoc.encoder.duration")
+                    ?.let { Duration.parse(it).toKotlinDuration() }
+                    ?: 30.days
+                DefaultEncodePidInCbor(clock, issuerSigningKey, duration)
+            }
+        }
     }
     bean {
         GetMobileDrivingLicenceDataMock()
     }
-    bean {
-        EncodeMobileDrivingLicenceInCborWithMicroservice(
-            ref(),
-            env.readRequiredUrl("issuer.mdl.mso_mdoc.encoderUrl"),
-        )
+    bean<EncodeMobileDrivingLicenceInCbor>(isLazyInit = true) {
+        when (env.getProperty<MsoMdocEncoderOption>("issuer.mdl.mso_mdoc.encoder")) {
+            MsoMdocEncoderOption.Microservice -> {
+                val url = env.readRequiredUrl("issuer.mdl.mso_mdoc.encoderUrl")
+                log.info("Using external microservice to encode mDL in CBOR listening to $url")
+                EncodeMobileDrivingLicenceInCborWithMicroservice(ref(), url)
+            }
+
+            null, MsoMdocEncoderOption.Internal -> {
+                log.info("Using internal encoder to encode mDL in CBOR")
+                val issuerSigningKey = ref<IssuerSigningKey>()
+                val duration = env.getProperty("issuer.mdl.mso_mdoc.encoder.duration")
+                    ?.let { Duration.parse(it).toKotlinDuration() }
+                    ?: 5.days
+                DefaultEncodeMobileDrivingLicenceInCbor(clock, issuerSigningKey, duration)
+            }
+        }
     }
     bean(::DefaultGenerateQrCode)
     bean(::HandleNotificationRequest)
     bean {
         val resolvers = buildMap<CredentialIdentifier, CredentialRequestFactory> {
-            this[CredentialIdentifier(MobileDrivingLicenceV1Scope.value)] =
-                { unvalidatedProof, requestedResponseEncryption ->
-                    MsoMdocCredentialRequest(
-                        unvalidatedProof = unvalidatedProof,
-                        credentialResponseEncryption = requestedResponseEncryption,
-                        docType = MobileDrivingLicenceV1.docType,
-                        claims = MobileDrivingLicenceV1.msoClaims.mapValues { entry -> entry.value.map { attribute -> attribute.name } },
-                    )
-                }
-
-            this[CredentialIdentifier(PidMsoMdocScope.value)] =
-                { unvalidatedProof, requestedResponseEncryption ->
-                    MsoMdocCredentialRequest(
-                        unvalidatedProof = unvalidatedProof,
-                        credentialResponseEncryption = requestedResponseEncryption,
-                        docType = PidMsoMdocV1.docType,
-                        claims = PidMsoMdocV1.msoClaims.mapValues { entry -> entry.value.map { attribute -> attribute.name } },
-                    )
-                }
-
-            pidSdJwtVcV1(JWSAlgorithm.ES256).let { sdJwtVcPid ->
-                this[CredentialIdentifier(PidSdJwtVcScope.value)] =
+            if (enableMobileDrivingLicence) {
+                this[CredentialIdentifier(MobileDrivingLicenceV1Scope.value)] =
                     { unvalidatedProof, requestedResponseEncryption ->
-                        SdJwtVcCredentialRequest(
+                        MsoMdocCredentialRequest(
                             unvalidatedProof = unvalidatedProof,
                             credentialResponseEncryption = requestedResponseEncryption,
-                            type = sdJwtVcPid.type,
-                            claims = sdJwtVcPid.claims.map { it.name }.toSet(),
+                            docType = MobileDrivingLicenceV1.docType,
+                            claims = MobileDrivingLicenceV1.msoClaims.mapValues { entry ->
+                                entry.value.map { attribute -> attribute.name }
+                            },
                         )
                     }
+            }
+
+            if (enableMsoMdocPid) {
+                this[CredentialIdentifier(PidMsoMdocScope.value)] =
+                    { unvalidatedProof, requestedResponseEncryption ->
+                        MsoMdocCredentialRequest(
+                            unvalidatedProof = unvalidatedProof,
+                            credentialResponseEncryption = requestedResponseEncryption,
+                            docType = PidMsoMdocV1.docType,
+                            claims = PidMsoMdocV1.msoClaims.mapValues { entry -> entry.value.map { attribute -> attribute.name } },
+                        )
+                    }
+            }
+
+            if (enableSdJwtVcPid) {
+                val signingAlgorithm = ref<IssuerSigningKey>().signingAlgorithm
+                pidSdJwtVcV1(signingAlgorithm).let { sdJwtVcPid ->
+                    this[CredentialIdentifier(PidSdJwtVcScope.value)] =
+                        { unvalidatedProof, requestedResponseEncryption ->
+                            SdJwtVcCredentialRequest(
+                                unvalidatedProof = unvalidatedProof,
+                                credentialResponseEncryption = requestedResponseEncryption,
+                                type = sdJwtVcPid.type,
+                                claims = sdJwtVcPid.claims.map { it.name }.toSet(),
+                            )
+                        }
+                }
             }
         }
 
@@ -307,28 +385,6 @@ fun beans(clock: Clock) = beans {
     // Specific Issuers
     //
     bean {
-        val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl", removeTrailingSlash = true)
-        val (signingKey, signingAlgorithm) =
-            when (env.getProperty<KeyOption>("issuer.signing-key")) {
-                null, KeyOption.GenerateRandom -> {
-                    log.info("Generating random signing key for issuance")
-                    ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate() to JWSAlgorithm.ES256
-                }
-
-                KeyOption.LoadFromKeystore -> {
-                    log.info("Loading signing key from keystore for issuance")
-
-                    val key = loadJwkFromKeystore(env, "issuer.signing-key")
-                    require(key is ECKey) { "Only ECKeys are supported for signing" }
-
-                    val algorithm = env.getRequiredProperty("issuer.signing-algorithm")
-                        .let { JWSAlgorithm.parse(it) }
-                    require(algorithm in JWSAlgorithm.Family.EC) { "An EC JWSAlgorithm is required" }
-
-                    key to algorithm
-                }
-            }
-
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
             credentialEndPoint = issuerPublicUrl.appendPath(WalletApi.CREDENTIAL_ENDPOINT),
@@ -337,7 +393,6 @@ fun beans(clock: Clock) = beans {
             authorizationServers = listOf(env.readRequiredUrl("issuer.authorizationServer.publicUrl")),
             credentialResponseEncryption = env.credentialResponseEncryption(),
             specificCredentialIssuers = buildList {
-                val enableMsoMdocPid = env.getProperty<Boolean>("issuer.pid.mso_mdoc.enabled") ?: true
                 if (enableMsoMdocPid) {
                     val issueMsoMdocPid = IssueMsoMdocPid(
                         credentialIssuerId = issuerPublicUrl,
@@ -351,7 +406,7 @@ fun beans(clock: Clock) = beans {
                     )
                     add(issueMsoMdocPid)
                 }
-                val enableSdJwtVcPid = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.enabled") ?: true
+
                 if (enableSdJwtVcPid) {
                     val notUseBefore = env.getProperty("issuer.pid.sd_jwt_vc.notUseBefore")?.let {
                         runCatching {
@@ -363,12 +418,12 @@ fun beans(clock: Clock) = beans {
                         env.getProperty<SelectiveDisclosureOption>("issuer.pid.sd_jwt_vc.complexObjectsSdOption")
                             ?: SelectiveDisclosureOption.Structured
 
+                    val issuerSigningKey = ref<IssuerSigningKey>()
                     val issueSdJwtVcPid = IssueSdJwtVcPid(
                         hashAlgorithm = HashAlgorithm.SHA3_256,
-                        issuerKey = signingKey,
+                        issuerSigningKey = issuerSigningKey,
                         getPidData = ref(),
                         clock = clock,
-                        signAlg = signingAlgorithm,
                         credentialIssuerId = issuerPublicUrl,
                         extractJwkFromCredentialKey = DefaultExtractJwkFromCredentialKey,
                         calculateExpiresAt = { iat -> iat.plusDays(30).toInstant() },
@@ -392,7 +447,6 @@ fun beans(clock: Clock) = beans {
                     )
                 }
 
-                val enableMobileDrivingLicence = env.getProperty("issuer.mdl.enabled", true)
                 if (enableMobileDrivingLicence) {
                     val mdlIssuer = IssueMobileDrivingLicence(
                         credentialIssuerId = issuerPublicUrl,
@@ -456,7 +510,8 @@ fun beans(clock: Clock) = beans {
             else log.info("DPoP support will be enabled. Supported algorithms: $it")
         }
         val proofMaxAge = env.getProperty("issuer.dpop.proof-max-age", "PT1M").let { Duration.parse(it) }
-        val cachePurgeInterval = env.getProperty("issuer.dpop.cache-purge-interval", "PT10M").let { Duration.parse(it) }
+        val cachePurgeInterval =
+            env.getProperty("issuer.dpop.cache-purge-interval", "PT10M").let { Duration.parse(it) }
         val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
 
         DPoPConfigurationProperties(algorithms, proofMaxAge, cachePurgeInterval, realm)
@@ -700,13 +755,34 @@ private fun loadJwkFromKeystore(environment: Environment, prefix: String): JWK {
             else -> "$prefix.$property"
         }
 
+    fun JWK.withCertificateChain(chain: List<X509Certificate>): JWK {
+        require(this.parsedX509CertChain.isNotEmpty()) { "jwk must have a leaf certificate" }
+        require(chain.isNotEmpty()) { "chain cannot be empty" }
+        require(this.parsedX509CertChain.first() == chain.first()) {
+            "leaf certificate of provided chain does not match leaf certificate of jwk"
+        }
+
+        val encodedChain = chain.map { Base64.encode(it.encoded) }
+        return when (this) {
+            is RSAKey -> RSAKey.Builder(this).x509CertChain(encodedChain).build()
+            is ECKey -> ECKey.Builder(this).x509CertChain(encodedChain).build()
+            is OctetKeyPair -> OctetKeyPair.Builder(this).x509CertChain(encodedChain).build()
+            is OctetSequenceKey -> OctetSequenceKey.Builder(this).x509CertChain(encodedChain).build()
+            else -> error("Unexpected JWK type '${this.keyType.value}'/'${this.javaClass}'")
+        }
+    }
+
     val keystoreResource = run {
         val keystoreLocation = environment.getRequiredProperty(property("keystore"))
         log.info("Will try to load Keystore from: '{}'", keystoreLocation)
         val keystoreResource = DefaultResourceLoader().getResource(keystoreLocation).some()
             .filter { it.exists() }
             .recover {
-                log.warn("Could not find Keystore at '{}'. Fallback to '{}'", keystoreLocation, keystoreDefaultLocation)
+                log.warn(
+                    "Could not find Keystore at '{}'. Fallback to '{}'",
+                    keystoreLocation,
+                    keystoreDefaultLocation,
+                )
                 FileSystemResource(keystoreDefaultLocation).some()
                     .filter { it.exists() }
                     .bind()
@@ -737,34 +813,19 @@ private fun loadJwkFromKeystore(environment: Environment, prefix: String): JWK {
 }
 
 /**
- * Creates a copy of this [JWK] and sets the provided [X509Certificate] certificate chain.
- * For the operation to succeed, the following must hold true:
- * 1. [chain] cannot be empty
- * 2. The leaf certificate of the [chain] must match the leaf certificate of this [JWK]
- */
-private fun JWK.withCertificateChain(chain: List<X509Certificate>): JWK {
-    require(this.parsedX509CertChain.isNotEmpty()) { "jwk must have a leaf certificate" }
-    require(chain.isNotEmpty()) { "chain cannot be empty" }
-    require(this.parsedX509CertChain.first() == chain.first()) {
-        "leaf certificate of provided chain does not match leaf certificate of jwk"
-    }
-
-    val encodedChain = chain.map { Base64.encode(it.encoded) }
-    return when (this) {
-        is RSAKey -> RSAKey.Builder(this).x509CertChain(encodedChain).build()
-        is ECKey -> ECKey.Builder(this).x509CertChain(encodedChain).build()
-        is OctetKeyPair -> OctetKeyPair.Builder(this).x509CertChain(encodedChain).build()
-        is OctetSequenceKey -> OctetSequenceKey.Builder(this).x509CertChain(encodedChain).build()
-        else -> error("Unexpected JWK type '${this.keyType.value}'/'${this.javaClass}'")
-    }
-}
-
-/**
  * Indicates whether a random key pairs should be generated, or a key pair should be loaded from a keystore.
  */
 private enum class KeyOption {
     GenerateRandom,
     LoadFromKeystore,
+}
+
+/**
+ * Indicates which CBOR encoder to use.
+ */
+private enum class MsoMdocEncoderOption {
+    Internal,
+    Microservice,
 }
 
 /**

@@ -22,6 +22,7 @@ didCommon = "1.13.0"
 multiformat = "1.1.0"
 resultMonad = "1.4.0"
 keycloak = "24.0.3"
+waltid = "1.0.2404292350-SNAPSHOT"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -40,6 +41,7 @@ did-common = { module = "decentralized-identity:did-common-java", version.ref = 
 multiformat = { module = "org.erwinkok.multiformat:multiformat", version.ref = "multiformat" }
 result-monad = { module = "org.erwinkok.result:result-monad", version.ref = "resultMonad" }
 keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version.ref = "keycloak" }
+waltid-mdoc-credentials = {module = "id.walt:waltid-mdoc-credentials-jvm", version.ref="waltid"}
 
 [plugins]
 foojay-resolver-convention = { id = "org.gradle.toolchains.foojay-resolver-convention", version.ref = "foojay" }

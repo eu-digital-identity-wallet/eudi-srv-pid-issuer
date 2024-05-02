@@ -1,7 +1,6 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.owasp.dependencycheck.gradle.extension.DependencyCheckExtension
 import org.springframework.boot.gradle.tasks.bundling.BootBuildImage
-import java.net.URI
 
 plugins {
     base
@@ -19,10 +18,15 @@ plugins {
 repositories {
     mavenCentral()
     maven {
-        url = URI.create("https://jitpack.io")
+        url = uri("https://jitpack.io")
     }
     maven {
-        url = URI.create("https://repo.danubetech.com/repository/maven-public")
+        url = uri("https://repo.danubetech.com/repository/maven-public")
+    }
+    maven {
+        url = uri("https://maven.waltid.dev/releases")
+        mavenContent {
+        }
     }
 }
 
@@ -39,9 +43,6 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
     implementation(libs.kotlinx.serialization.json)
-    implementation(libs.kotlinx.serialization.cbor) {
-        because("To serialize PID in CBOR. Experimental")
-    }
     implementation(libs.arrow.core) {
         because("Functional programming support")
     }
@@ -77,6 +78,16 @@ dependencies {
     implementation(libs.keycloak.admin.client) {
         because("To be able to fetch user attributes")
     }
+    implementation(libs.waltid.mdoc.credentials) {
+        because("To sign CBOR credentials")
+    }
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0-RC.2") {
+        because("required by walt.id")
+    }
+    implementation("com.augustcellars.cose:cose-java:1.1.0") {
+        because("required by walt.id")
+    }
+
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation("org.springframework.boot:spring-boot-starter-test")

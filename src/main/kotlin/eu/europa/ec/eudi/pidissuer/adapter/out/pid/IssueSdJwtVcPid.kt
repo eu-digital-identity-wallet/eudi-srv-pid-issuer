@@ -23,10 +23,12 @@ import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.Printer.prettyPrint
+import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
@@ -140,7 +142,7 @@ fun selectivelyDisclosed(
         sd(OidcGivenName.name, pid.givenName.value)
         sd(OidcFamilyName.name, pid.familyName.value)
         sd(OidcBirthDate.name, pid.birthDate.toString())
-        sd(Attributes.AgeOver18.name, pid.ageOver18)
+        pid.ageOver18?.let { sd(Attributes.AgeOver18.name, it) }
         // TODO
         //  Here we need a mapping in OIDC gender can be male, female on null
         //  In PID the use iso
@@ -213,8 +215,7 @@ class IssueSdJwtVcPid(
     private val credentialIssuerId: CredentialIssuerId,
     private val clock: Clock,
     private val hashAlgorithm: HashAlgorithm,
-    private val signAlg: JWSAlgorithm,
-    private val issuerKey: ECKey,
+    private val issuerSigningKey: IssuerSigningKey,
     private val getPidData: GetPidData,
     private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
     private val calculateExpiresAt: TimeDependant<Instant>,
@@ -228,9 +229,9 @@ class IssueSdJwtVcPid(
     private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
     private val validateProof = ValidateProof(credentialIssuerId)
 
-    override val supportedCredential: SdJwtVcCredentialConfiguration = pidSdJwtVcV1(signAlg)
+    override val supportedCredential: SdJwtVcCredentialConfiguration = pidSdJwtVcV1(issuerSigningKey.signingAlgorithm)
     override val publicKey: JWK
-        get() = issuerKey.toPublicJWK()
+        get() = issuerSigningKey.key.toPublicJWK()
 
     context(Raise<IssueCredentialError>)
     override suspend fun invoke(
@@ -317,11 +318,11 @@ class IssueSdJwtVcPid(
         // SD-JWT VC requires no decoys
 
         val sdJwtFactory = SdJwtFactory(hashAlgorithm = hashAlgorithm, numOfDecoysLimit = 0)
-        val signer = ECDSASigner(issuerKey)
-        SdJwtIssuer.nimbus(sdJwtFactory, signer, signAlg) {
+        val signer = ECDSASigner(issuerSigningKey.key)
+        SdJwtIssuer.nimbus(sdJwtFactory, signer, issuerSigningKey.signingAlgorithm) {
             // SD-JWT VC requires the kid & typ header attributes
             // Check [here](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-01.html#name-jose-header)
-            keyID(issuerKey.keyID)
+            keyID(issuerSigningKey.key.keyID)
             type(JOSEObjectType("vc+sd-jwt"))
         }
     }

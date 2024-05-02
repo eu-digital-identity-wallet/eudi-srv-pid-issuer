@@ -28,8 +28,8 @@ import kotlinx.serialization.json.Json
 import org.keycloak.admin.client.Keycloak
 import org.keycloak.representations.idm.UserRepresentation
 import org.slf4j.LoggerFactory
-import java.time.Clock
-import java.time.LocalDate
+import java.time.*
+import kotlin.math.ceil
 
 private val log = LoggerFactory.getLogger(GetPidDataFromAuthServer::class.java)
 
@@ -110,25 +110,33 @@ class GetPidDataFromAuthServer(
             documentNumber = null,
             administrativeNumber = null,
             issuingJurisdiction = null,
-            portrait = null,
         )
     }
 
     private fun pid(userInfo: UserInfo): Pair<Pid, PidMetaData> {
+        val birthDate = requireNotNull(userInfo.birthDate) {
+            "missing required attribute 'birthDate'"
+        }.let { LocalDate.parse(it) }
+        val ageInYears = Duration.between(birthDate.atStartOfDay(clock.zone), ZonedDateTime.now(clock))
+            .takeIf { !it.isZero && !it.isNegative }
+            ?.let { ceil(it.toDays().toDouble() / 365).toUInt() }
         val pid = Pid(
             familyName = FamilyName(userInfo.familyName),
             givenName = GivenName(userInfo.givenName),
-            birthDate = LocalDate.parse(userInfo.birthDate),
+            birthDate = birthDate,
             ageOver18 = userInfo.ageOver18 ?: false,
-            gender = userInfo.gender?.let { IsoGender(it) },
+            ageBirthYear = Year.from(birthDate),
+            ageInYears = ageInYears,
+            residentAddress = userInfo.address?.formatted,
+            residentStreet = userInfo.address?.street?.let { Street(it) },
             residentCountry = userInfo.address?.country?.let { IsoCountry(it) },
             residentState = userInfo.address?.region?.let { State(it) },
-            residentPostalCode = userInfo.address?.postalCode?.let { PostalCode(it) },
             residentCity = userInfo.address?.locality?.let { City(it) },
-            residentStreet = userInfo.address?.street?.let { Street(it) },
+            residentPostalCode = userInfo.address?.postalCode?.let { PostalCode(it) },
             birthCity = userInfo.placeOfBirth?.locality?.let { City(it) },
             birthCountry = userInfo.placeOfBirth?.country?.let { IsoCountry(it) },
             birthState = userInfo.placeOfBirth?.region?.let { State(it) },
+            gender = userInfo.gender?.let { IsoGender(it) },
         )
 
         val pidMetaData = genPidMetaData()
