@@ -4,7 +4,7 @@ kotlin = "1.9.23"
 arrow = "1.2.4"
 foojay = "0.8.0"
 springboot = "3.2.5"
-springDependencyManagement = "1.1.4"
+springDependencyManagement = "1.1.5"
 spotless = "6.25.0"
 java = "17"
 kotlinxSerialization = "1.6.3"
@@ -22,7 +22,7 @@ didCommon = "1.13.0"
 multiformat = "1.1.0"
 resultMonad = "1.4.0"
 keycloak = "24.0.3"
-waltid = "1.0.2404292350-SNAPSHOT"
+waltid = "1.0.2405021511-SNAPSHOT"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
