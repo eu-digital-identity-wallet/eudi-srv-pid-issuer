@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.w3c
 
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import java.net.URI
@@ -89,6 +90,10 @@ class CredentialSubjectBuilder {
     }
 
     fun addClaim(name: String, value: JsonObject) {
+        claims.add(name to value)
+    }
+
+    fun addClaim(name: String, value: JsonElement) {
         claims.add(name to value)
     }
 

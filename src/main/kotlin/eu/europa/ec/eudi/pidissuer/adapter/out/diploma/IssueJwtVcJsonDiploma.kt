@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.pseudonym
+package eu.europa.ec.eudi.pidissuer.adapter.out.diploma
 
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
@@ -24,7 +24,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.did.DidMethod
 import eu.europa.ec.eudi.pidissuer.adapter.out.did.createDidUrl
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProof
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidDisplay
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.adapter.out.w3c.JwtVcJsonRealizer
 import eu.europa.ec.eudi.pidissuer.adapter.out.w3c.ProofMechanism
@@ -41,35 +40,42 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.*
 import org.slf4j.LoggerFactory
+import java.net.URI
 import java.time.Clock
-import java.util.*
+import java.util.Locale.ENGLISH
 
-typealias UserPseudonym = String
+val DiplomaJwtVcJsonScope: Scope = Scope("diploma_jwt_vc_json")
 
-val PseudoJwtVcJsonScope: Scope = Scope("pseudonym_jwt_vc_json")
-
-val UserPseudonymAttribute = AttributeDetails(
-    name = "user_pseudonym",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "The user pseudonym."),
-)
-
-val JwtVcJsonPidConfiguration = JwtVcJsonCredentialConfiguration(
-    id = CredentialConfigurationId((PseudoJwtVcJsonScope.value)),
-    scope = PseudoJwtVcJsonScope,
-    cryptographicBindingMethodsSupported = emptySet(),
-    credentialSigningAlgorithmsSupported = emptySet(),
-    display = pidDisplay,
-    proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256))),
-    credentialDefinition = CredentialDefinition(
-        type = listOf("VerifiableCredential", "PseudonymCredential"),
-        credentialSubject = listOf(UserPseudonymAttribute),
+val diplomaDisplay = listOf(
+    CredentialDisplay(
+        name = DisplayName("University Degree", ENGLISH),
+        logo = ImageUri(
+            uri = URI.create("https://examplestate.com/public/diploma.png"),
+            alternativeText = "A square figure of a Diploma",
+        ),
     ),
 )
 
-class IssueJwtVcJsonUserPseudonym(
+val IssueJwtVcJsonDiplomaConfiguration = JwtVcJsonCredentialConfiguration(
+    id = CredentialConfigurationId((DiplomaJwtVcJsonScope.value)),
+    scope = DiplomaJwtVcJsonScope,
+    cryptographicBindingMethodsSupported = emptySet(),
+    credentialSigningAlgorithmsSupported = emptySet(),
+    display = diplomaDisplay,
+    proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256))),
+    credentialDefinition = CredentialDefinition(
+        type = listOf("VerifiableCredential", "UniversityDegreeCredential"),
+        credentialSubject = listOf(
+            AchievedClaim.attribute,
+            EntitledToClaim.attribute,
+            PerformedClaim.attribute,
+        ),
+    ),
+)
+
+class IssueJwtVcJsonDiploma(
     val credentialIssuerId: CredentialIssuerId,
-    private val generateUserPseudonym: GenerateUserPseudonym,
+    private val generateUserDiplomaData: GenerateUserDiplomaData,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
@@ -78,10 +84,10 @@ class IssueJwtVcJsonUserPseudonym(
     private val storeIssuedCredential: StoreIssuedCredential,
 ) : IssueSpecificCredential<JsonElement> {
 
-    private val log = LoggerFactory.getLogger(IssueJwtVcJsonUserPseudonym::class.java)
+    private val log = LoggerFactory.getLogger(IssueJwtVcJsonDiploma::class.java)
 
     override val supportedCredential: JwtVcJsonCredentialConfiguration
-        get() = JwtVcJsonPidConfiguration
+        get() = IssueJwtVcJsonDiplomaConfiguration
 
     override val publicKey: JWK? = null
 
@@ -95,10 +101,9 @@ class IssueJwtVcJsonUserPseudonym(
         expectedCNonce: CNonce,
     ): CredentialResponse<JsonElement> = coroutineScope {
         log.info("Handling issuance request ...")
-
         val holderPubKey = async(Dispatchers.Default) { holderPubKey(request, expectedCNonce) }
 
-        val jwt = encodePseudonymToJwtVcJson(holderPubKey.await())
+        val jwt = encodeDiplomaToJwtVcJson(holderPubKey.await())
 
         val notificationId =
             if (notificationsEnabled) generateNotificationId()
@@ -117,17 +122,19 @@ class IssueJwtVcJsonUserPseudonym(
 
         CredentialResponse.Issued(JsonPrimitive(jwt), notificationId)
             .also {
-                log.info("Successfully issued pseudonym")
-                log.debug("Issued pseudonym data {}", it)
+                log.info("Successfully issued diploma")
+                log.debug("Diploma data {}", it)
             }
     }
 
-    private fun encodePseudonymToJwtVcJson(holderKey: JWK): String {
+    private fun encodeDiplomaToJwtVcJson(holderKey: JWK): String {
         val _now = clock.instant()
+
+        val (diplomaName, achieved, entitledTo, performed) = generateUserDiplomaData()
 
         val credential = buildCredential {
             credentialMetadata {
-                type("PseudonymCredential")
+                type(diplomaName)
                 issuer(credentialIssuerId.value.toString())
                 issueDate(_now)
                 expirationDate(_now.plusSeconds(86400))
@@ -135,7 +142,13 @@ class IssueJwtVcJsonUserPseudonym(
             credentialSubject {
                 val didUrl = createDidUrl(holderKey, DidMethod.KEY).getOrThrow()
                 id(didUrl.toString())
-                addClaim("user_pseudonym", generateUserPseudonym())
+                addClaim("archived", achieved.toJsonElement())
+                entitledTo?.let {
+                    addClaim("entitledTo", entitledTo.toJsonElement())
+                }
+                performed?.let {
+                    addClaim("performed", performed.toJsonElement())
+                }
             }
         }
 
@@ -158,3 +171,18 @@ class IssueJwtVcJsonUserPseudonym(
             }
     }
 }
+
+private fun AchievedClaim.toJsonElement(): JsonElement =
+    buildJsonArray {
+        learningAchievements.forEach { add(Json.encodeToJsonElement(it)) }
+    }
+
+private fun EntitledToClaim.toJsonElement(): JsonElement =
+    buildJsonArray {
+        entitlements.forEach { add(Json.encodeToJsonElement(it)) }
+    }
+
+private fun PerformedClaim.toJsonElement(): JsonElement =
+    buildJsonArray {
+        learningActivities.forEach { add(Json.encodeToJsonElement(it)) }
+    }

@@ -37,6 +37,8 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CredentialRequestFactory
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultResolveCredentialRequestByCredentialIdentifier
+import eu.europa.ec.eudi.pidissuer.adapter.out.diploma.IssueJwtVcJsonDiploma
+import eu.europa.ec.eudi.pidissuer.adapter.out.diploma.UserDiplomaMockData
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.DefaultExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.*
@@ -44,8 +46,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceReposit
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryIssuedCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
-import eu.europa.ec.eudi.pidissuer.adapter.out.pseudonym.GenerateUserPseudonym
-import eu.europa.ec.eudi.pidissuer.adapter.out.pseudonym.IssueJwtVcJsonUserPseudonym
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -182,7 +182,7 @@ fun beans(clock: Clock) = beans {
     val enableMobileDrivingLicence = env.getProperty("issuer.mdl.enabled", true)
     val enableMsoMdocPid = env.getProperty<Boolean>("issuer.pid.mso_mdoc.enabled") ?: true
     val enableSdJwtVcPid = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.enabled") ?: true
-    val enableJwtVcJsonPseudonym = env.getProperty<Boolean>("issuer.pseudonym.jwt_vc_json.enabled") ?: true
+    val enableJwtVcJsonDiploma = env.getProperty<Boolean>("issuer.diploma.jwt_vc_json.enabled") ?: true
 
     //
     // Signing key
@@ -385,10 +385,10 @@ fun beans(clock: Clock) = beans {
     }
 
     //
-    // Pseudonyms
+    // Diplomas
     //
     bean {
-        GenerateUserPseudonym { UUID.randomUUID().toString() }
+        UserDiplomaMockData(clock)
     }
 
     //
@@ -467,18 +467,18 @@ fun beans(clock: Clock) = beans {
                     add(mdlIssuer)
                 }
 
-                if (enableJwtVcJsonPseudonym) {
-                    val jwtVcJsonIssuer = IssueJwtVcJsonUserPseudonym(
+                if (enableJwtVcJsonDiploma) {
+                    val diplomaJwtVcJsonIssuer = IssueJwtVcJsonDiploma(
                         credentialIssuerId = issuerPublicUrl,
-                        generateUserPseudonym = ref(),
-                        notificationsEnabled = env.getProperty<Boolean>("issuer.pseudonym.jwt_vc_json.notifications.enabled") ?: true,
+                        generateUserDiplomaData = ref(),
+                        notificationsEnabled = env.getProperty<Boolean>("issuer.diploma.jwt_vc_json.notifications.enabled") ?: true,
                         generateNotificationId = ref(),
                         extractJwkFromCredentialKey = DefaultExtractJwkFromCredentialKey,
                         issuerSigningKey = issuerSigningKey,
                         clock = clock,
                         storeIssuedCredential = ref(),
                     )
-                    add(jwtVcJsonIssuer)
+                    add(diplomaJwtVcJsonIssuer)
                 }
             },
         )
