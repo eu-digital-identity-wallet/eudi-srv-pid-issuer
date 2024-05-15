@@ -414,10 +414,6 @@ fun beans(clock: Clock) = beans {
                         }.getOrNull()
                     }
 
-                    val sdOption =
-                        env.getProperty<SelectiveDisclosureOption>("issuer.pid.sd_jwt_vc.complexObjectsSdOption")
-                            ?: SelectiveDisclosureOption.Structured
-
                     val issuerSigningKey = ref<IssuerSigningKey>()
                     val issueSdJwtVcPid = IssueSdJwtVcPid(
                         hashAlgorithm = HashAlgorithm.SHA3_256,
@@ -433,7 +429,6 @@ fun beans(clock: Clock) = beans {
                                 iat.plusSeconds(duration.seconds).toInstant()
                             }
                         },
-                        sdOption = sdOption,
                         notificationsEnabled = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled")
                             ?: true,
                         generateNotificationId = ref(),

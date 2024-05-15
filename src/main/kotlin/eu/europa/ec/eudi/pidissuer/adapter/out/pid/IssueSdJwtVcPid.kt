@@ -57,8 +57,12 @@ private object Attributes {
         name = "birthdate_year",
         mandatory = false,
     )
+    val AgeEqualOrOver = AttributeDetails(
+        name = "age_equal_or_over",
+        display = mapOf(Locale.ENGLISH to "Age attestations"),
+    )
     val AgeOver18 = AttributeDetails(
-        name = "age_over_18",
+        name = "18",
         display = mapOf(Locale.ENGLISH to "Adult or minor"),
     )
 
@@ -81,7 +85,7 @@ private object Attributes {
         OidcAssuranceNationalities,
         OidcAssuranceBirthFamilyName,
         OidcAssuranceBirthGivenName,
-        AgeOver18,
+        AgeEqualOrOver,
         AgeInYears,
         OidcAssurancePlaceOfBirth.attribute,
         IssuanceDate,
@@ -103,10 +107,6 @@ fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration
 
 typealias TimeDependant<F> = (ZonedDateTime) -> F
 
-enum class SelectiveDisclosureOption {
-    Flat, Structured, Recursive
-}
-
 fun selectivelyDisclosed(
     pid: Pid,
     pidMetaData: PidMetaData,
@@ -116,7 +116,6 @@ fun selectivelyDisclosed(
     iat: ZonedDateTime,
     exp: Instant,
     nbf: Instant?,
-    sdOption: SelectiveDisclosureOption,
 ): SdObject {
     require(exp.epochSecond > iat.toInstant().epochSecond) { "exp should be after iat" }
     nbf?.let {
@@ -138,75 +137,71 @@ fun selectivelyDisclosed(
         // Selectively Disclosed claims
         //
         // https://openid.net/specs/openid-connect-4-identity-assurance-1_0.html#section-4
-        sd(Attributes.IssuanceDate.name, pidMetaData.issuanceDate.toString())
+        sd(Attributes.IssuanceDate.name, pidMetaData.issuanceDate.toString()) // TODO Check issuance date
         sd(OidcGivenName.name, pid.givenName.value)
+        // TODO Check also_known_as
         sd(OidcFamilyName.name, pid.familyName.value)
         sd(OidcBirthDate.name, pid.birthDate.toString())
-        pid.ageOver18?.let { sd(Attributes.AgeOver18.name, it) }
+        structured(Attributes.AgeEqualOrOver.name) {
+            pid.ageOver18?.let { sd(Attributes.AgeOver18.name, it) }
+        }
+
         // TODO
         //  Here we need a mapping in OIDC gender can be male, female on null
         //  In PID the use iso
         pid.gender?.let { sd(OidcGender.name, it.value.toInt()) }
-        pid.nationality?.let { sd(OidcAssuranceNationalities.name, JsonArray(listOf(JsonPrimitive(it.value)))) }
+        pid.nationality?.let {
+            val nationalities = buildJsonArray { add(it.value) }
+            sd(OidcAssuranceNationalities.name, nationalities)
+        }
         pid.ageBirthYear?.let { sd(Attributes.AgeInYears.name, it.value) }
         pid.ageBirthYear?.let { sd(Attributes.BirthDateYear.name, it.value.toString()) }
         pid.familyNameBirth?.let { sd(OidcAssuranceBirthFamilyName.name, it.value) }
         pid.givenNameBirth?.let { sd(OidcAssuranceBirthGivenName.name, it.value) }
-        placeOfBirth(pid, sdOption)
-        addressClaim(pid, sdOption)
-    }
-}
-
-context (SdObjectBuilder)
-private fun placeOfBirth(pid: Pid, sdOption: SelectiveDisclosureOption) {
-    if (pid.birthCountry != null || pid.birthState != null || pid.birthCity != null) {
-        val placeOfBirth = OidcAssurancePlaceOfBirth(
-            country = pid.birthCountry?.value,
-            region = pid.residentState?.value,
-            locality = pid.residentCity?.value,
-        )
-        val placeOfBirthJson = Json.encodeToJsonElement(placeOfBirth)
-        when (sdOption) {
-            SelectiveDisclosureOption.Flat ->
-                sd(OidcAssurancePlaceOfBirth.NAME, placeOfBirthJson)
-
-            SelectiveDisclosureOption.Structured ->
-                structured(OidcAssurancePlaceOfBirth.NAME) { sd(placeOfBirthJson) }
-
-            SelectiveDisclosureOption.Recursive ->
-                recursive(OidcAssurancePlaceOfBirth.NAME) { sd(placeOfBirthJson) }
+        pid.oidcAssurancePlaceOfBirth()?.let { placeOfBirth ->
+            recursive(OidcAssurancePlaceOfBirth.NAME) {
+                placeOfBirth.locality?.let { sd("locality", it) }
+                placeOfBirth.region?.let { sd("region", it) }
+                placeOfBirth.country?.let { sd("country", it) }
+            }
+        }
+        pid.oidcAddressClaim()?.let { address ->
+            recursive(OidcAddressClaim.NAME) {
+                address.formatted?.let { sd("formatted", it) }
+                address.country?.let { sd("country", it) }
+                address.region?.let { sd("region", it) }
+                address.locality?.let { sd("locality", it) }
+                address.postalCode?.let { sd("postal_code", it) }
+                address.streetAddress?.let { sd("street_address", it) }
+                address.houseNumber?.let { sd("house_number", it) }
+            }
         }
     }
 }
 
-context (SdObjectBuilder)
-private fun addressClaim(pid: Pid, sdOption: SelectiveDisclosureOption) {
+private fun Pid.oidcAssurancePlaceOfBirth(): OidcAssurancePlaceOfBirth? =
+    if (birthCountry != null || birthState != null || birthCity != null) {
+        OidcAssurancePlaceOfBirth(
+            country = birthCountry?.value,
+            region = residentState?.value,
+            locality = residentCity?.value,
+        )
+    } else null
+
+private fun Pid.oidcAddressClaim(): OidcAddressClaim? =
     if (
-        pid.residentCountry != null || pid.residentState != null ||
-        pid.residentCity != null || pid.residentPostalCode != null ||
-        pid.residentStreet != null
+        residentCountry != null || residentState != null ||
+        residentCity != null || residentPostalCode != null ||
+        residentStreet != null
     ) {
-        val address = OidcAddressClaim(
-            country = pid.residentCountry?.value,
-            region = pid.residentState?.value,
-            locality = pid.residentCity?.value,
-            postalCode = pid.residentPostalCode?.value,
-            street = pid.residentStreet?.value,
+        OidcAddressClaim(
+            country = residentCountry?.value,
+            region = residentState?.value,
+            locality = residentCity?.value,
+            postalCode = residentPostalCode?.value,
+            streetAddress = residentStreet?.value,
         )
-
-        val addressJson = Json.encodeToJsonElement(address)
-        when (sdOption) {
-            SelectiveDisclosureOption.Flat ->
-                sd(OidcAddressClaim.NAME, addressJson)
-
-            SelectiveDisclosureOption.Structured ->
-                structured(OidcAddressClaim.NAME) { sd(addressJson) }
-
-            SelectiveDisclosureOption.Recursive ->
-                recursive(OidcAddressClaim.NAME) { sd(addressJson) }
-        }
-    }
-}
+    } else null
 
 /**
  * Service for issuing PID SD JWT credential
@@ -220,7 +215,6 @@ class IssueSdJwtVcPid(
     private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
     private val calculateExpiresAt: TimeDependant<Instant>,
     private val calculateNotUseBefore: TimeDependant<Instant>?,
-    private val sdOption: SelectiveDisclosureOption,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredential: StoreIssuedCredential,
@@ -281,7 +275,6 @@ class IssueSdJwtVcPid(
             iat = at,
             exp = calculateExpiresAt(at),
             nbf = calculateNotUseBefore?.let { calculate -> calculate(at) },
-            sdOption = sdOption,
         )
         val issuedSdJwt: SdJwt.Issuance<SignedJWT> = issuer.issue(sdJwtSpec).getOrElse {
             raise(Unexpected("Error while creating SD-JWT", it))
