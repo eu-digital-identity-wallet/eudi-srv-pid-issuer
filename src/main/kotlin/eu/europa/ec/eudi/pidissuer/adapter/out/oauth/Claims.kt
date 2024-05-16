@@ -68,12 +68,13 @@ val OidcGender: AttributeDetails by lazy {
 // https://openid.net/specs/openid-connect-core-1_0.html#AddressClaim
 @Serializable
 data class OidcAddressClaim(
-    @SerialName("street_address") val street: String? = null,
+    @SerialName("street_address") val streetAddress: String? = null,
     val locality: String? = null,
     val region: String? = null,
     @SerialName("postal_code") val postalCode: String? = null,
     val country: String? = null,
     val formatted: String? = null,
+    @SerialName("house_number") val houseNumber: String? = null,
 ) {
 
     companion object : IsAttribute {

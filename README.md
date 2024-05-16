@@ -181,11 +181,6 @@ Variable: `ISSUER_PID_SD_JWT_VC_NOTUSEBEFORE`
 Description: Period after which a PID issued in *SD JWT VC* becomes valid. Used to calculate the value of the `nbf` claim.  
 Default value: `PT20`
 
-Variable: `ISSUER_PID_SD_JWT_VC_COMPLEXOBJECTSSDOPTION`  
-Description: Configured how complex objects should be selectively disclosed in the PID issued in *SD JWT VC*.  
-Possible values: `Flat`, `Structured`, `Recursive`  
-Default value: `Structured`
-
 Variable: `ISSUER_PID_SD_JWT_VC_DEFERRED`  
 Description: Whether PID issuance in *SD JWT VC* format should be *deferred* or *immediate*.  
 Default value: `true` (i.e. deferred issuance)

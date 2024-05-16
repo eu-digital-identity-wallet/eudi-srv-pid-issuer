@@ -63,7 +63,7 @@ class GetPidDataFromAuthServer(
 
             return if (street != null || locality != null || region != null || postalCode != null || country != null || formatted != null) {
                 OidcAddressClaim(
-                    street = street,
+                    streetAddress = street,
                     locality = locality,
                     region = region,
                     postalCode = postalCode,
@@ -128,7 +128,7 @@ class GetPidDataFromAuthServer(
             ageBirthYear = Year.from(birthDate),
             ageInYears = ageInYears,
             residentAddress = userInfo.address?.formatted,
-            residentStreet = userInfo.address?.street?.let { Street(it) },
+            residentStreet = userInfo.address?.streetAddress?.let { Street(it) },
             residentCountry = userInfo.address?.country?.let { IsoCountry(it) },
             residentState = userInfo.address?.region?.let { State(it) },
             residentCity = userInfo.address?.locality?.let { City(it) },
