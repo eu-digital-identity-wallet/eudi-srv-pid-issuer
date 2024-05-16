@@ -26,7 +26,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
-import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcCredentialConfiguration
 import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
@@ -67,8 +66,6 @@ class EncodePidInSdJwtVc(
         val sdJwtFactory = SdJwtFactory(hashAlgorithm = hashAlgorithm, numOfDecoysLimit = 0)
         val signer = ECDSASigner(issuerSigningKey.key)
         SdJwtIssuer.nimbus(sdJwtFactory, signer, issuerSigningKey.signingAlgorithm) {
-            // SD-JWT VC requires the typ header attributes
-            // Check [here](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-01.html#name-jose-header)
             type(JOSEObjectType("vc+sd-jwt"))
         }
     }
