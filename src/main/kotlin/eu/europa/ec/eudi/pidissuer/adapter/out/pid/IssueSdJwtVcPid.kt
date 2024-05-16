@@ -133,7 +133,7 @@ class IssueSdJwtVcPid(
         issuerSigningKey,
         calculateExpiresAt,
         calculateNotUseBefore,
-        supportedCredential,
+        supportedCredential.type,
     )
 
     context(Raise<IssueCredentialError>)

@@ -50,7 +50,7 @@ class EncodePidInSdJwtVc(
     private val issuerSigningKey: IssuerSigningKey,
     private val calculateExpiresAt: TimeDependant<Instant>,
     private val calculateNotUseBefore: TimeDependant<Instant>?,
-    private val supportedCredential: SdJwtVcCredentialConfiguration,
+    private val vct: SdJwtVcType,
 ) {
 
     /**
@@ -83,7 +83,7 @@ class EncodePidInSdJwtVc(
         val sdJwtSpec = selectivelyDisclosed(
             pid = pid,
             pidMetaData = pidMetaData,
-            vct = supportedCredential.type,
+            vct = vct,
             credentialIssuerId = credentialIssuerId,
             holderPubKey = holderKey,
             iat = at,
