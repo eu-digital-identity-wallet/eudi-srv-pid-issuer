@@ -24,7 +24,7 @@ class GetUserDiplomaMock(
     private val clock: Clock,
 ) : GetUserDiploma {
 
-    override fun invoke(username: Username): Diploma = Diploma(
+    override suspend fun invoke(username: Username): Diploma = Diploma(
         name = "ComputerScienceMasterDegree",
         achieved = AchievedClaim(
             listOf(
