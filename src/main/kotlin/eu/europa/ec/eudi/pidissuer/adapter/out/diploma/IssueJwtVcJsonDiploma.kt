@@ -21,14 +21,8 @@ import arrow.core.raise.ensureNotNull
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.did.DidMethod
-import eu.europa.ec.eudi.pidissuer.adapter.out.did.createDidUrl
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProof
-import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
-import eu.europa.ec.eudi.pidissuer.adapter.out.w3c.JwtVcJsonRealizer
-import eu.europa.ec.eudi.pidissuer.adapter.out.w3c.ProofMechanism
-import eu.europa.ec.eudi.pidissuer.adapter.out.w3c.buildCredential
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
@@ -74,6 +68,8 @@ val IssueJwtVcJsonDiplomaConfiguration = JwtVcJsonCredentialConfiguration(
     ),
 )
 
+private val log = LoggerFactory.getLogger(IssueJwtVcJsonDiploma::class.java)
+
 class IssueJwtVcJsonDiploma(
     val credentialIssuerId: CredentialIssuerId,
     private val getUserDiploma: GetUserDiploma,
@@ -85,14 +81,14 @@ class IssueJwtVcJsonDiploma(
     private val storeIssuedCredential: StoreIssuedCredential,
 ) : IssueSpecificCredential<JsonElement> {
 
-    private val log = LoggerFactory.getLogger(IssueJwtVcJsonDiploma::class.java)
-
     override val supportedCredential: JwtVcJsonCredentialConfiguration
         get() = IssueJwtVcJsonDiplomaConfiguration
 
     override val publicKey: JWK? = null
 
     private val validateProof = ValidateProof(credentialIssuerId)
+
+    private val encodeDiplomaInJwtVcJson = EncodeDiplomaInJwtVcJson(credentialIssuerId, issuerSigningKey, clock)
 
     context(Raise<IssueCredentialError>)
     override suspend fun invoke(
@@ -107,7 +103,7 @@ class IssueJwtVcJsonDiploma(
         val diploma = ensureNotNull(deferredDiploma.await()) {
             IssueCredentialError.Unexpected("Cannot obtain diploma data")
         }
-        val jwt = encodeDiplomaToJwtVcJson(diploma, holderPubKey.await())
+        val jwt = encodeDiplomaInJwtVcJson(diploma, holderPubKey.await())
 
         val notificationId =
             if (notificationsEnabled) generateNotificationId()
@@ -131,38 +127,6 @@ class IssueJwtVcJsonDiploma(
             }
     }
 
-    private fun encodeDiplomaToJwtVcJson(diploma: Diploma, holderKey: JWK): String {
-        val issuedAt = clock.instant()
-
-        val (diplomaName, achieved, entitledTo, performed) = diploma
-
-        val credential = buildCredential {
-            credentialMetadata {
-                type(diplomaName)
-                issuer(credentialIssuerId.value.toString())
-                issueDate(issuedAt)
-                expirationDate(issuedAt.plusSeconds(86400))
-            }
-            credentialSubject {
-                val didUrl = createDidUrl(holderKey, DidMethod.KEY).getOrThrow()
-                id(didUrl.toString())
-                addClaim("archived", achieved.toJsonElement())
-                entitledTo?.let {
-                    addClaim("entitledTo", entitledTo.toJsonElement())
-                }
-                performed?.let {
-                    addClaim("performed", performed.toJsonElement())
-                }
-            }
-        }
-
-        val verifiableCredential = JwtVcJsonRealizer().realize(
-            credential,
-            ProofMechanism.JWT(issuerSigningKey.key, issuerSigningKey.signingAlgorithm),
-        )
-        return verifiableCredential.credential.serialize()
-    }
-
     context(Raise<InvalidProof>)
     private suspend fun holderPubKey(
         request: CredentialRequest,
@@ -175,18 +139,3 @@ class IssueJwtVcJsonDiploma(
             }
     }
 }
-
-private fun AchievedClaim.toJsonElement(): JsonElement =
-    buildJsonArray {
-        learningAchievements.forEach { add(Json.encodeToJsonElement(it)) }
-    }
-
-private fun EntitledToClaim.toJsonElement(): JsonElement =
-    buildJsonArray {
-        entitlements.forEach { add(Json.encodeToJsonElement(it)) }
-    }
-
-private fun PerformedClaim.toJsonElement(): JsonElement =
-    buildJsonArray {
-        learningActivities.forEach { add(Json.encodeToJsonElement(it)) }
-    }
