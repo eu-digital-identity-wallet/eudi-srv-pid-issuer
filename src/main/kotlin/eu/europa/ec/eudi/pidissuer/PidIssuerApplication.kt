@@ -37,6 +37,8 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CredentialRequestFactory
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultResolveCredentialRequestByCredentialIdentifier
+import eu.europa.ec.eudi.pidissuer.adapter.out.diploma.GetUserDiplomaMock
+import eu.europa.ec.eudi.pidissuer.adapter.out.diploma.IssueJwtVcJsonDiploma
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.DefaultExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.*
@@ -180,6 +182,7 @@ fun beans(clock: Clock) = beans {
     val enableMobileDrivingLicence = env.getProperty("issuer.mdl.enabled", true)
     val enableMsoMdocPid = env.getProperty<Boolean>("issuer.pid.mso_mdoc.enabled") ?: true
     val enableSdJwtVcPid = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.enabled") ?: true
+    val enableJwtVcJsonDiploma = env.getProperty<Boolean>("issuer.diploma.jwt_vc_json.enabled") ?: true
 
     //
     // Signing key
@@ -382,6 +385,13 @@ fun beans(clock: Clock) = beans {
     }
 
     //
+    // Diplomas
+    //
+    bean {
+        GetUserDiplomaMock(clock)
+    }
+
+    //
     // Specific Issuers
     //
     bean {
@@ -392,7 +402,9 @@ fun beans(clock: Clock) = beans {
             notificationEndpoint = issuerPublicUrl.appendPath(WalletApi.NOTIFICATION_ENDPOINT),
             authorizationServers = listOf(env.readRequiredUrl("issuer.authorizationServer.publicUrl")),
             credentialResponseEncryption = env.credentialResponseEncryption(),
+
             specificCredentialIssuers = buildList {
+                val issuerSigningKey = ref<IssuerSigningKey>()
                 if (enableMsoMdocPid) {
                     val issueMsoMdocPid = IssueMsoMdocPid(
                         credentialIssuerId = issuerPublicUrl,
@@ -453,6 +465,20 @@ fun beans(clock: Clock) = beans {
                         storeIssuedCredential = ref(),
                     )
                     add(mdlIssuer)
+                }
+
+                if (enableJwtVcJsonDiploma) {
+                    val diplomaJwtVcJsonIssuer = IssueJwtVcJsonDiploma(
+                        credentialIssuerId = issuerPublicUrl,
+                        getUserDiploma = ref(),
+                        notificationsEnabled = env.getProperty<Boolean>("issuer.diploma.jwt_vc_json.notifications.enabled") ?: true,
+                        generateNotificationId = ref(),
+                        extractJwkFromCredentialKey = DefaultExtractJwkFromCredentialKey,
+                        issuerSigningKey = issuerSigningKey,
+                        clock = clock,
+                        storeIssuedCredential = ref(),
+                    )
+                    add(diplomaJwtVcJsonIssuer)
                 }
             },
         )

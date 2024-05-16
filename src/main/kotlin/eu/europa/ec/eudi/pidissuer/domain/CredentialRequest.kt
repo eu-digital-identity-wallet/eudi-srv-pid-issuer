@@ -25,7 +25,7 @@ import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.AsymmetricJWK
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.KeyUse
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.resolveDidUrl
+import eu.europa.ec.eudi.pidissuer.adapter.out.did.resolveDidUrl
 import foundation.identity.did.DIDURL
 import java.security.cert.X509Certificate
 
@@ -171,6 +171,11 @@ fun CredentialRequest.assertIsSupported(meta: CredentialConfiguration) =
 
         is SdJwtVcCredentialRequest -> {
             ensure(meta is SdJwtVcCredentialConfiguration) { "Was expecting a ${SD_JWT_VC_FORMAT.value}" }
+            validate(meta)
+        }
+
+        is JwtVcJsonCredentialRequest -> {
+            ensure(meta is JwtVcJsonCredentialConfiguration) { "Was expecting a ${JWT_VC_JSON_FORMAT.value}" }
             validate(meta)
         }
     }
