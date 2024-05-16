@@ -15,15 +15,16 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.diploma
 
+import eu.europa.ec.eudi.pidissuer.port.input.Username
 import kotlinx.datetime.toKotlinInstant
 import java.time.Clock
 import kotlin.time.Duration
 
-class UserDiplomaMockData(
+class GetUserDiplomaMock(
     private val clock: Clock,
-) : GenerateUserDiplomaData {
+) : GetUserDiploma {
 
-    override fun invoke(): Diploma = Diploma(
+    override fun invoke(username: Username): Diploma = Diploma(
         name = "ComputerScienceMasterDegree",
         achieved = AchievedClaim(
             listOf(

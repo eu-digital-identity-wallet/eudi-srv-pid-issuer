@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.diploma
 
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.IsAttribute
 import eu.europa.ec.eudi.pidissuer.domain.AttributeDetails
+import eu.europa.ec.eudi.pidissuer.port.input.Username
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -104,7 +105,7 @@ data class Entitlement(
 )
 
 /**
- * Defines any process which leads to the acquisition of knowledge, skills or responsibility and autonomy.
+ * Defines any process that leads to the acquisition of knowledge, skills or responsibility and autonomy.
  */
 @Serializable
 data class LearningActivity(
@@ -114,7 +115,7 @@ data class LearningActivity(
     @SerialName("endedAtTime") val ended: Instant,
 )
 
-interface GenerateUserDiplomaData {
+interface GetUserDiploma {
 
-    operator fun invoke(): Diploma
+    operator fun invoke(username: Username): Diploma?
 }

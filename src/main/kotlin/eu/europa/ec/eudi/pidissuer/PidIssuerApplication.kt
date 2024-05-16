@@ -37,8 +37,8 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CredentialRequestFactory
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultResolveCredentialRequestByCredentialIdentifier
+import eu.europa.ec.eudi.pidissuer.adapter.out.diploma.GetUserDiplomaMock
 import eu.europa.ec.eudi.pidissuer.adapter.out.diploma.IssueJwtVcJsonDiploma
-import eu.europa.ec.eudi.pidissuer.adapter.out.diploma.UserDiplomaMockData
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.DefaultExtractJwkFromCredentialKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.*
@@ -388,7 +388,7 @@ fun beans(clock: Clock) = beans {
     // Diplomas
     //
     bean {
-        UserDiplomaMockData(clock)
+        GetUserDiplomaMock(clock)
     }
 
     //
@@ -470,7 +470,7 @@ fun beans(clock: Clock) = beans {
                 if (enableJwtVcJsonDiploma) {
                     val diplomaJwtVcJsonIssuer = IssueJwtVcJsonDiploma(
                         credentialIssuerId = issuerPublicUrl,
-                        generateUserDiplomaData = ref(),
+                        getUserDiploma = ref(),
                         notificationsEnabled = env.getProperty<Boolean>("issuer.diploma.jwt_vc_json.notifications.enabled") ?: true,
                         generateNotificationId = ref(),
                         extractJwkFromCredentialKey = DefaultExtractJwkFromCredentialKey,

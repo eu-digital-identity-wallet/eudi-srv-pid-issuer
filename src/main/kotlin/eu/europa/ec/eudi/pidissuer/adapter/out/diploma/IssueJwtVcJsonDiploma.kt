@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.diploma
 
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
+import arrow.core.raise.ensureNotNull
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
@@ -75,7 +76,7 @@ val IssueJwtVcJsonDiplomaConfiguration = JwtVcJsonCredentialConfiguration(
 
 class IssueJwtVcJsonDiploma(
     val credentialIssuerId: CredentialIssuerId,
-    private val generateUserDiplomaData: GenerateUserDiplomaData,
+    private val getUserDiploma: GetUserDiploma,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
@@ -102,8 +103,11 @@ class IssueJwtVcJsonDiploma(
     ): CredentialResponse<JsonElement> = coroutineScope {
         log.info("Handling issuance request ...")
         val holderPubKey = async(Dispatchers.Default) { holderPubKey(request, expectedCNonce) }
-
-        val jwt = encodeDiplomaToJwtVcJson(holderPubKey.await())
+        val deferredDiploma = async { getUserDiploma(authorizationContext.username) }
+        val diploma = ensureNotNull(deferredDiploma.await()) {
+            IssueCredentialError.Unexpected("Cannot obtain diploma data")
+        }
+        val jwt = encodeDiplomaToJwtVcJson(diploma, holderPubKey.await())
 
         val notificationId =
             if (notificationsEnabled) generateNotificationId()
@@ -127,17 +131,17 @@ class IssueJwtVcJsonDiploma(
             }
     }
 
-    private fun encodeDiplomaToJwtVcJson(holderKey: JWK): String {
-        val _now = clock.instant()
+    private fun encodeDiplomaToJwtVcJson(diploma: Diploma, holderKey: JWK): String {
+        val issuedAt = clock.instant()
 
-        val (diplomaName, achieved, entitledTo, performed) = generateUserDiplomaData()
+        val (diplomaName, achieved, entitledTo, performed) = diploma
 
         val credential = buildCredential {
             credentialMetadata {
                 type(diplomaName)
                 issuer(credentialIssuerId.value.toString())
-                issueDate(_now)
-                expirationDate(_now.plusSeconds(86400))
+                issueDate(issuedAt)
+                expirationDate(issuedAt.plusSeconds(86400))
             }
             credentialSubject {
                 val didUrl = createDidUrl(holderKey, DidMethod.KEY).getOrThrow()
