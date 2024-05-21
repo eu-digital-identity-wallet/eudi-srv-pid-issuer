@@ -87,6 +87,9 @@ dependencies {
     implementation("com.augustcellars.cose:cose-java:1.1.0") {
         because("required by walt.id")
     }
+    implementation(libs.uri.kmp) {
+        because("To generate Credentials Offer URIs using custom URIs")
+    }
 
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)

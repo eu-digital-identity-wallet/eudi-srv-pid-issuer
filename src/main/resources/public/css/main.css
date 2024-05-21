@@ -9,3 +9,7 @@
     max-width: 300px;
     max-height: 300px;
 }
+
+.credentials-offer-uri {
+    word-break: break-all;
+}
