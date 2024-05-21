@@ -20,7 +20,11 @@ import arrow.core.raise.Raise
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import arrow.core.toNonEmptySetOrNull
-import eu.europa.ec.eudi.pidissuer.domain.*
+import com.eygraber.uri.Uri
+import com.eygraber.uri.toURI
+import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
+import eu.europa.ec.eudi.pidissuer.domain.CredentialConfigurationId
+import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError.InvalidCredentialConfigurationId
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError.MissingCredentialConfigurationIds
 import kotlinx.serialization.Required
@@ -28,7 +32,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import org.springframework.web.util.UriComponentsBuilder
 import java.net.URI
 
 /**
@@ -45,6 +48,11 @@ sealed interface CreateCredentialsOfferError {
      * The provided Credential Unique Ids are not valid.
      */
     data class InvalidCredentialConfigurationId(val id: CredentialConfigurationId) : CreateCredentialsOfferError
+
+    /**
+     * Indicates the Credentials Offer URI cannot be generated.
+     */
+    data class InvalidCredentialsOfferUri(val cause: Throwable) : CreateCredentialsOfferError
 }
 
 @Serializable
@@ -112,16 +120,22 @@ class CreateCredentialsOffer(
 ) {
 
     context(Raise<CreateCredentialsOfferError>)
-    operator fun invoke(unvalidatedCredentialConfigurationIds: Set<CredentialConfigurationId>): URI {
+    operator fun invoke(
+        unvalidatedCredentialConfigurationIds: Set<CredentialConfigurationId>,
+        customCredentialsOfferUri: String? = null,
+    ): URI {
         val offer = with(metadata) {
             val credentialConfigurationIds = validate(unvalidatedCredentialConfigurationIds)
             authorizationCodeGrantOffer(credentialConfigurationIds)
         }
 
-        return UriComponentsBuilder.fromUriString(credentialsOfferUri)
-            .queryParam("credential_offer", Json.encodeToString(offer))
-            .build()
-            .toUri()
+        return runCatching {
+            Uri.parse(customCredentialsOfferUri ?: credentialsOfferUri)
+                .buildUpon()
+                .appendQueryParameter("credential_offer", Json.encodeToString(offer))
+                .build()
+                .toURI()
+        }.getOrElse { raise(CreateCredentialsOfferError.InvalidCredentialsOfferUri(it)) }
     }
 }
 

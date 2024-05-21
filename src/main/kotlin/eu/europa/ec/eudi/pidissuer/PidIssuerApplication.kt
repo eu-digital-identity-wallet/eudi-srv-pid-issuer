@@ -180,6 +180,7 @@ fun beans(clock: Clock) = beans {
     val enableMobileDrivingLicence = env.getProperty("issuer.mdl.enabled", true)
     val enableMsoMdocPid = env.getProperty<Boolean>("issuer.pid.mso_mdoc.enabled") ?: true
     val enableSdJwtVcPid = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.enabled") ?: true
+    val credentialsOfferUri = env.getRequiredProperty("issuer.credentialOffer.uri")
 
     //
     // Signing key
@@ -467,7 +468,7 @@ fun beans(clock: Clock) = beans {
     }
     bean(::GetDeferredCredential)
     bean {
-        CreateCredentialsOffer(ref(), env.getRequiredProperty<String>("issuer.credentialOffer.uri"))
+        CreateCredentialsOffer(ref(), credentialsOfferUri)
     }
 
     //
@@ -476,7 +477,7 @@ fun beans(clock: Clock) = beans {
     bean {
         val metaDataApi = MetaDataApi(ref(), ref())
         val walletApi = WalletApi(ref(), ref(), ref(), ref())
-        val issuerUi = IssuerUi(ref(), ref(), ref())
+        val issuerUi = IssuerUi(credentialsOfferUri, ref(), ref(), ref())
         val issuerApi = IssuerApi(ref())
         metaDataApi.route.and(walletApi.route).and(issuerUi.router).and(issuerApi.router)
     }

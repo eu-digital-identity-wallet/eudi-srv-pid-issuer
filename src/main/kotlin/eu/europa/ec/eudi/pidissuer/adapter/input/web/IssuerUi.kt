@@ -32,6 +32,7 @@ import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 class IssuerUi(
+    private val credentialsOfferUri: String,
     private val metadata: CredentialIssuerMetaData,
     private val createCredentialsOffer: CreateCredentialsOffer,
     private val generateQrCode: GenerateQqCode,
@@ -63,19 +64,27 @@ class IssuerUi(
         val credentialIds = metadata.credentialConfigurationsSupported.map { it.id.value }
         return ServerResponse.ok()
             .contentType(MediaType.TEXT_HTML)
-            .renderAndAwait("generate-credentials-offer-form", mapOf("credentialIds" to credentialIds))
+            .renderAndAwait(
+                "generate-credentials-offer-form",
+                mapOf(
+                    "credentialIds" to credentialIds,
+                    "credentialsOfferUri" to credentialsOfferUri,
+                ),
+            )
     }
 
     @OptIn(ExperimentalEncodingApi::class)
     private suspend fun handleGenerateCredentialsOffer(request: ServerRequest): ServerResponse {
         log.info("Generating Credentials Offer")
-        val credentialIds = request.awaitFormData()["credentialIds"]
+        val formData = request.awaitFormData()
+        val credentialIds = formData["credentialIds"]
             .orEmpty()
             .map(::CredentialConfigurationId)
             .toSet()
+        val credentialsOfferUri = formData["credentialsOfferUri"]?.firstOrNull { it.isNotBlank() }
 
         return either {
-            val credentialsOffer = createCredentialsOffer(credentialIds)
+            val credentialsOffer = createCredentialsOffer(credentialIds, credentialsOfferUri)
             log.info("Successfully generated Credentials Offer. URI: '{}'", credentialsOffer)
 
             val qrCode =
