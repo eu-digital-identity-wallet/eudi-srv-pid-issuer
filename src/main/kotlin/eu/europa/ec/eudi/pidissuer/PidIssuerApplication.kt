@@ -466,7 +466,9 @@ fun beans(clock: Clock) = beans {
     bean {
         IssueCredential(clock, ref(), ref(), ref(), ref(), ref(), ref())
     }
-    bean(::GetDeferredCredential)
+    bean {
+        GetDeferredCredential(ref(), ref())
+    }
     bean {
         CreateCredentialsOffer(ref(), credentialsOfferUri)
     }

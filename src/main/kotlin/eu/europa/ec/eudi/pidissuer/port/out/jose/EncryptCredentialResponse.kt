@@ -15,13 +15,13 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.jose
 
+import com.nimbusds.jwt.JWTClaimsSet
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
 
 fun interface EncryptCredentialResponse {
 
     operator fun invoke(
-        response: IssueCredentialResponse.PlainTO,
         parameters: RequestedResponseEncryption.Required,
-    ): Result<IssueCredentialResponse.EncryptedJwtIssued>
+        responseAsJwtClaims: JWTClaimsSet.Builder.() -> Unit,
+    ): Result<String>
 }

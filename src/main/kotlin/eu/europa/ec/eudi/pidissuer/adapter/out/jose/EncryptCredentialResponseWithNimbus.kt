@@ -22,16 +22,11 @@ import com.nimbusds.jose.crypto.RSAEncrypter
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.RSAKey
-import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonPrimitive
 import java.time.Clock
 import java.time.Instant
 import java.util.*
@@ -45,16 +40,15 @@ class EncryptCredentialResponseWithNimbus(
 ) : EncryptCredentialResponse {
 
     override fun invoke(
-        response: IssueCredentialResponse.PlainTO,
         parameters: RequestedResponseEncryption.Required,
-    ): Result<IssueCredentialResponse.EncryptedJwtIssued> = runCatching {
+        responseAsJwtClaims: JWTClaimsSet.Builder.() -> Unit,
+    ): Result<String> = runCatching {
         val jweHeader = parameters.asHeader()
-        val jwtClaimSet = response.asJwtClaimSet(clock.instant())
+        val jwtClaimSet = asJwtClaimSet(clock.instant(), responseAsJwtClaims)
 
-        val jwt = EncryptedJWT(jweHeader, jwtClaimSet)
+        EncryptedJWT(jweHeader, jwtClaimSet)
             .apply { encrypt(parameters.encryptionJwk) }
             .serialize()
-        IssueCredentialResponse.EncryptedJwtIssued(jwt)
     }
 
     private fun RequestedResponseEncryption.Required.asHeader() =
@@ -64,20 +58,11 @@ class EncryptCredentialResponseWithNimbus(
             type(JOSEObjectType.JWT)
         }.build()
 
-    private fun IssueCredentialResponse.PlainTO.asJwtClaimSet(iat: Instant) =
+    private fun asJwtClaimSet(iat: Instant, responseAsJwtClaims: JWTClaimsSet.Builder.() -> Unit) =
         JWTClaimsSet.Builder().apply {
             issuer(issuer.externalForm)
             issueTime(Date.from(iat))
-            credential?.let {
-                val value: Any =
-                    if (it is JsonPrimitive) it.content
-                    else JSONObjectUtils.parse(Json.encodeToString(it))
-                claim("credential", value)
-            }
-            transactionId?.let { claim("transaction_id", it) }
-            claim("c_nonce", nonce)
-            claim("c_nonce_expires_in", nonceExpiresIn)
-            notificationId?.let { claim("notification_id", it) }
+            this.responseAsJwtClaims()
         }.build()
 
     private fun EncryptedJWT.encrypt(jwk: JWK) {

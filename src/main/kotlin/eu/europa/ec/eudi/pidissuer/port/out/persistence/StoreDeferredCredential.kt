@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.port.out.persistence
 
 import eu.europa.ec.eudi.pidissuer.domain.CredentialResponse
+import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.domain.TransactionId
 import kotlinx.serialization.json.JsonElement
 
@@ -23,5 +24,6 @@ fun interface StoreDeferredCredential {
     suspend operator fun invoke(
         transactionId: TransactionId,
         credential: CredentialResponse.Issued<JsonElement>,
+        credentialResponseEncryption: RequestedResponseEncryption,
     )
 }

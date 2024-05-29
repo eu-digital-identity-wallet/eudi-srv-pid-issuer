@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.NonEmptySet
+import arrow.core.getOrElse
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
@@ -95,10 +96,23 @@ class WalletApi(
 
     private suspend fun handleGetDeferredCredential(req: ServerRequest): ServerResponse = coroutineScope {
         val requestTO = req.awaitBody<DeferredCredentialRequestTO>()
-        either { getDeferredCredential(requestTO) }.fold(
-            ifLeft = { error -> ServerResponse.badRequest().json().bodyValueAndAwait(error) },
-            ifRight = { credential -> ServerResponse.ok().json().bodyValueAndAwait(credential) },
-        )
+        either {
+            when (val deferredResponse = getDeferredCredential(requestTO)) {
+                is DeferredCredentialSuccessResponse.EncryptedJwtIssued ->
+                    ServerResponse
+                        .ok()
+                        .contentType(APPLICATION_JWT)
+                        .bodyValueAndAwait(deferredResponse.jwt)
+
+                is DeferredCredentialSuccessResponse.PlainTO ->
+                    ServerResponse
+                        .ok()
+                        .json()
+                        .bodyValueAndAwait(deferredResponse)
+            }
+        }.getOrElse { error ->
+            ServerResponse.badRequest().json().bodyValueAndAwait(error)
+        }
     }
 
     private suspend fun handleHelloHolder(req: ServerRequest): ServerResponse = coroutineScope {
