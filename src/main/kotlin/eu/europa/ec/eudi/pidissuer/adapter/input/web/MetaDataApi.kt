@@ -39,11 +39,11 @@ class MetaDataApi(
         GET(WELL_KNOWN_JWKS, accept(MediaType.APPLICATION_JSON)) { _ ->
             handleGetJwtIssuerJwkSet()
         }
-        GET(WELL_KNOWN_JWT_ISSUER, accept(MediaType.APPLICATION_JSON)) {
-            handleGetJwtIssuer()
+        GET(WELL_KNOWN_JWT_VC_ISSUER, accept(MediaType.APPLICATION_JSON)) {
+            handleGetJwtVcIssuerMetadata()
         }
         GET(PUBLIC_KEYS, accept(MediaType.APPLICATION_JSON)) {
-            handleGetJwtIssuerJwks()
+            handleGetJwtVcIssuerJwks()
         }
     }
 
@@ -53,28 +53,28 @@ class MetaDataApi(
     private suspend fun handleGetJwtIssuerJwkSet(): ServerResponse =
         TODO()
 
-    private suspend fun handleGetJwtIssuer(): ServerResponse =
+    private suspend fun handleGetJwtVcIssuerMetadata(): ServerResponse =
         ServerResponse.ok()
             .json()
             .bodyValueAndAwait(
                 buildJsonObject {
                     put("issuer ", JsonPrimitive(credentialIssuerMetaData.id.externalForm))
-                    put("jwks ", Json.parseToJsonElement(credentialIssuerMetaData.jwtIssuerJwks.toString(true)))
+                    put("jwks ", Json.parseToJsonElement(credentialIssuerMetaData.jwtVcIssuerJwks.toString(true)))
                 },
             )
 
-    private suspend fun handleGetJwtIssuerJwks(): ServerResponse =
+    private suspend fun handleGetJwtVcIssuerJwks(): ServerResponse =
         ServerResponse.ok()
             .json()
-            .bodyValueAndAwait(credentialIssuerMetaData.jwtIssuerJwks.toString(true))
+            .bodyValueAndAwait(credentialIssuerMetaData.jwtVcIssuerJwks.toString(true))
 
     companion object {
         const val WELL_KNOWN_OPENID_CREDENTIAL_ISSUER = "/.well-known/openid-credential-issuer"
         const val WELL_KNOWN_JWKS = "/.well-known/jwks.json"
-        const val WELL_KNOWN_JWT_ISSUER = "/.well-known/jwt-issuer"
+        const val WELL_KNOWN_JWT_VC_ISSUER = "/.well-known/jwt-vc-issuer"
         const val PUBLIC_KEYS = "/public_keys.jwks"
     }
 }
 
-private val CredentialIssuerMetaData.jwtIssuerJwks: JWKSet
+private val CredentialIssuerMetaData.jwtVcIssuerJwks: JWKSet
     get() = JWKSet(specificCredentialIssuers.mapNotNull { it.publicKey })
