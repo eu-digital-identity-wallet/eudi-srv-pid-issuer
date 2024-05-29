@@ -534,7 +534,7 @@ fun beans(clock: Clock) = beans {
                 authorize(WalletApi.NOTIFICATION_ENDPOINT, hasAnyAuthority(*scopes.toTypedArray()))
                 authorize(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, permitAll)
                 authorize(MetaDataApi.WELL_KNOWN_JWKS, permitAll)
-                authorize(MetaDataApi.WELL_KNOWN_JWT_ISSUER, permitAll)
+                authorize(MetaDataApi.WELL_KNOWN_JWT_VC_ISSUER, permitAll)
                 authorize(MetaDataApi.PUBLIC_KEYS, permitAll)
                 authorize(IssuerUi.GENERATE_CREDENTIALS_OFFER, permitAll)
                 authorize(IssuerApi.CREATE_CREDENTIALS_OFFER, permitAll)
