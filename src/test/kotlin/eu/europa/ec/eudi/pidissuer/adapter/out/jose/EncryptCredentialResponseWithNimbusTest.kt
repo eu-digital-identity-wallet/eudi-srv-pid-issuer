@@ -50,7 +50,7 @@ internal class EncryptCredentialResponseWithNimbusTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.systemDefaultZone()
-    private val encrypter = EncryptCredentialResponseWithNimbus(issuer, clock)
+    private val encrypter = EncryptCredentialResponseNimbus(issuer, clock)
 
     @Test
     internal fun `encrypt response with RSA`() = runTest {

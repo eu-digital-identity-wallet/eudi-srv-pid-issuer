@@ -13,17 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.out.persistence
+package eu.europa.ec.eudi.pidissuer.port.out.jose
 
-import eu.europa.ec.eudi.pidissuer.domain.CredentialResponse
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
-import eu.europa.ec.eudi.pidissuer.domain.TransactionId
-import kotlinx.serialization.json.JsonElement
+import eu.europa.ec.eudi.pidissuer.port.input.DeferredCredentialSuccessResponse
 
-fun interface StoreDeferredCredential {
-    suspend operator fun invoke(
-        transactionId: TransactionId,
-        credential: CredentialResponse.Issued<JsonElement>?,
-        credentialResponseEncryption: RequestedResponseEncryption,
-    )
+fun interface EncryptDeferredResponse {
+
+    operator fun invoke(
+        response: DeferredCredentialSuccessResponse.PlainTO,
+        parameters: RequestedResponseEncryption.Required,
+    ): Result<DeferredCredentialSuccessResponse.EncryptedJwtIssued>
 }

@@ -38,7 +38,8 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CredentialRequestFactory
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultResolveCredentialRequestByCredentialIdentifier
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.DefaultExtractJwkFromCredentialKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseWithNimbus
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseNimbus
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptDeferredResponseNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
@@ -351,7 +352,10 @@ fun beans(clock: Clock) = beans {
     // Encryption of credential response
     //
     bean(isLazyInit = true) {
-        EncryptCredentialResponseWithNimbus(ref<CredentialIssuerMetaData>().id, clock)
+        EncryptDeferredResponseNimbus(ref<CredentialIssuerMetaData>().id, clock)
+    }
+    bean(isLazyInit = true) {
+        EncryptCredentialResponseNimbus(ref<CredentialIssuerMetaData>().id, clock)
     }
     //
     // CNonce
@@ -376,7 +380,7 @@ fun beans(clock: Clock) = beans {
     //
     // Deferred Credentials
     //
-    with(InMemoryDeferredCredentialRepository(mutableMapOf(TransactionId("foo") to null))) {
+    with(InMemoryDeferredCredentialRepository(mutableMapOf())) {
         bean { GenerateTransactionId.Random }
         bean { storeDeferredCredential }
         bean { loadDeferredCredentialByTransactionId }
@@ -466,7 +470,9 @@ fun beans(clock: Clock) = beans {
     bean {
         IssueCredential(clock, ref(), ref(), ref(), ref(), ref(), ref())
     }
-    bean(::GetDeferredCredential)
+    bean {
+        GetDeferredCredential(ref(), ref())
+    }
     bean {
         CreateCredentialsOffer(ref(), credentialsOfferUri)
     }

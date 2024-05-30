@@ -64,7 +64,7 @@ private class DeferredIssuer(
         require(credentialResponse is CredentialResponse.Issued<JsonElement>) { "Actual issuer should return issued credentials" }
 
         val transactionId = generateTransactionId()
-        storeDeferredCredential(transactionId, credentialResponse)
+        storeDeferredCredential.invoke(transactionId, credentialResponse, request.credentialResponseEncryption)
         return CredentialResponse.Deferred(transactionId).also {
             log.info("Repackaged $credentialResponse  as $it")
         }
