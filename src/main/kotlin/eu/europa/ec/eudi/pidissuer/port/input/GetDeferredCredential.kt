@@ -16,21 +16,16 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.raise.Raise
-import com.nimbusds.jose.util.JSONObjectUtils
-import com.nimbusds.jwt.JWTClaimsSet
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.domain.TransactionId
-import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
+import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptDeferredResponse
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadDeferredCredentialByTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadDeferredCredentialResult
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 
 @Serializable
@@ -70,7 +65,7 @@ data class GetDeferredCredentialErrorTO(val error: String) {
  */
 class GetDeferredCredential(
     val loadDeferredCredentialByTransactionId: LoadDeferredCredentialByTransactionId,
-    val encryptCredentialResponse: EncryptCredentialResponse,
+    val encryptCredentialResponse: EncryptDeferredResponse,
 ) {
 
     private val log = LoggerFactory.getLogger(GetDeferredCredential::class.java)
@@ -89,22 +84,10 @@ class GetDeferredCredential(
         is LoadDeferredCredentialResult.Found -> when (responseEncryption) {
             RequestedResponseEncryption.NotRequired ->
                 DeferredCredentialSuccessResponse.PlainTO(credential.credential, credential.notificationId?.value)
-
             is RequestedResponseEncryption.Required -> {
                 val plain = DeferredCredentialSuccessResponse.PlainTO(credential.credential, credential.notificationId?.value)
-                val encryptedJwt: String = encryptCredentialResponse(responseEncryption) { toJwtClaims(plain) }.getOrThrow()
-                DeferredCredentialSuccessResponse.EncryptedJwtIssued(encryptedJwt)
+                encryptCredentialResponse(plain, responseEncryption).getOrThrow()
             }
-        }
-    }
-
-    private fun JWTClaimsSet.Builder.toJwtClaims(plain: DeferredCredentialSuccessResponse.PlainTO) {
-        with(plain) {
-            val value: Any =
-                if (credential is JsonPrimitive) credential.content
-                else JSONObjectUtils.parse(Json.encodeToString(credential))
-            claim("credential", value)
-            notificationId?.let { claim("notification_id", it) }
         }
     }
 }

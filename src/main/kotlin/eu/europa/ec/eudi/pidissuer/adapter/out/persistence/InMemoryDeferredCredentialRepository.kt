@@ -26,10 +26,18 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonElement
 import org.slf4j.LoggerFactory
 
+/**
+ * Represents the state of the deferred issuance. Holds the response encryption as specified in initial request
+ * and the issued credential. If issuance is still pending [issued] is null.
+ */
+data class DeferredState(
+    val responseEncryption: RequestedResponseEncryption,
+    val issued: CredentialResponse.Issued<JsonElement>?,
+)
+
 private val log = LoggerFactory.getLogger(InMemoryDeferredCredentialRepository::class.java)
 class InMemoryDeferredCredentialRepository(
-    private val data: MutableMap<TransactionId, Pair<CredentialResponse.Issued<JsonElement>, RequestedResponseEncryption>?> =
-        mutableMapOf(),
+    private val data: MutableMap<TransactionId, DeferredState> = mutableMapOf(),
 ) {
 
     private val mutex = Mutex()
@@ -38,9 +46,11 @@ class InMemoryDeferredCredentialRepository(
         LoadDeferredCredentialByTransactionId { transactionId ->
             mutex.withLock(this) {
                 if (data.containsKey(transactionId)) {
-                    data[transactionId]
-                        ?.let { (credential, encryption) -> LoadDeferredCredentialResult.Found(credential, encryption) }
-                        ?: LoadDeferredCredentialResult.IssuancePending
+                    val deferredPersist = data[transactionId]
+                    if (deferredPersist?.issued != null) {
+                        LoadDeferredCredentialResult.Found(deferredPersist.issued, deferredPersist.responseEncryption)
+                    } else
+                        LoadDeferredCredentialResult.IssuancePending
                 } else LoadDeferredCredentialResult.InvalidTransactionId
             }
         }
@@ -52,7 +62,7 @@ class InMemoryDeferredCredentialRepository(
                 if (data.containsKey(transactionId)) {
                     require(data[transactionId] == null) { "Oops!! $transactionId already exists" }
                 }
-                data[transactionId] = credential to responseEncryption
+                data[transactionId] = DeferredState(responseEncryption, credential)
 
                 log.info("Stored $transactionId -> $credential ")
             }

@@ -26,7 +26,6 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet
 import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
 import com.nimbusds.jose.proc.JWEDecryptionKeySelector
 import com.nimbusds.jose.proc.SecurityContext
-import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
@@ -51,7 +50,7 @@ internal class EncryptCredentialResponseWithNimbusTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.systemDefaultZone()
-    private val encrypter = EncryptCredentialResponseWithNimbus(issuer, clock)
+    private val encrypter = EncryptCredentialResponseNimbus(issuer, clock)
 
     @Test
     internal fun `encrypt response with RSA`() = runTest {
@@ -96,7 +95,7 @@ internal class EncryptCredentialResponseWithNimbusTest {
         parameters: RequestedResponseEncryption.Required,
         decryptionKey: JWK,
     ) {
-        val encryptedJwt = encrypter(parameters) { toJwtClaims(unencrypted) }.getOrElse { fail(it.message, it) }
+        val encrypted = encrypter(unencrypted, parameters).getOrElse { fail(it.message, it) }
 
         val processor = DefaultJWTProcessor<SecurityContext>().apply {
             jweTypeVerifier = DefaultJOSEObjectTypeVerifier.JWT
@@ -119,7 +118,7 @@ internal class EncryptCredentialResponseWithNimbusTest {
             )
         }
 
-        val claims = runCatching { processor.process(encryptedJwt, null) }.getOrElse { fail(it.message, it) }
+        val claims = runCatching { processor.process(encrypted.jwt, null) }.getOrElse { fail(it.message, it) }
         val credential = claims.getClaim("credential")
             ?.let {
                 when (it) {
@@ -132,20 +131,5 @@ internal class EncryptCredentialResponseWithNimbusTest {
                 }
             }
         assertEquals(unencrypted.credential, credential)
-    }
-
-    private fun JWTClaimsSet.Builder.toJwtClaims(plain: IssueCredentialResponse.PlainTO) {
-        with(plain) {
-            this.credential?.let {
-                val value: Any =
-                    if (it is JsonPrimitive) it.content
-                    else JSONObjectUtils.parse(Json.encodeToString(it))
-                claim("credential", value)
-            }
-            transactionId?.let { claim("transaction_id", it) }
-            claim("c_nonce", nonce)
-            claim("c_nonce_expires_in", nonceExpiresIn)
-            notificationId?.let { claim("notification_id", it) }
-        }
     }
 }

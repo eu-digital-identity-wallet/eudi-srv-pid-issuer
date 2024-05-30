@@ -17,8 +17,6 @@ package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.*
 import arrow.core.raise.*
-import com.nimbusds.jose.util.JSONObjectUtils
-import com.nimbusds.jwt.JWTClaimsSet
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
@@ -322,25 +320,7 @@ class IssueCredential(
         val plain = credential.toTO(newCNonce)
         return when (val encryption = request.credentialResponseEncryption) {
             RequestedResponseEncryption.NotRequired -> plain
-            is RequestedResponseEncryption.Required -> {
-                val jwt = encryptCredentialResponse(encryption) { toJwtClaims(plain) }.getOrThrow()
-                IssueCredentialResponse.EncryptedJwtIssued(jwt)
-            }
-        }
-    }
-
-    private fun JWTClaimsSet.Builder.toJwtClaims(plain: IssueCredentialResponse.PlainTO) {
-        with(plain) {
-            this.credential?.let {
-                val value: Any =
-                    if (it is JsonPrimitive) it.content
-                    else JSONObjectUtils.parse(Json.encodeToString(it))
-                claim("credential", value)
-            }
-            transactionId?.let { claim("transaction_id", it) }
-            claim("c_nonce", nonce)
-            claim("c_nonce_expires_in", nonceExpiresIn)
-            notificationId?.let { claim("notification_id", it) }
+            is RequestedResponseEncryption.Required -> encryptCredentialResponse(plain, encryption).getOrThrow()
         }
     }
 

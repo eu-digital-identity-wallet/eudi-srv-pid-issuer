@@ -16,12 +16,12 @@
 package eu.europa.ec.eudi.pidissuer.port.out.jose
 
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
+import eu.europa.ec.eudi.pidissuer.port.input.DeferredCredentialSuccessResponse
 
-fun interface EncryptCredentialResponse {
+fun interface EncryptDeferredResponse {
 
     operator fun invoke(
-        response: IssueCredentialResponse.PlainTO,
+        response: DeferredCredentialSuccessResponse.PlainTO,
         parameters: RequestedResponseEncryption.Required,
-    ): Result<IssueCredentialResponse.EncryptedJwtIssued>
+    ): Result<DeferredCredentialSuccessResponse.EncryptedJwtIssued>
 }

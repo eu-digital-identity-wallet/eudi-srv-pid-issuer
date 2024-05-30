@@ -23,7 +23,7 @@ import kotlinx.serialization.json.JsonElement
 fun interface StoreDeferredCredential {
     suspend operator fun invoke(
         transactionId: TransactionId,
-        credential: CredentialResponse.Issued<JsonElement>,
+        credential: CredentialResponse.Issued<JsonElement>?,
         credentialResponseEncryption: RequestedResponseEncryption,
     )
 }
