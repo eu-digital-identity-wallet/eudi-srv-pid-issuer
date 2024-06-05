@@ -22,7 +22,7 @@ didCommon = "1.13.0"
 multiformat = "1.1.0"
 resultMonad = "1.4.0"
 keycloak = "24.0.3"
-waltid = "1.0.2404292350-SNAPSHOT"
+waltid = "0.3.1"
 uri-kmp = "0.0.18"
 
 [libraries]
