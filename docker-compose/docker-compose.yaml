@@ -75,7 +75,7 @@ services:
       - ISSUER_MDL_MSO_MDOC_ENCODER=Internal
       - ISSUER_MDL_MSO_MDOC_ENCODER_DURATION=P5D
       - ISSUER_MDL_NOTIFICATIONS_ENABLED=true
-      - ISSUER_CREDENTIALOFFER_URI=eudi-openid4ci://
+      - ISSUER_CREDENTIALOFFER_URI=openid-credential-offer://
       - ISSUER_SIGNING_KEY=GenerateRandom
       - ISSUER_KEYCLOAK_SERVER_URL=https://keycloak:8443/idp
       - ISSUER_KEYCLOAK_AUTHENTICATION_REALM=master
