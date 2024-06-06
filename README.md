@@ -217,7 +217,7 @@ Default value: `true`
 
 Variable: `ISSUER_CREDENTIALOFFER_URI`    
 Description: URI to use when generating Credential Offers.    
-Default value: `eudi-openid4ci://`
+Default value: `openid-credential-offer://`
 
 Variable: `ISSUER_SIGNING_KEY`  
 Description: Whether to generate a new, or use an existing key-pair for signing.    
