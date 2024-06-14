@@ -54,8 +54,8 @@ The Realm *pid-issuer-realm*:
 
 - has user self-registration active with a custom registration page accessible
   via https://localhost/idp/realms/pid-issuer-realm/account/#/
-- defines *eu.europa.ec.eudiw.pid_vc_sd_jwt* scope for requesting PID issuance in SD JWT VC format
-- defines *eu.europa.ec.eudiw.pid_mso_mdoc* scope for requesting PID issuance in MSO MDOC format
+- defines *eu.europa.ec.eudi.pid_vc_sd_jwt* scope for requesting PID issuance in SD JWT VC format
+- defines *eu.europa.ec.eudi.pid_mso_mdoc* scope for requesting PID issuance in MSO MDOC format
 - defines *wallet-dev* and *pid-issuer-srv* clients
 - contains sample user with credentials: tneal / password
 

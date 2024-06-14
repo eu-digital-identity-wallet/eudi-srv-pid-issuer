@@ -7,10 +7,10 @@ Content-Type: application/json
 {
   "version": "0.3",
   "country": "FC",
-  "doctype": "eu.europa.ec.eudiw.pid.1",
+  "doctype": "eu.europa.ec.eudi.pid.1",
   "device_publickey": "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFUEdUSll1ajQybE5BUVpTSjQ2TnRiVDU0UUR4dgp3NTRCRDdLN2pTVUVNYmhvbHVwMDVScTFZV1NaVnVZbzdGc1RRMUIwOXFLNVN1bElJNjN4SnMrbWpnPT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==",
   "data": {
-    "eu.europa.ec.eudiw.pid.1": {
+    "eu.europa.ec.eudi.pid.1": {
       "given_name": "javier",
       "family_name": "Garcia",
       "birth_date": "1965-01-01",
@@ -110,7 +110,7 @@ Authorization: Bearer {{access_token}}
 
 {
   "format": "mso_mdoc",
-  "doctype": "eu.europa.ec.eudiw.pid.1",
+  "doctype": "eu.europa.ec.eudi.pid.1",
   "proof": {
     "proof_type": "jwt",
     "jwt": "123321231"
@@ -127,7 +127,7 @@ Authorization: Bearer {{access_token}}
 {
   "format": "vc+sd-jwt",
   "credential_definition": {
-    "type": "eu.europa.ec.eudiw.pid.1"
+    "type": "eu.europa.ec.eudi.pid.1"
   },
   "proof": {
     "proof_type": "jwt",
