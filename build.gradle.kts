@@ -78,6 +78,9 @@ dependencies {
     implementation(libs.keycloak.admin.client) {
         because("To be able to fetch user attributes")
     }
+    implementation(libs.authlete.cbor) {
+        because("To implement CWT proof")
+    }
     implementation(libs.waltid.mdoc.credentials) {
         because("To sign CBOR credentials")
     }

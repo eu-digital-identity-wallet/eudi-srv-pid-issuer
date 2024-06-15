@@ -234,7 +234,7 @@ val PidMsoMdocV1: MsoMdocCredentialConfiguration =
         cryptographicBindingMethodsSupported = emptySet(),
         credentialSigningAlgorithmsSupported = emptySet(),
         scope = PidMsoMdocScope,
-        proofTypesSupported = nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.ES256))),
+        proofTypesSupported = ProofTypesSupported(nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.ES256)))),
     )
 
 //

@@ -37,7 +37,7 @@ data class SdJwtVcCredentialConfiguration(
     override val credentialSigningAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
     override val display: List<CredentialDisplay>,
     val claims: List<AttributeDetails>,
-    override val proofTypesSupported: NonEmptySet<ProofType>,
+    override val proofTypesSupported: ProofTypesSupported = ProofTypesSupported.Empty,
 ) : CredentialConfiguration
 
 //

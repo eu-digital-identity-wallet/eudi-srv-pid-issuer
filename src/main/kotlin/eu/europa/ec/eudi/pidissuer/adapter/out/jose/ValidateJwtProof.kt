@@ -19,7 +19,6 @@ import arrow.core.NonEmptySet
 import arrow.core.raise.Raise
 import arrow.core.raise.ensureNotNull
 import arrow.core.raise.result
-import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -51,15 +50,13 @@ fun validateJwtProof(
     expectedCNonce: CNonce,
     credentialConfiguration: CredentialConfiguration,
 ): CredentialKey {
-    val proofTypes = credentialConfiguration.proofTypesSupported
-        .filterIsInstance<ProofType.Jwt>()
-        .toNonEmptySetOrNull()
-    ensureNotNull(proofTypes) {
+    val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.JWT]
+    ensureNotNull(proofType) {
         IssueCredentialError.InvalidProof("credential configuration '${credentialConfiguration.id.value}' doesn't support 'jwt' proofs")
     }
+    check(proofType is ProofType.Jwt)
 
-    val supportedAlgorithms = proofTypes.flatMap { it.signingAlgorithmsSupported }.toNonEmptySet()
-    return validateJwtProof(credentialIssuerId, unvalidatedProof, expectedCNonce, supportedAlgorithms)
+    return validateJwtProof(credentialIssuerId, unvalidatedProof, expectedCNonce, proofType)
 }
 
 context (Raise<IssueCredentialError.InvalidProof>)
@@ -67,10 +64,10 @@ fun validateJwtProof(
     credentialIssuerId: CredentialIssuerId,
     unvalidatedProof: UnvalidatedProof.Jwt,
     expectedCNonce: CNonce,
-    supportedAlgorithms: NonEmptySet<JWSAlgorithm>,
+    proofType: ProofType.Jwt,
 ): CredentialKey = result {
     val signedJwt = SignedJWT.parse(unvalidatedProof.jwt)
-    val (algorithm, credentialKey) = algorithmAndCredentialKey(signedJwt.header, supportedAlgorithms)
+    val (algorithm, credentialKey) = algorithmAndCredentialKey(signedJwt.header, proofType.signingAlgorithmsSupported)
     val keySelector = keySelector(credentialKey, algorithm)
     val processor = processor(expectedCNonce, credentialIssuerId, keySelector)
     processor.process(signedJwt, null)
