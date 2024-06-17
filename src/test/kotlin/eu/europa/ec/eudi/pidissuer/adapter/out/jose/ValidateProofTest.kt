@@ -20,12 +20,12 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.CNonce
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import java.time.Clock
 import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.fail
+import kotlin.test.assertIs
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 
@@ -41,10 +41,7 @@ class ValidateProofTest {
         val nonce = CNonce("token", "nonce", clock.instant(), 5.minutes.toJavaDuration())
         val proof = UnvalidatedProof.Cwt("CWT")
         val result = either { validateProof(proof, nonce, PidMsoMdocV1) }
-
-        result.fold(
-            ifRight = { _ -> fail("expected proof validation to fail") },
-            ifLeft = { assertEquals("Supporting only JWT proof", it.msg) },
-        )
+        assert(result.isLeft())
+        assertIs<IssueCredentialError.InvalidProof>(result.leftOrNull())
     }
 }

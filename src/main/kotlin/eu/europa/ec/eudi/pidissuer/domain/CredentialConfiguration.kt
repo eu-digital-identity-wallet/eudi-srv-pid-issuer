@@ -26,22 +26,39 @@ value class CredentialConfigurationId(val value: String)
 
 sealed interface ProofType {
 
-    val signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>
-
     /**
      * A JWT is used as proof of possession.
      */
-    data class Jwt(override val signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>) : ProofType
+    data class Jwt(val signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>) : ProofType
 
     /**
      *  A CWT is used as proof of possession.
      */
-    data class Cwt(override val signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>) : ProofType
+    data class Cwt(val algorithms: NonEmptySet<CoseAlgorithm>, val curves: NonEmptySet<CoseCurve>) : ProofType
+}
 
-    /**
-     * A W3C Verifiable Presentation object signed using the Data Integrity Proof is used as proof of possession.
-     */
-    data class LdpVp(override val signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>) : ProofType
+fun ProofType.type(): ProofTypeEnum = when (this) {
+    is ProofType.Cwt -> ProofTypeEnum.CWT
+    is ProofType.Jwt -> ProofTypeEnum.JWT
+}
+enum class ProofTypeEnum {
+    JWT, CWT
+}
+
+@JvmInline
+value class ProofTypesSupported private constructor(val values: Set<ProofType>) {
+
+    operator fun get(type: ProofTypeEnum): ProofType? = values.firstOrNull { it.type() == type }
+
+    companion object {
+        val Empty: ProofTypesSupported = ProofTypesSupported(emptySet())
+        operator fun invoke(values: Set<ProofType>): ProofTypesSupported {
+            require(values.groupBy(ProofType::type).all { (_, instances) -> instances.size == 1 }) {
+                "Multiple instance of the same proof type are not allowed"
+            }
+            return ProofTypesSupported(values)
+        }
+    }
 }
 
 /**
@@ -54,5 +71,5 @@ sealed interface CredentialConfiguration {
     val display: List<CredentialDisplay>
     val cryptographicBindingMethodsSupported: Set<CryptographicBindingMethod>
     val credentialSigningAlgorithmsSupported: Set<JWSAlgorithm>
-    val proofTypesSupported: Set<ProofType>
+    val proofTypesSupported: ProofTypesSupported
 }

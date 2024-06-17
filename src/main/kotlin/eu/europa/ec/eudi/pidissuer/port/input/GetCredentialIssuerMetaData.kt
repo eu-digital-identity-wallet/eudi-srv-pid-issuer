@@ -154,10 +154,10 @@ private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject = bui
                 addAll(credentialSigningAlgorithmsSupported.map { it.name })
             }
         }
-    d.proofTypesSupported.takeIf { it.isNotEmpty() }
+    d.proofTypesSupported.takeIf { it != ProofTypesSupported.Empty }
         ?.let { proofTypesSupported ->
             putJsonObject("proof_types_supported") {
-                proofTypesSupported.forEach {
+                proofTypesSupported.values.forEach {
                     put(it.proofTypeName(), it.toJsonObject())
                 }
             }
@@ -181,14 +181,28 @@ private fun ProofType.proofTypeName(): String =
     when (this) {
         is ProofType.Jwt -> "jwt"
         is ProofType.Cwt -> "cwt"
-        is ProofType.LdpVp -> "ldp_vp"
     }
 
 @OptIn(ExperimentalSerializationApi::class)
 private fun ProofType.toJsonObject(): JsonObject =
     buildJsonObject {
-        putJsonArray("proof_signing_alg_values_supported") {
-            addAll(signingAlgorithmsSupported.map { it.name })
+        when (this@toJsonObject) {
+            is ProofType.Cwt -> {
+                putJsonArray("proof_signing_alg_values_supported") {
+                    addAll(this@toJsonObject.algorithms.map { it.value })
+                }
+                putJsonArray("proof_alg_values_supported") {
+                    addAll(this@toJsonObject.algorithms.map { it.value })
+                }
+                putJsonArray("proof_crv_values_supported") {
+                    addAll(this@toJsonObject.curves.map { it.value })
+                }
+            }
+            is ProofType.Jwt -> {
+                putJsonArray("proof_signing_alg_values_supported") {
+                    addAll(signingAlgorithmsSupported.map { it.name })
+                }
+            }
         }
     }
 
@@ -199,6 +213,12 @@ internal fun MsoMdocCredentialConfiguration.toTransferObject(isOffer: Boolean): 
         if (display.isNotEmpty()) {
             putJsonArray("display") {
                 addAll(display.map { it.toTransferObject() })
+            }
+        }
+        if (policy != null) {
+            putJsonObject("policy") {
+                put("one_time_use", policy.oneTimeUse)
+                policy.batchSize?.let { put("batch_size", it) }
             }
         }
 

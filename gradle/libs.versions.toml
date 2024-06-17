@@ -24,6 +24,7 @@ resultMonad = "1.4.0"
 keycloak = "24.0.3"
 waltid = "0.3.1"
 uri-kmp = "0.0.18"
+authlete-cbor = "1.18"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -44,6 +45,7 @@ result-monad = { module = "org.erwinkok.result:result-monad", version.ref = "res
 keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version.ref = "keycloak" }
 waltid-mdoc-credentials = { module = "id.walt:waltid-mdoc-credentials-jvm", version.ref = "waltid" }
 uri-kmp = { module = "com.eygraber:uri-kmp", version.ref = "uri-kmp" }
+authlete-cbor = { module = "com.authlete:cbor", version.ref = "authlete-cbor" }
 
 [plugins]
 foojay-resolver-convention = { id = "org.gradle.toolchains.foojay-resolver-convention", version.ref = "foojay" }
