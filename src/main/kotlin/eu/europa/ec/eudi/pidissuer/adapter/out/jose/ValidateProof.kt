@@ -33,7 +33,7 @@ class ValidateProof(
             validateJwtProof(credentialIssuerId, jwt, expectedCNonce, credentialConfiguration)
 
         fun cwt(cwt: UnvalidatedProof.Cwt): CredentialKey =
-            raise(InvalidProof("Supporting only JWT proof"))
+            validateCwtProof(credentialIssuerId, cwt, expectedCNonce, credentialConfiguration)
 
         fun ldpVp(ldpVp: UnvalidatedProof.LdpVp): CredentialKey =
             raise(InvalidProof("Supporting only JWT proof"))
