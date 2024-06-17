@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.raise.Raise
+import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
 import com.authlete.cbor.*
@@ -30,7 +31,6 @@ import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import java.time.Clock
-import java.time.Instant
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.time.Duration.Companion.minutes
@@ -58,7 +58,7 @@ fun validateCwtProof(
     expectedCNonce: CNonce,
     proofType: ProofType.Cwt,
 ): CredentialKey {
-    return CwtProofValidator.isValid(
+    val credentialKey = CwtProofValidator.isValid(
         Clock.systemDefaultZone(),
         iss = null,
         aud = credentialIssuerId,
@@ -67,6 +67,24 @@ fun validateCwtProof(
     ).getOrElse {
         raise(IssueCredentialError.InvalidProof("Reason: " + it.message))
     }
+
+    fun checkKey(k: ECKey) {
+        val alg = k.algorithm.name
+        val supportedAlgs = proofType.algorithms.map { it.name() }
+        ensure(alg in supportedAlgs) {
+            IssueCredentialError.InvalidProof("Reason: Found key with algorithm $alg which is notin  $supportedAlgs")
+        }
+    }
+    when (credentialKey) {
+        is CredentialKey.DIDUrl -> error("Not supported DIDUrl")
+        is CredentialKey.Jwk -> {
+            checkKey(credentialKey.value.toECKey())
+        }
+        is CredentialKey.X5c -> {
+            checkKey(ECKey.parse(credentialKey.certificate))
+        }
+    }
+    return credentialKey
 }
 
 internal object CwtProofValidator {
@@ -84,7 +102,7 @@ internal object CwtProofValidator {
                 "Invalid CWT proof. Expecting iss=$iss found ${claimSet.iss}"
             }
         }
-        require(aud.toString() == claimSet.aud) {
+        require(aud.value.toString() == claimSet.aud) {
             "Invalid CWT proof. Expecting aud=$aud found ${claimSet.aud}"
         }
         require(nonce.nonce == claimSet.nonce.toString(Charsets.UTF_8)) {
@@ -93,7 +111,7 @@ internal object CwtProofValidator {
         val claimSetIat = requireNotNull(claimSet.iat) {
             "Invalid CWT proof. Missing iat"
         }
-        val now = Instant.now()
+        val now = clock.instant()
         val skew = 3.minutes.inWholeSeconds // seconds
         val range = now.minusSeconds(skew).epochSecond..now.plusSeconds(skew).epochSecond
         require(claimSetIat.toInstant().epochSecond in range) {
