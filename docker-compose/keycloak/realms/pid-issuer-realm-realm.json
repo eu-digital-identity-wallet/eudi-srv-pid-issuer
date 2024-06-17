@@ -485,13 +485,13 @@
   "webAuthnPolicyPasswordlessAcceptableAaguids": [],
   "scopeMappings": [
     {
-      "clientScope": "eu.europa.ec.eudiw.pid_vc_sd_jwt",
+      "clientScope": "eu.europa.ec.eudi.pid_vc_sd_jwt",
       "roles": [
         "eid-holder-natural-person"
       ]
     },
     {
-      "clientScope": "eu.europa.ec.eudiw.pid_mso_mdoc",
+      "clientScope": "eu.europa.ec.eudi.pid_mso_mdoc",
       "roles": [
         "eid-holder-natural-person"
       ]
@@ -716,8 +716,8 @@
         "web-origins"
       ],
       "optionalClientScopes": [
-        "eu.europa.ec.eudiw.pid_vc_sd_jwt",
-        "eu.europa.ec.eudiw.pid_mso_mdoc",
+        "eu.europa.ec.eudi.pid_vc_sd_jwt",
+        "eu.europa.ec.eudi.pid_mso_mdoc",
         "org.iso.18013.5.1.mDL"
       ]
     },
@@ -864,7 +864,7 @@
             "logic": "POSITIVE",
             "decisionStrategy": "UNANIMOUS",
             "config": {
-              "clientScopes": "[{\"id\":\"eu.europa.ec.eudiw.pid_mso_mdoc\",\"required\":true}]"
+              "clientScopes": "[{\"id\":\"eu.europa.ec.eudi.pid_mso_mdoc\",\"required\":true}]"
             }
           },
           {
@@ -1022,8 +1022,8 @@
       ],
       "optionalClientScopes": [
         "roles",
-        "eu.europa.ec.eudiw.pid_vc_sd_jwt",
-        "eu.europa.ec.eudiw.pid_mso_mdoc",
+        "eu.europa.ec.eudi.pid_vc_sd_jwt",
+        "eu.europa.ec.eudi.pid_mso_mdoc",
         "org.iso.18013.5.1.mDL"
       ]
     }
@@ -1055,7 +1055,7 @@
     },
     {
       "id": "bdff440b-4dbe-4020-8003-3e4bb8bb40b2",
-      "name": "eu.europa.ec.eudiw.pid_vc_sd_jwt",
+      "name": "eu.europa.ec.eudi.pid_vc_sd_jwt",
       "description": "",
       "protocol": "openid-connect",
       "attributes": {
@@ -1227,7 +1227,7 @@
     },
     {
       "id": "d8eca41c-6ac8-47b2-b48b-b2f939cb207f",
-      "name": "eu.europa.ec.eudiw.pid_mso_mdoc",
+      "name": "eu.europa.ec.eudi.pid_mso_mdoc",
       "description": "",
       "protocol": "openid-connect",
       "attributes": {
@@ -1495,8 +1495,8 @@
     "web-origins"
   ],
   "defaultOptionalClientScopes": [
-    "eu.europa.ec.eudiw.pid_mso_mdoc",
-    "eu.europa.ec.eudiw.pid_vc_sd_jwt",
+    "eu.europa.ec.eudi.pid_mso_mdoc",
+    "eu.europa.ec.eudi.pid_vc_sd_jwt",
     "org.iso.18013.5.1.mDL"
   ],
   "browserSecurityHeaders": {

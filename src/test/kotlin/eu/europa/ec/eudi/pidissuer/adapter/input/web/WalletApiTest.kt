@@ -422,7 +422,7 @@ private fun requestByFormat(
 ): CredentialRequestTO =
     CredentialRequestTO(
         format = FormatTO.MsoMdoc,
-        docType = "eu.europa.ec.eudiw.pid.1",
+        docType = "eu.europa.ec.eudi.pid.1",
         proof = proof,
     )
 
@@ -430,7 +430,7 @@ private fun requestByCredentialIdentifier(
     proof: ProofTo? = ProofTo(type = ProofTypeTO.JWT, jwt = "123456"),
 ): CredentialRequestTO =
     CredentialRequestTO(
-        credentialIdentifier = "eu.europa.ec.eudiw.pid_mso_mdoc",
+        credentialIdentifier = "eu.europa.ec.eudi.pid_mso_mdoc",
         proof = proof,
     )
 
