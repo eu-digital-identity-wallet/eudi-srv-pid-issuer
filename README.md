@@ -155,19 +155,10 @@ Variable: `ISSUER_PID_MSO_MDOC_ENABLED`
 Description: Whether to enable support for PID issuance in *MSO MDOC* format  
 Default value: `true`
 
-Variable: `ISSUER_PID_MSO_MDOC_ENCODER`    
-Description: Configures the CBOR encoder to use for encoding PIDs. Either `Internal` or `Microservice`.    
-Default value: `Internal`
-
 Variable: `ISSUER_PID_MSO_MDOC_ENCODER_DURATION`    
 Description: Configures the validity of issued PIDs when using the internal encoder. Uses Period syntax.
 Required when `ISSUER_PID_MSO_MDOC_ENCODER` is set to `Internal`.  
 Default value: `P30D`
-
-Variable: `ISSUER_PID_MSO_MDOC_ENCODER_URL`  
-Description: URL of the CBOR encoder microservice to use for PIDs. Required when `ISSUER_PID_MSO_MDOC_ENCODER` is
-set to `Microservice`   
-Default value: N/A
 
 Variable: `ISSUER_PID_MSO_MDOC_NOTIFICATIONS_ENABLED`  
 Description: Whether to enabled Notifications Endpoint support for PIDs issued in *MSO MDOC*.     
@@ -197,19 +188,10 @@ Variable: `ISSUER_MDL_ENABLED`
 Description: Whether to enable support for issuing mDL.    
 Default value: `true`
 
-Variable: `ISSUER_MDL_MSO_MDOC_ENCODER`    
-Description: Configures the CBOR encoder to use for encoding mDLs. Either `Internal` or `Microservice`.    
-Default value: `Internal`
-
 Variable: `ISSUER_MDL_MSO_MDOC_ENCODER_DURATION`    
 Description: Configures the validity of issued mDLs when using the internal encoder. Uses Period syntax. 
 Required when `ISSUER_MDL_MSO_MDOC_ENCODER` is set to `Internal`.  
 Default value: `P5D`
-
-Variable: `ISSUER_MDL_MSO_MDOC_ENCODER_URL`  
-Description: URL of the CBOR encoder microservice to use. Required when `ISSUER_MDL_MSO_MDOC_ENCODER` is 
-set to `Microservice`   
-Default value: N/A
 
 Variable: `ISSUER_MDL_NOTIFICATIONS_ENABLED`    
 Description: Whether to enabled Notifications Endpoint support for mDLs.    
