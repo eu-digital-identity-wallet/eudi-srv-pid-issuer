@@ -63,7 +63,7 @@ class EncodePidInSdJwtVc(
      */
     private val issuer: SdJwtIssuer<SignedJWT> by lazy {
         // SD-JWT VC requires no decoys
-        val sdJwtFactory = SdJwtFactory(hashAlgorithm = hashAlgorithm, numOfDecoysLimit = 0)
+        val sdJwtFactory = SdJwtFactory(hashAlgorithm = hashAlgorithm, fallbackMinimumDigests = null)
         val signer = ECDSASigner(issuerSigningKey.key)
         SdJwtIssuer.nimbus(sdJwtFactory, signer, issuerSigningKey.signingAlgorithm) {
             type(JOSEObjectType("vc+sd-jwt"))
