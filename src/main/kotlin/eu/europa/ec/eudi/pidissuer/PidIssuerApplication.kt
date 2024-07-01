@@ -261,44 +261,26 @@ fun beans(clock: Clock) = beans {
         )
     }
     bean<EncodePidInCbor>(isLazyInit = true) {
-        when (env.getProperty<MsoMdocEncoderOption>("issuer.pid.mso_mdoc.encoder")) {
-            MsoMdocEncoderOption.Microservice -> {
-                val url = env.readRequiredUrl("issuer.pid.mso_mdoc.encoderUrl")
-                log.info("Using external microservice to encode PID in CBOR listening to $url")
-                EncodePidInCborWithMicroService(url, ref())
-            }
-
-            null, MsoMdocEncoderOption.Internal -> {
-                log.info("Using internal encoder to encode PID in CBOR")
-                val issuerSigningKey = ref<IssuerSigningKey>()
-                val duration = env.getProperty("issuer.pid.mso_mdoc.encoder.duration")
-                    ?.let { Duration.parse(it).toKotlinDuration() }
-                    ?: 30.days
-                DefaultEncodePidInCbor(clock, issuerSigningKey, duration)
-            }
-        }
+        log.info("Using internal encoder to encode PID in CBOR")
+        val issuerSigningKey = ref<IssuerSigningKey>()
+        val duration = env.getProperty("issuer.pid.mso_mdoc.encoder.duration")
+            ?.let { Duration.parse(it).toKotlinDuration() }
+            ?: 30.days
+        DefaultEncodePidInCbor(clock, issuerSigningKey, duration)
     }
+
     bean {
         GetMobileDrivingLicenceDataMock()
     }
     bean<EncodeMobileDrivingLicenceInCbor>(isLazyInit = true) {
-        when (env.getProperty<MsoMdocEncoderOption>("issuer.mdl.mso_mdoc.encoder")) {
-            MsoMdocEncoderOption.Microservice -> {
-                val url = env.readRequiredUrl("issuer.mdl.mso_mdoc.encoderUrl")
-                log.info("Using external microservice to encode mDL in CBOR listening to $url")
-                EncodeMobileDrivingLicenceInCborWithMicroservice(ref(), url)
-            }
-
-            null, MsoMdocEncoderOption.Internal -> {
-                log.info("Using internal encoder to encode mDL in CBOR")
-                val issuerSigningKey = ref<IssuerSigningKey>()
-                val duration = env.getProperty("issuer.mdl.mso_mdoc.encoder.duration")
-                    ?.let { Duration.parse(it).toKotlinDuration() }
-                    ?: 5.days
-                DefaultEncodeMobileDrivingLicenceInCbor(clock, issuerSigningKey, duration)
-            }
-        }
+        log.info("Using internal encoder to encode mDL in CBOR")
+        val issuerSigningKey = ref<IssuerSigningKey>()
+        val duration = env.getProperty("issuer.mdl.mso_mdoc.encoder.duration")
+            ?.let { Duration.parse(it).toKotlinDuration() }
+            ?: 5.days
+        DefaultEncodeMobileDrivingLicenceInCbor(clock, issuerSigningKey, duration)
     }
+
     bean(::DefaultGenerateQrCode)
     bean(::HandleNotificationRequest)
     bean {
@@ -820,14 +802,6 @@ private fun loadJwkFromKeystore(environment: Environment, prefix: String): JWK {
 private enum class KeyOption {
     GenerateRandom,
     LoadFromKeystore,
-}
-
-/**
- * Indicates which CBOR encoder to use.
- */
-private enum class MsoMdocEncoderOption {
-    Internal,
-    Microservice,
 }
 
 /**
