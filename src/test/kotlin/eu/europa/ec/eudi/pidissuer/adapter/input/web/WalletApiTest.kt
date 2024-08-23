@@ -22,6 +22,7 @@ import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.crypto.factories.DefaultJWEDecrypterFactory
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
+import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
@@ -457,7 +458,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, walletKey) {
             jwk(walletKey.toPublicJWK())
         }
-        val encryptionKey = RSAKeyGenerator(4096).generate()
+        val encryptionKey = RSAKeyGenerator(4096).keyUse(KeyUse.ENCRYPTION).generate()
         val encryptionParameters = encryptionParameters(encryptionKey)
 
         val response = client()
@@ -546,7 +547,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, walletKey) {
             jwk(walletKey.toPublicJWK())
         }
-        val encryptionKey = RSAKeyGenerator(4096).generate()
+        val encryptionKey = RSAKeyGenerator(4096).keyUse(KeyUse.ENCRYPTION).generate()
         val encryptionParameters = encryptionParameters(encryptionKey)
 
         val response = client()

@@ -128,8 +128,7 @@ sealed interface RequestedResponseEncryption {
     ) : RequestedResponseEncryption {
         init {
             require(!encryptionJwk.isPrivate) { "encryptionJwk must not contain a private key" }
-            // When keyUse is null, the JWK can be used for all purposes, including but not limited to ENCRYPTION.
-            require(encryptionJwk.keyUse == null || encryptionJwk.keyUse == KeyUse.ENCRYPTION) {
+            require(encryptionJwk.keyUse == KeyUse.ENCRYPTION) {
                 "encryptionJwk cannot be used for encryption"
             }
             require(encryptionAlgorithm in JWEAlgorithm.Family.ASYMMETRIC) {
