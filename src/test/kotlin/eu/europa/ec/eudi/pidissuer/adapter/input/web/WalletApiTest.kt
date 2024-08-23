@@ -19,9 +19,13 @@ import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.crypto.factories.DefaultJWEDecrypterFactory
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
+import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
+import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
@@ -30,14 +34,12 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPConfigurationP
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
-import eu.europa.ec.eudi.pidissuer.domain.CNonce
-import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
-import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
-import eu.europa.ec.eudi.pidissuer.domain.Scope
+import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateCNonce
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import org.springframework.beans.factory.annotation.Autowired
@@ -66,26 +68,28 @@ import java.time.Month
 import java.util.*
 import kotlin.test.*
 
-@PidIssuerApplicationTest(classes = [WalletApiTest.WalletApiTestConfig::class])
-@TestPropertySource(properties = ["issuer.credentialResponseEncryption.required=false"])
-internal class WalletApiTest {
+/**
+ * Base class for [WalletApi] tests.
+ */
+@PidIssuerApplicationTest(classes = [BaseWalletApiTest.WalletApiTestConfig::class])
+internal class BaseWalletApiTest {
 
     @Autowired
-    private lateinit var applicationContext: ApplicationContext
+    protected lateinit var applicationContext: ApplicationContext
 
     @Autowired
-    private lateinit var clock: Clock
+    protected lateinit var clock: Clock
 
     @Autowired
-    private lateinit var cNonceRepository: InMemoryCNonceRepository
+    protected lateinit var cNonceRepository: InMemoryCNonceRepository
 
     @Autowired
-    private lateinit var generateCNonce: GenerateCNonce
+    protected lateinit var generateCNonce: GenerateCNonce
 
     @Autowired
-    private lateinit var credentialIssuerMetadata: CredentialIssuerMetaData
+    protected lateinit var credentialIssuerMetadata: CredentialIssuerMetaData
 
-    private fun client(): WebTestClient =
+    protected final fun client(): WebTestClient =
         WebTestClient.bindToApplicationContext(applicationContext)
             .apply(springSecurity())
             .configureClient()
@@ -95,6 +99,54 @@ internal class WalletApiTest {
     internal fun setup() = runBlocking {
         cNonceRepository.clear()
     }
+
+    @TestConfiguration
+    class WalletApiTestConfig {
+
+        @Bean
+        @Primary
+        fun dPoPConfigurationProperties(): DPoPConfigurationProperties =
+            DPoPConfigurationProperties(
+                emptySet(),
+                Duration.ofMinutes(1L),
+                Duration.ofMinutes(10L),
+                null,
+            )
+
+        @Bean
+        @Primary
+        fun getPidData(): GetPidData =
+            GetPidData {
+                val pid = Pid(
+                    familyName = FamilyName("Surname"),
+                    givenName = GivenName("Firstname"),
+                    birthDate = LocalDate.of(1989, Month.AUGUST, 22),
+                    ageOver18 = true,
+                )
+                val issuingCountry = IsoCountry("GR")
+                val pidMetaData = PidMetaData(
+                    issuanceDate = LocalDate.now(),
+                    expiryDate = LocalDate.of(2030, 11, 10),
+                    documentNumber = null,
+                    issuingAuthority = IssuingAuthority.MemberState(issuingCountry),
+                    administrativeNumber = null,
+                    issuingCountry = issuingCountry,
+                    issuingJurisdiction = null,
+                )
+                pid to pidMetaData
+            }
+
+        @Bean
+        @Primary
+        fun encodePidInCbor(): EncodePidInCbor = EncodePidInCbor { _, _, _ -> "PID" }
+    }
+}
+
+/**
+ * Test cases for [WalletApi] when encryption is optional.
+ */
+@TestPropertySource(properties = ["issuer.credentialResponseEncryption.required=false"])
+internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
     /**
      * Verifies credential endpoint is not accessible by anonymous users.
@@ -340,46 +392,190 @@ internal class WalletApiTest {
         assertEquals(newCNonce.nonce, response.nonce)
         assertEquals(newCNonce.expiresIn.seconds, response.nonceExpiresIn)
     }
+}
 
-    @TestConfiguration
-    internal class WalletApiTestConfig {
+/**
+ * Test cases for [WalletApi] when encryption is required.
+ */
+@TestPropertySource(properties = ["issuer.credentialResponseEncryption.required=true"])
+internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
 
-        @Bean
-        @Primary
-        fun dPoPConfigurationProperties(): DPoPConfigurationProperties =
-            DPoPConfigurationProperties(
-                emptySet(),
-                Duration.ofMinutes(1L),
-                Duration.ofMinutes(10L),
-                null,
-            )
+    /**
+     * Verifies issuance fails when encryption is not requested.
+     * Creates a CNonce value before doing the request.
+     * Does the request.
+     * Verifies a new CNonce has been generated.
+     * Verifies response values.
+     */
+    @Test
+    fun `issuance failure by format when encryption is not requested`() = runTest {
+        val authentication = dPoPTokenAuthentication(clock = clock)
+        val previousCNonce = generateCNonce(authentication.accessToken.toAuthorizationHeader(), clock)
+        cNonceRepository.upsertCNonce(previousCNonce)
 
-        @Bean
-        @Primary
-        fun getPidData(): GetPidData =
-            GetPidData {
-                val pid = Pid(
-                    familyName = FamilyName("Surname"),
-                    givenName = GivenName("Firstname"),
-                    birthDate = LocalDate.of(1989, Month.AUGUST, 22),
-                    ageOver18 = true,
-                )
-                val issuingCountry = IsoCountry("GR")
-                val pidMetaData = PidMetaData(
-                    issuanceDate = LocalDate.now(),
-                    expiryDate = LocalDate.of(2030, 11, 10),
-                    documentNumber = null,
-                    issuingAuthority = IssuingAuthority.MemberState(issuingCountry),
-                    administrativeNumber = null,
-                    issuingCountry = issuingCountry,
-                    issuingJurisdiction = null,
-                )
-                pid to pidMetaData
-            }
+        val key = ECKeyGenerator(Curve.P_256).generate()
+        val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, key) {
+            jwk(key.toPublicJWK())
+        }
 
-        @Bean
-        @Primary
-        fun encodePidInCbor(): EncodePidInCbor = EncodePidInCbor { _, _, _ -> "PID" }
+        val response = client()
+            .mutateWith(mockAuthentication(authentication))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(requestByFormat(proof))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest()
+            .expectBody<IssueCredentialResponse.FailedTO>()
+            .returnResult()
+            .let { assertNotNull(it.responseBody) }
+
+        val newCNonce =
+            checkNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
+        assertNotEquals(previousCNonce, newCNonce)
+        assertEquals(CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS, response.type)
+        assertEquals("Invalid Credential Response Encryption Parameters", response.errorDescription)
+        assertEquals(newCNonce.nonce, response.nonce)
+        assertEquals(newCNonce.expiresIn.seconds, response.nonceExpiresIn)
+    }
+
+    /**
+     * Verifies issuance succeeds when encryption is requested.
+     * Creates a CNonce value before doing the request.
+     * Does the request.
+     * Verifies a new CNonce has been generated.
+     * Verifies response values.
+     */
+    @Test
+    fun `issuance success by format when encryption is requested`() = runTest {
+        val authentication = dPoPTokenAuthentication(clock = clock)
+        val previousCNonce = generateCNonce(authentication.accessToken.toAuthorizationHeader(), clock)
+        cNonceRepository.upsertCNonce(previousCNonce)
+
+        val walletKey = ECKeyGenerator(Curve.P_256).generate()
+        val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, walletKey) {
+            jwk(walletKey.toPublicJWK())
+        }
+        val encryptionKey = RSAKeyGenerator(4096).generate()
+        val encryptionParameters = encryptionParameters(encryptionKey)
+
+        val response = client()
+            .mutateWith(mockAuthentication(authentication))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(requestByFormat(proof, encryptionParameters))
+            .accept(MediaType.parseMediaType("application/jwt"))
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody<String>()
+            .returnResult()
+            .let { assertNotNull(it.responseBody) }
+
+        val newCNonce =
+            checkNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
+        assertNotEquals(previousCNonce, newCNonce)
+
+        val claims = run {
+            val jwt = EncryptedJWT.parse(response)
+                .also {
+                    it.decrypt(DefaultJWEDecrypterFactory().createJWEDecrypter(it.header, encryptionKey.toRSAPrivateKey()))
+                }
+            jwt.jwtClaimsSet
+        }
+        assertEquals("PID", claims.getStringClaim("credential"))
+        assertEquals(newCNonce.nonce, claims.getStringClaim("c_nonce"))
+        assertEquals(newCNonce.expiresIn.seconds, claims.getLongClaim("c_nonce_expires_in"))
+    }
+
+    /**
+     * Verifies issuance fails when encryption is not requested.
+     * Creates a CNonce value before doing the request.
+     * Does the request.
+     * Verifies a new CNonce has been generated.
+     * Verifies response values.
+     */
+    @Test
+    fun `issuance failure by credential identifier when encryption is not requested`() = runTest {
+        val authentication = dPoPTokenAuthentication(clock = clock)
+        val previousCNonce = generateCNonce(authentication.accessToken.toAuthorizationHeader(), clock)
+        cNonceRepository.upsertCNonce(previousCNonce)
+
+        val key = ECKeyGenerator(Curve.P_256).generate()
+        val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, key) {
+            jwk(key.toPublicJWK())
+        }
+
+        val response = client()
+            .mutateWith(mockAuthentication(authentication))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(requestByCredentialIdentifier(proof))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest()
+            .expectBody<IssueCredentialResponse.FailedTO>()
+            .returnResult()
+            .let { assertNotNull(it.responseBody) }
+
+        val newCNonce =
+            checkNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
+        assertNotEquals(previousCNonce, newCNonce)
+        assertEquals(CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS, response.type)
+        assertEquals("Invalid Credential Response Encryption Parameters", response.errorDescription)
+        assertEquals(newCNonce.nonce, response.nonce)
+        assertEquals(newCNonce.expiresIn.seconds, response.nonceExpiresIn)
+    }
+
+    /**
+     * Verifies issuance succeeds when encryption is requested.
+     * Creates a CNonce value before doing the request.
+     * Does the request.
+     * Verifies a new CNonce has been generated.
+     * Verifies response values.
+     */
+    @Test
+    fun `issuance success by credential identifier when encryption is requested`() = runTest {
+        val authentication = dPoPTokenAuthentication(clock = clock)
+        val previousCNonce = generateCNonce(authentication.accessToken.toAuthorizationHeader(), clock)
+        cNonceRepository.upsertCNonce(previousCNonce)
+
+        val walletKey = ECKeyGenerator(Curve.P_256).generate()
+        val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, walletKey) {
+            jwk(walletKey.toPublicJWK())
+        }
+        val encryptionKey = RSAKeyGenerator(4096).generate()
+        val encryptionParameters = encryptionParameters(encryptionKey)
+
+        val response = client()
+            .mutateWith(mockAuthentication(authentication))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(requestByCredentialIdentifier(proof, encryptionParameters))
+            .accept(MediaType.parseMediaType("application/jwt"))
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody<String>()
+            .returnResult()
+            .let { assertNotNull(it.responseBody) }
+
+        val newCNonce =
+            checkNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
+        assertNotEquals(previousCNonce, newCNonce)
+
+        val claims = run {
+            val jwt = EncryptedJWT.parse(response)
+                .also {
+                    it.decrypt(DefaultJWEDecrypterFactory().createJWEDecrypter(it.header, encryptionKey.toRSAPrivateKey()))
+                }
+            jwt.jwtClaimsSet
+        }
+        assertEquals("PID", claims.getStringClaim("credential"))
+        assertEquals(newCNonce.nonce, claims.getStringClaim("c_nonce"))
+        assertEquals(newCNonce.expiresIn.seconds, claims.getLongClaim("c_nonce_expires_in"))
     }
 }
 
@@ -419,19 +615,30 @@ private fun dPoPTokenAuthentication(
 
 private fun requestByFormat(
     proof: ProofTo? = ProofTo(type = ProofTypeTO.JWT, jwt = "123456"),
+    credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
 ): CredentialRequestTO =
     CredentialRequestTO(
         format = FormatTO.MsoMdoc,
         docType = "eu.europa.ec.eudi.pid.1",
         proof = proof,
+        credentialResponseEncryption = credentialResponseEncryption,
     )
 
 private fun requestByCredentialIdentifier(
     proof: ProofTo? = ProofTo(type = ProofTypeTO.JWT, jwt = "123456"),
+    credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
 ): CredentialRequestTO =
     CredentialRequestTO(
         credentialIdentifier = "eu.europa.ec.eudi.pid_mso_mdoc",
         proof = proof,
+        credentialResponseEncryption = credentialResponseEncryption,
+    )
+
+private fun encryptionParameters(key: RSAKey): CredentialResponseEncryptionTO =
+    CredentialResponseEncryptionTO(
+        key = Json.decodeFromString(key.toPublicJWK().toJSONString()),
+        algorithm = "RSA-OAEP-256",
+        method = "A128CBC-HS256",
     )
 
 private fun jwtProof(
