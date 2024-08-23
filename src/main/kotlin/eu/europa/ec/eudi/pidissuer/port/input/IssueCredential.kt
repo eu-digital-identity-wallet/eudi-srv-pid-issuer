@@ -465,45 +465,49 @@ private fun ProofTo.toDomain(): UnvalidatedProof = when (type) {
  */
 context(Raise<InvalidEncryptionParameters>)
 private fun RequestedResponseEncryption.ensureIsSupported(supported: CredentialResponseEncryption) {
-    try {
-        when (supported) {
-            is CredentialResponseEncryption.NotSupported -> {
-                if (this is RequestedResponseEncryption.Required) {
-                    // credential response encryption not supported by issuer but required by client
-                    throw IllegalArgumentException("credential response encryption is not supported")
-                }
+    when (supported) {
+        is CredentialResponseEncryption.NotSupported -> {
+            ensure(this !is RequestedResponseEncryption.Required) {
+                // credential response encryption not supported by issuer but required by client
+                InvalidEncryptionParameters(IllegalArgumentException("credential response encryption is not supported"))
             }
+        }
 
-            is CredentialResponseEncryption.Optional -> {
-                if (this is RequestedResponseEncryption.Required) {
-                    // credential response encryption supported by issuer and required by client
-                    // ensure provided parameters are supported
-                    if (encryptionAlgorithm !in supported.parameters.algorithmsSupported) {
-                        throw IllegalArgumentException("jwe encryption algorithm '${encryptionAlgorithm.name}' is not supported")
-                    }
-                    if (encryptionMethod !in supported.parameters.methodsSupported) {
-                        throw IllegalArgumentException("jwe encryption method '${encryptionMethod.name}' is not supported")
-                    }
-                }
-            }
-
-            is CredentialResponseEncryption.Required -> {
-                if (this !is RequestedResponseEncryption.Required) {
-                    // credential response encryption required by issuer but not required by client
-                    throw IllegalArgumentException("credential response encryption is required")
-                }
-
+        is CredentialResponseEncryption.Optional -> {
+            if (this is RequestedResponseEncryption.Required) {
+                // credential response encryption supported by issuer and required by client
                 // ensure provided parameters are supported
-                if (encryptionAlgorithm !in supported.parameters.algorithmsSupported) {
-                    throw IllegalArgumentException("jwe encryption algorithm '${encryptionAlgorithm.name}' is not supported")
+                ensure(encryptionAlgorithm in supported.parameters.algorithmsSupported) {
+                    InvalidEncryptionParameters(
+                        IllegalArgumentException("jwe encryption algorithm '${encryptionAlgorithm.name}' is not supported"),
+                    )
                 }
-                if (encryptionMethod !in supported.parameters.methodsSupported) {
-                    throw IllegalArgumentException("jwe encryption method '${encryptionMethod.name}' is not supported")
+                ensure(encryptionMethod in supported.parameters.methodsSupported) {
+                    InvalidEncryptionParameters(
+                        IllegalArgumentException("jwe encryption method '${encryptionMethod.name}' is not supported"),
+                    )
                 }
             }
         }
-    } catch (error: Exception) {
-        raise(InvalidEncryptionParameters(error))
+
+        is CredentialResponseEncryption.Required -> {
+            ensure(this is RequestedResponseEncryption.Required) {
+                // credential response encryption required by issuer but not required by client
+                InvalidEncryptionParameters(IllegalArgumentException("credential response encryption is required"))
+            }
+
+            // ensure provided parameters are supported
+            ensure(encryptionAlgorithm in supported.parameters.algorithmsSupported) {
+                InvalidEncryptionParameters(
+                    IllegalArgumentException("jwe encryption algorithm '${encryptionAlgorithm.name}' is not supported"),
+                )
+            }
+            ensure(encryptionMethod in supported.parameters.methodsSupported) {
+                InvalidEncryptionParameters(
+                    IllegalArgumentException("jwe encryption method '${encryptionMethod.name}' is not supported"),
+                )
+            }
+        }
     }
 }
 
