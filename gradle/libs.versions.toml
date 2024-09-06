@@ -16,7 +16,6 @@ bouncyCastle = "1.78.1"
 dependencyCheck = "10.0.3"
 sonarqube = "5.0.0.4638"
 bootstrap = "5.3.3"
-qrgen = "3.0.1"
 jacoco = "0.8.11"
 didCommon = "1.13.0"
 multiformat = "1.1.0"
@@ -25,6 +24,7 @@ keycloak = "25.0.1"
 waltid = "0.3.1"
 uri-kmp = "0.0.18"
 authlete-cbor = "1.18"
+zxing = "3.5.3"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -38,7 +38,6 @@ nimbus-oauth2 = { module = "com.nimbusds:oauth2-oidc-sdk", version.ref = "nimbus
 eudi-sdjwt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-sdjwt-kt", version.ref = "eudiSdJwt" }
 bouncy-castle = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncyCastle" }
 bootstrap = { module = "org.webjars:bootstrap", version.ref = "bootstrap" }
-qrgen = { module = "com.github.kenglxn.QRGen:javase", version.ref = "qrgen" }
 did-common = { module = "decentralized-identity:did-common-java", version.ref = "didCommon" }
 multiformat = { module = "org.erwinkok.multiformat:multiformat", version.ref = "multiformat" }
 result-monad = { module = "org.erwinkok.result:result-monad", version.ref = "resultMonad" }
@@ -46,6 +45,7 @@ keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version
 waltid-mdoc-credentials = { module = "id.walt:waltid-mdoc-credentials-jvm", version.ref = "waltid" }
 uri-kmp = { module = "com.eygraber:uri-kmp", version.ref = "uri-kmp" }
 authlete-cbor = { module = "com.authlete:cbor", version.ref = "authlete-cbor" }
+zxing = { module = "com.google.zxing:javase", version.ref = "zxing" }
 
 [plugins]
 foojay-resolver-convention = { id = "org.gradle.toolchains.foojay-resolver-convention", version.ref = "foojay" }
