@@ -17,9 +17,6 @@ plugins {
 repositories {
     mavenCentral()
     maven {
-        url = uri("https://jitpack.io")
-    }
-    maven {
         url = uri("https://repo.danubetech.com/repository/maven-public")
     }
     maven {
@@ -59,7 +56,7 @@ dependencies {
     implementation(libs.bootstrap) {
         because("For inclusion in HTML templates")
     }
-    implementation(libs.qrgen) {
+    implementation(libs.zxing) {
         because("To generate a QR Code for Credentials Offer URI")
     }
     implementation(libs.did.common) {

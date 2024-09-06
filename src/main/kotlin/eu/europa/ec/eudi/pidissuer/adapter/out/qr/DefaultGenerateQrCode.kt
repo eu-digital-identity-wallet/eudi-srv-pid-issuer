@@ -16,12 +16,16 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.qr
 
 import arrow.core.raise.result
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.client.j2se.MatrixToImageConfig
+import com.google.zxing.client.j2se.MatrixToImageWriter
+import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import eu.europa.ec.eudi.pidissuer.port.out.qr.Dimensions
 import eu.europa.ec.eudi.pidissuer.port.out.qr.Format
 import eu.europa.ec.eudi.pidissuer.port.out.qr.GenerateQqCode
-import net.glxn.qrgen.core.image.ImageType
-import net.glxn.qrgen.javase.QRCode
+import org.apache.commons.io.output.ByteArrayOutputStream
 import java.net.URI
 
 /**
@@ -31,20 +35,20 @@ class DefaultGenerateQrCode : GenerateQqCode {
 
     override fun invoke(content: URI, format: Format, dimensions: Dimensions): Result<ByteArray> =
         result {
-            val imageType =
-                when (format) {
-                    Format.JPG -> ImageType.JPG
-                    Format.GIF -> ImageType.GIF
-                    Format.PNG -> ImageType.PNG
-                    Format.BMP -> ImageType.BMP
-                }
-
-            QRCode.from(content.toString())
-                .to(imageType)
-                .withSize(dimensions.width.value.toInt(), dimensions.height.value.toInt())
-                .withCharset(Charsets.UTF_8.name())
-                .withErrorCorrection(ErrorCorrectionLevel.H)
-                .stream()
-                .toByteArray()
+            val writer = QRCodeWriter()
+            val matrix = writer.encode(
+                content.toString(),
+                BarcodeFormat.QR_CODE,
+                dimensions.width.value.toInt(),
+                dimensions.height.value.toInt(),
+                mapOf(
+                    EncodeHintType.CHARACTER_SET to Charsets.UTF_8.name(),
+                    EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.H,
+                ),
+            )
+            ByteArrayOutputStream().use {
+                MatrixToImageWriter.writeToStream(matrix, format.name, it, MatrixToImageConfig())
+                it.toByteArray()
+            }
         }
 }
