@@ -17,9 +17,6 @@ plugins {
 repositories {
     mavenCentral()
     maven {
-        url = uri("https://repo.danubetech.com/repository/maven-public")
-    }
-    maven {
         url = uri("https://maven.waltid.dev/releases")
         mavenContent {
         }
