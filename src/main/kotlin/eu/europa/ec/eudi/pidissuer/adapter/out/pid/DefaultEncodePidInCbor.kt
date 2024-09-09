@@ -20,7 +20,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.MsoMdocSigner
 import eu.europa.ec.eudi.pidissuer.domain.AttributeDetails
 import id.walt.mdoc.dataelement.DataElement
-import id.walt.mdoc.dataelement.toDE
+import id.walt.mdoc.dataelement.toDataElement
 import id.walt.mdoc.doc.MDocBuilder
 import kotlinx.datetime.toKotlinLocalDate
 import java.time.Clock
@@ -51,43 +51,43 @@ internal class DefaultEncodePidInCbor(
 }
 
 private fun MDocBuilder.addItemsToSign(pid: Pid) {
-    addItemToSign(GivenNameAttribute, pid.givenName.value.toDE())
-    addItemToSign(FamilyNameAttribute, pid.familyName.value.toDE())
-    addItemToSign(BirthDateAttribute, pid.birthDate.toKotlinLocalDate().toDE())
-    pid.familyNameBirth?.let { addItemToSign(FamilyNameBirthAttribute, it.value.toDE()) }
-    pid.givenNameBirth?.let { addItemToSign(GivenNameBirthAttribute, it.value.toDE()) }
-    pid.gender?.let { addItemToSign(GenderAttribute, it.value.toDE()) }
-    pid.nationality?.let { addItemToSign(NationalityAttribute, it.value.toDE()) }
-    pid.ageOver18?.let { addItemToSign(AgeOver18Attribute, it.toDE()) }
-    pid.ageBirthYear?.let { addItemToSign(AgeBirthYearAttribute, it.value.toDE()) }
-    pid.ageInYears?.let { addItemToSign(AgeInYearsAttribute, it.toDE()) }
-    pid.birthPlace?.let { addItemToSign(BirthPlaceAttribute, it.toDE()) }
-    pid.birthCountry?.let { addItemToSign(BirthCountryAttribute, it.value.toDE()) }
-    pid.birthState?.let { addItemToSign(BirthStateAttribute, it.value.toDE()) }
-    pid.birthCity?.let { addItemToSign(BirthCityAttribute, it.value.toDE()) }
-    pid.residentAddress?.let { addItemToSign(ResidenceAddressAttribute, it.toDE()) }
-    pid.residentCountry?.let { addItemToSign(ResidenceCountryAttribute, it.value.toDE()) }
-    pid.residentState?.let { addItemToSign(ResidenceStateAttribute, it.value.toDE()) }
-    pid.residentCity?.let { addItemToSign(ResidenceCityAttribute, it.value.toDE()) }
-    pid.residentPostalCode?.let { addItemToSign(ResidencePostalCodeAttribute, it.value.toDE()) }
-    pid.residentStreet?.let { addItemToSign(ResidenceStreetAttribute, it.value.toDE()) }
-    pid.residentHouseNumber?.let { addItemToSign(ResidenceHouseNumberAttribute, it.toDE()) }
+    addItemToSign(GivenNameAttribute, pid.givenName.value.toDataElement())
+    addItemToSign(FamilyNameAttribute, pid.familyName.value.toDataElement())
+    addItemToSign(BirthDateAttribute, pid.birthDate.toKotlinLocalDate().toDataElement())
+    pid.familyNameBirth?.let { addItemToSign(FamilyNameBirthAttribute, it.value.toDataElement()) }
+    pid.givenNameBirth?.let { addItemToSign(GivenNameBirthAttribute, it.value.toDataElement()) }
+    pid.gender?.let { addItemToSign(GenderAttribute, it.value.toDataElement()) }
+    pid.nationality?.let { addItemToSign(NationalityAttribute, it.value.toDataElement()) }
+    pid.ageOver18?.let { addItemToSign(AgeOver18Attribute, it.toDataElement()) }
+    pid.ageBirthYear?.let { addItemToSign(AgeBirthYearAttribute, it.value.toDataElement()) }
+    pid.ageInYears?.let { addItemToSign(AgeInYearsAttribute, it.toDataElement()) }
+    pid.birthPlace?.let { addItemToSign(BirthPlaceAttribute, it.toDataElement()) }
+    pid.birthCountry?.let { addItemToSign(BirthCountryAttribute, it.value.toDataElement()) }
+    pid.birthState?.let { addItemToSign(BirthStateAttribute, it.value.toDataElement()) }
+    pid.birthCity?.let { addItemToSign(BirthCityAttribute, it.value.toDataElement()) }
+    pid.residentAddress?.let { addItemToSign(ResidenceAddressAttribute, it.toDataElement()) }
+    pid.residentCountry?.let { addItemToSign(ResidenceCountryAttribute, it.value.toDataElement()) }
+    pid.residentState?.let { addItemToSign(ResidenceStateAttribute, it.value.toDataElement()) }
+    pid.residentCity?.let { addItemToSign(ResidenceCityAttribute, it.value.toDataElement()) }
+    pid.residentPostalCode?.let { addItemToSign(ResidencePostalCodeAttribute, it.value.toDataElement()) }
+    pid.residentStreet?.let { addItemToSign(ResidenceStreetAttribute, it.value.toDataElement()) }
+    pid.residentHouseNumber?.let { addItemToSign(ResidenceHouseNumberAttribute, it.toDataElement()) }
 }
 
 private fun MDocBuilder.addItemsToSign(metaData: PidMetaData) {
-    addItemToSign(IssuanceDateAttribute, metaData.issuanceDate.toKotlinLocalDate().toDE())
-    addItemToSign(ExpiryDateAttribute, metaData.expiryDate.toKotlinLocalDate().toDE())
+    addItemToSign(IssuanceDateAttribute, metaData.issuanceDate.toKotlinLocalDate().toDataElement())
+    addItemToSign(ExpiryDateAttribute, metaData.expiryDate.toKotlinLocalDate().toDataElement())
     when (val issuingAuthority = metaData.issuingAuthority) {
-        is IssuingAuthority.MemberState -> addItemToSign(IssuingAuthorityAttribute, issuingAuthority.code.value.toDE())
+        is IssuingAuthority.MemberState -> addItemToSign(IssuingAuthorityAttribute, issuingAuthority.code.value.toDataElement())
         is IssuingAuthority.AdministrativeAuthority ->
-            addItemToSign(IssuingAuthorityAttribute, issuingAuthority.value.toDE())
+            addItemToSign(IssuingAuthorityAttribute, issuingAuthority.value.toDataElement())
     }
-    metaData.documentNumber?.let { addItemToSign(DocumentNumberAttribute, it.value.toDE()) }
-    metaData.administrativeNumber?.let { addItemToSign(AdministrativeNumberAttribute, it.value.toDE()) }
-    addItemToSign(IssuingCountryAttribute, metaData.issuingCountry.value.toDE())
-    metaData.issuingJurisdiction?.let { addItemToSign(IssuingJurisdictionAttribute, it.toDE()) }
+    metaData.documentNumber?.let { addItemToSign(DocumentNumberAttribute, it.value.toDataElement()) }
+    metaData.administrativeNumber?.let { addItemToSign(AdministrativeNumberAttribute, it.value.toDataElement()) }
+    addItemToSign(IssuingCountryAttribute, metaData.issuingCountry.value.toDataElement())
+    metaData.issuingJurisdiction?.let { addItemToSign(IssuingJurisdictionAttribute, it.toDataElement()) }
 }
 
-private fun MDocBuilder.addItemToSign(attr: AttributeDetails, value: DataElement<*>) {
+private fun MDocBuilder.addItemToSign(attr: AttributeDetails, value: DataElement) {
     addItemToSign(PidMsoMdocNamespace, attr.name, value)
 }

@@ -24,7 +24,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.MsoMdocSigner
 import eu.europa.ec.eudi.pidissuer.domain.AttributeDetails
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import id.walt.mdoc.dataelement.DataElement
-import id.walt.mdoc.dataelement.toDE
+import id.walt.mdoc.dataelement.toDataElement
 import id.walt.mdoc.doc.MDocBuilder
 import kotlinx.datetime.toKotlinLocalDate
 import java.time.Clock
@@ -58,74 +58,74 @@ private fun MDocBuilder.addItemsToSign(licence: MobileDrivingLicence) {
     addItemsToSign(licence.driver)
     addItemsToSign(licence.issueAndExpiry)
     addItemsToSign(licence.issuer)
-    addItemToSign(DocumentNumberAttribute, licence.documentNumber.value.toDE())
-    addItemToSign(DrivingPrivilegesAttribute, licence.privileges.map { it.toDE() }.toDE())
-    licence.administrativeNumber?.let { addItemToSign(AdministrativeNumberAttribute, it.value.toDE()) }
+    addItemToSign(DocumentNumberAttribute, licence.documentNumber.value.toDataElement())
+    addItemToSign(DrivingPrivilegesAttribute, licence.privileges.map { it.toDE() }.toDataElement())
+    licence.administrativeNumber?.let { addItemToSign(AdministrativeNumberAttribute, it.value.toDataElement()) }
 }
 
 private fun MDocBuilder.addItemsToSign(driver: Driver) {
-    addItemToSign(FamilyNameAttribute, driver.familyName.latin.value.toDE())
-    addItemToSign(GivenNameAttribute, driver.givenName.latin.value.toDE())
-    addItemToSign(BirthDateAttribute, driver.birthDate.toKotlinLocalDate().toDE())
-    addItemToSign(PortraitAttribute, driver.portrait.image.content.toDE())
+    addItemToSign(FamilyNameAttribute, driver.familyName.latin.value.toDataElement())
+    addItemToSign(GivenNameAttribute, driver.givenName.latin.value.toDataElement())
+    addItemToSign(BirthDateAttribute, driver.birthDate.toKotlinLocalDate().toDataElement())
+    addItemToSign(PortraitAttribute, driver.portrait.image.content.toDataElement())
     driver.portrait.capturedAt?.let {
         addItemToSign(
             PortraitCaptureDateAttribute,
-            it.toLocalDate().toKotlinLocalDate().toDE(),
+            it.toLocalDate().toKotlinLocalDate().toDataElement(),
         )
     }
-    driver.sex?.let { addItemToSign(SexAttribute, it.code.toDE()) }
-    driver.height?.let { addItemToSign(HeightAttribute, it.value.toDE()) }
-    driver.weight?.let { addItemToSign(WeightAttribute, it.value.toDE()) }
-    driver.eyeColour?.let { addItemToSign(EyeColourAttribute, it.code.toDE()) }
-    driver.hairColour?.let { addItemToSign(HairColourAttribute, it.code.toDE()) }
-    driver.birthPlace?.let { addItemToSign(BirthPlaceAttribute, it.value.toDE()) }
+    driver.sex?.let { addItemToSign(SexAttribute, it.code.toDataElement()) }
+    driver.height?.let { addItemToSign(HeightAttribute, it.value.toDataElement()) }
+    driver.weight?.let { addItemToSign(WeightAttribute, it.value.toDataElement()) }
+    driver.eyeColour?.let { addItemToSign(EyeColourAttribute, it.code.toDataElement()) }
+    driver.hairColour?.let { addItemToSign(HairColourAttribute, it.code.toDataElement()) }
+    driver.birthPlace?.let { addItemToSign(BirthPlaceAttribute, it.value.toDataElement()) }
     driver.residence?.let { residence ->
-        residence.address?.let { addItemToSign(ResidentAddressAttribute, it.value.toDE()) }
-        residence.city?.let { addItemToSign(ResidentCityAttribute, it.value.toDE()) }
-        residence.state?.let { addItemToSign(ResidentStateAttribute, it.value.toDE()) }
-        residence.postalCode?.let { addItemToSign(ResidentPostalCodeAttribute, it.value.toDE()) }
-        addItemToSign(ResidentCountryAttribute, residence.country.code.toDE())
+        residence.address?.let { addItemToSign(ResidentAddressAttribute, it.value.toDataElement()) }
+        residence.city?.let { addItemToSign(ResidentCityAttribute, it.value.toDataElement()) }
+        residence.state?.let { addItemToSign(ResidentStateAttribute, it.value.toDataElement()) }
+        residence.postalCode?.let { addItemToSign(ResidentPostalCodeAttribute, it.value.toDataElement()) }
+        addItemToSign(ResidentCountryAttribute, residence.country.code.toDataElement())
     }
     driver.age?.let { age ->
-        addItemToSign(AgeInYearsAttribute, age.value.value.toDE())
-        age.birthYear?.let { addItemToSign(AgeBirthYearAttribute, it.value.toDE()) }
-        addItemToSign(AgeOver18Attribute, age.over18.toDE())
-        addItemToSign(AgeOver21Attribute, age.over21.toDE())
+        addItemToSign(AgeInYearsAttribute, age.value.value.toDataElement())
+        age.birthYear?.let { addItemToSign(AgeBirthYearAttribute, it.value.toDataElement()) }
+        addItemToSign(AgeOver18Attribute, age.over18.toDataElement())
+        addItemToSign(AgeOver21Attribute, age.over21.toDataElement())
     }
-    driver.nationality?.let { addItemToSign(NationalityAttribute, it.code.toDE()) }
-    driver.familyName.utf8?.let { addItemToSign(FamilyNameNationalCharacterAttribute, it.toDE()) }
-    driver.givenName.utf8?.let { addItemToSign(GivenNameNationalCharacterAttribute, it.toDE()) }
-    driver.signature?.let { addItemToSign(SignatureUsualMarkAttribute, it.content.toDE()) }
+    driver.nationality?.let { addItemToSign(NationalityAttribute, it.code.toDataElement()) }
+    driver.familyName.utf8?.let { addItemToSign(FamilyNameNationalCharacterAttribute, it.toDataElement()) }
+    driver.givenName.utf8?.let { addItemToSign(GivenNameNationalCharacterAttribute, it.toDataElement()) }
+    driver.signature?.let { addItemToSign(SignatureUsualMarkAttribute, it.content.toDataElement()) }
 }
 
 private fun MDocBuilder.addItemsToSign(issueAndExpiry: IssueAndExpiry) {
-    addItemToSign(IssueDateAttribute, issueAndExpiry.issuedAt.toKotlinLocalDate().toDE())
-    addItemToSign(ExpiryDateAttribute, issueAndExpiry.expiresAt.toKotlinLocalDate().toDE())
+    addItemToSign(IssueDateAttribute, issueAndExpiry.issuedAt.toKotlinLocalDate().toDataElement())
+    addItemToSign(ExpiryDateAttribute, issueAndExpiry.expiresAt.toKotlinLocalDate().toDataElement())
 }
 
 private fun MDocBuilder.addItemsToSign(issuer: Issuer) {
-    addItemToSign(IssuingCountryAttribute, issuer.country.countryCode.code.toDE())
-    addItemToSign(IssuingAuthorityAttribute, issuer.authority.value.toDE())
-    addItemToSign(IssuingCountryDistinguishingSignAttribute, issuer.country.distinguishingSign.code.toDE())
-    issuer.jurisdiction?.let { addItemToSign(IssuingJurisdictionAttribute, it.value.toDE()) }
+    addItemToSign(IssuingCountryAttribute, issuer.country.countryCode.code.toDataElement())
+    addItemToSign(IssuingAuthorityAttribute, issuer.authority.value.toDataElement())
+    addItemToSign(IssuingCountryDistinguishingSignAttribute, issuer.country.distinguishingSign.code.toDataElement())
+    issuer.jurisdiction?.let { addItemToSign(IssuingJurisdictionAttribute, it.value.toDataElement()) }
 }
 
-private fun MDocBuilder.addItemToSign(attr: AttributeDetails, value: DataElement<*>) {
+private fun MDocBuilder.addItemToSign(attr: AttributeDetails, value: DataElement) {
     addItemToSign(MobileDrivingLicenceV1Namespace, attr.name, value)
 }
 
 private fun DrivingPrivilege.toDE() =
     buildMap {
-        put("vehicle_category_code", vehicleCategory.code.toDE())
+        put("vehicle_category_code", vehicleCategory.code.toDataElement())
         issueAndExpiry?.let { issueAndExpiry ->
-            put("issue_date", issueAndExpiry.issuedAt.toKotlinLocalDate().toDE())
-            put("expiry_date", issueAndExpiry.expiresAt.toKotlinLocalDate().toDE())
+            put("issue_date", issueAndExpiry.issuedAt.toKotlinLocalDate().toDataElement())
+            put("expiry_date", issueAndExpiry.expiresAt.toKotlinLocalDate().toDataElement())
         }
         restrictions?.let { restrictions ->
-            put("codes", restrictions.map { it.toDE() }.toDE())
+            put("codes", restrictions.map { it.toDE() }.toDataElement())
         }
-    }.toDE()
+    }.toDataElement()
 
 private fun DrivingPrivilege.Restriction.toDE() =
     buildMap {
@@ -157,7 +157,7 @@ private fun DrivingPrivilege.Restriction.toDE() =
                 )
             }
 
-        put("code", code.toDE())
-        sign?.let { put("sign", it.toDE()) }
-        value?.let { put("value", it.toDE()) }
-    }.toDE()
+        put("code", code.toDataElement())
+        sign?.let { put("sign", it.toDataElement()) }
+        value?.let { put("value", it.toDataElement()) }
+    }.toDataElement()

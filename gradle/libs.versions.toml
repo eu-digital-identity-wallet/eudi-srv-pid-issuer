@@ -20,7 +20,7 @@ jacoco = "0.8.11"
 multiformat = "1.1.0"
 resultMonad = "1.4.0"
 keycloak = "25.0.1"
-waltid = "0.3.1"
+waltid = "0.6.0"
 uri-kmp = "0.0.18"
 zxing = "3.5.3"
 
@@ -40,7 +40,7 @@ bootstrap = { module = "org.webjars:bootstrap", version.ref = "bootstrap" }
 multiformat = { module = "org.erwinkok.multiformat:multiformat", version.ref = "multiformat" }
 result-monad = { module = "org.erwinkok.result:result-monad", version.ref = "resultMonad" }
 keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version.ref = "keycloak" }
-waltid-mdoc-credentials = { module = "id.walt:waltid-mdoc-credentials-jvm", version.ref = "waltid" }
+waltid-mdoc-credentials = { module = "id.walt.mdoc-credentials:waltid-mdoc-credentials-jvm", version.ref = "waltid" }
 uri-kmp = { module = "com.eygraber:uri-kmp", version.ref = "uri-kmp" }
 zxing = { module = "com.google.zxing:javase", version.ref = "zxing" }
 
