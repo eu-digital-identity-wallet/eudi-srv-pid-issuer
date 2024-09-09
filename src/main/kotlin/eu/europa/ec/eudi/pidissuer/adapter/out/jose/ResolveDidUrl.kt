@@ -19,7 +19,6 @@ import arrow.core.raise.result
 import com.nimbusds.jose.crypto.bc.BouncyCastleProviderSingleton
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.util.Base64URL
-import foundation.identity.did.DIDURL
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.spec.ECPublicKeySpec
 import org.erwinkok.multiformat.multibase.Multibase
@@ -28,6 +27,7 @@ import org.erwinkok.multiformat.util.readUnsignedVarInt
 import org.erwinkok.result.flatMap
 import org.erwinkok.result.getOrThrow
 import java.io.ByteArrayInputStream
+import java.net.URI
 import java.security.KeyFactory
 import java.security.interfaces.ECPublicKey
 import java.security.interfaces.RSAPublicKey
@@ -44,11 +44,13 @@ import org.bouncycastle.asn1.pkcs.RSAPublicKey as ANS1RSAPublicKey
  *
  * methods are supported.
  */
-fun resolveDidUrl(url: DIDURL): Result<JWK> = result {
-    when (val method = url.did.methodName) {
-        "key" -> resolveDidKey(url)
-        "jwk" -> resolveDidJwk(url)
-        else -> error("Unsupported DID method '$method'")
+fun resolveDidUrl(uri: URI): Result<JWK> = result {
+    val (scheme, methodName, _) = uri.toString().split(":")
+    require("did" == scheme) { "Unexpected scheme $scheme" }
+    when (methodName) {
+        "key" -> resolveDidKey(uri)
+        "jwk" -> resolveDidJwk(uri)
+        else -> error("Unsupported DID method '$methodName'")
     }
 }
 
@@ -70,19 +72,17 @@ private val expectedDidKeySizes = mapOf(
     Multicodec.P384_PUB to 49,
 )
 
-private fun resolveDidKey(url: DIDURL): JWK {
-    require(url.did.methodName == "key") {
-        "Expected 'key' method. Got '${url.did.methodName}' instead."
+private fun resolveDidKey(uri: URI): JWK {
+    val (_, _, methodSpecificId) = uri.toString().split(":")
+    require(methodSpecificId[0] == 'z') {
+        "Expected 'z' multi-base. Got '${methodSpecificId[0]}' instead."
     }
-    require(url.did.methodSpecificId[0] == 'z') {
-        "Expected 'z' multibase. Got '${url.did.methodSpecificId[0]}' instead."
-    }
-    require(url.fragment.isNullOrBlank()) {
-        "Invalid fragment. Expected no fragment but got '${url.fragment}' instead."
+    require(uri.fragment.isNullOrBlank()) {
+        "Invalid fragment. Expected no fragment but got '${uri.fragment}' instead."
     }
 
     val (type, key) =
-        ByteArrayInputStream(Multibase.decode(url.did.methodSpecificId).getOrThrow()).use { inputStream ->
+        ByteArrayInputStream(Multibase.decode(methodSpecificId).getOrThrow()).use { inputStream ->
             val type = inputStream.readUnsignedVarInt()
                 .flatMap { Multicodec.codeToType(it.toInt()) }
                 .getOrThrow()
@@ -145,15 +145,12 @@ private fun resolveDidKey(url: DIDURL): JWK {
     }
 }
 
-private fun resolveDidJwk(url: DIDURL): JWK {
-    require(url.did.methodName == "jwk") {
-        "Expected 'key' method. Got '${url.did.methodName}' instead."
+private fun resolveDidJwk(uri: URI): JWK {
+    require(uri.fragment == "0") {
+        "Invalid fragment. Expected '0' but got '${uri.fragment}' instead."
     }
-    require(url.fragment == "0") {
-        "Invalid fragment. Expected '0' but got '${url.fragment}' instead."
-    }
-
-    return JWK.parse(Base64URL.from(url.did.methodSpecificId).decodeToString())
+    val (_, _, methodSpecificId) = uri.toString().split(":")
+    return JWK.parse(Base64URL.from(methodSpecificId).decodeToString())
         .also {
             require(!it.isPrivate) { "jwk cannot contain a private key" }
         }

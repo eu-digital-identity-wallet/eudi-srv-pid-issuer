@@ -59,9 +59,6 @@ dependencies {
     implementation(libs.zxing) {
         because("To generate a QR Code for Credentials Offer URI")
     }
-    implementation(libs.did.common) {
-        because("To support parsing of DID URLs")
-    }
     implementation(libs.multiformat) {
         because("To support resolution of did:key")
     }

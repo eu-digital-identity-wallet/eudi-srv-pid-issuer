@@ -16,10 +16,10 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import com.nimbusds.jose.jwk.JWK
-import foundation.identity.did.DIDURL
+import org.junit.jupiter.api.assertDoesNotThrow
+import java.net.URI
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 
 /**
  * Test cases for [resolveDidUrl]
@@ -28,8 +28,8 @@ internal class ResolveDidUrlTest {
 
     @Test
     fun `verify did key method resolution success`() {
-        testData.forEach { (didUrl, jwk) ->
-            val resolved = assertNotNull(resolveDidUrl(DIDURL.fromString(didUrl)).getOrNull())
+        testData.forEach { (did, jwk) ->
+            val resolved = assertDoesNotThrow { resolveDidUrl(URI.create(did)).getOrThrow() }
             assertEquals(jwk, resolved)
         }
     }
