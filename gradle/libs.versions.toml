@@ -17,13 +17,11 @@ dependencyCheck = "10.0.3"
 sonarqube = "5.0.0.4638"
 bootstrap = "5.3.3"
 jacoco = "0.8.11"
-
 multiformat = "1.1.0"
 resultMonad = "1.4.0"
 keycloak = "25.0.1"
 waltid = "0.3.1"
 uri-kmp = "0.0.18"
-authlete-cbor = "1.18"
 zxing = "3.5.3"
 
 [libraries]
