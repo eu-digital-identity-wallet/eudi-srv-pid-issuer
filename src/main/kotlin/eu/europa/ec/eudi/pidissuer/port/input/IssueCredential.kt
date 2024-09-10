@@ -56,7 +56,6 @@ enum class ProofTypeTO {
 data class ProofTo(
     @SerialName("proof_type") @Required val type: ProofTypeTO,
     val jwt: String? = null,
-    val cwt: String? = null,
     @SerialName("ldp_vp")
     val ldpVp: String? = null,
 )
