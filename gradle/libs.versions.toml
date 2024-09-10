@@ -44,7 +44,6 @@ result-monad = { module = "org.erwinkok.result:result-monad", version.ref = "res
 keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version.ref = "keycloak" }
 waltid-mdoc-credentials = { module = "id.walt:waltid-mdoc-credentials-jvm", version.ref = "waltid" }
 uri-kmp = { module = "com.eygraber:uri-kmp", version.ref = "uri-kmp" }
-authlete-cbor = { module = "com.authlete:cbor", version.ref = "authlete-cbor" }
 zxing = { module = "com.google.zxing:javase", version.ref = "zxing" }
 
 [plugins]

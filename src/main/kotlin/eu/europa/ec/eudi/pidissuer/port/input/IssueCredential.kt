@@ -48,9 +48,6 @@ enum class ProofTypeTO {
     @SerialName("jwt")
     JWT,
 
-    @SerialName("cwt")
-    CWT,
-
     @SerialName("ldp_vp")
     LDP_VP,
 }
@@ -446,11 +443,6 @@ private fun ProofTo.toDomain(): UnvalidatedProof = when (type) {
     ProofTypeTO.JWT -> {
         ensure(!jwt.isNullOrEmpty()) { MissingProof }
         UnvalidatedProof.Jwt(jwt)
-    }
-
-    ProofTypeTO.CWT -> {
-        ensureNotNull(cwt) { MissingProof }
-        UnvalidatedProof.Cwt(cwt)
     }
 
     ProofTypeTO.LDP_VP -> {

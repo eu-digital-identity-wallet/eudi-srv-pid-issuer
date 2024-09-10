@@ -237,10 +237,6 @@ val PidMsoMdocV1: MsoMdocCredentialConfiguration =
         proofTypesSupported = ProofTypesSupported(
             nonEmptySetOf(
                 ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.ES256)),
-                ProofType.Cwt(
-                    algorithms = nonEmptySetOf(CoseAlgorithm.ES256),
-                    curves = nonEmptySetOf(CoseCurve.P_256),
-                ),
             ),
         ),
         policy = MsoMdocPolicy(oneTimeUse = true),

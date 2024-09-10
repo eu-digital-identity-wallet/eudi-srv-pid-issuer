@@ -285,10 +285,6 @@ val MobileDrivingLicenceV1: MsoMdocCredentialConfiguration =
                 ProofType.Jwt(
                     signingAlgorithmsSupported = nonEmptySetOf(JWSAlgorithm.ES256),
                 ),
-                ProofType.Cwt(
-                    algorithms = nonEmptySetOf(CoseAlgorithm.ES256),
-                    curves = nonEmptySetOf(CoseCurve.P_256),
-                ),
             ),
         ),
         policy = MsoMdocPolicy(oneTimeUse = false, batchSize = 2),
