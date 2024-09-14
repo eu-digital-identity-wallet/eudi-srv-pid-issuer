@@ -40,7 +40,7 @@ and requires the use of a suitable OAUTH2 server.
 | [Credential Issuer MetaData](#credential-issuer-metadata) | Yes, using `scopes`                                       | 
 | Batch Endpoint                                            | ❌                                                         | 
 | Deferred Endpoint                                         | ✅                                                         |
-| Proof                                                     | ✅ JWT (`jwk`, `x5c`, `did:key`, `did:jwk`) , ❌ CWT                              |
+| Proof                                                     | ✅ JWT (`jwk`, `x5c`, `did:key`, `did:jwk`)                               |
 
 ## How to use docker
 

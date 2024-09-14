@@ -48,9 +48,6 @@ enum class ProofTypeTO {
     @SerialName("jwt")
     JWT,
 
-    @SerialName("cwt")
-    CWT,
-
     @SerialName("ldp_vp")
     LDP_VP,
 }
@@ -59,7 +56,6 @@ enum class ProofTypeTO {
 data class ProofTo(
     @SerialName("proof_type") @Required val type: ProofTypeTO,
     val jwt: String? = null,
-    val cwt: String? = null,
     @SerialName("ldp_vp")
     val ldpVp: String? = null,
 )
@@ -446,11 +442,6 @@ private fun ProofTo.toDomain(): UnvalidatedProof = when (type) {
     ProofTypeTO.JWT -> {
         ensure(!jwt.isNullOrEmpty()) { MissingProof }
         UnvalidatedProof.Jwt(jwt)
-    }
-
-    ProofTypeTO.CWT -> {
-        ensureNotNull(cwt) { MissingProof }
-        UnvalidatedProof.Cwt(cwt)
     }
 
     ProofTypeTO.LDP_VP -> {

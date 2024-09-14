@@ -180,24 +180,12 @@ private fun CryptographicBindingMethod.methodName(): String =
 private fun ProofType.proofTypeName(): String =
     when (this) {
         is ProofType.Jwt -> "jwt"
-        is ProofType.Cwt -> "cwt"
     }
 
 @OptIn(ExperimentalSerializationApi::class)
 private fun ProofType.toJsonObject(): JsonObject =
     buildJsonObject {
         when (this@toJsonObject) {
-            is ProofType.Cwt -> {
-                putJsonArray("proof_signing_alg_values_supported") {
-                    addAll(this@toJsonObject.algorithms.map { it.value })
-                }
-                putJsonArray("proof_alg_values_supported") {
-                    addAll(this@toJsonObject.algorithms.map { it.value })
-                }
-                putJsonArray("proof_crv_values_supported") {
-                    addAll(this@toJsonObject.curves.map { it.value })
-                }
-            }
             is ProofType.Jwt -> {
                 putJsonArray("proof_signing_alg_values_supported") {
                     addAll(signingAlgorithmsSupported.map { it.name })

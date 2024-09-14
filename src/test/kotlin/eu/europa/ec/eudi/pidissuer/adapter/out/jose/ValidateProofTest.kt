@@ -39,7 +39,7 @@ class ValidateProofTest {
     @Test
     internal fun `fails with unsupported proof type`() = runTest {
         val nonce = CNonce("token", "nonce", clock.instant(), 5.minutes.toJavaDuration())
-        val proof = UnvalidatedProof.Cwt("CWT")
+        val proof = UnvalidatedProof.LdpVp("foo")
         val result = either { validateProof(proof, nonce, PidMsoMdocV1) }
         assert(result.isLeft())
         assertIs<IssueCredentialError.InvalidProof>(result.leftOrNull())

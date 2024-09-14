@@ -30,19 +30,13 @@ sealed interface ProofType {
      * A JWT is used as proof of possession.
      */
     data class Jwt(val signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>) : ProofType
-
-    /**
-     *  A CWT is used as proof of possession.
-     */
-    data class Cwt(val algorithms: NonEmptySet<CoseAlgorithm>, val curves: NonEmptySet<CoseCurve>) : ProofType
 }
 
 fun ProofType.type(): ProofTypeEnum = when (this) {
-    is ProofType.Cwt -> ProofTypeEnum.CWT
     is ProofType.Jwt -> ProofTypeEnum.JWT
 }
 enum class ProofTypeEnum {
-    JWT, CWT
+    JWT,
 }
 
 @JvmInline

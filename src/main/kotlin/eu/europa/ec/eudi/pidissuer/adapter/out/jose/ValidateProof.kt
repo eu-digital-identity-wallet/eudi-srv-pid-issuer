@@ -32,15 +32,11 @@ class ValidateProof(
         fun jwt(jwt: UnvalidatedProof.Jwt): CredentialKey =
             validateJwtProof(credentialIssuerId, jwt, expectedCNonce, credentialConfiguration)
 
-        fun cwt(cwt: UnvalidatedProof.Cwt): CredentialKey =
-            validateCwtProof(credentialIssuerId, cwt, expectedCNonce, credentialConfiguration)
-
         fun ldpVp(ldpVp: UnvalidatedProof.LdpVp): CredentialKey =
             raise(InvalidProof("Supporting only JWT proof"))
 
         return when (unvalidatedProof) {
             is UnvalidatedProof.Jwt -> jwt(unvalidatedProof)
-            is UnvalidatedProof.Cwt -> cwt(unvalidatedProof)
             is UnvalidatedProof.LdpVp -> ldpVp(unvalidatedProof)
         }
     }

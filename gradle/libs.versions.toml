@@ -17,13 +17,11 @@ dependencyCheck = "10.0.3"
 sonarqube = "5.0.0.4638"
 bootstrap = "5.3.3"
 jacoco = "0.8.11"
-
 multiformat = "1.1.0"
 resultMonad = "1.4.0"
 keycloak = "25.0.1"
 waltid = "0.3.1"
 uri-kmp = "0.0.18"
-authlete-cbor = "1.18"
 zxing = "3.5.3"
 
 [libraries]
@@ -44,7 +42,6 @@ result-monad = { module = "org.erwinkok.result:result-monad", version.ref = "res
 keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version.ref = "keycloak" }
 waltid-mdoc-credentials = { module = "id.walt:waltid-mdoc-credentials-jvm", version.ref = "waltid" }
 uri-kmp = { module = "com.eygraber:uri-kmp", version.ref = "uri-kmp" }
-authlete-cbor = { module = "com.authlete:cbor", version.ref = "authlete-cbor" }
 zxing = { module = "com.google.zxing:javase", version.ref = "zxing" }
 
 [plugins]
