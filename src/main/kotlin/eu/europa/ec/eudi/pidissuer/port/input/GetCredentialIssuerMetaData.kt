@@ -230,12 +230,10 @@ internal fun SdJwtVcCredentialConfiguration.toTransferObject(isOffer: Boolean): 
             }
         }
     }
-    putJsonObject("credential_definition") {
-        put("type", type.value)
-        if (!isOffer) {
-            putJsonObject("claims") {
-                claims.forEach { attribute -> attribute.toTransferObject(this) }
-            }
+    put("vct", type.value)
+    if (!isOffer) {
+        putJsonObject("claims") {
+            claims.forEach { attribute -> attribute.toTransferObject(this) }
         }
     }
 }
