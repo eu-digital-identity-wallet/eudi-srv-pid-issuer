@@ -25,6 +25,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import org.slf4j.LoggerFactory
 
@@ -40,9 +41,20 @@ sealed interface DeferredCredentialSuccessResponse {
      */
     @Serializable
     data class PlainTO(
-        @Required val credential: JsonElement,
+        val credential: JsonElement?,
+        val credentials: JsonArray?,
         @SerialName("notification_id") val notificationId: String? = null,
-    ) : DeferredCredentialSuccessResponse
+    ) : DeferredCredentialSuccessResponse {
+        init {
+            require(credential != null || !credentials.isNullOrEmpty())
+            if (credential != null) {
+                require(credentials.isNullOrEmpty())
+            }
+            if (credentials != null) {
+                require(credential == null)
+            }
+        }
+    }
 
     /**
      * Deferred response is encrypted.
@@ -81,12 +93,18 @@ class GetDeferredCredential(
     private fun LoadDeferredCredentialResult.toTo(): DeferredCredentialSuccessResponse = when (this) {
         is LoadDeferredCredentialResult.IssuancePending -> raise(GetDeferredCredentialErrorTO.IssuancePending)
         is LoadDeferredCredentialResult.InvalidTransactionId -> raise(GetDeferredCredentialErrorTO.InvalidTransactionId)
-        is LoadDeferredCredentialResult.Found -> when (responseEncryption) {
-            RequestedResponseEncryption.NotRequired ->
-                DeferredCredentialSuccessResponse.PlainTO(credential.credential, credential.notificationId?.value)
-            is RequestedResponseEncryption.Required -> {
-                val plain = DeferredCredentialSuccessResponse.PlainTO(credential.credential, credential.notificationId?.value)
-                encryptCredentialResponse(plain, responseEncryption).getOrThrow()
+        is LoadDeferredCredentialResult.Found -> {
+            val (c, cs) = when (credential.credentials.size) {
+                1 -> credential.credentials.head to null
+                else -> null to JsonArray(credential.credentials)
+            }
+            when (responseEncryption) {
+                RequestedResponseEncryption.NotRequired ->
+                    DeferredCredentialSuccessResponse.PlainTO(c, cs, credential.notificationId?.value)
+                is RequestedResponseEncryption.Required -> {
+                    val plain = DeferredCredentialSuccessResponse.PlainTO(c, cs, credential.notificationId?.value)
+                    encryptCredentialResponse(plain, responseEncryption).getOrThrow()
+                }
             }
         }
     }

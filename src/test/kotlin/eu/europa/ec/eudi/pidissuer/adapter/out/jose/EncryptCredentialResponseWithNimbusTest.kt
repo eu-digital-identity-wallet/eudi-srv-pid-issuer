@@ -32,7 +32,6 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -40,12 +39,11 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import java.time.Clock
 import java.time.Duration
-import java.util.UUID
+import java.util.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.fail
 
-@OptIn(ExperimentalCoroutinesApi::class)
 internal class EncryptCredentialResponseWithNimbusTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
@@ -61,9 +59,10 @@ internal class EncryptCredentialResponseWithNimbusTest {
         val jwk = key.toPublicJWK()
         val parameters = RequestedResponseEncryption.Required(jwk, JWEAlgorithm.RSA_OAEP_512)
         val unencrypted = IssueCredentialResponse.PlainTO(
-            JsonPrimitive("credential"),
-            null,
-            "nonce",
+            credential = JsonPrimitive("credential"),
+            credentials = null,
+            transactionId = null,
+            nonce = "nonce",
             Duration.ofMinutes(5L).seconds,
             UUID.randomUUID().toString(),
         )
@@ -80,9 +79,10 @@ internal class EncryptCredentialResponseWithNimbusTest {
         val jwk = key.toPublicJWK()
         val parameters = RequestedResponseEncryption.Required(jwk, JWEAlgorithm.ECDH_ES_A256KW)
         val unencrypted = IssueCredentialResponse.PlainTO(
-            JsonPrimitive("credential"),
-            null,
-            "nonce",
+            credential = JsonPrimitive("credential"),
+            credentials = null,
+            transactionId = null,
+            nonce = "nonce",
             Duration.ofMinutes(5L).seconds,
             UUID.randomUUID().toString(),
         )

@@ -31,7 +31,6 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.time.Clock
@@ -263,7 +262,7 @@ class IssueMsoMdocPid(
     private val generateNotificationId: GenerateNotificationId,
     private val clock: Clock,
     private val storeIssuedCredential: StoreIssuedCredential,
-) : IssueSpecificCredential<JsonElement> {
+) : IssueSpecificCredential {
 
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
 
@@ -278,47 +277,52 @@ class IssueMsoMdocPid(
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
         expectedCNonce: CNonce,
-    ): CredentialResponse<JsonElement> = coroutineScope {
+    ): CredentialResponse = coroutineScope {
         log.info("Handling issuance request ...")
-        val holderPubKey = async(Dispatchers.Default) { holderPubKey(request, expectedCNonce) }
-        val pidData = async { getPidData(authorizationContext) }
-        val (pid, pidMetaData) = pidData.await()
-        val cbor = encodePidInCbor(pid, pidMetaData, holderPubKey.await()).also {
-            log.info("Issued $it")
+        val holderPubKey = async(Dispatchers.Default) {
+            request.unvalidatedProofs.map { holderPubKey(it, expectedCNonce) }
         }
-
+        val pidData = async { getPidData(authorizationContext) }
         val notificationId =
             if (notificationsEnabled) generateNotificationId()
             else null
-        storeIssuedCredential(
-            IssuedCredential(
-                format = MSO_MDOC_FORMAT,
-                type = supportedCredential.docType,
-                holder = with(pid) {
-                    "${familyName.value} ${givenName.value}"
-                },
-                holderPublicKey = holderPubKey.await().toPublicJWK(),
-                issuedAt = clock.instant(),
-                notificationId = notificationId,
-            ),
-        )
 
-        CredentialResponse.Issued(JsonPrimitive(cbor), notificationId)
+        val (pid, pidMetaData) = pidData.await()
+        val issuedCredentials = holderPubKey.await().map { holderKey ->
+            val cbor = encodePidInCbor(pid, pidMetaData, holderKey).also {
+                log.info("Issued $it")
+            }
+            storeIssuedCredential(
+                IssuedCredential(
+                    format = MSO_MDOC_FORMAT,
+                    type = supportedCredential.docType,
+                    holder = with(pid) {
+                        "${familyName.value} ${givenName.value}"
+                    },
+                    holderPublicKey = holderKey.toPublicJWK(),
+                    issuedAt = clock.instant(),
+                    notificationId = notificationId,
+                ),
+            )
+            cbor
+        }
+
+        CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
             .also {
-                log.info("Successfully issued PID")
-                log.debug("Issued PID data {}", it)
+                log.info("Successfully issued PIDs")
+                log.debug("Issued PIDs data {}", it)
             }
     }
 
     context(Raise<IssueCredentialError>)
     @Suppress("DuplicatedCode")
-    private fun holderPubKey(request: CredentialRequest, expectedCNonce: CNonce): ECKey {
+    private fun holderPubKey(unvalidatedProof: UnvalidatedProof, expectedCNonce: CNonce): ECKey {
         fun ecKeyOrFail(provider: () -> ECKey) = try {
             provider.invoke()
         } catch (t: Throwable) {
             raise(InvalidProof("Only EC Key is supported"))
         }
-        return when (val key = validateProof(request.unvalidatedProof, expectedCNonce, supportedCredential)) {
+        return when (val key = validateProof(unvalidatedProof, expectedCNonce, supportedCredential)) {
             is CredentialKey.DIDUrl -> ecKeyOrFail { key.jwk.toECKey() }
             is CredentialKey.Jwk -> ecKeyOrFail { key.value.toECKey() }
             is CredentialKey.X5c -> ecKeyOrFail { ECKey.parse(key.certificate) }

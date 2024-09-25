@@ -287,9 +287,9 @@ fun beans(clock: Clock) = beans {
         val resolvers = buildMap<CredentialIdentifier, CredentialRequestFactory> {
             if (enableMobileDrivingLicence) {
                 this[CredentialIdentifier(MobileDrivingLicenceV1Scope.value)] =
-                    { unvalidatedProof, requestedResponseEncryption ->
+                    { unvalidatedProofs, requestedResponseEncryption ->
                         MsoMdocCredentialRequest(
-                            unvalidatedProof = unvalidatedProof,
+                            unvalidatedProofs = unvalidatedProofs,
                             credentialResponseEncryption = requestedResponseEncryption,
                             docType = MobileDrivingLicenceV1.docType,
                             claims = MobileDrivingLicenceV1.msoClaims.mapValues { entry ->
@@ -301,9 +301,9 @@ fun beans(clock: Clock) = beans {
 
             if (enableMsoMdocPid) {
                 this[CredentialIdentifier(PidMsoMdocScope.value)] =
-                    { unvalidatedProof, requestedResponseEncryption ->
+                    { unvalidatedProofs, requestedResponseEncryption ->
                         MsoMdocCredentialRequest(
-                            unvalidatedProof = unvalidatedProof,
+                            unvalidatedProofs = unvalidatedProofs,
                             credentialResponseEncryption = requestedResponseEncryption,
                             docType = PidMsoMdocV1.docType,
                             claims = PidMsoMdocV1.msoClaims.mapValues { entry -> entry.value.map { attribute -> attribute.name } },
@@ -315,9 +315,9 @@ fun beans(clock: Clock) = beans {
                 val signingAlgorithm = ref<IssuerSigningKey>().signingAlgorithm
                 pidSdJwtVcV1(signingAlgorithm).let { sdJwtVcPid ->
                     this[CredentialIdentifier(PidSdJwtVcScope.value)] =
-                        { unvalidatedProof, requestedResponseEncryption ->
+                        { unvalidatedProofs, requestedResponseEncryption ->
                             SdJwtVcCredentialRequest(
-                                unvalidatedProof = unvalidatedProof,
+                                unvalidatedProofs = unvalidatedProofs,
                                 credentialResponseEncryption = requestedResponseEncryption,
                                 type = sdJwtVcPid.type,
                                 claims = sdJwtVcPid.claims.map { it.name }.toSet(),

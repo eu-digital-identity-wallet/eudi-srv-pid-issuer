@@ -22,10 +22,9 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreDeferredCredential
-import kotlinx.serialization.json.JsonElement
 import org.slf4j.LoggerFactory
 
-interface IssueSpecificCredential<out T> {
+interface IssueSpecificCredential {
 
     val supportedCredential: CredentialConfiguration
     val publicKey: JWK?
@@ -36,20 +35,20 @@ interface IssueSpecificCredential<out T> {
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
         expectedCNonce: CNonce,
-    ): CredentialResponse<T>
+    ): CredentialResponse
 }
 
-fun IssueSpecificCredential<JsonElement>.asDeferred(
+fun IssueSpecificCredential.asDeferred(
     generateTransactionId: GenerateTransactionId,
     storeDeferredCredential: StoreDeferredCredential,
-): IssueSpecificCredential<JsonElement> =
+): IssueSpecificCredential =
     DeferredIssuer(this, generateTransactionId, storeDeferredCredential)
 
 private class DeferredIssuer(
-    val issuer: IssueSpecificCredential<JsonElement>,
+    val issuer: IssueSpecificCredential,
     val generateTransactionId: GenerateTransactionId,
     val storeDeferredCredential: StoreDeferredCredential,
-) : IssueSpecificCredential<JsonElement> by issuer {
+) : IssueSpecificCredential by issuer {
 
     private val log = LoggerFactory.getLogger(DeferredIssuer::class.java)
 
@@ -59,9 +58,9 @@ private class DeferredIssuer(
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
         expectedCNonce: CNonce,
-    ): CredentialResponse<JsonElement> {
+    ): CredentialResponse {
         val credentialResponse = issuer.invoke(authorizationContext, request, credentialIdentifier, expectedCNonce)
-        require(credentialResponse is CredentialResponse.Issued<JsonElement>) { "Actual issuer should return issued credentials" }
+        require(credentialResponse is CredentialResponse.Issued) { "Actual issuer should return issued credentials" }
 
         val transactionId = generateTransactionId()
         storeDeferredCredential.invoke(transactionId, credentialResponse, request.credentialResponseEncryption)

@@ -35,7 +35,6 @@ import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.time.Clock
@@ -118,7 +117,7 @@ class IssueSdJwtVcPid(
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredential: StoreIssuedCredential,
-) : IssueSpecificCredential<JsonElement> {
+) : IssueSpecificCredential {
 
     private val validateProof = ValidateProof(credentialIssuerId)
 
@@ -142,42 +141,46 @@ class IssueSdJwtVcPid(
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
         expectedCNonce: CNonce,
-    ): CredentialResponse<JsonElement> = coroutineScope {
+    ): CredentialResponse = coroutineScope {
         log.info("Handling issuance request ...")
-        val holderPubKey = async(Dispatchers.Default) { holderPubKey(request, expectedCNonce) }
+        val holderPubKeys = async(Dispatchers.Default) {
+            request.unvalidatedProofs.map { holderPubKey(it, expectedCNonce) }
+        }
         val pidData = async { getPidData(authorizationContext) }
         val (pid, pidMetaData) = pidData.await()
-        val sdJwt = encodePidInSdJwt.invoke(pid, pidMetaData, holderPubKey.await())
-
         val notificationId =
             if (notificationsEnabled) generateNotificationId()
             else null
-        storeIssuedCredential(
-            IssuedCredential(
-                format = SD_JWT_VC_FORMAT,
-                type = supportedCredential.type.value,
-                holder = with(pid) {
-                    "${familyName.value} ${givenName.value}"
-                },
-                holderPublicKey = holderPubKey.await().toPublicJWK(),
-                issuedAt = clock.instant(),
-                notificationId = notificationId,
-            ),
-        )
+        val issuedCredentials = holderPubKeys.await().map { holderPubKey ->
+            val sdJwt = encodePidInSdJwt.invoke(pid, pidMetaData, holderPubKey)
+            storeIssuedCredential(
+                IssuedCredential(
+                    format = SD_JWT_VC_FORMAT,
+                    type = supportedCredential.type.value,
+                    holder = with(pid) {
+                        "${familyName.value} ${givenName.value}"
+                    },
+                    holderPublicKey = holderPubKey.toPublicJWK(),
+                    issuedAt = clock.instant(),
+                    notificationId = notificationId,
+                ),
+            )
+            sdJwt
+        }
 
-        CredentialResponse.Issued(JsonPrimitive(sdJwt), notificationId)
+        CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
             .also {
-                log.info("Successfully issued PID")
-                log.debug("Issued PID data {}", it)
+                log.info("Successfully issued PIDs")
+                log.debug("Issued PIDs data {}", it)
             }
     }
 
     context(Raise<InvalidProof>)
     private suspend fun holderPubKey(
-        request: CredentialRequest,
+        unvalidatedProof: UnvalidatedProof,
         expectedCNonce: CNonce,
     ): JWK {
-        val key = validateProof(request.unvalidatedProof, expectedCNonce, supportedCredential)
+        val key = validateProof(unvalidatedProof, expectedCNonce, supportedCredential)
         return extractJwkFromCredentialKey(key)
             .getOrElse {
                 raise(InvalidProof("Unable to extract JWK from CredentialKey", it))

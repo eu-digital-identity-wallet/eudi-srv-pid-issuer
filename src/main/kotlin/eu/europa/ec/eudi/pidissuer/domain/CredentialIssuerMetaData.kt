@@ -19,7 +19,6 @@ import arrow.core.NonEmptySet
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
-import kotlinx.serialization.json.JsonElement
 
 /**
  * Encryption algorithms and methods supported for encrypting Credential Responses.
@@ -115,7 +114,7 @@ data class CredentialIssuerMetaData(
     val notificationEndpoint: HttpsUrl? = null,
     val credentialResponseEncryption: CredentialResponseEncryption,
     val display: List<CredentialIssuerDisplay> = emptyList(),
-    val specificCredentialIssuers: List<IssueSpecificCredential<JsonElement>>,
+    val specificCredentialIssuers: List<IssueSpecificCredential>,
 ) {
     val credentialConfigurationsSupported: List<CredentialConfiguration>
         get() = specificCredentialIssuers.map { it.supportedCredential }

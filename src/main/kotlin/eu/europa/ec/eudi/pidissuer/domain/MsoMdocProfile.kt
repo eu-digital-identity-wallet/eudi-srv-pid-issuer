@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import arrow.core.NonEmptyList
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
@@ -56,7 +57,7 @@ data class MsoMdocCredentialConfiguration(
 // Credential Request
 //
 data class MsoMdocCredentialRequest(
-    override val unvalidatedProof: UnvalidatedProof,
+    override val unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
     override val credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
     val docType: MsoDocType,
     val claims: Map<MsoNameSpace, List<MsoMdocAttributeName>> = emptyMap(),

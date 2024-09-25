@@ -18,11 +18,10 @@ package eu.europa.ec.eudi.pidissuer.port.out.persistence
 import eu.europa.ec.eudi.pidissuer.domain.CredentialResponse
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.domain.TransactionId
-import kotlinx.serialization.json.JsonElement
 
 sealed interface LoadDeferredCredentialResult {
     data class Found(
-        val credential: CredentialResponse.Issued<JsonElement>,
+        val credential: CredentialResponse.Issued,
         val responseEncryption: RequestedResponseEncryption,
     ) : LoadDeferredCredentialResult
     data object InvalidTransactionId : LoadDeferredCredentialResult

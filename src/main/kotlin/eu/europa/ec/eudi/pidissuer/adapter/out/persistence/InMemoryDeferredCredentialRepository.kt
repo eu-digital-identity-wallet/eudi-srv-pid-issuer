@@ -23,7 +23,6 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadDeferredCredentialRe
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreDeferredCredential
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.json.JsonElement
 import org.slf4j.LoggerFactory
 
 /**
@@ -32,7 +31,7 @@ import org.slf4j.LoggerFactory
  */
 data class DeferredState(
     val responseEncryption: RequestedResponseEncryption,
-    val issued: CredentialResponse.Issued<JsonElement>?,
+    val issued: CredentialResponse.Issued?,
 )
 
 private val log = LoggerFactory.getLogger(InMemoryDeferredCredentialRepository::class.java)

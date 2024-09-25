@@ -29,7 +29,6 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.time.Clock
@@ -301,7 +300,7 @@ class IssueMobileDrivingLicence(
     private val generateNotificationId: GenerateNotificationId,
     private val clock: Clock,
     private val storeIssuedCredential: StoreIssuedCredential,
-) : IssueSpecificCredential<JsonElement> {
+) : IssueSpecificCredential {
 
     override val supportedCredential: MsoMdocCredentialConfiguration
         get() = MobileDrivingLicenceV1
@@ -317,45 +316,49 @@ class IssueMobileDrivingLicence(
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
         expectedCNonce: CNonce,
-    ): CredentialResponse<JsonElement> {
+    ): CredentialResponse {
         log.info("Issuing mDL")
-        val holderKey = holderPubKey(request, expectedCNonce)
+        val holderKeys = request.unvalidatedProofs.map { holderPubKey(it, expectedCNonce) }
         val licence = ensureNotNull(getMobileDrivingLicenceData(authorizationContext)) {
             IssueCredentialError.Unexpected("Unable to fetch mDL data")
         }
-        val cbor = encodeMobileDrivingLicenceInCbor(licence, holderKey)
 
         val notificationId =
             if (notificationsEnabled) generateNotificationId()
             else null
-        storeIssuedCredential(
-            IssuedCredential(
-                format = MSO_MDOC_FORMAT,
-                type = supportedCredential.docType,
-                holder = with(licence.driver) {
-                    "${familyName.latin.value} ${givenName.latin.value}"
-                },
-                holderPublicKey = holderKey.toPublicJWK(),
-                issuedAt = clock.instant(),
-                notificationId = notificationId,
-            ),
-        )
 
-        return CredentialResponse.Issued(JsonPrimitive(cbor), notificationId)
+        val issuedCredentials = holderKeys.map { holderKey ->
+            val cbor = encodeMobileDrivingLicenceInCbor(licence, holderKey)
+            storeIssuedCredential(
+                IssuedCredential(
+                    format = MSO_MDOC_FORMAT,
+                    type = supportedCredential.docType,
+                    holder = with(licence.driver) {
+                        "${familyName.latin.value} ${givenName.latin.value}"
+                    },
+                    holderPublicKey = holderKey.toPublicJWK(),
+                    issuedAt = clock.instant(),
+                    notificationId = notificationId,
+                ),
+            )
+            cbor
+        }
+
+        return CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
             .also {
-                log.info("Successfully issued mDL")
-                log.debug("Issued mDL data {}", it)
+                log.info("Successfully issued mDL(s)")
+                log.debug("Issued mDL(s) data {}", it)
             }
     }
 
     context(Raise<IssueCredentialError>)
-    private fun holderPubKey(request: CredentialRequest, expectedCNonce: CNonce): ECKey {
+    private fun holderPubKey(unvalidatedProof: UnvalidatedProof, expectedCNonce: CNonce): ECKey {
         fun ecKeyOrFail(provider: () -> ECKey) = try {
             provider.invoke()
         } catch (t: Throwable) {
             raise(InvalidProof("Only EC Key is supported"))
         }
-        return when (val key = validateProof(request.unvalidatedProof, expectedCNonce, supportedCredential)) {
+        return when (val key = validateProof(unvalidatedProof, expectedCNonce, supportedCredential)) {
             is CredentialKey.DIDUrl -> ecKeyOrFail { key.jwk.toECKey() }
             is CredentialKey.Jwk -> ecKeyOrFail { key.value.toECKey() }
             is CredentialKey.X5c -> ecKeyOrFail { ECKey.parse(key.certificate) }
