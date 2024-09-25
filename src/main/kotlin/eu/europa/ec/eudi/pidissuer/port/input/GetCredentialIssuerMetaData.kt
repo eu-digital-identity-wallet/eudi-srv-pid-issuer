@@ -164,8 +164,8 @@ private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject = bui
         }
     when (d) {
         is JwtVcJsonCredentialConfiguration -> TODO()
-        is MsoMdocCredentialConfiguration -> d.toTransferObject(false)(this)
-        is SdJwtVcCredentialConfiguration -> d.toTransferObject(false)(this)
+        is MsoMdocCredentialConfiguration -> d.toTransferObject()(this)
+        is SdJwtVcCredentialConfiguration -> d.toTransferObject()(this)
     }
 }
 
@@ -195,46 +195,40 @@ private fun ProofType.toJsonObject(): JsonObject =
     }
 
 @OptIn(ExperimentalSerializationApi::class)
-internal fun MsoMdocCredentialConfiguration.toTransferObject(isOffer: Boolean): JsonObjectBuilder.() -> Unit = {
+internal fun MsoMdocCredentialConfiguration.toTransferObject(): JsonObjectBuilder.() -> Unit = {
     put("doctype", docType)
-    if (!isOffer) {
-        if (display.isNotEmpty()) {
-            putJsonArray("display") {
-                addAll(display.map { it.toTransferObject() })
-            }
+    if (display.isNotEmpty()) {
+        putJsonArray("display") {
+            addAll(display.map { it.toTransferObject() })
         }
-        if (policy != null) {
-            putJsonObject("policy") {
-                put("one_time_use", policy.oneTimeUse)
-                policy.batchSize?.let { put("batch_size", it) }
-            }
+    }
+    if (policy != null) {
+        putJsonObject("policy") {
+            put("one_time_use", policy.oneTimeUse)
+            policy.batchSize?.let { put("batch_size", it) }
         }
+    }
 
-        putJsonObject("claims") {
-            msoClaims.forEach { (nameSpace, attributes) ->
-                putJsonObject(nameSpace) {
-                    attributes.forEach { attribute -> attribute.toTransferObject(this) }
-                }
+    putJsonObject("claims") {
+        msoClaims.forEach { (nameSpace, attributes) ->
+            putJsonObject(nameSpace) {
+                attributes.forEach { attribute -> attribute.toTransferObject(this) }
             }
         }
     }
 }
 
 @OptIn(ExperimentalSerializationApi::class)
-internal fun SdJwtVcCredentialConfiguration.toTransferObject(isOffer: Boolean): JsonObjectBuilder.() -> Unit = {
+internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilder.() -> Unit = {
     put("vct", type.value)
-    if (!isOffer) {
-        if (display.isNotEmpty()) {
-            putJsonArray("display") {
-                addAll(display.map { it.toTransferObject() })
-            }
+    if (display.isNotEmpty()) {
+        putJsonArray("display") {
+            addAll(display.map { it.toTransferObject() })
         }
     }
     put("vct", type.value)
-    if (!isOffer) {
-        putJsonObject("claims") {
-            claims.forEach { attribute -> attribute.toTransferObject(this) }
-        }
+    putJsonObject("claims") {
+        claims.forEach { attribute -> attribute.toTransferObject(this) }
     }
 }
 
