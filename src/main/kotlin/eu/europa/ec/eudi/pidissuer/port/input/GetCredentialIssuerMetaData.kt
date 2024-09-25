@@ -220,7 +220,6 @@ internal fun MsoMdocCredentialConfiguration.toTransferObject(): JsonObjectBuilde
 
 @OptIn(ExperimentalSerializationApi::class)
 internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilder.() -> Unit = {
-    put("vct", type.value)
     if (display.isNotEmpty()) {
         putJsonArray("display") {
             addAll(display.map { it.toTransferObject() })
