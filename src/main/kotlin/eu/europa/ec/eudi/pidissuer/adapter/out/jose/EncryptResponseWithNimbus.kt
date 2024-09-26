@@ -56,10 +56,6 @@ private fun JWTClaimsSet.Builder.credentialOrCredentials(
     credential: JsonElement? = null,
     credentials: JsonArray? = null,
 ) {
-    require((credential != null) xor (credentials != null)) {
-        "exactly one of 'credential' or 'credentials' must be provided"
-    }
-
     credential?.let {
         val value = it.toNimbus()
         claim("credential", value)
