@@ -17,6 +17,8 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
+import arrow.core.raise.ensureNotNull
+import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
@@ -30,6 +32,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
@@ -279,16 +282,19 @@ class IssueMsoMdocPid(
         expectedCNonce: CNonce,
     ): CredentialResponse = coroutineScope {
         log.info("Handling issuance request ...")
-        val holderPubKey = async(Dispatchers.Default) {
-            request.unvalidatedProofs.map { holderPubKey(it, expectedCNonce) }
+        val holderPubKeys = request.unvalidatedProofs.map {
+            async(Dispatchers.Default) {
+                holderPubKey(it, expectedCNonce)
+            }
         }
+
         val pidData = async { getPidData(authorizationContext) }
         val notificationId =
             if (notificationsEnabled) generateNotificationId()
             else null
 
         val (pid, pidMetaData) = pidData.await()
-        val issuedCredentials = holderPubKey.await().map { holderKey ->
+        val issuedCredentials = holderPubKeys.awaitAll().map { holderKey ->
             val cbor = encodePidInCbor(pid, pidMetaData, holderKey).also {
                 log.info("Issued $it")
             }
@@ -305,6 +311,9 @@ class IssueMsoMdocPid(
                 ),
             )
             cbor
+        }.toNonEmptyListOrNull()
+        ensureNotNull(issuedCredentials) {
+            IssueCredentialError.Unexpected("Unable to issue PID")
         }
 
         CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)

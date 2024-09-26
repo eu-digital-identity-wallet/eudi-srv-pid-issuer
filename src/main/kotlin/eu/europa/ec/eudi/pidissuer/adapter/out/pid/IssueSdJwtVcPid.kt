@@ -17,6 +17,8 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
+import arrow.core.raise.ensureNotNull
+import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
@@ -34,6 +36,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
@@ -143,15 +146,18 @@ class IssueSdJwtVcPid(
         expectedCNonce: CNonce,
     ): CredentialResponse = coroutineScope {
         log.info("Handling issuance request ...")
-        val holderPubKeys = async(Dispatchers.Default) {
-            request.unvalidatedProofs.map { holderPubKey(it, expectedCNonce) }
+        val holderPubKeys = request.unvalidatedProofs.map {
+            async(Dispatchers.Default) {
+                holderPubKey(it, expectedCNonce)
+            }
         }
+
         val pidData = async { getPidData(authorizationContext) }
         val (pid, pidMetaData) = pidData.await()
         val notificationId =
             if (notificationsEnabled) generateNotificationId()
             else null
-        val issuedCredentials = holderPubKeys.await().map { holderPubKey ->
+        val issuedCredentials = holderPubKeys.awaitAll().map { holderPubKey ->
             val sdJwt = encodePidInSdJwt.invoke(pid, pidMetaData, holderPubKey)
             storeIssuedCredential(
                 IssuedCredential(
@@ -166,6 +172,9 @@ class IssueSdJwtVcPid(
                 ),
             )
             sdJwt
+        }.toNonEmptyListOrNull()
+        ensureNotNull(issuedCredentials) {
+            IssueCredentialError.Unexpected("Unable to issue PID")
         }
 
         CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)

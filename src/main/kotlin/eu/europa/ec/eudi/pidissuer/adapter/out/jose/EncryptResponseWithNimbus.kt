@@ -33,10 +33,42 @@ import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptDeferredResponse
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import java.time.Clock
 import java.time.Instant
 import java.util.*
+
+/**
+ * Converts this [JsonElement] to its Nimbus representation.
+ */
+private fun JsonElement.toNimbus(): Any =
+    when (this) {
+        is JsonPrimitive -> content
+        else -> JSONObjectUtils.parse(Json.encodeToString(this))
+    }
+
+/**
+ * Populates either the 'credential' or 'credentials' claim.
+ */
+private fun JWTClaimsSet.Builder.credentialOrCredentials(
+    credential: JsonElement? = null,
+    credentials: JsonArray? = null,
+) {
+    require((credential != null) xor (credentials != null)) {
+        "exactly one of 'credential' or 'credentials' must be provided"
+    }
+
+    credential?.let {
+        val value = it.toNimbus()
+        claim("credential", value)
+    }
+    credentials?.let {
+        val value = it.map { credential -> credential.toNimbus() }
+        claim("credentials", value)
+    }
+}
 
 /**
  * Implementation of [EncryptDeferredResponse] using Nimbus.
@@ -54,10 +86,7 @@ class EncryptDeferredResponseNimbus(
     ): Result<DeferredCredentialSuccessResponse.EncryptedJwtIssued> = runCatching {
         fun JWTClaimsSet.Builder.toJwtClaims(plain: DeferredCredentialSuccessResponse.PlainTO) {
             with(plain) {
-                val value: Any =
-                    if (credential is JsonPrimitive) credential.content
-                    else JSONObjectUtils.parse(Json.encodeToString(credential))
-                claim("credential", value)
+                credentialOrCredentials(plain.credential, plain.credentials)
                 notificationId?.let { claim("notification_id", it) }
             }
         }
@@ -83,12 +112,7 @@ class EncryptCredentialResponseNimbus(
     ): Result<IssueCredentialResponse.EncryptedJwtIssued> = kotlin.runCatching {
         fun JWTClaimsSet.Builder.toJwtClaims(plain: IssueCredentialResponse.PlainTO) {
             with(plain) {
-                this.credential?.let {
-                    val value: Any =
-                        if (it is JsonPrimitive) it.content
-                        else JSONObjectUtils.parse(Json.encodeToString(it))
-                    claim("credential", value)
-                }
+                credentialOrCredentials(plain.credential, plain.credentials)
                 transactionId?.let { claim("transaction_id", it) }
                 claim("c_nonce", nonce)
                 claim("c_nonce_expires_in", nonceExpiresIn)

@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
 import arrow.core.raise.ensureNotNull
+import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
@@ -29,6 +30,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
+import kotlinx.coroutines.*
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.time.Clock
@@ -316,9 +318,13 @@ class IssueMobileDrivingLicence(
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
         expectedCNonce: CNonce,
-    ): CredentialResponse {
+    ): CredentialResponse = coroutineScope {
         log.info("Issuing mDL")
-        val holderKeys = request.unvalidatedProofs.map { holderPubKey(it, expectedCNonce) }
+        val holderKeys = request.unvalidatedProofs.map {
+            async(Dispatchers.Default) {
+                holderPubKey(it, expectedCNonce)
+            }
+        }
         val licence = ensureNotNull(getMobileDrivingLicenceData(authorizationContext)) {
             IssueCredentialError.Unexpected("Unable to fetch mDL data")
         }
@@ -327,7 +333,7 @@ class IssueMobileDrivingLicence(
             if (notificationsEnabled) generateNotificationId()
             else null
 
-        val issuedCredentials = holderKeys.map { holderKey ->
+        val issuedCredentials = holderKeys.awaitAll().map { holderKey ->
             val cbor = encodeMobileDrivingLicenceInCbor(licence, holderKey)
             storeIssuedCredential(
                 IssuedCredential(
@@ -342,9 +348,12 @@ class IssueMobileDrivingLicence(
                 ),
             )
             cbor
+        }.toNonEmptyListOrNull()
+        ensureNotNull(issuedCredentials) {
+            IssueCredentialError.Unexpected("Unable to issue mDL")
         }
 
-        return CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
+        CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
             .also {
                 log.info("Successfully issued mDL(s)")
                 log.debug("Issued mDL(s) data {}", it)
