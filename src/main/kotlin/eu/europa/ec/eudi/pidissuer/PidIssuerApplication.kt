@@ -355,8 +355,8 @@ fun beans(clock: Clock) = beans {
     //
     with(InMemoryIssuedCredentialRepository()) {
         bean { GenerateNotificationId.Random }
-        bean { storeIssuedCredential }
-        bean { loadIssuedCredentialByNotificationId }
+        bean { storeIssuedCredentials }
+        bean { loadIssuedCredentialsByNotificationId }
     }
 
     //
@@ -389,7 +389,7 @@ fun beans(clock: Clock) = beans {
                             ?: true,
                         generateNotificationId = ref(),
                         clock = clock,
-                        storeIssuedCredential = ref(),
+                        storeIssuedCredentials = ref(),
                     )
                     add(issueMsoMdocPid)
                 }
@@ -419,7 +419,7 @@ fun beans(clock: Clock) = beans {
                         notificationsEnabled = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled")
                             ?: true,
                         generateNotificationId = ref(),
-                        storeIssuedCredential = ref(),
+                        storeIssuedCredentials = ref(),
                     )
 
                     val deferred = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.deferred") ?: false
@@ -437,7 +437,7 @@ fun beans(clock: Clock) = beans {
                         notificationsEnabled = env.getProperty<Boolean>("issuer.mdl.notifications.enabled") ?: true,
                         generateNotificationId = ref(),
                         clock = clock,
-                        storeIssuedCredential = ref(),
+                        storeIssuedCredentials = ref(),
                     )
                     add(mdlIssuer)
                 }

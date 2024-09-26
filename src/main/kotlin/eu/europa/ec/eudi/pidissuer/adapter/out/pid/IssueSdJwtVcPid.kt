@@ -32,7 +32,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -119,7 +119,7 @@ class IssueSdJwtVcPid(
     private val calculateNotUseBefore: TimeDependant<Instant>?,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
-    private val storeIssuedCredential: StoreIssuedCredential,
+    private val storeIssuedCredentials: StoreIssuedCredentials,
 ) : IssueSpecificCredential {
 
     private val validateProof = ValidateProof(credentialIssuerId)
@@ -159,25 +159,26 @@ class IssueSdJwtVcPid(
             else null
         val issuedCredentials = holderPubKeys.awaitAll().map { holderPubKey ->
             val sdJwt = encodePidInSdJwt.invoke(pid, pidMetaData, holderPubKey)
-            storeIssuedCredential(
-                IssuedCredential(
-                    format = SD_JWT_VC_FORMAT,
-                    type = supportedCredential.type.value,
-                    holder = with(pid) {
-                        "${familyName.value} ${givenName.value}"
-                    },
-                    holderPublicKey = holderPubKey.toPublicJWK(),
-                    issuedAt = clock.instant(),
-                    notificationId = notificationId,
-                ),
-            )
-            sdJwt
+            sdJwt to holderPubKey.toPublicJWK()
         }.toNonEmptyListOrNull()
         ensureNotNull(issuedCredentials) {
             IssueCredentialError.Unexpected("Unable to issue PID")
         }
 
-        CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
+        storeIssuedCredentials(
+            IssuedCredentials(
+                format = SD_JWT_VC_FORMAT,
+                type = supportedCredential.type.value,
+                holder = with(pid) {
+                    "${familyName.value} ${givenName.value}"
+                },
+                holderPublicKeys = issuedCredentials.map { it.second },
+                issuedAt = clock.instant(),
+                notificationId = notificationId,
+            ),
+        )
+
+        CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it.first) }, notificationId)
             .also {
                 log.info("Successfully issued PIDs")
                 log.debug("Issued PIDs data {}", it)

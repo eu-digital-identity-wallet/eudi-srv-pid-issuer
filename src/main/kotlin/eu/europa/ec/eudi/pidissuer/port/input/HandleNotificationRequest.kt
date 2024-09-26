@@ -17,7 +17,7 @@ package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.Either
 import eu.europa.ec.eudi.pidissuer.domain.NotificationId
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadIssuedCredentialByNotificationId
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadIssuedCredentialsByNotificationId
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -93,7 +93,7 @@ private val log = LoggerFactory.getLogger(HandleNotificationRequest::class.java)
  * Handles an incoming Notification Request.
  */
 class HandleNotificationRequest(
-    private val loadIssuedCredentialByNotificationId: LoadIssuedCredentialByNotificationId,
+    private val loadIssuedCredentialsByNotificationId: LoadIssuedCredentialsByNotificationId,
 ) {
     suspend operator fun invoke(requestBody: JsonElement): NotificationResponse =
         Either.catch { Json.decodeFromJsonElement<NotificationRequestTO>(requestBody) }
@@ -101,10 +101,10 @@ class HandleNotificationRequest(
                 ifLeft = { NotificationResponse.NotificationErrorResponseTO(ErrorTypeTO.InvalidNotificationRequest) },
                 ifRight = { notificationRequest ->
                     val notificationId = NotificationId(notificationRequest.notificationId)
-                    val credential = loadIssuedCredentialByNotificationId(notificationId)
+                    val credentials = loadIssuedCredentialsByNotificationId(notificationId)
 
-                    credential?.let {
-                        log.info("Received Notification Request '$notificationRequest' for Credential '$it'")
+                    credentials?.let {
+                        log.info("Received Notification Request '$notificationRequest' for Credentials '$it'")
                         NotificationResponse.Success
                     } ?: NotificationResponse.NotificationErrorResponseTO(ErrorTypeTO.InvalidNotificationId)
                 },

@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import arrow.core.NonEmptyList
 import com.nimbusds.jose.jwk.JWK
 import org.slf4j.LoggerFactory
 import java.net.MalformedURLException
@@ -105,13 +106,13 @@ sealed interface CryptographicBindingMethod {
 }
 
 /**
- * A credential that was issued by a specific issuing service.
+ * Credential that have issued by a specific issuing service.
  */
-data class IssuedCredential(
+data class IssuedCredentials(
     val format: Format,
     val type: String,
     val holder: String,
-    val holderPublicKey: JWK,
+    val holderPublicKeys: NonEmptyList<JWK>,
     val issuedAt: Instant,
     val notificationId: NotificationId? = null,
 )

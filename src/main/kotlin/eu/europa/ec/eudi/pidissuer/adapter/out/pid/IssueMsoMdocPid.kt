@@ -29,7 +29,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -264,7 +264,7 @@ class IssueMsoMdocPid(
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val clock: Clock,
-    private val storeIssuedCredential: StoreIssuedCredential,
+    private val storeIssuedCredentials: StoreIssuedCredentials,
 ) : IssueSpecificCredential {
 
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
@@ -298,25 +298,26 @@ class IssueMsoMdocPid(
             val cbor = encodePidInCbor(pid, pidMetaData, holderKey).also {
                 log.info("Issued $it")
             }
-            storeIssuedCredential(
-                IssuedCredential(
-                    format = MSO_MDOC_FORMAT,
-                    type = supportedCredential.docType,
-                    holder = with(pid) {
-                        "${familyName.value} ${givenName.value}"
-                    },
-                    holderPublicKey = holderKey.toPublicJWK(),
-                    issuedAt = clock.instant(),
-                    notificationId = notificationId,
-                ),
-            )
-            cbor
+            cbor to holderKey.toPublicJWK()
         }.toNonEmptyListOrNull()
         ensureNotNull(issuedCredentials) {
             IssueCredentialError.Unexpected("Unable to issue PID")
         }
 
-        CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
+        storeIssuedCredentials(
+            IssuedCredentials(
+                format = MSO_MDOC_FORMAT,
+                type = supportedCredential.docType,
+                holder = with(pid) {
+                    "${familyName.value} ${givenName.value}"
+                },
+                holderPublicKeys = issuedCredentials.map { it.second },
+                issuedAt = clock.instant(),
+                notificationId = notificationId,
+            ),
+        )
+
+        CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it.first) }, notificationId)
             .also {
                 log.info("Successfully issued PIDs")
                 log.debug("Issued PIDs data {}", it)
