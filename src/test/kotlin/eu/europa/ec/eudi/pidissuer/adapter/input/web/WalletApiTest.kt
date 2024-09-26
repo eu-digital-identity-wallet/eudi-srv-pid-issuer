@@ -311,6 +311,51 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
     }
 
     /**
+     * Verifies that when both 'proof' and 'proofs' is provided in credential request, issuance fails.
+     */
+    @Test
+    fun `fails when both proof and proofs is provided`() = runTest {
+        val authentication = dPoPTokenAuthentication(clock = clock)
+        val previousCNonce = generateCNonce(authentication.accessToken.toAuthorizationHeader(), clock)
+        cNonceRepository.upsertCNonce(previousCNonce)
+
+        val key = ECKeyGenerator(Curve.P_256).generate()
+        val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, key) {
+            jwk(key.toPublicJWK())
+        }
+        val proofs = jwtProofs(credentialIssuerMetadata.id, clock, previousCNonce, key) {
+            jwk(key.toPublicJWK())
+        }
+
+        val response = client()
+            .mutateWith(mockAuthentication(authentication))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(requestByFormat(proof = proof, proofs = proofs))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest
+            .expectBody<IssueCredentialResponse.FailedTO>()
+            .returnResult()
+            .let { assertNotNull(it.responseBody) }
+
+        val newCNonce =
+            checkNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
+        assertNotEquals(previousCNonce, newCNonce)
+
+        assertEquals(
+            IssueCredentialResponse.FailedTO(
+                CredentialErrorTypeTo.INVALID_PROOF,
+                "Only one of `proof` or `proofs` is allowed",
+                newCNonce.nonce,
+                newCNonce.expiresIn.toSeconds(),
+            ),
+            response,
+        )
+    }
+
+    /**
      * Verifies issuance success.
      * Creates a CNonce value before doing the request.
      * Does the request.
@@ -466,7 +511,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByFormat(proof, encryptionParameters))
+            .bodyValue(requestByFormat(proof = proof, credentialResponseEncryption = encryptionParameters))
             .accept(MediaType.parseMediaType("application/jwt"))
             .exchange()
             .expectStatus().isOk()
@@ -555,7 +600,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByCredentialIdentifier(proof, encryptionParameters))
+            .bodyValue(requestByCredentialIdentifier(proof = proof, credentialResponseEncryption = encryptionParameters))
             .accept(MediaType.parseMediaType("application/jwt"))
             .exchange()
             .expectStatus().isOk()
@@ -616,22 +661,26 @@ private fun dPoPTokenAuthentication(
 
 private fun requestByFormat(
     proof: ProofTo? = ProofTo(type = ProofTypeTO.JWT, jwt = "123456"),
+    proofs: ProofsTO? = null,
     credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
 ): CredentialRequestTO =
     CredentialRequestTO(
         format = FormatTO.MsoMdoc,
         docType = "eu.europa.ec.eudi.pid.1",
         proof = proof,
+        proofs = proofs,
         credentialResponseEncryption = credentialResponseEncryption,
     )
 
 private fun requestByCredentialIdentifier(
     proof: ProofTo? = ProofTo(type = ProofTypeTO.JWT, jwt = "123456"),
+    proofs: ProofsTO? = null,
     credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
 ): CredentialRequestTO =
     CredentialRequestTO(
         credentialIdentifier = "eu.europa.ec.eudi.pid_mso_mdoc",
         proof = proof,
+        proofs = proofs,
         credentialResponseEncryption = credentialResponseEncryption,
     )
 
@@ -662,4 +711,26 @@ private fun jwtProof(
     jwt.sign(ECDSASigner(key))
 
     return ProofTo(type = ProofTypeTO.JWT, jwt = jwt.serialize())
+}
+
+private fun jwtProofs(
+    audience: CredentialIssuerId,
+    clock: Clock,
+    nonce: CNonce,
+    key: ECKey,
+    headerCustomizer: JWSHeader.Builder.() -> Unit = { },
+): ProofsTO {
+    val header = JWSHeader.Builder(JWSAlgorithm.ES256)
+        .type(JOSEObjectType("openid4vci-proof+jwt"))
+        .apply(headerCustomizer)
+        .build()
+    val claims = JWTClaimsSet.Builder()
+        .audience(audience.externalForm)
+        .issueTime(Date.from(clock.instant()))
+        .claim("nonce", nonce.nonce)
+        .build()
+    val jwt = SignedJWT(header, claims)
+    jwt.sign(ECDSASigner(key))
+
+    return ProofsTO(jwtProofs = listOf(jwt.serialize()))
 }
