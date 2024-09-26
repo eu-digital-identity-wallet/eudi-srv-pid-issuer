@@ -90,9 +90,7 @@ data class CredentialIssuerDisplay(
  * @param credentialEndPoint URL of the Credential Issuer's Credential Endpoint.
  * This URL MUST use the https scheme and MAY contain port, path,
  * and query parameter components
- * @param batchCredentialEndpoint URL of the Credential Issuer's Batch Credential Endpoint.
- * This URL MUST use the https scheme and MAY contain port, path, and query parameter components.
- * If omitted, the Credential Issuer does not support the Batch Credential Endpoint
+ * @param batchCredentialIssuance whether the credential endpoint supports batch issuance or not
  * @param deferredCredentialEndpoint  URL of the Credential Issuer's
  * Deferred Credential Endpoint. This URL MUST use the https scheme and MAY contain port, path,
  * and query parameter components.
@@ -109,7 +107,7 @@ data class CredentialIssuerMetaData(
     val id: CredentialIssuerId,
     val authorizationServers: List<HttpsUrl>,
     val credentialEndPoint: HttpsUrl,
-    val batchCredentialEndpoint: HttpsUrl? = null,
+    val batchCredentialIssuance: BatchCredentialIssuance,
     val deferredCredentialEndpoint: HttpsUrl? = null,
     val notificationEndpoint: HttpsUrl? = null,
     val credentialResponseEncryption: CredentialResponseEncryption,
@@ -118,4 +116,24 @@ data class CredentialIssuerMetaData(
 ) {
     val credentialConfigurationsSupported: List<CredentialConfiguration>
         get() = specificCredentialIssuers.map { it.supportedCredential }
+}
+
+/**
+ * Indicates whether the Credential Endpoint can support batch issuance or not.
+ */
+sealed interface BatchCredentialIssuance {
+
+    /**
+     * Batch credential issuance is not supported.
+     */
+    data object NotSupported : BatchCredentialIssuance
+
+    /**
+     * Batch credential issuance is supported.
+     */
+    data class Supported(val batchSize: Int) : BatchCredentialIssuance {
+        init {
+            require(batchSize > 0) { "Batch size must be greater than 0" }
+        }
+    }
 }

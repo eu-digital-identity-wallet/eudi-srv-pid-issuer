@@ -37,14 +37,14 @@ data class CredentialIssuerMetaDataTO(
     val authorizationServers: List<String>? = null,
     @Required @SerialName("credential_endpoint")
     val credentialEndpoint: String,
-    @SerialName("batch_credential_endpoint")
-    val batchCredentialEndpoint: String? = null,
     @SerialName("deferred_credential_endpoint")
     val deferredCredentialEndpoint: String? = null,
     @SerialName("notification_endpoint")
     val notificationEndpoint: String? = null,
     @SerialName("credential_response_encryption")
     val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
+    @SerialName("batch_credential_issuance")
+    val batchCredentialIssuance: BatchCredentialIssuanceTO? = null,
     @SerialName("credential_identifiers_supported")
     val credentialIdentifiersSupported: Boolean? = null,
     @SerialName("signed_metadata")
@@ -63,6 +63,11 @@ data class CredentialIssuerMetaDataTO(
         val encryptionMethods: List<String>,
         @Required @SerialName("encryption_required")
         val required: Boolean,
+    )
+
+    @Serializable
+    data class BatchCredentialIssuanceTO(
+        @Required @SerialName("batch_size") val batchSize: Int,
     )
 }
 
@@ -88,10 +93,13 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
     credentialIssuer = id.externalForm,
     authorizationServers = authorizationServers.map { it.externalForm },
     credentialEndpoint = credentialEndPoint.externalForm,
-    batchCredentialEndpoint = batchCredentialEndpoint?.externalForm,
     deferredCredentialEndpoint = deferredCredentialEndpoint?.externalForm,
     notificationEndpoint = notificationEndpoint?.externalForm,
     credentialResponseEncryption = credentialResponseEncryption.toTransferObject().getOrNull(),
+    batchCredentialIssuance = when (batchCredentialIssuance) {
+        BatchCredentialIssuance.NotSupported -> null
+        is BatchCredentialIssuance.Supported -> CredentialIssuerMetaDataTO.BatchCredentialIssuanceTO(batchCredentialIssuance.batchSize)
+    },
     credentialIdentifiersSupported = true,
     signedMetadata = null,
     display = display.map { it.toTransferObject() }.takeIf { it.isNotEmpty() },

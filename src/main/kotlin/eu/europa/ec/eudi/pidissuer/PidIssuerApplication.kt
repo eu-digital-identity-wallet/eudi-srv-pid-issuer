@@ -442,6 +442,15 @@ fun beans(clock: Clock) = beans {
                     add(mdlIssuer)
                 }
             },
+            batchCredentialIssuance = run {
+                val enabled = env.getProperty<Boolean>("issuer.credentialEndpoint.batchIssuance.enabled") ?: true
+                if (enabled) {
+                    val batchSize = env.getProperty<Int>("issuer.credentialEndpoint.batchIssuance.batchSize") ?: 10
+                    BatchCredentialIssuance.Supported(batchSize)
+                } else {
+                    BatchCredentialIssuance.NotSupported
+                }
+            },
         )
     }
 

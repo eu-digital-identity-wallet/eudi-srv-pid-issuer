@@ -267,6 +267,14 @@ Variable: `ISSUER_DPOP_REALM`
 Description: Realm to report in the WWW-Authenticate header in case of DPoP authentication/authorization failure         
 Default value: `pid-issuer`
 
+Variable: `ISSUER_CREDENTIALENDPOINT_BATCHISSUANCE_ENABLED`  
+Description: Whether to enable batch issuance support in the credential endpoint         
+Default value: `true`
+
+Variable: `ISSUER_CREDENTIALENDPOINT_BATCHISSUANCE_BATCHSIZE`  
+Description: Maximum length of `proofs` array supported by credential endpoint when batch issuance support is enabled          
+Default value: `10`
+
 ### Signing Key
 
 When either PID issuance in SD-JWT is enabled, or the internal MSO MDoc encoder is used, an EC Key is required 

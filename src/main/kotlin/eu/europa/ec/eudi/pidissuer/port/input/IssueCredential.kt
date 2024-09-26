@@ -317,7 +317,10 @@ class IssueCredential(
     ): IssueCredentialResponse = coroutineScope {
         either {
             log.info("Handling issuance request for ${credentialRequestTO.format}..")
-            val unresolvedRequest = credentialRequestTO.toDomain(credentialIssuerMetadata.credentialResponseEncryption)
+            val unresolvedRequest = credentialRequestTO.toDomain(
+                credentialIssuerMetadata.credentialResponseEncryption,
+                credentialIssuerMetadata.batchCredentialIssuance,
+            )
             val (request, credentialIdentifier) =
                 when (unresolvedRequest) {
                     is UnresolvedCredentialRequest.ByFormat ->
@@ -428,13 +431,26 @@ private sealed interface UnresolvedCredentialRequest {
     ) : UnresolvedCredentialRequest
 }
 
+private val BatchCredentialIssuance.maxProofsSupported: Int
+    get() = when (this) {
+        BatchCredentialIssuance.NotSupported -> 1
+        is BatchCredentialIssuance.Supported -> batchSize
+    }
+
 /**
  * Tries to convert a [CredentialRequestTO] to a [CredentialRequest].
  */
 context(Raise<IssueCredentialError>)
 private fun CredentialRequestTO.toDomain(
-    supported: CredentialResponseEncryption,
+    supportedEncryption: CredentialResponseEncryption,
+    supportedBatchIssuance: BatchCredentialIssuance,
 ): UnresolvedCredentialRequest {
+    if (supportedBatchIssuance is BatchCredentialIssuance.NotSupported) {
+        ensure(proofs == null) {
+            InvalidProof("Credential Endpoint does not support Batch Issuance")
+        }
+    }
+
     val proofs =
         when {
             proof != null && proofs == null -> nonEmptyListOf(proof.toDomain())
@@ -453,10 +469,13 @@ private fun CredentialRequestTO.toDomain(
             proof != null && proofs != null -> raise(InvalidProof("Only one of `proof` or `proofs` is allowed"))
             else -> raise(MissingProof)
         }
+    ensure(proofs.size <= supportedBatchIssuance.maxProofsSupported) {
+        InvalidProof("You can provide at most '${supportedBatchIssuance.maxProofsSupported}' proofs")
+    }
 
     val credentialResponseEncryption =
         credentialResponseEncryption?.toDomain() ?: RequestedResponseEncryption.NotRequired
-    credentialResponseEncryption.ensureIsSupported(supported)
+    credentialResponseEncryption.ensureIsSupported(supportedEncryption)
 
     fun credentialRequestByFormat(format: FormatTO): UnresolvedCredentialRequest.ByFormat =
         when (format) {
@@ -609,6 +628,7 @@ fun CredentialResponse.toTO(nonce: CNonce): IssueCredentialResponse.PlainTO = wh
                 nonceExpiresIn = nonce.expiresIn.toSeconds(),
                 notificationId = notificationId?.value,
             )
+
             else -> IssueCredentialResponse.PlainTO.multiple(
                 credentials = JsonArray(credentials),
                 nonce = nonce.nonce,
