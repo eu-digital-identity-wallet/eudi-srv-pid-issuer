@@ -530,7 +530,6 @@ fun beans(clock: Clock) = beans {
                 authorize(WalletApi.DEFERRED_ENDPOINT, hasAnyAuthority(*scopes.toTypedArray()))
                 authorize(WalletApi.NOTIFICATION_ENDPOINT, hasAnyAuthority(*scopes.toTypedArray()))
                 authorize(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, permitAll)
-                authorize(MetaDataApi.WELL_KNOWN_JWKS, permitAll)
                 authorize(MetaDataApi.WELL_KNOWN_JWT_VC_ISSUER, permitAll)
                 authorize(MetaDataApi.PUBLIC_KEYS, permitAll)
                 authorize(IssuerUi.GENERATE_CREDENTIALS_OFFER, permitAll)
