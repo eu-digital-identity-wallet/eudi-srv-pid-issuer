@@ -19,6 +19,7 @@ import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.MsoMdocSigner
 import eu.europa.ec.eudi.pidissuer.domain.AttributeDetails
+import eu.europa.ec.eudi.pidissuer.domain.MsoDocType
 import id.walt.mdoc.dataelement.DataElement
 import id.walt.mdoc.dataelement.toDataElement
 import id.walt.mdoc.doc.MDocBuilder
@@ -28,16 +29,16 @@ import kotlin.time.Duration
 
 internal class DefaultEncodePidInCbor(
     clock: Clock,
-    issuerSigningKey:
-        IssuerSigningKey,
+    issuerSigningKey: IssuerSigningKey,
     validityDuration: Duration,
+    docType: MsoDocType,
 ) : EncodePidInCbor {
 
     private val signer = MsoMdocSigner<Pair<Pid, PidMetaData>>(
         clock = clock,
         issuerSigningKey = issuerSigningKey,
         validityDuration = validityDuration,
-        docType = PidMsoMdocV1.docType,
+        docType = docType,
     ) { (pid, pidMetaData) ->
         addItemsToSign(pid)
         addItemsToSign(pidMetaData)

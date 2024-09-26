@@ -272,7 +272,9 @@ val MobileDrivingLicenceDisplay: List<CredentialDisplay> = listOf(
     ),
 )
 
-val MobileDrivingLicenceV1: MsoMdocCredentialConfiguration =
+internal fun mobileDrivingLicenceV1(
+    batchCredentialIssuance: BatchCredentialIssuance,
+): MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
         id = CredentialConfigurationId(MobileDrivingLicenceV1Scope.value),
         docType = mdlDocType(1u),
@@ -288,7 +290,10 @@ val MobileDrivingLicenceV1: MsoMdocCredentialConfiguration =
                 ),
             ),
         ),
-        policy = MsoMdocPolicy(oneTimeUse = false, batchSize = 2),
+        policy = when (batchCredentialIssuance) {
+            BatchCredentialIssuance.NotSupported -> MsoMdocPolicy(oneTimeUse = false)
+            is BatchCredentialIssuance.Supported -> MsoMdocPolicy(oneTimeUse = false, batchSize = batchCredentialIssuance.batchSize)
+        },
     )
 
 /**
@@ -302,11 +307,8 @@ class IssueMobileDrivingLicence(
     private val generateNotificationId: GenerateNotificationId,
     private val clock: Clock,
     private val storeIssuedCredentials: StoreIssuedCredentials,
+    override val supportedCredential: MsoMdocCredentialConfiguration,
 ) : IssueSpecificCredential {
-
-    override val supportedCredential: MsoMdocCredentialConfiguration
-        get() = MobileDrivingLicenceV1
-
     override val publicKey: JWK?
         get() = null
 
