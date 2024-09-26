@@ -104,7 +104,7 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
     signedMetadata = null,
     display = display.map { it.toTransferObject() }.takeIf { it.isNotEmpty() },
     credentialConfigurationsSupported = JsonObject(
-        credentialConfigurationsSupported.associate { it.id.value to credentialMetaDataJson(it) },
+        credentialConfigurationsSupported.associate { it.id.value to credentialMetaDataJson(it, batchCredentialIssuance) },
     ),
 )
 
@@ -147,7 +147,10 @@ private fun CredentialConfiguration.format(): Format = when (this) {
 }
 
 @OptIn(ExperimentalSerializationApi::class)
-private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject = buildJsonObject {
+private fun credentialMetaDataJson(
+    d: CredentialConfiguration,
+    batchCredentialIssuance: BatchCredentialIssuance,
+): JsonObject = buildJsonObject {
     put("format", d.format().value)
     d.scope?.value?.let { put("scope", it) }
     d.cryptographicBindingMethodsSupported.takeIf { it.isNotEmpty() }
@@ -172,7 +175,7 @@ private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject = bui
         }
     when (d) {
         is JwtVcJsonCredentialConfiguration -> TODO()
-        is MsoMdocCredentialConfiguration -> d.toTransferObject()(this)
+        is MsoMdocCredentialConfiguration -> d.toTransferObject(batchCredentialIssuance)(this)
         is SdJwtVcCredentialConfiguration -> d.toTransferObject()(this)
     }
 }
@@ -203,7 +206,9 @@ private fun ProofType.toJsonObject(): JsonObject =
     }
 
 @OptIn(ExperimentalSerializationApi::class)
-internal fun MsoMdocCredentialConfiguration.toTransferObject(): JsonObjectBuilder.() -> Unit = {
+internal fun MsoMdocCredentialConfiguration.toTransferObject(
+    batchCredentialIssuance: BatchCredentialIssuance,
+): JsonObjectBuilder.() -> Unit = {
     put("doctype", docType)
     if (display.isNotEmpty()) {
         putJsonArray("display") {
@@ -213,7 +218,9 @@ internal fun MsoMdocCredentialConfiguration.toTransferObject(): JsonObjectBuilde
     if (policy != null) {
         putJsonObject("policy") {
             put("one_time_use", policy.oneTimeUse)
-            policy.batchSize?.let { put("batch_size", it) }
+            if (batchCredentialIssuance is BatchCredentialIssuance.Supported) {
+                put("batch_size", batchCredentialIssuance.batchSize)
+            }
         }
     }
 

@@ -288,7 +288,7 @@ val MobileDrivingLicenceV1: MsoMdocCredentialConfiguration =
                 ),
             ),
         ),
-        policy = MsoMdocPolicy(oneTimeUse = false, batchSize = 2),
+        policy = MsoMdocPolicy(oneTimeUse = false),
     )
 
 /**

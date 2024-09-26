@@ -20,7 +20,6 @@ import arrow.core.raise.Raise
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import com.nimbusds.jose.JWSAlgorithm
-import kotlinx.serialization.SerialName
 
 //
 // Credential MetaData
@@ -33,10 +32,7 @@ const val MSO_MDOC_FORMAT_VALUE = "mso_mdoc"
 val MSO_MDOC_FORMAT = Format(MSO_MDOC_FORMAT_VALUE)
 typealias MsoClaims = Map<MsoNameSpace, List<AttributeDetails>>
 
-data class MsoMdocPolicy(
-    @SerialName("one_time_use") val oneTimeUse: Boolean,
-    @SerialName("batch_size") val batchSize: Int? = null,
-)
+data class MsoMdocPolicy(val oneTimeUse: Boolean)
 
 /**
  * @param docType string identifying the credential type as defined in ISO.18013-5.
