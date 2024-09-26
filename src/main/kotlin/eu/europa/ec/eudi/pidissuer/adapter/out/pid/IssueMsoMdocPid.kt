@@ -227,9 +227,7 @@ private val pidAttributes = PidMsoMdocNamespace to listOf(
     IssuingJurisdictionAttribute,
 )
 
-internal fun pidMsoMdocV1(
-    batchCredentialIssuance: BatchCredentialIssuance,
-): MsoMdocCredentialConfiguration =
+val PidMsoMdocV1: MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
         id = CredentialConfigurationId(PidMsoMdocScope.value),
         docType = pidDocType(1),
@@ -243,10 +241,7 @@ internal fun pidMsoMdocV1(
                 ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.ES256)),
             ),
         ),
-        policy = when (batchCredentialIssuance) {
-            BatchCredentialIssuance.NotSupported -> MsoMdocPolicy(oneTimeUse = true)
-            is BatchCredentialIssuance.Supported -> MsoMdocPolicy(oneTimeUse = true, batchSize = batchCredentialIssuance.batchSize)
-        },
+        policy = MsoMdocPolicy(oneTimeUse = true),
     )
 
 //
@@ -270,12 +265,13 @@ class IssueMsoMdocPid(
     private val generateNotificationId: GenerateNotificationId,
     private val clock: Clock,
     private val storeIssuedCredentials: StoreIssuedCredentials,
-    override val supportedCredential: MsoMdocCredentialConfiguration,
 ) : IssueSpecificCredential {
 
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
 
     private val validateProof = ValidateProof(credentialIssuerId)
+    override val supportedCredential: MsoMdocCredentialConfiguration
+        get() = PidMsoMdocV1
     override val publicKey: JWK? = null
 
     context(Raise<IssueCredentialError>)

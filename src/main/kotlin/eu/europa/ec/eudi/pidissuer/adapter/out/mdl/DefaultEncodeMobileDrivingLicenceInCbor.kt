@@ -22,7 +22,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.ParameterizedRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.MsoMdocSigner
 import eu.europa.ec.eudi.pidissuer.domain.AttributeDetails
-import eu.europa.ec.eudi.pidissuer.domain.MsoDocType
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import id.walt.mdoc.dataelement.DataElement
 import id.walt.mdoc.dataelement.toDataElement
@@ -35,14 +34,13 @@ class DefaultEncodeMobileDrivingLicenceInCbor(
     clock: Clock,
     issuerSigningKey: IssuerSigningKey,
     validityDuration: Duration,
-    docType: MsoDocType,
 ) : EncodeMobileDrivingLicenceInCbor {
 
     private val signer = MsoMdocSigner<MobileDrivingLicence>(
         clock = clock,
         issuerSigningKey = issuerSigningKey,
         validityDuration = validityDuration,
-        docType = docType,
+        docType = MobileDrivingLicenceV1.docType,
     ) { licence ->
         addItemsToSign(licence)
     }

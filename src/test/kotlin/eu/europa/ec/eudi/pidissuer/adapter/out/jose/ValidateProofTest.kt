@@ -16,12 +16,12 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.raise.either
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidMsoMdocV1
-import eu.europa.ec.eudi.pidissuer.domain.BatchCredentialIssuance
+import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.CNonce
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import java.time.Clock
 import kotlin.test.Test
@@ -29,18 +29,18 @@ import kotlin.test.assertIs
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ValidateProofTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val validateProof = ValidateProof(issuer)
     private val clock = Clock.systemDefaultZone()
-    private val pidMsoMdocV1 = pidMsoMdocV1(BatchCredentialIssuance.NotSupported)
 
     @Test
     internal fun `fails with unsupported proof type`() = runTest {
         val nonce = CNonce("token", "nonce", clock.instant(), 5.minutes.toJavaDuration())
         val proof = UnvalidatedProof.LdpVp("foo")
-        val result = either { validateProof(proof, nonce, pidMsoMdocV1) }
+        val result = either { validateProof(proof, nonce, PidMsoMdocV1) }
         assert(result.isLeft())
         assertIs<IssueCredentialError.InvalidProof>(result.leftOrNull())
     }

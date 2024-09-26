@@ -182,21 +182,6 @@ fun beans(clock: Clock) = beans {
     val enableMsoMdocPid = env.getProperty<Boolean>("issuer.pid.mso_mdoc.enabled") ?: true
     val enableSdJwtVcPid = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.enabled") ?: true
     val credentialsOfferUri = env.getRequiredProperty("issuer.credentialOffer.uri")
-    val batchCredentialIssuance = run {
-        val enabled = env.getProperty<Boolean>("issuer.credentialEndpoint.batchIssuance.enabled") ?: true
-        if (enabled) {
-            val batchSize = env.getProperty<Int>("issuer.credentialEndpoint.batchIssuance.batchSize") ?: 10
-            BatchCredentialIssuance.Supported(batchSize)
-        } else {
-            BatchCredentialIssuance.NotSupported
-        }
-    }
-    val mobileDrivingLicenceV1: MsoMdocCredentialConfiguration by lazy {
-        mobileDrivingLicenceV1(batchCredentialIssuance)
-    }
-    val pidMsoMdocV1: MsoMdocCredentialConfiguration by lazy {
-        pidMsoMdocV1(batchCredentialIssuance)
-    }
 
     //
     // Signing key
@@ -281,7 +266,7 @@ fun beans(clock: Clock) = beans {
         val duration = env.getProperty("issuer.pid.mso_mdoc.encoder.duration")
             ?.let { Duration.parse(it).toKotlinDuration() }
             ?: 30.days
-        DefaultEncodePidInCbor(clock, issuerSigningKey, duration, pidMsoMdocV1.docType)
+        DefaultEncodePidInCbor(clock, issuerSigningKey, duration)
     }
 
     bean {
@@ -293,7 +278,7 @@ fun beans(clock: Clock) = beans {
         val duration = env.getProperty("issuer.mdl.mso_mdoc.encoder.duration")
             ?.let { Duration.parse(it).toKotlinDuration() }
             ?: 5.days
-        DefaultEncodeMobileDrivingLicenceInCbor(clock, issuerSigningKey, duration, mobileDrivingLicenceV1.docType)
+        DefaultEncodeMobileDrivingLicenceInCbor(clock, issuerSigningKey, duration)
     }
 
     bean(::DefaultGenerateQrCode)
@@ -306,8 +291,8 @@ fun beans(clock: Clock) = beans {
                         MsoMdocCredentialRequest(
                             unvalidatedProofs = unvalidatedProofs,
                             credentialResponseEncryption = requestedResponseEncryption,
-                            docType = mobileDrivingLicenceV1.docType,
-                            claims = mobileDrivingLicenceV1.msoClaims.mapValues { entry ->
+                            docType = MobileDrivingLicenceV1.docType,
+                            claims = MobileDrivingLicenceV1.msoClaims.mapValues { entry ->
                                 entry.value.map { attribute -> attribute.name }
                             },
                         )
@@ -320,8 +305,8 @@ fun beans(clock: Clock) = beans {
                         MsoMdocCredentialRequest(
                             unvalidatedProofs = unvalidatedProofs,
                             credentialResponseEncryption = requestedResponseEncryption,
-                            docType = pidMsoMdocV1.docType,
-                            claims = pidMsoMdocV1.msoClaims.mapValues { entry -> entry.value.map { attribute -> attribute.name } },
+                            docType = PidMsoMdocV1.docType,
+                            claims = PidMsoMdocV1.msoClaims.mapValues { entry -> entry.value.map { attribute -> attribute.name } },
                         )
                     }
             }
@@ -405,7 +390,6 @@ fun beans(clock: Clock) = beans {
                         generateNotificationId = ref(),
                         clock = clock,
                         storeIssuedCredentials = ref(),
-                        supportedCredential = pidMsoMdocV1,
                     )
                     add(issueMsoMdocPid)
                 }
@@ -454,12 +438,19 @@ fun beans(clock: Clock) = beans {
                         generateNotificationId = ref(),
                         clock = clock,
                         storeIssuedCredentials = ref(),
-                        supportedCredential = mobileDrivingLicenceV1,
                     )
                     add(mdlIssuer)
                 }
             },
-            batchCredentialIssuance = batchCredentialIssuance,
+            batchCredentialIssuance = run {
+                val enabled = env.getProperty<Boolean>("issuer.credentialEndpoint.batchIssuance.enabled") ?: true
+                if (enabled) {
+                    val batchSize = env.getProperty<Int>("issuer.credentialEndpoint.batchIssuance.batchSize") ?: 10
+                    BatchCredentialIssuance.Supported(batchSize)
+                } else {
+                    BatchCredentialIssuance.NotSupported
+                }
+            },
         )
     }
 
