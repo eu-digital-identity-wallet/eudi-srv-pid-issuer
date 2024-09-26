@@ -28,19 +28,18 @@ and requires the use of a suitable OAUTH2 server.
 
 ### OpenId4VCI coverage
 
-| Feature                                                   | Coverage                                                  |
-|-----------------------------------------------------------|-----------------------------------------------------------|
-| Authorization Code flow                                   | ✅ Using a suitable OAUTH2 server                          |
-| Pre-authorized code flow                                  | ❌                                                         |
-| mso_mdoc format                                           | ✅                                                         |
-| SD-JWT-VC format                                          | ✅ Except revocation list & meta                           |
-| W3C VC DM                                                 | ❌                                                         |
-| Credential Offer                                          | ✅ `authorization_code` , ❌ `pre-authorized_code`          |
-| [Credential Endpoint](#credential-endpoint)               | Yes, including proofs, encryption, repeatable invocations |
-| [Credential Issuer MetaData](#credential-issuer-metadata) | Yes, using `scopes`                                       | 
-| Batch Endpoint                                            | ❌                                                         | 
-| Deferred Endpoint                                         | ✅                                                         |
-| Proof                                                     | ✅ JWT (`jwk`, `x5c`, `did:key`, `did:jwk`)                               |
+| Feature                                                   | Coverage                                                           |
+|-----------------------------------------------------------|--------------------------------------------------------------------|
+| Authorization Code flow                                   | ✅ Using a suitable OAUTH2 server                                   |
+| Pre-authorized code flow                                  | ❌                                                                  |
+| mso_mdoc format                                           | ✅                                                                  |
+| SD-JWT-VC format                                          | ✅ Except revocation list & meta                                    |
+| W3C VC DM                                                 | ❌                                                                  |
+| Credential Offer                                          | ✅ `authorization_code` , ❌ `pre-authorized_code`                   |
+| [Credential Endpoint](#credential-endpoint)               | Yes, including multiple proofs, encryption, repeatable invocations |
+| [Credential Issuer MetaData](#credential-issuer-metadata) | Yes, using `scopes`                                                | 
+| Deferred Endpoint                                         | ✅                                                                  |
+| Proof                                                     | ✅ JWT (`jwk`, `x5c`, `did:key`, `did:jwk`)                         |
 
 ## How to use docker
 
@@ -276,15 +275,17 @@ for signing the issued credentials.
 By default, the server generates a random EC Key alongside a self-signed certificate using the *P-256/secp256r1* 
 curve on startup. If the server is restarted, a new EC Key and self-signed certificate is generated.
 
-In case you opt to use your own EC Key and certificate make sure to use an EC Key that uses one of the following curves:
-* *P-256/secp256r1*
-* *P-384/secp384r1*
-* *P-521/secp521r1*
+> [!TIP]
+> In case you opt to use your own EC Key and certificate, 
+> make sure to use an EC Key that uses one of the following curves:
+> - *P-256/secp256r1*
+> - *P-384/secp384r1*
+> - *P-521/secp521r1*
 
-The signing algorithm is determined by the EC Key used. The server will use one of the following signing algorithms:
-* *ES256*
-* *ES384*
-* *ES512*
+The EC Key used determines the signing algorithm. The server will use one of the following signing algorithms:
+- *ES256*
+- *ES384*
+- *ES512*
 
 To generate an EC Key and self-signed certificate using `keytool` you can use the following command:
 
