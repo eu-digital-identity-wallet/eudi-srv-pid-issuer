@@ -15,7 +15,7 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 
 ## Overview
 
-An implementation of a credential issuing service, according to OpenId4VCI - draft13
+An implementation of a credential issuing service, according to OpenId4VCI - draft14
 
 The service provides generic support for `mso_mdoc` and `SD-JWT-VC` formats using PID and mDL as an example
 and requires the use of a suitable OAUTH2 server.
