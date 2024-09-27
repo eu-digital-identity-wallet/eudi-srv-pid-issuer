@@ -2,7 +2,6 @@
 coroutines = "1.8.1"
 kotlin = "2.0.0"
 arrow = "1.2.4"
-foojay = "0.8.0"
 springboot = "3.3.1"
 springDependencyManagement = "1.1.5"
 spotless = "6.25.0"
@@ -11,7 +10,7 @@ kotlinxSerialization = "1.7.1"
 ktlint = "0.50.0"
 nimbusJoseJwt = "9.40"
 nimbusOAuth2 = "11.13"
-eudiSdJwt = "0.5.0"
+eudiSdJwt = "0.6.1"
 bouncyCastle = "1.78.1"
 dependencyCheck = "10.0.3"
 sonarqube = "5.0.0.4638"
@@ -25,10 +24,8 @@ uri-kmp = "0.0.18"
 zxing = "3.5.3"
 
 [libraries]
-kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
-kotlinx-serialization-cbor = { module = "org.jetbrains.kotlinx:kotlinx-serialization-cbor", version.ref = "kotlinxSerialization" }
 arrow-core = { module = "io.arrow-kt:arrow-core", version.ref = "arrow" }
 arrow-fx-coroutines = { module = "io.arrow-kt:arrow-fx-coroutines", version.ref = "arrow" }
 nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbusJoseJwt" }
@@ -45,7 +42,6 @@ uri-kmp = { module = "com.eygraber:uri-kmp", version.ref = "uri-kmp" }
 zxing = { module = "com.google.zxing:javase", version.ref = "zxing" }
 
 [plugins]
-foojay-resolver-convention = { id = "org.gradle.toolchains.foojay-resolver-convention", version.ref = "foojay" }
 spring-boot = { id = "org.springframework.boot", version.ref = "springboot" }
 spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "springDependencyManagement" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
