@@ -287,9 +287,9 @@ fun beans(clock: Clock) = beans {
         val resolvers = buildMap<CredentialIdentifier, CredentialRequestFactory> {
             if (enableMobileDrivingLicence) {
                 this[CredentialIdentifier(MobileDrivingLicenceV1Scope.value)] =
-                    { unvalidatedProof, requestedResponseEncryption ->
+                    { unvalidatedProofs, requestedResponseEncryption ->
                         MsoMdocCredentialRequest(
-                            unvalidatedProof = unvalidatedProof,
+                            unvalidatedProofs = unvalidatedProofs,
                             credentialResponseEncryption = requestedResponseEncryption,
                             docType = MobileDrivingLicenceV1.docType,
                             claims = MobileDrivingLicenceV1.msoClaims.mapValues { entry ->
@@ -301,9 +301,9 @@ fun beans(clock: Clock) = beans {
 
             if (enableMsoMdocPid) {
                 this[CredentialIdentifier(PidMsoMdocScope.value)] =
-                    { unvalidatedProof, requestedResponseEncryption ->
+                    { unvalidatedProofs, requestedResponseEncryption ->
                         MsoMdocCredentialRequest(
-                            unvalidatedProof = unvalidatedProof,
+                            unvalidatedProofs = unvalidatedProofs,
                             credentialResponseEncryption = requestedResponseEncryption,
                             docType = PidMsoMdocV1.docType,
                             claims = PidMsoMdocV1.msoClaims.mapValues { entry -> entry.value.map { attribute -> attribute.name } },
@@ -315,9 +315,9 @@ fun beans(clock: Clock) = beans {
                 val signingAlgorithm = ref<IssuerSigningKey>().signingAlgorithm
                 pidSdJwtVcV1(signingAlgorithm).let { sdJwtVcPid ->
                     this[CredentialIdentifier(PidSdJwtVcScope.value)] =
-                        { unvalidatedProof, requestedResponseEncryption ->
+                        { unvalidatedProofs, requestedResponseEncryption ->
                             SdJwtVcCredentialRequest(
-                                unvalidatedProof = unvalidatedProof,
+                                unvalidatedProofs = unvalidatedProofs,
                                 credentialResponseEncryption = requestedResponseEncryption,
                                 type = sdJwtVcPid.type,
                                 claims = sdJwtVcPid.claims.map { it.name }.toSet(),
@@ -355,8 +355,8 @@ fun beans(clock: Clock) = beans {
     //
     with(InMemoryIssuedCredentialRepository()) {
         bean { GenerateNotificationId.Random }
-        bean { storeIssuedCredential }
-        bean { loadIssuedCredentialByNotificationId }
+        bean { storeIssuedCredentials }
+        bean { loadIssuedCredentialsByNotificationId }
     }
 
     //
@@ -389,7 +389,7 @@ fun beans(clock: Clock) = beans {
                             ?: true,
                         generateNotificationId = ref(),
                         clock = clock,
-                        storeIssuedCredential = ref(),
+                        storeIssuedCredentials = ref(),
                     )
                     add(issueMsoMdocPid)
                 }
@@ -419,7 +419,7 @@ fun beans(clock: Clock) = beans {
                         notificationsEnabled = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled")
                             ?: true,
                         generateNotificationId = ref(),
-                        storeIssuedCredential = ref(),
+                        storeIssuedCredentials = ref(),
                     )
 
                     val deferred = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.deferred") ?: false
@@ -437,9 +437,18 @@ fun beans(clock: Clock) = beans {
                         notificationsEnabled = env.getProperty<Boolean>("issuer.mdl.notifications.enabled") ?: true,
                         generateNotificationId = ref(),
                         clock = clock,
-                        storeIssuedCredential = ref(),
+                        storeIssuedCredentials = ref(),
                     )
                     add(mdlIssuer)
+                }
+            },
+            batchCredentialIssuance = run {
+                val enabled = env.getProperty<Boolean>("issuer.credentialEndpoint.batchIssuance.enabled") ?: true
+                if (enabled) {
+                    val batchSize = env.getProperty<Int>("issuer.credentialEndpoint.batchIssuance.batchSize") ?: 10
+                    BatchCredentialIssuance.Supported(batchSize)
+                } else {
+                    BatchCredentialIssuance.NotSupported
                 }
             },
         )
@@ -521,7 +530,6 @@ fun beans(clock: Clock) = beans {
                 authorize(WalletApi.DEFERRED_ENDPOINT, hasAnyAuthority(*scopes.toTypedArray()))
                 authorize(WalletApi.NOTIFICATION_ENDPOINT, hasAnyAuthority(*scopes.toTypedArray()))
                 authorize(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, permitAll)
-                authorize(MetaDataApi.WELL_KNOWN_JWKS, permitAll)
                 authorize(MetaDataApi.WELL_KNOWN_JWT_VC_ISSUER, permitAll)
                 authorize(MetaDataApi.PUBLIC_KEYS, permitAll)
                 authorize(IssuerUi.GENERATE_CREDENTIALS_OFFER, permitAll)

@@ -15,6 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import arrow.core.NonEmptyList
+import kotlinx.serialization.json.JsonElement
+
 /**
  * String identifying an issued Credential that the Wallet includes in the Notification Request.
  */
@@ -30,16 +33,16 @@ value class TransactionId(val value: String)
 /**
  * The response to a Credential Request.
  */
-sealed interface CredentialResponse<out T> {
+sealed interface CredentialResponse {
 
     /**
      * An unencrypted Credential has been issued.
      */
-    data class Issued<T>(val credential: T, val notificationId: NotificationId? = null) : CredentialResponse<T>
+    data class Issued(val credentials: NonEmptyList<JsonElement>, val notificationId: NotificationId? = null) : CredentialResponse
 
     /**
      * The issuance of the requested Credential has been deferred.
      * The deferred transaction can be identified by [transactionId].
      */
-    data class Deferred(val transactionId: TransactionId) : CredentialResponse<Nothing>
+    data class Deferred(val transactionId: TransactionId) : CredentialResponse
 }

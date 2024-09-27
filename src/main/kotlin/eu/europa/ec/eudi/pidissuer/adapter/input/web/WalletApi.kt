@@ -76,7 +76,7 @@ class WalletApi(
         return when (val response = issueCredential(context, credentialRequest)) {
             is IssueCredentialResponse.PlainTO ->
                 ServerResponse
-                    .status(response.credential?.let { HttpStatus.OK } ?: HttpStatus.ACCEPTED)
+                    .status(response.transactionId?.let { HttpStatus.ACCEPTED } ?: HttpStatus.OK)
                     .json()
                     .bodyValueAndAwait(response)
 

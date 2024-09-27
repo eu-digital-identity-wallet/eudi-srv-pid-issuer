@@ -17,6 +17,8 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
+import arrow.core.raise.ensureNotNull
+import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
@@ -27,11 +29,11 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.time.Clock
@@ -262,8 +264,8 @@ class IssueMsoMdocPid(
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val clock: Clock,
-    private val storeIssuedCredential: StoreIssuedCredential,
-) : IssueSpecificCredential<JsonElement> {
+    private val storeIssuedCredentials: StoreIssuedCredentials,
+) : IssueSpecificCredential {
 
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
 
@@ -278,47 +280,59 @@ class IssueMsoMdocPid(
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
         expectedCNonce: CNonce,
-    ): CredentialResponse<JsonElement> = coroutineScope {
+    ): CredentialResponse = coroutineScope {
         log.info("Handling issuance request ...")
-        val holderPubKey = async(Dispatchers.Default) { holderPubKey(request, expectedCNonce) }
-        val pidData = async { getPidData(authorizationContext) }
-        val (pid, pidMetaData) = pidData.await()
-        val cbor = encodePidInCbor(pid, pidMetaData, holderPubKey.await()).also {
-            log.info("Issued $it")
+        val holderPubKeys = request.unvalidatedProofs.map {
+            async(Dispatchers.Default) {
+                holderPubKey(it, expectedCNonce)
+            }
         }
 
+        val pidData = async { getPidData(authorizationContext) }
         val notificationId =
             if (notificationsEnabled) generateNotificationId()
             else null
-        storeIssuedCredential(
-            IssuedCredential(
+
+        val (pid, pidMetaData) = pidData.await()
+        val issuedCredentials = holderPubKeys.awaitAll().map { holderKey ->
+            val cbor = encodePidInCbor(pid, pidMetaData, holderKey).also {
+                log.info("Issued $it")
+            }
+            cbor to holderKey.toPublicJWK()
+        }.toNonEmptyListOrNull()
+        ensureNotNull(issuedCredentials) {
+            IssueCredentialError.Unexpected("Unable to issue PID")
+        }
+
+        storeIssuedCredentials(
+            IssuedCredentials(
                 format = MSO_MDOC_FORMAT,
                 type = supportedCredential.docType,
                 holder = with(pid) {
                     "${familyName.value} ${givenName.value}"
                 },
-                holderPublicKey = holderPubKey.await().toPublicJWK(),
+                holderPublicKeys = issuedCredentials.map { it.second },
                 issuedAt = clock.instant(),
                 notificationId = notificationId,
             ),
         )
 
-        CredentialResponse.Issued(JsonPrimitive(cbor), notificationId)
+        CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it.first) }, notificationId)
             .also {
-                log.info("Successfully issued PID")
-                log.debug("Issued PID data {}", it)
+                log.info("Successfully issued PIDs")
+                log.debug("Issued PIDs data {}", it)
             }
     }
 
     context(Raise<IssueCredentialError>)
     @Suppress("DuplicatedCode")
-    private fun holderPubKey(request: CredentialRequest, expectedCNonce: CNonce): ECKey {
+    private fun holderPubKey(unvalidatedProof: UnvalidatedProof, expectedCNonce: CNonce): ECKey {
         fun ecKeyOrFail(provider: () -> ECKey) = try {
             provider.invoke()
         } catch (t: Throwable) {
             raise(InvalidProof("Only EC Key is supported"))
         }
-        return when (val key = validateProof(request.unvalidatedProof, expectedCNonce, supportedCredential)) {
+        return when (val key = validateProof(unvalidatedProof, expectedCNonce, supportedCredential)) {
             is CredentialKey.DIDUrl -> ecKeyOrFail { key.jwk.toECKey() }
             is CredentialKey.Jwk -> ecKeyOrFail { key.value.toECKey() }
             is CredentialKey.X5c -> ecKeyOrFail { ECKey.parse(key.certificate) }

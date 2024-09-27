@@ -25,7 +25,10 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 
 @Serializable
@@ -40,9 +43,52 @@ sealed interface DeferredCredentialSuccessResponse {
      */
     @Serializable
     data class PlainTO(
-        @Required val credential: JsonElement,
+        val credential: JsonElement?,
+        val credentials: JsonArray?,
         @SerialName("notification_id") val notificationId: String? = null,
-    ) : DeferredCredentialSuccessResponse
+    ) : DeferredCredentialSuccessResponse {
+        init {
+            require((credential != null) xor (credentials != null)) {
+                "exactly one of 'credential' or 'credentials' must be provided"
+            }
+            credential?.also { credential ->
+                require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
+                    "credential must either be a JsonObject or a string JsonPrimitive"
+                }
+            }
+            credentials?.forEach { credential ->
+                require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
+                    "credentials must contain either JsonObjects or string JsonPrimitives"
+                }
+            }
+        }
+
+        companion object {
+            /**
+             * Single credential has been issued.
+             */
+            fun single(
+                credential: JsonElement,
+                notificationId: String?,
+            ): PlainTO = PlainTO(
+                credential = credential,
+                credentials = null,
+                notificationId = notificationId,
+            )
+
+            /**
+             * Multiple credentials have been issued.
+             */
+            fun multiple(
+                credentials: JsonArray,
+                notificationId: String?,
+            ): PlainTO = PlainTO(
+                credential = null,
+                credentials = credentials,
+                notificationId = notificationId,
+            )
+        }
+    }
 
     /**
      * Deferred response is encrypted.
@@ -81,12 +127,21 @@ class GetDeferredCredential(
     private fun LoadDeferredCredentialResult.toTo(): DeferredCredentialSuccessResponse = when (this) {
         is LoadDeferredCredentialResult.IssuancePending -> raise(GetDeferredCredentialErrorTO.IssuancePending)
         is LoadDeferredCredentialResult.InvalidTransactionId -> raise(GetDeferredCredentialErrorTO.InvalidTransactionId)
-        is LoadDeferredCredentialResult.Found -> when (responseEncryption) {
-            RequestedResponseEncryption.NotRequired ->
-                DeferredCredentialSuccessResponse.PlainTO(credential.credential, credential.notificationId?.value)
-            is RequestedResponseEncryption.Required -> {
-                val plain = DeferredCredentialSuccessResponse.PlainTO(credential.credential, credential.notificationId?.value)
-                encryptCredentialResponse(plain, responseEncryption).getOrThrow()
+        is LoadDeferredCredentialResult.Found -> {
+            val plain = when (credential.credentials.size) {
+                1 -> DeferredCredentialSuccessResponse.PlainTO.single(
+                    credential.credentials.head,
+                    credential.notificationId?.value,
+                )
+                else -> DeferredCredentialSuccessResponse.PlainTO.multiple(
+                    JsonArray(credential.credentials),
+                    credential.notificationId?.value,
+                )
+            }
+
+            when (responseEncryption) {
+                RequestedResponseEncryption.NotRequired -> plain
+                is RequestedResponseEncryption.Required -> encryptCredentialResponse(plain, responseEncryption).getOrThrow()
             }
         }
     }

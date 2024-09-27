@@ -37,14 +37,14 @@ data class CredentialIssuerMetaDataTO(
     val authorizationServers: List<String>? = null,
     @Required @SerialName("credential_endpoint")
     val credentialEndpoint: String,
-    @SerialName("batch_credential_endpoint")
-    val batchCredentialEndpoint: String? = null,
     @SerialName("deferred_credential_endpoint")
     val deferredCredentialEndpoint: String? = null,
     @SerialName("notification_endpoint")
     val notificationEndpoint: String? = null,
     @SerialName("credential_response_encryption")
     val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
+    @SerialName("batch_credential_issuance")
+    val batchCredentialIssuance: BatchCredentialIssuanceTO? = null,
     @SerialName("credential_identifiers_supported")
     val credentialIdentifiersSupported: Boolean? = null,
     @SerialName("signed_metadata")
@@ -63,6 +63,11 @@ data class CredentialIssuerMetaDataTO(
         val encryptionMethods: List<String>,
         @Required @SerialName("encryption_required")
         val required: Boolean,
+    )
+
+    @Serializable
+    data class BatchCredentialIssuanceTO(
+        @Required @SerialName("batch_size") val batchSize: Int,
     )
 }
 
@@ -88,15 +93,18 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
     credentialIssuer = id.externalForm,
     authorizationServers = authorizationServers.map { it.externalForm },
     credentialEndpoint = credentialEndPoint.externalForm,
-    batchCredentialEndpoint = batchCredentialEndpoint?.externalForm,
     deferredCredentialEndpoint = deferredCredentialEndpoint?.externalForm,
     notificationEndpoint = notificationEndpoint?.externalForm,
     credentialResponseEncryption = credentialResponseEncryption.toTransferObject().getOrNull(),
+    batchCredentialIssuance = when (batchCredentialIssuance) {
+        BatchCredentialIssuance.NotSupported -> null
+        is BatchCredentialIssuance.Supported -> CredentialIssuerMetaDataTO.BatchCredentialIssuanceTO(batchCredentialIssuance.batchSize)
+    },
     credentialIdentifiersSupported = true,
     signedMetadata = null,
     display = display.map { it.toTransferObject() }.takeIf { it.isNotEmpty() },
     credentialConfigurationsSupported = JsonObject(
-        credentialConfigurationsSupported.associate { it.id.value to credentialMetaDataJson(it) },
+        credentialConfigurationsSupported.associate { it.id.value to credentialMetaDataJson(it, batchCredentialIssuance) },
     ),
 )
 
@@ -139,7 +147,10 @@ private fun CredentialConfiguration.format(): Format = when (this) {
 }
 
 @OptIn(ExperimentalSerializationApi::class)
-private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject = buildJsonObject {
+private fun credentialMetaDataJson(
+    d: CredentialConfiguration,
+    batchCredentialIssuance: BatchCredentialIssuance,
+): JsonObject = buildJsonObject {
     put("format", d.format().value)
     d.scope?.value?.let { put("scope", it) }
     d.cryptographicBindingMethodsSupported.takeIf { it.isNotEmpty() }
@@ -164,7 +175,7 @@ private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject = bui
         }
     when (d) {
         is JwtVcJsonCredentialConfiguration -> TODO()
-        is MsoMdocCredentialConfiguration -> d.toTransferObject()(this)
+        is MsoMdocCredentialConfiguration -> d.toTransferObject(batchCredentialIssuance)(this)
         is SdJwtVcCredentialConfiguration -> d.toTransferObject()(this)
     }
 }
@@ -195,7 +206,9 @@ private fun ProofType.toJsonObject(): JsonObject =
     }
 
 @OptIn(ExperimentalSerializationApi::class)
-internal fun MsoMdocCredentialConfiguration.toTransferObject(): JsonObjectBuilder.() -> Unit = {
+internal fun MsoMdocCredentialConfiguration.toTransferObject(
+    batchCredentialIssuance: BatchCredentialIssuance,
+): JsonObjectBuilder.() -> Unit = {
     put("doctype", docType)
     if (display.isNotEmpty()) {
         putJsonArray("display") {
@@ -205,7 +218,9 @@ internal fun MsoMdocCredentialConfiguration.toTransferObject(): JsonObjectBuilde
     if (policy != null) {
         putJsonObject("policy") {
             put("one_time_use", policy.oneTimeUse)
-            policy.batchSize?.let { put("batch_size", it) }
+            if (batchCredentialIssuance is BatchCredentialIssuance.Supported) {
+                put("batch_size", batchCredentialIssuance.batchSize)
+            }
         }
     }
 

@@ -15,9 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.persistence
 
-import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadIssuedCredentialByNotificationId
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
+import eu.europa.ec.eudi.pidissuer.domain.IssuedCredentials
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadIssuedCredentialsByNotificationId
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.slf4j.LoggerFactory
@@ -25,12 +25,12 @@ import org.slf4j.LoggerFactory
 private val log = LoggerFactory.getLogger(InMemoryIssuedCredentialRepository::class.java)
 
 class InMemoryIssuedCredentialRepository(
-    private val data: MutableList<IssuedCredential> = mutableListOf(),
+    private val data: MutableList<IssuedCredentials> = mutableListOf(),
 ) {
     private val mutex = Mutex()
 
-    val storeIssuedCredential: StoreIssuedCredential =
-        StoreIssuedCredential { credential ->
+    val storeIssuedCredentials: StoreIssuedCredentials =
+        StoreIssuedCredentials { credential ->
             mutex.withLock(this) {
                 if (credential.notificationId != null) {
                     require(data.find { existing -> existing.notificationId == credential.notificationId } == null) {
@@ -42,8 +42,8 @@ class InMemoryIssuedCredentialRepository(
             }
         }
 
-    val loadIssuedCredentialByNotificationId: LoadIssuedCredentialByNotificationId =
-        LoadIssuedCredentialByNotificationId { notificationId ->
+    val loadIssuedCredentialsByNotificationId: LoadIssuedCredentialsByNotificationId =
+        LoadIssuedCredentialsByNotificationId { notificationId ->
             mutex.withLock(this) {
                 data.find { credential -> credential.notificationId == notificationId }
             }

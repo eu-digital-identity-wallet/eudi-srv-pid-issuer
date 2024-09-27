@@ -36,9 +36,6 @@ class MetaDataApi(
         GET(WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, accept(MediaType.APPLICATION_JSON)) { _ ->
             handleGetClientIssuerMetaData()
         }
-        GET(WELL_KNOWN_JWKS, accept(MediaType.APPLICATION_JSON)) { _ ->
-            handleGetJwtIssuerJwkSet()
-        }
         GET(WELL_KNOWN_JWT_VC_ISSUER, accept(MediaType.APPLICATION_JSON)) {
             handleGetJwtVcIssuerMetadata()
         }
@@ -49,9 +46,6 @@ class MetaDataApi(
 
     private suspend fun handleGetClientIssuerMetaData(): ServerResponse =
         getCredentialIssuerMetaData().let { metaData -> ServerResponse.ok().json().bodyValueAndAwait(metaData) }
-
-    private suspend fun handleGetJwtIssuerJwkSet(): ServerResponse =
-        TODO()
 
     private suspend fun handleGetJwtVcIssuerMetadata(): ServerResponse =
         ServerResponse.ok()
@@ -70,7 +64,6 @@ class MetaDataApi(
 
     companion object {
         const val WELL_KNOWN_OPENID_CREDENTIAL_ISSUER = "/.well-known/openid-credential-issuer"
-        const val WELL_KNOWN_JWKS = "/.well-known/jwks.json"
         const val WELL_KNOWN_JWT_VC_ISSUER = "/.well-known/jwt-vc-issuer"
         const val PUBLIC_KEYS = "/public_keys.jwks"
     }

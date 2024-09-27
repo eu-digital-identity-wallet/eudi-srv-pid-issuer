@@ -149,7 +149,7 @@ sealed interface RequestedResponseEncryption {
  */
 sealed interface CredentialRequest {
     val format: Format
-    val unvalidatedProof: UnvalidatedProof
+    val unvalidatedProofs: NonEmptyList<UnvalidatedProof>
     val credentialResponseEncryption: RequestedResponseEncryption
 }
 

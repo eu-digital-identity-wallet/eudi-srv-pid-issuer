@@ -16,7 +16,10 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.*
-import arrow.core.raise.*
+import arrow.core.raise.Raise
+import arrow.core.raise.either
+import arrow.core.raise.ensure
+import arrow.core.raise.ensureNotNull
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
@@ -61,6 +64,12 @@ data class ProofTo(
 )
 
 @Serializable
+data class ProofsTO(
+    @SerialName("jwt") val jwtProofs: List<String>? = null,
+    @SerialName("ldp_vp") val ldpVpProofs: List<String>? = null,
+)
+
+@Serializable
 data class CredentialResponseEncryptionTO(
     @SerialName("jwk") @Required val key: JsonObject,
     @SerialName("alg") @Required val algorithm: String,
@@ -73,6 +82,7 @@ typealias ClaimsTO = Map<String, JsonElement>
 data class CredentialRequestTO(
     val format: FormatTO? = null,
     val proof: ProofTo? = null,
+    val proofs: ProofsTO? = null,
     @SerialName("credential_identifier")
     val credentialIdentifier: String? = null,
     @SerialName("credential_response_encryption")
@@ -189,22 +199,81 @@ sealed interface IssueCredentialResponse {
     @Serializable
     data class PlainTO(
         val credential: JsonElement? = null,
+        val credentials: JsonArray? = null,
         @SerialName("transaction_id") val transactionId: String? = null,
         @SerialName("c_nonce") val nonce: String? = null,
         @SerialName("c_nonce_expires_in") val nonceExpiresIn: Long? = null,
         @SerialName("notification_id") val notificationId: String? = null,
     ) : IssueCredentialResponse {
         init {
-            if (credential != null) {
-                require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
-                    "credential must either be a JsonObject or a string JsonPrimitive"
+            if (transactionId != null) {
+                require(credential == null && credentials == null) {
+                    "cannot provide credential or credentials when transactionId is provided"
+                }
+                require(notificationId == null) {
+                    "cannot provide notificationId when transactionId is provided"
+                }
+            } else {
+                require((credential != null) xor (credentials != null)) {
+                    "exactly one of 'credential' or 'credentials' must be provided"
+                }
+                credential?.also { credential ->
+                    require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
+                        "credential must either be a JsonObject or a string JsonPrimitive"
+                    }
+                }
+                credentials?.forEach { credential ->
+                    require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
+                        "credentials must contain either JsonObjects or string JsonPrimitives"
+                    }
                 }
             }
-            if (notificationId != null) {
-                requireNotNull(credential) {
-                    "notificationId cannot be provided when credential is not"
-                }
-            }
+        }
+
+        companion object {
+
+            /**
+             * A single credential has been issued.
+             */
+            fun single(
+                credential: JsonElement,
+                nonce: String,
+                nonceExpiresIn: Long,
+                notificationId: String? = null,
+            ): PlainTO = PlainTO(
+                credential = credential,
+                nonce = nonce,
+                nonceExpiresIn = nonceExpiresIn,
+                notificationId = notificationId,
+            )
+
+            /**
+             * Multiple credentials have been issued.
+             */
+            fun multiple(
+                credentials: JsonArray,
+                nonce: String,
+                nonceExpiresIn: Long,
+                notificationId: String? = null,
+            ): PlainTO = PlainTO(
+                credentials = credentials,
+                nonce = nonce,
+                nonceExpiresIn = nonceExpiresIn,
+                notificationId = notificationId,
+            )
+
+            /**
+             * Credential issuance has been deferred.
+             */
+            fun deferred(
+                transactionId: String,
+                nonce: String,
+                nonceExpiresIn: Long,
+            ): PlainTO = PlainTO(
+                transactionId = transactionId,
+                nonce = nonce,
+                nonceExpiresIn = nonceExpiresIn,
+            )
         }
     }
 
@@ -248,7 +317,10 @@ class IssueCredential(
     ): IssueCredentialResponse = coroutineScope {
         either {
             log.info("Handling issuance request for ${credentialRequestTO.format}..")
-            val unresolvedRequest = credentialRequestTO.toDomain(credentialIssuerMetadata.credentialResponseEncryption)
+            val unresolvedRequest = credentialRequestTO.toDomain(
+                credentialIssuerMetadata.credentialResponseEncryption,
+                credentialIssuerMetadata.batchCredentialIssuance,
+            )
             val (request, credentialIdentifier) =
                 when (unresolvedRequest) {
                     is UnresolvedCredentialRequest.ByFormat ->
@@ -271,7 +343,7 @@ class IssueCredential(
         either {
             val resolvedRequest = resolveCredentialRequestByCredentialIdentifier(
                 unresolvedRequest.credentialIdentifier,
-                unresolvedRequest.unvalidatedProof,
+                unresolvedRequest.unvalidatedProofs,
                 unresolvedRequest.credentialResponseEncryption,
             )
             ensureNotNull(resolvedRequest) { InvalidCredentialIdentifier(unresolvedRequest.credentialIdentifier) }
@@ -283,9 +355,9 @@ class IssueCredential(
         authorizationContext: AuthorizationContext,
         credentialRequest: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): CredentialResponse<JsonElement> {
+    ): CredentialResponse {
         val issueSpecificCredential = specificIssuerFor(credentialRequest)
-        val expectedScope = issueSpecificCredential.supportedCredential.scope!!
+        val expectedScope = checkNotNull(issueSpecificCredential.supportedCredential.scope)
         ensure(authorizationContext.scopes.contains(expectedScope)) { WrongScope(expectedScope) }
         val cNonce = loadCNonceByAccessToken(authorizationContext.accessToken.toAuthorizationHeader(), clock)
         ensureNotNull(cNonce) { MissingProof }
@@ -293,7 +365,7 @@ class IssueCredential(
     }
 
     context(Raise<IssueCredentialError>)
-    private fun specificIssuerFor(credentialRequest: CredentialRequest): IssueSpecificCredential<JsonElement> {
+    private fun specificIssuerFor(credentialRequest: CredentialRequest): IssueSpecificCredential {
         val specificIssuer = credentialIssuerMetadata.specificCredentialIssuers
             .find { issuer ->
                 either { credentialRequest.assertIsSupported(issuer.supportedCredential) }.isRight()
@@ -311,7 +383,7 @@ class IssueCredential(
     private suspend fun successResponse(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
-        credential: CredentialResponse<JsonElement>,
+        credential: CredentialResponse,
     ): IssueCredentialResponse {
         val newCNonce = newCNonce(authorizationContext)
         val plain = credential.toTO(newCNonce)
@@ -354,21 +426,56 @@ private sealed interface UnresolvedCredentialRequest {
      */
     data class ByCredentialIdentifier(
         val credentialIdentifier: CredentialIdentifier,
-        val unvalidatedProof: UnvalidatedProof,
+        val unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
         val credentialResponseEncryption: RequestedResponseEncryption,
     ) : UnresolvedCredentialRequest
 }
+
+private val BatchCredentialIssuance.maxProofsSupported: Int
+    get() = when (this) {
+        BatchCredentialIssuance.NotSupported -> 1
+        is BatchCredentialIssuance.Supported -> batchSize
+    }
 
 /**
  * Tries to convert a [CredentialRequestTO] to a [CredentialRequest].
  */
 context(Raise<IssueCredentialError>)
 private fun CredentialRequestTO.toDomain(
-    supported: CredentialResponseEncryption,
+    supportedEncryption: CredentialResponseEncryption,
+    supportedBatchIssuance: BatchCredentialIssuance,
 ): UnresolvedCredentialRequest {
-    val proof = ensureNotNull(proof) { MissingProof }.toDomain()
-    val credentialResponseEncryption = credentialResponseEncryption?.toDomain() ?: RequestedResponseEncryption.NotRequired
-    credentialResponseEncryption.ensureIsSupported(supported)
+    if (supportedBatchIssuance is BatchCredentialIssuance.NotSupported) {
+        ensure(proofs == null) {
+            InvalidProof("Credential Endpoint does not support Batch Issuance")
+        }
+    }
+
+    val proofs =
+        when {
+            proof != null && proofs == null -> nonEmptyListOf(proof.toDomain())
+            proof == null && proofs != null -> {
+                val jwtProofs = proofs.jwtProofs?.map { UnvalidatedProof.Jwt(it) }
+                val ldpVpProofs = proofs.ldpVpProofs?.map { UnvalidatedProof.LdpVp(it) }
+                // proofs object contains exactly one parameter named as the proof type
+                ensure(jwtProofs == null || ldpVpProofs == null) {
+                    InvalidProof("Only a single proof type is allowed")
+                }
+
+                val proofs = (jwtProofs.orEmpty() + ldpVpProofs.orEmpty()).toNonEmptyListOrNull()
+                ensureNotNull(proofs) { MissingProof }
+            }
+
+            proof != null && proofs != null -> raise(InvalidProof("Only one of `proof` or `proofs` is allowed"))
+            else -> raise(MissingProof)
+        }
+    ensure(proofs.size <= supportedBatchIssuance.maxProofsSupported) {
+        InvalidProof("You can provide at most '${supportedBatchIssuance.maxProofsSupported}' proofs")
+    }
+
+    val credentialResponseEncryption =
+        credentialResponseEncryption?.toDomain() ?: RequestedResponseEncryption.NotRequired
+    credentialResponseEncryption.ensureIsSupported(supportedEncryption)
 
     fun credentialRequestByFormat(format: FormatTO): UnresolvedCredentialRequest.ByFormat =
         when (format) {
@@ -380,10 +487,9 @@ private fun CredentialRequestTO.toDomain(
                 val claims = claims?.decodeAs<Map<String, Map<String, JsonObject>>>()
                     ?.mapValues { (_, vs) -> vs.map { it.key } }
                     ?: emptyMap()
-
                 UnresolvedCredentialRequest.ByFormat(
                     MsoMdocCredentialRequest(
-                        proof,
+                        proofs,
                         credentialResponseEncryption,
                         docType,
                         claims,
@@ -400,7 +506,7 @@ private fun CredentialRequestTO.toDomain(
 
                 UnresolvedCredentialRequest.ByFormat(
                     SdJwtVcCredentialRequest(
-                        proof,
+                        proofs,
                         credentialResponseEncryption,
                         SdJwtVcType(type),
                         claims,
@@ -416,7 +522,7 @@ private fun CredentialRequestTO.toDomain(
 
         return UnresolvedCredentialRequest.ByCredentialIdentifier(
             CredentialIdentifier(credentialIdentifier),
-            proof,
+            proofs,
             credentialResponseEncryption,
         )
     }
@@ -513,23 +619,32 @@ private fun CredentialResponseEncryptionTO.toDomain(): RequestedResponseEncrypti
         method,
     ).getOrElse { raise(InvalidEncryptionParameters(it)) }
 
-fun CredentialResponse<JsonElement>.toTO(nonce: CNonce): IssueCredentialResponse.PlainTO =
-    when (this) {
-        is CredentialResponse.Issued ->
-            IssueCredentialResponse.PlainTO(
-                credential = credential,
-                notificationId = notificationId?.value,
+fun CredentialResponse.toTO(nonce: CNonce): IssueCredentialResponse.PlainTO = when (this) {
+    is CredentialResponse.Issued -> {
+        when (credentials.size) {
+            1 -> IssueCredentialResponse.PlainTO.single(
+                credential = credentials.head,
                 nonce = nonce.nonce,
                 nonceExpiresIn = nonce.expiresIn.toSeconds(),
+                notificationId = notificationId?.value,
             )
 
-        is CredentialResponse.Deferred ->
-            IssueCredentialResponse.PlainTO(
-                transactionId = transactionId.value,
+            else -> IssueCredentialResponse.PlainTO.multiple(
+                credentials = JsonArray(credentials),
                 nonce = nonce.nonce,
                 nonceExpiresIn = nonce.expiresIn.toSeconds(),
+                notificationId = notificationId?.value,
             )
+        }
     }
+
+    is CredentialResponse.Deferred ->
+        IssueCredentialResponse.PlainTO.deferred(
+            transactionId = transactionId.value,
+            nonce = nonce.nonce,
+            nonceExpiresIn = nonce.expiresIn.toSeconds(),
+        )
+}
 
 /**
  * Creates a new [IssueCredentialResponse.FailedTO] from the provided [error] and [nonce].
