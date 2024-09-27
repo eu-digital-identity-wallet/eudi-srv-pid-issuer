@@ -71,7 +71,7 @@ dependencies {
     implementation(libs.waltid.mdoc.credentials) {
         because("To sign CBOR credentials")
     }
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0") {
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1") {
         because("required by walt.id")
     }
     implementation("com.augustcellars.cose:cose-java:1.1.0") {
