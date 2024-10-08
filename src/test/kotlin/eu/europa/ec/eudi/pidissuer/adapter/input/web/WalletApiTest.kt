@@ -201,8 +201,8 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
                 {
                     it.expectBody()
                         .jsonPath("$.trace")
-                        .value<String> { value ->
-                            value.contains("Polymorphic serializer was not found for class discriminator")
+                        .value<String> {
+                            assertTrue { "FormatTO does not contain element with name 'pid'" in it }
                         }
                 },
             )
