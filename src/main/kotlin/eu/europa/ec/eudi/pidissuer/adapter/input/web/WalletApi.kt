@@ -37,6 +37,7 @@ import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.oauth2.core.OAuth2TokenIntrospectionClaimNames
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthentication
 import org.springframework.web.reactive.function.server.*
+import org.springframework.web.server.ServerWebInputException
 
 private val APPLICATION_JWT = MediaType.parseMediaType("application/jwt")
 
@@ -72,25 +73,12 @@ class WalletApi(
 
     private suspend fun handleIssueCredential(req: ServerRequest): ServerResponse {
         val context = req.authorizationContext().getOrThrow()
-        val credentialRequest = req.awaitBody<CredentialRequestTO>()
-        return when (val response = issueCredential(context, credentialRequest)) {
-            is IssueCredentialResponse.PlainTO ->
-                ServerResponse
-                    .status(response.transactionId?.let { HttpStatus.ACCEPTED } ?: HttpStatus.OK)
-                    .json()
-                    .bodyValueAndAwait(response)
-
-            is IssueCredentialResponse.EncryptedJwtIssued ->
-                ServerResponse
-                    .ok()
-                    .contentType(APPLICATION_JWT)
-                    .bodyValueAndAwait(response.jwt)
-
-            is IssueCredentialResponse.FailedTO ->
-                ServerResponse
-                    .badRequest()
-                    .json()
-                    .bodyValueAndAwait(response)
+        return try {
+            val credentialRequest = req.awaitBody<CredentialRequestTO>()
+            val response = issueCredential(context, credentialRequest)
+            response.toServerResponse()
+        } catch (error: ServerWebInputException) {
+            error.toServerResponse()
         }
     }
 
@@ -182,3 +170,35 @@ private suspend fun ServerRequest.authorizationContext(): Result<AuthorizationCo
 
         AuthorizationContext(username, accessToken, scopes, clientId)
     }
+
+private suspend fun IssueCredentialResponse.toServerResponse(): ServerResponse =
+    when (this) {
+        is IssueCredentialResponse.PlainTO ->
+            ServerResponse
+                .status(transactionId?.let { HttpStatus.ACCEPTED } ?: HttpStatus.OK)
+                .json()
+                .bodyValueAndAwait(this)
+
+        is IssueCredentialResponse.EncryptedJwtIssued ->
+            ServerResponse
+                .ok()
+                .contentType(APPLICATION_JWT)
+                .bodyValueAndAwait(jwt)
+
+        is IssueCredentialResponse.FailedTO ->
+            ServerResponse
+                .badRequest()
+                .json()
+                .bodyValueAndAwait(this)
+    }
+
+private suspend fun ServerWebInputException.toServerResponse(): ServerResponse =
+    ServerResponse
+        .badRequest()
+        .json()
+        .bodyValueAndAwait(
+            IssueCredentialResponse.FailedTO(
+                type = CredentialErrorTypeTo.INVALID_REQUEST,
+                errorDescription = "Request body could not be parsed",
+            ),
+        )
