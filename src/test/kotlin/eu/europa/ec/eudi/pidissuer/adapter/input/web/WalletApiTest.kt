@@ -188,7 +188,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
         val authentication = dPoPTokenAuthentication(clock = clock)
 
-        client()
+        val response = client()
             .mutateWith(mockAuthentication(authentication))
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
@@ -196,16 +196,18 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .bodyValue(request)
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
-            .expectAll(
-                { it.expectStatus().is5xxServerError() },
-                {
-                    it.expectBody()
-                        .jsonPath("$.trace")
-                        .value<String> {
-                            assertTrue { "FormatTO does not contain element with name 'pid'" in it }
-                        }
-                },
-            )
+            .expectStatus().isBadRequest
+            .expectBody<IssueCredentialResponse.FailedTO>()
+            .returnResult()
+            .responseBody
+
+        assertEquals(
+            IssueCredentialResponse.FailedTO(
+                type = CredentialErrorTypeTo.INVALID_REQUEST,
+                errorDescription = "Request body could not be parsed",
+            ),
+            response,
+        )
     }
 
     /**

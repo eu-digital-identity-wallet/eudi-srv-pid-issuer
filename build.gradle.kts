@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.owasp.dependencycheck.gradle.extension.DependencyCheckExtension
 import org.springframework.boot.gradle.tasks.bundling.BootBuildImage
 
@@ -71,7 +72,7 @@ dependencies {
     implementation(libs.waltid.mdoc.credentials) {
         because("To sign CBOR credentials")
     }
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0") {
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1") {
         because("required by walt.id")
     }
     implementation("com.augustcellars.cose:cose-java:1.1.0") {
@@ -89,16 +90,17 @@ dependencies {
 }
 
 java {
-    val javaVersion = libs.versions.java.get()
-    sourceCompatibility = JavaVersion.toVersion(javaVersion)
+    sourceCompatibility = JavaVersion.toVersion(libs.versions.java.get())
 }
 
 kotlin {
     jvmToolchain {
-        val javaVersion = libs.versions.java.get()
-        languageVersion.set(JavaLanguageVersion.of(javaVersion))
+        languageVersion = JavaLanguageVersion.of(libs.versions.java.get())
     }
+
     compilerOptions {
+        apiVersion = KotlinVersion.KOTLIN_2_0
+
         freeCompilerArgs.add("-Xcontext-receivers")
         freeCompilerArgs.add("-Xjsr305=strict")
     }
