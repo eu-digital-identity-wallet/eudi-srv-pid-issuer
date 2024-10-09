@@ -73,13 +73,16 @@ class WalletApi(
 
     private suspend fun handleIssueCredential(req: ServerRequest): ServerResponse {
         val context = req.authorizationContext().getOrThrow()
-        return try {
+        val response = try {
             val credentialRequest = req.awaitBody<CredentialRequestTO>()
-            val response = issueCredential(context, credentialRequest)
-            response.toServerResponse()
+            issueCredential(context, credentialRequest)
         } catch (error: ServerWebInputException) {
-            error.toServerResponse()
+            IssueCredentialResponse.FailedTO(
+                type = CredentialErrorTypeTo.INVALID_REQUEST,
+                errorDescription = "Request body could not be parsed",
+            )
         }
+        return response.toServerResponse()
     }
 
     private suspend fun handleGetDeferredCredential(req: ServerRequest): ServerResponse = coroutineScope {
@@ -191,14 +194,3 @@ private suspend fun IssueCredentialResponse.toServerResponse(): ServerResponse =
                 .json()
                 .bodyValueAndAwait(this)
     }
-
-private suspend fun ServerWebInputException.toServerResponse(): ServerResponse =
-    ServerResponse
-        .badRequest()
-        .json()
-        .bodyValueAndAwait(
-            IssueCredentialResponse.FailedTO(
-                type = CredentialErrorTypeTo.INVALID_REQUEST,
-                errorDescription = "Request body could not be parsed",
-            ),
-        )
