@@ -145,7 +145,7 @@ private fun selectivelyDisclosed(
             val nationalities = buildJsonArray { add(it.value) }
             sd(OidcAssuranceNationalities.name, nationalities)
         }
-        pid.ageBirthYear?.let { sd(Attributes.AgeInYears.name, it.value) }
+        pid.ageInYears?.let { sd(Attributes.AgeInYears.name, it.toInt()) }
         pid.ageBirthYear?.let { sd(Attributes.BirthDateYear.name, it.value.toString()) }
         pid.familyNameBirth?.let { sd(OidcAssuranceBirthFamilyName.name, it.value) }
         pid.givenNameBirth?.let { sd(OidcAssuranceBirthGivenName.name, it.value) }
