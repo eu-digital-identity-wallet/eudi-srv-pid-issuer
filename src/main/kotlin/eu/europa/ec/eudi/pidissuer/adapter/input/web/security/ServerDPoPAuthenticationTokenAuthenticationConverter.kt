@@ -72,7 +72,7 @@ private fun HttpHeaders.singleValueHeader(header: String): Mono<String> {
 /**
  * Gets the DPoP header value, if any, and parses it as a [SignedJWT].
  */
-private fun ServerHttpRequest.dPoP() = headers.singleValueHeader(AccessTokenType.DPOP.value)
+private fun ServerHttpRequest.dPoP(): Mono<SignedJWT> = headers.singleValueHeader(AccessTokenType.DPOP.value)
     .filter { !it.isNullOrBlank() }
     .flatMap {
         Mono.fromCallable { SignedJWT.parse(it) }
@@ -86,7 +86,7 @@ private fun ServerHttpRequest.dPoP() = headers.singleValueHeader(AccessTokenType
 /**
  * Gets the Authorization header value, if any.
  */
-private fun ServerHttpRequest.authorization() = headers.singleValueHeader(HttpHeaders.AUTHORIZATION)
+private fun ServerHttpRequest.authorization(): Mono<DPoPAccessToken> = headers.singleValueHeader(HttpHeaders.AUTHORIZATION)
     .filter { !it.isNullOrBlank() && it.startsWith(AccessTokenType.DPOP.value) }
     .flatMap {
         Mono.fromCallable { DPoPAccessToken.parse(it) }
@@ -100,7 +100,7 @@ private fun ServerHttpRequest.authorization() = headers.singleValueHeader(HttpHe
 /**
  * Gets the uri of the current [ServerHttpRequest]. The uri does not contain query parameters or fragments.
  */
-private fun ServerHttpRequest.uri() = Mono.fromCallable {
+private fun ServerHttpRequest.uri(): Mono<URI> = Mono.fromCallable {
     val uri = UriComponentsBuilder.fromUri(uri).query(null).fragment(null).toUriString()
     URI.create(uri)
 }

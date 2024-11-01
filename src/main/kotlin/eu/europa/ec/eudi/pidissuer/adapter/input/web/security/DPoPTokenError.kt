@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
+import com.nimbusds.oauth2.sdk.dpop.JWKThumbprintConfirmation
 import org.springframework.http.HttpStatus
 import org.springframework.security.oauth2.core.OAuth2Error
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes
@@ -25,6 +26,7 @@ import org.springframework.security.oauth2.core.OAuth2ErrorCodes
 class DPoPTokenError private constructor(
     errorCode: String,
     description: String,
+    val jwkThumbprint: JWKThumbprintConfirmation?,
     val status: HttpStatus,
 ) : OAuth2Error(errorCode, description, null) {
 
@@ -34,18 +36,18 @@ class DPoPTokenError private constructor(
          * Creates a new 'invalid request' error.
          */
         fun invalidRequest(description: String): DPoPTokenError =
-            DPoPTokenError(OAuth2ErrorCodes.INVALID_REQUEST, description, HttpStatus.BAD_REQUEST)
+            DPoPTokenError(OAuth2ErrorCodes.INVALID_REQUEST, description, null, HttpStatus.BAD_REQUEST)
 
         /**
          * Creates a new 'invalid token' error.
          */
-        fun invalidToken(description: String): DPoPTokenError =
-            DPoPTokenError(OAuth2ErrorCodes.INVALID_TOKEN, description, HttpStatus.UNAUTHORIZED)
+        fun invalidToken(description: String, jwkThumbprint: JWKThumbprintConfirmation? = null): DPoPTokenError =
+            DPoPTokenError(OAuth2ErrorCodes.INVALID_TOKEN, description, jwkThumbprint, HttpStatus.UNAUTHORIZED)
 
         /**
          * Creates a new 'server error' error.
          */
         fun serverError(description: String): DPoPTokenError =
-            DPoPTokenError(OAuth2ErrorCodes.SERVER_ERROR, description, HttpStatus.INTERNAL_SERVER_ERROR)
+            DPoPTokenError(OAuth2ErrorCodes.SERVER_ERROR, description, null, HttpStatus.INTERNAL_SERVER_ERROR)
     }
 }
