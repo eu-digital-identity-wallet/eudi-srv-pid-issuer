@@ -20,10 +20,8 @@ import com.nimbusds.openid.connect.sdk.Nonce
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.toJavaDuration
 
 /**
  * A Nonce value used for DPoP authentication.
@@ -49,10 +47,10 @@ fun interface GenerateDPoPNonce {
  */
 class InMemoryDPoPNonceRepository(
     private val clock: Clock,
-    private val dpopNonceExpiresIn: Duration = 5.minutes,
+    private val dpopNonceExpiresIn: Duration = Duration.ofMinutes(5L),
 ) {
     init {
-        require(dpopNonceExpiresIn.isPositive()) { "dpopNonceExpiresIn must be positive" }
+        require(!dpopNonceExpiresIn.isZero && !dpopNonceExpiresIn.isNegative) { "dpopNonceExpiresIn must be positive" }
     }
 
     private val data = mutableMapOf<JWKThumbprintConfirmation, DPoPNonce>()
@@ -70,7 +68,7 @@ class InMemoryDPoPNonceRepository(
         GenerateDPoPNonce { jwkThumbprint ->
             mutex.withLock {
                 val createdAt = clock.instant()
-                val expiresAt = createdAt + dpopNonceExpiresIn.toJavaDuration()
+                val expiresAt = createdAt + dpopNonceExpiresIn
                 val dpopNonce = DPoPNonce(
                     nonce = Nonce(),
                     jwkThumbprint = jwkThumbprint,

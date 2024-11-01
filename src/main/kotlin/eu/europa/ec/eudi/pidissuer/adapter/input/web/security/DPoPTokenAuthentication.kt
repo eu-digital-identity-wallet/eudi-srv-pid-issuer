@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
 import com.nimbusds.jwt.SignedJWT
+import com.nimbusds.oauth2.sdk.dpop.JWKThumbprintConfirmation
 import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import org.springframework.http.HttpMethod
 import org.springframework.security.authentication.AbstractAuthenticationToken
@@ -31,6 +32,7 @@ class DPoPTokenAuthentication private constructor(
     val method: HttpMethod,
     val uri: URI,
     private val _principal: OAuth2AuthenticatedPrincipal?,
+    val jwkThumbprint: JWKThumbprintConfirmation?,
 ) : AbstractAuthenticationToken(_principal?.authorities ?: emptySet()) {
     init {
         isAuthenticated = _principal != null
@@ -41,10 +43,10 @@ class DPoPTokenAuthentication private constructor(
     override fun getName(): String = _principal?.attributes?.get("username") as? String ?: ""
 
     /**
-     * Gets a new _authenticated_ [DPoPTokenAuthentication] that contains the provided [principal].
+     * Gets a new _authenticated_ [DPoPTokenAuthentication] that contains the provided [principal], and [jwkThumbprint].
      */
-    fun authenticate(principal: OAuth2AuthenticatedPrincipal): DPoPTokenAuthentication =
-        DPoPTokenAuthentication(dpop, accessToken, method, uri, principal)
+    fun authenticate(principal: OAuth2AuthenticatedPrincipal, jwkThumbprint: JWKThumbprintConfirmation): DPoPTokenAuthentication =
+        DPoPTokenAuthentication(dpop, accessToken, method, uri, principal, jwkThumbprint)
 
     companion object {
 
@@ -56,6 +58,6 @@ class DPoPTokenAuthentication private constructor(
             accessToken: DPoPAccessToken,
             method: HttpMethod,
             uri: URI,
-        ): DPoPTokenAuthentication = DPoPTokenAuthentication(dpop, accessToken, method, uri, null)
+        ): DPoPTokenAuthentication = DPoPTokenAuthentication(dpop, accessToken, method, uri, null, null)
     }
 }

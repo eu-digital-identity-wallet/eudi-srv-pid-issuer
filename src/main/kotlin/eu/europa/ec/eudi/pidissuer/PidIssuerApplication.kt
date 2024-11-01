@@ -349,7 +349,7 @@ fun beans(clock: Clock) = beans {
         bean { GenerateCNonce.random(Duration.ofMinutes(5L)) }
         bean { this@with } // this is needed for test
     }
-    with(InMemoryDPoPNonceRepository(clock)) {
+    with(InMemoryDPoPNonceRepository(clock, Duration.parse(env.getProperty("issuer.dpop.nonce.expiration", "PT5M")))) {
         bean(isLazyInit = true) { loadActiveDPoPNonceByClient }
         bean(isLazyInit = true) { generateDPoPNonce }
     }
@@ -482,6 +482,7 @@ fun beans(clock: Clock) = beans {
         val issuerApi = IssuerApi(ref())
         metaDataApi.route.and(walletApi.route).and(issuerUi.router).and(issuerApi.router)
     }
+    bean(::DPoPNonceWebFilter)
 
     //
     // Security

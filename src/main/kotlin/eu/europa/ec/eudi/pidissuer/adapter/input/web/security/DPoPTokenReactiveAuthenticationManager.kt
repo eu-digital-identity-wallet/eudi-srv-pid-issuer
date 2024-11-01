@@ -63,7 +63,7 @@ class DPoPTokenReactiveAuthenticationManager(
                         Mono.zip(issuer, thumbprint, dpopNonce)
                             .flatMap {
                                 verify(dPoPAuthentication, it.t1, it.t2, it.t3)
-                                    .then(Mono.just(dPoPAuthentication.authenticate(principal)))
+                                    .then(Mono.just(dPoPAuthentication.authenticate(principal, it.t2)))
                             }
                     }
             }
