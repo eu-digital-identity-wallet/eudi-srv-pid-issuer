@@ -349,6 +349,10 @@ fun beans(clock: Clock) = beans {
         bean { GenerateCNonce.random(Duration.ofMinutes(5L)) }
         bean { this@with } // this is needed for test
     }
+    with(InMemoryDPoPNonceRepository(clock)) {
+        bean(isLazyInit = true) { loadActiveDPoPNonceByClient }
+        bean(isLazyInit = true) { generateDPoPNonce }
+    }
 
     //
     // Credentials
@@ -627,12 +631,14 @@ fun beans(clock: Clock) = beans {
                         ),
                     )
 
-                    val authenticationManager = DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier)
+                    val authenticationManager = DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier, ref(), ref())
 
                     AuthenticationWebFilter(authenticationManager).apply {
                         setServerAuthenticationConverter(ServerDPoPAuthenticationTokenAuthenticationConverter())
                         setAuthenticationFailureHandler(
-                            ServerAuthenticationEntryPointFailureHandler(HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED)),
+                            ServerAuthenticationEntryPointFailureHandler(
+                                DPoPNonceServerAuthenticationEntryPoint(dPoPProperties.realm, ref()),
+                            ),
                         )
                     }
                 }

@@ -23,6 +23,7 @@ import com.nimbusds.oauth2.sdk.dpop.verifiers.InvalidDPoPProofException
 import com.nimbusds.oauth2.sdk.id.ClientID
 import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import com.nimbusds.oauth2.sdk.util.JSONObjectUtils
+import kotlinx.coroutines.reactor.mono
 import net.minidev.json.JSONObject
 import org.springframework.security.authentication.ReactiveAuthenticationManager
 import org.springframework.security.core.Authentication
@@ -42,6 +43,8 @@ import reactor.kotlin.core.publisher.switchIfEmpty
 class DPoPTokenReactiveAuthenticationManager(
     private val introspector: SpringReactiveOpaqueTokenIntrospector,
     private val verifier: DPoPProtectedResourceRequestVerifier,
+    private val loadActiveDPoPNonceByClient: LoadActiveDPoPNonce,
+    private val generateDPoPNonce: GenerateDPoPNonce,
 ) : ReactiveAuthenticationManager {
 
     /**
@@ -56,9 +59,10 @@ class DPoPTokenReactiveAuthenticationManager(
                     .flatMap { principal ->
                         val issuer = principal.issuer()
                         val thumbprint = principal.jwkThumbprint()
-                        Mono.zip(issuer, thumbprint)
+                        val dpopNonce = thumbprint.flatMap { getDPoPNonce(it) }
+                        Mono.zip(issuer, thumbprint, dpopNonce)
                             .flatMap {
-                                verify(dPoPAuthentication, it.t1, it.t2)
+                                verify(dPoPAuthentication, it.t1, it.t2, it.t3)
                                     .then(Mono.just(dPoPAuthentication.authenticate(principal)))
                             }
                     }
@@ -87,6 +91,7 @@ class DPoPTokenReactiveAuthenticationManager(
         authentication: DPoPTokenAuthentication,
         issuer: DPoPIssuer,
         thumbprint: JWKThumbprintConfirmation,
+        dpopNonce: DPoPNonce,
     ): Mono<Unit> =
         Mono.fromCallable {
             verifier.verify(
@@ -96,17 +101,24 @@ class DPoPTokenReactiveAuthenticationManager(
                 authentication.dpop,
                 authentication.accessToken,
                 thumbprint,
-                null,
+                dpopNonce.nonce,
             )
         }.onErrorMap { exception ->
             val error =
                 when (exception) {
-                    is InvalidDPoPProofException -> DPoPTokenError.invalidToken("Invalid DPoP proof '${exception.message}'.")
+                    is InvalidDPoPProofException -> DPoPTokenError.invalidToken("Invalid DPoP proof '${exception.message}'.", thumbprint)
                     is AccessTokenValidationException -> DPoPTokenError.invalidToken("Invalid access token binding '${exception.message}'.")
                     else -> DPoPTokenError.serverError("Unable to verify DPoP proof '${exception.message}'")
                 }
             OAuth2AuthenticationException(error, exception)
         }
+
+    /**
+     * Gets the Nonce value for DPoP that corresponds to a specific JWK Thumbprint.
+     */
+    private fun getDPoPNonce(jwkThumbprint: JWKThumbprintConfirmation): Mono<DPoPNonce> = mono {
+        loadActiveDPoPNonceByClient(jwkThumbprint) ?: generateDPoPNonce(jwkThumbprint)
+    }
 }
 
 /**
