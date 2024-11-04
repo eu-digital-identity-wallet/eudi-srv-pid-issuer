@@ -78,7 +78,7 @@ class DPoPTokenReactiveAuthenticationManager(
                     if (exception is BadOpaqueTokenException) {
                         DPoPTokenError.invalidToken("Access token is not valid")
                     } else {
-                        DPoPTokenError.serverError("Unable to introspect access token")
+                        DPoPTokenError.serverError("Unable to introspect access token", exception)
                     }
                 OAuth2AuthenticationException(error, exception)
             }
@@ -106,9 +106,14 @@ class DPoPTokenReactiveAuthenticationManager(
         }.onErrorMap { exception ->
             val error =
                 when (exception) {
-                    is InvalidDPoPProofException -> DPoPTokenError.invalidToken("Invalid DPoP proof '${exception.message}'.")
+                    is InvalidDPoPProofException ->
+                        if (exception.message?.contains("nonce", ignoreCase = true) == true) {
+                            DPoPTokenError.useDPoPNonce("Invalid DPoP proof '${exception.message}'.", authentication.accessToken)
+                        } else {
+                            DPoPTokenError.invalidToken("Invalid DPoP proof '${exception.message}'.")
+                        }
                     is AccessTokenValidationException -> DPoPTokenError.invalidToken("Invalid access token binding '${exception.message}'.")
-                    else -> DPoPTokenError.serverError("Unable to verify DPoP proof '${exception.message}'")
+                    else -> DPoPTokenError.serverError("Unable to verify DPoP proof '${exception.message}'", exception)
                 }
             OAuth2AuthenticationException(error, exception)
         }
@@ -140,7 +145,7 @@ private fun OAuth2AuthenticatedPrincipal.jwkThumbprint(): Mono<JWKThumbprintConf
     Mono.fromCallable { JSONObjectUtils.parse(JSONObject.toJSONString(attributes.filterKeys { it == "cnf" })) }
         .flatMap { Mono.fromCallable { JWKThumbprintConfirmation.parse(it) } }
         .onErrorMap {
-            val error = DPoPTokenError.serverError("Unable to extract DPoP configuration")
+            val error = DPoPTokenError.serverError("Unable to extract DPoP configuration", it)
             OAuth2AuthenticationException(error, it)
         }
         .switchIfEmpty {

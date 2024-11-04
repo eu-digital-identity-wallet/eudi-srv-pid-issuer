@@ -16,6 +16,8 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
 import com.nimbusds.oauth2.sdk.token.AccessTokenType
+import kotlinx.coroutines.reactor.awaitSingleOrNull
+import kotlinx.coroutines.reactor.mono
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.AuthenticationException
@@ -30,23 +32,43 @@ import reactor.core.publisher.Mono
  */
 class DPoPTokenServerAuthenticationEntryPoint(
     private val realm: String? = null,
+    private val generateDPoPNonce: GenerateDPoPNonce,
 ) : ServerAuthenticationEntryPoint {
 
-    override fun commence(exchange: ServerWebExchange, ex: AuthenticationException): Mono<Void> {
-        val details = buildList {
-            if (!realm.isNullOrBlank()) {
-                add("realm" to realm)
-            }
-            addAll(ex.details())
-        }.joinToString(separator = ", ", transform = { "${it.first}=\"${it.second}\"" })
-        val wwwAuthenticate = "${AccessTokenType.DPOP.value} $details"
-        return exchange.response
-            .apply {
-                statusCode = ex.status()
-                headers[HttpHeaders.WWW_AUTHENTICATE] = wwwAuthenticate
-            }
-            .setComplete()
-    }
+    override fun commence(exchange: ServerWebExchange, ex: AuthenticationException): Mono<Void> =
+        mono {
+            val details = buildList {
+                if (!realm.isNullOrBlank()) {
+                    add("realm" to realm)
+                }
+                addAll(ex.details())
+            }.joinToString(separator = ", ", transform = { "${it.first}=\"${it.second}\"" })
+            val wwwAuthenticate = "${AccessTokenType.DPOP.value} $details"
+            val dpopNonce = ex.dpopNonce()
+            exchange.response
+                .apply {
+                    statusCode = ex.status()
+                    headers[HttpHeaders.WWW_AUTHENTICATE] = wwwAuthenticate
+                    dpopNonce?.let {
+                        headers["DPoP-Nonce"] = it.nonce.value
+                    }
+                }
+                .setComplete()
+                .awaitSingleOrNull()
+        }
+
+    /**
+     * Generates a new [DPoPNonce] in case this [AuthenticationException] contains a [DPoPTokenError.UseDPoPNonce] error.
+     */
+    private suspend fun AuthenticationException.dpopNonce(): DPoPNonce? =
+        when (this) {
+            is OAuth2AuthenticationException ->
+                when (val error = error) {
+                    is DPoPTokenError.UseDPoPNonce -> generateDPoPNonce(error.accessToken)
+                    else -> null
+                }
+            else -> null
+        }
 }
 
 /**

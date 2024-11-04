@@ -558,7 +558,7 @@ fun beans(clock: Clock) = beans {
             val enableDPoP = dPoPProperties.algorithms.isNotEmpty()
 
             val dPoPTokenConverter by lazy { ServerDPoPAuthenticationTokenAuthenticationConverter() }
-            val dPoPEntryPoint by lazy { DPoPTokenServerAuthenticationEntryPoint(dPoPProperties.realm) }
+            val dPoPEntryPoint by lazy { DPoPTokenServerAuthenticationEntryPoint(dPoPProperties.realm, ref()) }
 
             val bearerTokenConverter = ServerBearerTokenAuthenticationConverter()
             val bearerTokenEntryPoint = BearerTokenServerAuthenticationEntryPoint()
@@ -636,11 +636,7 @@ fun beans(clock: Clock) = beans {
 
                     AuthenticationWebFilter(authenticationManager).apply {
                         setServerAuthenticationConverter(ServerDPoPAuthenticationTokenAuthenticationConverter())
-                        setAuthenticationFailureHandler(
-                            ServerAuthenticationEntryPointFailureHandler(
-                                DPoPNonceServerAuthenticationEntryPoint(dPoPProperties.realm, ref()),
-                            ),
-                        )
+                        setAuthenticationFailureHandler(ServerAuthenticationEntryPointFailureHandler(dPoPEntryPoint))
                     }
                 }
 

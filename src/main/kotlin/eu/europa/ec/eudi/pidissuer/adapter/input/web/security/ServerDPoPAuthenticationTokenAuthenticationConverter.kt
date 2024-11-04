@@ -45,7 +45,7 @@ class ServerDPoPAuthenticationTokenAuthenticationConverter : ServerAuthenticatio
                 when (it) {
                     is OAuth2AuthenticationException -> it
                     else -> {
-                        val error = DPoPTokenError.serverError("Unable to process DPoP request")
+                        val error = DPoPTokenError.serverError("Unable to process DPoP request", it)
                         OAuth2AuthenticationException(error, it)
                     }
                 }
