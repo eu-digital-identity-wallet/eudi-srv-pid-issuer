@@ -22,7 +22,8 @@ import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPProtectedResourceRequestVerifi
 import com.nimbusds.oauth2.sdk.dpop.verifiers.InvalidDPoPProofException
 import com.nimbusds.oauth2.sdk.id.ClientID
 import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
-import com.nimbusds.oauth2.sdk.util.JSONObjectUtils
+import kotlinx.coroutines.reactor.awaitSingle
+import kotlinx.coroutines.reactor.mono
 import net.minidev.json.JSONObject
 import org.springframework.security.authentication.ReactiveAuthenticationManager
 import org.springframework.security.core.Authentication
@@ -32,7 +33,6 @@ import org.springframework.security.oauth2.core.OAuth2TokenIntrospectionClaimNam
 import org.springframework.security.oauth2.server.resource.introspection.BadOpaqueTokenException
 import org.springframework.security.oauth2.server.resource.introspection.SpringReactiveOpaqueTokenIntrospector
 import reactor.core.publisher.Mono
-import reactor.kotlin.core.publisher.switchIfEmpty
 
 /**
  * [ReactiveAuthenticationManager] implementing DPoP authentication.
@@ -42,42 +42,38 @@ import reactor.kotlin.core.publisher.switchIfEmpty
 class DPoPTokenReactiveAuthenticationManager(
     private val introspector: SpringReactiveOpaqueTokenIntrospector,
     private val verifier: DPoPProtectedResourceRequestVerifier,
+    private val dpopNonce: DPoPNoncePolicy,
 ) : ReactiveAuthenticationManager {
 
     /**
      * Performs DPoP authentication.
      */
     override fun authenticate(authentication: Authentication): Mono<Authentication> =
-        Mono.just(authentication)
-            .filter { it is DPoPTokenAuthentication }
-            .map { it as DPoPTokenAuthentication }
-            .flatMap { dPoPAuthentication ->
-                introspect(dPoPAuthentication.accessToken)
-                    .flatMap { principal ->
-                        val issuer = principal.issuer()
-                        val thumbprint = principal.jwkThumbprint()
-                        Mono.zip(issuer, thumbprint)
-                            .flatMap {
-                                verify(dPoPAuthentication, it.t1, it.t2)
-                                    .then(Mono.just(dPoPAuthentication.authenticate(principal)))
-                            }
-                    }
+        mono {
+            when (authentication) {
+                is DPoPTokenAuthentication -> {
+                    val principal = introspect(authentication.accessToken)
+                    val issuer = principal.issuer()
+                    val thumbprint = principal.jwkThumbprint()
+                    val dpopNonce = dpopNonce.getActiveOrGenerateNew(authentication.accessToken)
+                    verify(authentication, issuer, thumbprint, dpopNonce)
+                    authentication.authenticate(principal)
+                }
+                else -> null
             }
+        }
 
     /**
      * Introspects the provided [token] and verifies whether it's active or not.
      */
-    private fun introspect(token: DPoPAccessToken): Mono<OAuth2AuthenticatedPrincipal> =
-        introspector.introspect(token.value)
-            .onErrorMap { exception ->
-                val error =
-                    if (exception is BadOpaqueTokenException) {
-                        DPoPTokenError.invalidToken("Access token is not valid")
-                    } else {
-                        DPoPTokenError.serverError("Unable to introspect access token")
-                    }
-                OAuth2AuthenticationException(error, exception)
-            }
+    private suspend fun introspect(token: DPoPAccessToken): OAuth2AuthenticatedPrincipal =
+        try {
+            introspector.introspect(token.value).awaitSingle()
+        } catch (exception: BadOpaqueTokenException) {
+            throw OAuth2AuthenticationException(DPoPTokenError.invalidToken("Access token is not valid"), exception)
+        } catch (exception: Exception) {
+            throw OAuth2AuthenticationException(DPoPTokenError.serverError("Unable to introspect access token", exception), exception)
+        }
 
     /**
      * Given a [DPoPTokenAuthentication], the [DPoPIssuer], and the [JWKThumbprintConfirmation], performs DPoP verification
@@ -87,8 +83,9 @@ class DPoPTokenReactiveAuthenticationManager(
         authentication: DPoPTokenAuthentication,
         issuer: DPoPIssuer,
         thumbprint: JWKThumbprintConfirmation,
-    ): Mono<Unit> =
-        Mono.fromCallable {
+        dpopNonce: DPoPNonce?,
+    ) {
+        try {
             verifier.verify(
                 authentication.method.name(),
                 authentication.uri,
@@ -96,42 +93,52 @@ class DPoPTokenReactiveAuthenticationManager(
                 authentication.dpop,
                 authentication.accessToken,
                 thumbprint,
-                null,
+                dpopNonce?.nonce,
             )
-        }.onErrorMap { exception ->
-            val error =
-                when (exception) {
-                    is InvalidDPoPProofException -> DPoPTokenError.invalidToken("Invalid DPoP proof '${exception.message}'.")
-                    is AccessTokenValidationException -> DPoPTokenError.invalidToken("Invalid access token binding '${exception.message}'.")
-                    else -> DPoPTokenError.serverError("Unable to verify DPoP proof '${exception.message}'")
-                }
-            OAuth2AuthenticationException(error, exception)
+        } catch (exception: InvalidDPoPProofException) {
+            val error = if (exception.message?.contains("nonce", ignoreCase = true) == true) {
+                DPoPTokenError.useDPoPNonce("Invalid DPoP proof '${exception.message}'.", authentication.accessToken)
+            } else {
+                DPoPTokenError.invalidToken("Invalid DPoP proof '${exception.message}'.")
+            }
+            throw OAuth2AuthenticationException(error, exception)
+        } catch (exception: AccessTokenValidationException) {
+            throw OAuth2AuthenticationException(
+                DPoPTokenError.invalidToken("Invalid access token binding '${exception.message}'."),
+                exception,
+            )
+        } catch (exception: Exception) {
+            throw OAuth2AuthenticationException(
+                DPoPTokenError.serverError("Unable to verify DPoP proof '${exception.message}'", exception),
+                exception,
+            )
         }
+    }
 }
 
 /**
  * Gets the [DPoPIssuer] from this [OAuth2AuthenticatedPrincipal].
  */
-private fun OAuth2AuthenticatedPrincipal.issuer(): Mono<DPoPIssuer> =
-    Mono.justOrEmpty(attributes[OAuth2TokenIntrospectionClaimNames.CLIENT_ID])
-        .filter { it is String && it.isNotBlank() }
-        .map { DPoPIssuer(ClientID(it as String)) }
-        .switchIfEmpty {
-            val error = DPoPTokenError.invalidToken("Unable to determine DPoP issuer")
-            Mono.error(OAuth2AuthenticationException(error))
+private fun OAuth2AuthenticatedPrincipal.issuer(): DPoPIssuer =
+    attributes[OAuth2TokenIntrospectionClaimNames.CLIENT_ID]?.let { clientId ->
+        if (clientId is String && clientId.isNotBlank()) {
+            DPoPIssuer(ClientID(clientId))
+        } else {
+            null
         }
+    } ?: throw OAuth2AuthenticationException(DPoPTokenError.invalidToken("Unable to determine DPoP issuer"))
 
 /**
  * Gets the [JWKThumbprintConfirmation] from this [OAuth2AuthenticatedPrincipal].
  */
-private fun OAuth2AuthenticatedPrincipal.jwkThumbprint(): Mono<JWKThumbprintConfirmation> =
-    Mono.fromCallable { JSONObjectUtils.parse(JSONObject.toJSONString(attributes.filterKeys { it == "cnf" })) }
-        .flatMap { Mono.fromCallable { JWKThumbprintConfirmation.parse(it) } }
-        .onErrorMap {
-            val error = DPoPTokenError.serverError("Unable to extract DPoP configuration")
-            OAuth2AuthenticationException(error, it)
-        }
-        .switchIfEmpty {
-            val error = DPoPTokenError.invalidToken("Access token is not DPoP bound")
-            Mono.error(OAuth2AuthenticationException(error))
-        }
+private fun OAuth2AuthenticatedPrincipal.jwkThumbprint(): JWKThumbprintConfirmation {
+    val cnf = attributes.filterKeys { it == "cnf" }
+        .takeIf { it.isNotEmpty() }
+        ?: throw OAuth2AuthenticationException(DPoPTokenError.invalidToken("Access token is not DPoP bound"))
+
+    return try {
+        JWKThumbprintConfirmation.parse(JSONObject(cnf))
+    } catch (exception: Exception) {
+        throw OAuth2AuthenticationException(DPoPTokenError.serverError("Unable to extract DPoP confirmation", exception))
+    }
+}

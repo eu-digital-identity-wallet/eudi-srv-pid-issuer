@@ -16,6 +16,8 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
 import com.nimbusds.oauth2.sdk.token.AccessTokenType
+import kotlinx.coroutines.reactor.awaitSingleOrNull
+import kotlinx.coroutines.reactor.mono
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.security.access.AccessDeniedException
@@ -32,22 +34,24 @@ class DPoPTokenServerAccessDeniedHandler(
     private val realm: String? = null,
 ) : ServerAccessDeniedHandler {
 
-    override fun handle(exchange: ServerWebExchange, denied: AccessDeniedException): Mono<Void> {
-        val details = buildList {
-            if (!realm.isNullOrBlank()) {
-                add("realm" to realm)
-            }
-            add("error" to OAuth2ErrorCodes.INSUFFICIENT_SCOPE)
-            add("error_description" to "The request requires higher privileges than provided by the access token.")
-            add("error_uri" to "https://tools.ietf.org/html/rfc6750#section-3.1")
-        }.joinToString(separator = ", ", transform = { "${it.first}=\"${it.second}\"" })
-        val wwwAuthenticate = "${AccessTokenType.DPOP.value} $details"
+    override fun handle(exchange: ServerWebExchange, denied: AccessDeniedException): Mono<Void> =
+        mono {
+            val details = buildList {
+                if (!realm.isNullOrBlank()) {
+                    add("realm" to realm)
+                }
+                add("error" to OAuth2ErrorCodes.INSUFFICIENT_SCOPE)
+                add("error_description" to "The request requires higher privileges than provided by the access token.")
+                add("error_uri" to "https://tools.ietf.org/html/rfc6750#section-3.1")
+            }.joinToString(separator = ", ", transform = { "${it.first}=\"${it.second}\"" })
+            val wwwAuthenticate = "${AccessTokenType.DPOP.value} $details"
 
-        return exchange.response
-            .apply {
-                statusCode = HttpStatus.FORBIDDEN
-                headers[HttpHeaders.WWW_AUTHENTICATE] = wwwAuthenticate
-            }
-            .setComplete()
-    }
+            exchange.response
+                .apply {
+                    statusCode = HttpStatus.FORBIDDEN
+                    headers[HttpHeaders.WWW_AUTHENTICATE] = wwwAuthenticate
+                }
+                .setComplete()
+                .awaitSingleOrNull()
+        }
 }
