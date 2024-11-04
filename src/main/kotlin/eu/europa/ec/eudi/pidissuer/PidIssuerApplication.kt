@@ -86,6 +86,8 @@ import org.springframework.http.MediaType
 import org.springframework.http.client.reactive.ReactorClientHttpConnector
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
 import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
+import org.springframework.scheduling.annotation.EnableScheduling
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.config.web.server.invoke
@@ -110,6 +112,7 @@ import java.security.cert.X509Certificate
 import java.time.Clock
 import java.time.Duration
 import java.util.*
+import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.days
 import kotlin.time.toJavaDuration
 import kotlin.time.toKotlinDuration
@@ -485,6 +488,14 @@ fun beans(clock: Clock) = beans {
     if (env.getProperty("issuer.dpop.nonce.enabled", Boolean::class.java, false)) {
         with(InMemoryDPoPNonceRepository(clock, Duration.parse(env.getProperty("issuer.dpop.nonce.expiration", "PT5M")))) {
             bean { DPoPNoncePolicy.Enforcing(loadActiveDPoPNonce, generateDPoPNonce) }
+            bean {
+                object {
+                    @Scheduled(fixedRate = 1L, timeUnit = TimeUnit.MINUTES)
+                    suspend fun cleanup() {
+                        cleanupInactiveDPoPNonce()
+                    }
+                }
+            }
         }
         bean(::DPoPNonceWebFilter)
     } else {
@@ -846,6 +857,7 @@ fun BeanDefinitionDsl.initializer(): ApplicationContextInitializer<GenericApplic
     ApplicationContextInitializer<GenericApplicationContext> { initialize(it) }
 
 @SpringBootApplication
+@EnableScheduling
 class PidIssuerApplication
 
 fun main(args: Array<String>) {

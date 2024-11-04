@@ -19,6 +19,7 @@ import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import com.nimbusds.openid.connect.sdk.Nonce
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -43,6 +44,13 @@ fun interface GenerateDPoPNonce {
 }
 
 /**
+ * Cleans up any inactive DPoP Nonce values.
+ */
+fun interface CleanupInactiveDPoPNonce {
+    suspend operator fun invoke()
+}
+
+/**
  * In memory repository providing implementations for [LoadActiveDPoPNonce], and [GenerateDPoPNonce].
  */
 class InMemoryDPoPNonceRepository(
@@ -55,6 +63,7 @@ class InMemoryDPoPNonceRepository(
 
     private val data = mutableMapOf<DPoPAccessToken, DPoPNonce>()
     private val mutex = Mutex()
+    private val log = LoggerFactory.getLogger(InMemoryDPoPNonceRepository::class.java)
 
     val loadActiveDPoPNonce: LoadActiveDPoPNonce by lazy {
         LoadActiveDPoPNonce { accessToken ->
@@ -77,6 +86,18 @@ class InMemoryDPoPNonceRepository(
                 )
                 data[accessToken] = dpopNonce
                 dpopNonce
+            }
+        }
+    }
+
+    val cleanupInactiveDPoPNonce: CleanupInactiveDPoPNonce by lazy {
+        CleanupInactiveDPoPNonce {
+            mutex.withLock {
+                val now = clock.instant()
+                val inactive = data.entries.filter { (_, dpopNonce) -> dpopNonce.expiresAt >= now }.map { it.key }
+                inactive.forEach(data::remove)
+
+                log.debug("Removed '${inactive.size}' inactive DPoPNonce values")
             }
         }
     }
