@@ -20,13 +20,15 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.crypto.factories.DefaultJWEDecrypterFactory
-import com.nimbusds.jose.jwk.*
+import com.nimbusds.jose.jwk.Curve
+import com.nimbusds.jose.jwk.ECKey
+import com.nimbusds.jose.jwk.KeyUse
+import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
-import com.nimbusds.oauth2.sdk.dpop.JWKThumbprintConfirmation
 import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import eu.europa.ec.eudi.pidissuer.PidIssuerApplicationTest
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPConfigurationProperties
@@ -848,7 +850,6 @@ private fun dPoPTokenAuthentication(
     expiresIn: Duration = Duration.ofMinutes(10L),
     scopes: List<Scope> = listOf(PidMsoMdocScope, PidSdJwtVcScope),
     authorities: List<GrantedAuthority> = listOf(SimpleGrantedAuthority("ROLE_USER")),
-    jwk: JWK = ECKeyGenerator(Curve.P_256).generate(),
 ): DPoPTokenAuthentication {
     val issuedAt = clock.instant()
     val principal = DefaultOAuth2AuthenticatedPrincipal(
@@ -874,7 +875,7 @@ private fun dPoPTokenAuthentication(
         accessToken,
         HttpMethod.GET,
         URI.create("/"),
-    ).authenticate(principal, JWKThumbprintConfirmation.of(jwk))
+    ).authenticate(principal)
 }
 
 private fun requestByFormat(

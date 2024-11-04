@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
-import com.nimbusds.oauth2.sdk.dpop.JWKThumbprintConfirmation
+import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import com.nimbusds.openid.connect.sdk.Nonce
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -26,20 +26,20 @@ import java.time.Instant
 /**
  * A Nonce value used for DPoP authentication.
  */
-data class DPoPNonce(val nonce: Nonce, val jwkThumbprint: JWKThumbprintConfirmation, val createdAt: Instant, val expiresAt: Instant)
+data class DPoPNonce(val nonce: Nonce, val accessToken: DPoPAccessToken, val createdAt: Instant, val expiresAt: Instant)
 
 /**
- * Loads the active Nonce value for DPoP, for a specific JWK Thumbprint.
+ * Loads the active Nonce value for DPoP, for a specific DPoP Access Token.
  */
 fun interface LoadActiveDPoPNonce {
-    suspend operator fun invoke(jwkThumbprint: JWKThumbprintConfirmation): DPoPNonce?
+    suspend operator fun invoke(accessToken: DPoPAccessToken): DPoPNonce?
 }
 
 /**
- * Generates a new Nonce value for DPoP, for a specific JWK Thumbprint.
+ * Generates a new Nonce value for DPoP, for a specific DPoP Access Token.
  */
 fun interface GenerateDPoPNonce {
-    suspend operator fun invoke(jwkThumbprint: JWKThumbprintConfirmation): DPoPNonce
+    suspend operator fun invoke(accessToken: DPoPAccessToken): DPoPNonce
 }
 
 /**
@@ -53,29 +53,29 @@ class InMemoryDPoPNonceRepository(
         require(!dpopNonceExpiresIn.isZero && !dpopNonceExpiresIn.isNegative) { "dpopNonceExpiresIn must be positive" }
     }
 
-    private val data = mutableMapOf<JWKThumbprintConfirmation, DPoPNonce>()
+    private val data = mutableMapOf<DPoPAccessToken, DPoPNonce>()
     private val mutex = Mutex()
 
     val loadActiveDPoPNonceByClient: LoadActiveDPoPNonce by lazy {
-        LoadActiveDPoPNonce { jwkThumbprint ->
+        LoadActiveDPoPNonce { accessToken ->
             mutex.withLock {
-                data[jwkThumbprint]?.takeIf { dpopNonce -> dpopNonce.expiresAt > clock.instant() }
+                data[accessToken]?.takeIf { dpopNonce -> dpopNonce.expiresAt > clock.instant() }
             }
         }
     }
 
     val generateDPoPNonce: GenerateDPoPNonce by lazy {
-        GenerateDPoPNonce { jwkThumbprint ->
+        GenerateDPoPNonce { accessToken ->
             mutex.withLock {
                 val createdAt = clock.instant()
                 val expiresAt = createdAt + dpopNonceExpiresIn
                 val dpopNonce = DPoPNonce(
                     nonce = Nonce(),
-                    jwkThumbprint = jwkThumbprint,
+                    accessToken = accessToken,
                     createdAt = createdAt,
                     expiresAt = expiresAt,
                 )
-                data[jwkThumbprint] = dpopNonce
+                data[accessToken] = dpopNonce
                 dpopNonce
             }
         }

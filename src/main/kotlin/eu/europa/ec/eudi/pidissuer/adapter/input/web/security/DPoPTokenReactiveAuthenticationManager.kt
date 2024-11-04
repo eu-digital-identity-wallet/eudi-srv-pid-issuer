@@ -59,11 +59,11 @@ class DPoPTokenReactiveAuthenticationManager(
                     .flatMap { principal ->
                         val issuer = principal.issuer()
                         val thumbprint = principal.jwkThumbprint()
-                        val dpopNonce = thumbprint.flatMap { getDPoPNonce(it) }
+                        val dpopNonce = getDPoPNonce(dPoPAuthentication.accessToken)
                         Mono.zip(issuer, thumbprint, dpopNonce)
                             .flatMap {
                                 verify(dPoPAuthentication, it.t1, it.t2, it.t3)
-                                    .then(Mono.just(dPoPAuthentication.authenticate(principal, it.t2)))
+                                    .then(Mono.just(dPoPAuthentication.authenticate(principal)))
                             }
                     }
             }
@@ -106,7 +106,7 @@ class DPoPTokenReactiveAuthenticationManager(
         }.onErrorMap { exception ->
             val error =
                 when (exception) {
-                    is InvalidDPoPProofException -> DPoPTokenError.invalidToken("Invalid DPoP proof '${exception.message}'.", thumbprint)
+                    is InvalidDPoPProofException -> DPoPTokenError.invalidToken("Invalid DPoP proof '${exception.message}'.")
                     is AccessTokenValidationException -> DPoPTokenError.invalidToken("Invalid access token binding '${exception.message}'.")
                     else -> DPoPTokenError.serverError("Unable to verify DPoP proof '${exception.message}'")
                 }
@@ -114,10 +114,10 @@ class DPoPTokenReactiveAuthenticationManager(
         }
 
     /**
-     * Gets the Nonce value for DPoP that corresponds to a specific JWK Thumbprint.
+     * Gets the Nonce value for DPoP that corresponds to a specific DPoP Access Token.
      */
-    private fun getDPoPNonce(jwkThumbprint: JWKThumbprintConfirmation): Mono<DPoPNonce> = mono {
-        loadActiveDPoPNonceByClient(jwkThumbprint) ?: generateDPoPNonce(jwkThumbprint)
+    private fun getDPoPNonce(accessToken: DPoPAccessToken): Mono<DPoPNonce> = mono {
+        loadActiveDPoPNonceByClient(accessToken) ?: generateDPoPNonce(accessToken)
     }
 }
 

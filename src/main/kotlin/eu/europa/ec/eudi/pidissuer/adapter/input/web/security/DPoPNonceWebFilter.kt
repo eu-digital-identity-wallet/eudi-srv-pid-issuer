@@ -39,10 +39,10 @@ class DPoPNonceWebFilter(
                     .awaitSingleOrNull()
                     ?.authentication
 
-                if (authentication is DPoPTokenAuthentication && authentication.jwkThumbprint != null) {
-                    val currentDPoPNonce = loadActiveDPoPNonce(authentication.jwkThumbprint)
+                if (authentication is DPoPTokenAuthentication) {
+                    val currentDPoPNonce = loadActiveDPoPNonce(authentication.accessToken)
                     if (currentDPoPNonce == null) {
-                        val newDPoPNonce = generateDPoPNonce(authentication.jwkThumbprint)
+                        val newDPoPNonce = generateDPoPNonce(authentication.accessToken)
                         val response = exchange.response
                         response.headers["DPoP-Nonce"] = newDPoPNonce.nonce.value
                     }

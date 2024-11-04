@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
 import com.nimbusds.oauth2.sdk.token.AccessTokenType
+import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import kotlinx.coroutines.reactor.awaitSingleOrNull
 import kotlinx.coroutines.reactor.mono
 import org.springframework.http.HttpHeaders
@@ -44,7 +45,6 @@ class DPoPNonceServerAuthenticationEntryPoint(
                 val error = authException.error
                 if (error !is DPoPTokenError ||
                     error.errorCode != OAuth2ErrorCodes.INVALID_TOKEN ||
-                    error.jwkThumbprint == null ||
                     !error.description.contains("nonce", ignoreCase = true)
                 ) {
                     super.commence(exchange, authException).awaitSingleOrNull()
@@ -56,7 +56,15 @@ class DPoPNonceServerAuthenticationEntryPoint(
                         put("error", "use_dpop_nonce")
                         put("error_description", authException.error.description)
                     }.entries.joinToString(separator = ", ", transform = { "${it.key}=\"${it.value}\"" })
-                    val dpopNonce = generateDPoPNonce(error.jwkThumbprint)
+                    val dpopNonce = run {
+                        val accessToken = run {
+                            val authorization = requireNotNull(exchange.request.headers.getFirst(HttpHeaders.AUTHORIZATION)) {
+                                "Missing Authorization HTTP Header"
+                            }
+                            DPoPAccessToken.parse(authorization)
+                        }
+                        generateDPoPNonce(accessToken)
+                    }
                     val wwwAuthenticate = "${AccessTokenType.DPOP.value} $details"
 
                     exchange.response
