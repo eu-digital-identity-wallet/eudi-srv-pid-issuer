@@ -27,8 +27,7 @@ import reactor.core.publisher.Mono
  * [WebFilter] that checks if new DPoP Nonce values must be generated for DPoP authenticated web requests.
  */
 class DPoPNonceWebFilter(
-    private val loadActiveDPoPNonce: LoadActiveDPoPNonce,
-    private val generateDPoPNonce: GenerateDPoPNonce,
+    private val dpopNonce: DPoPNoncePolicy.Enforcing,
 ) : WebFilter {
 
     override fun filter(exchange: ServerWebExchange, chain: WebFilterChain): Mono<Void> =
@@ -40,9 +39,9 @@ class DPoPNonceWebFilter(
                     ?.authentication
 
                 if (authentication is DPoPTokenAuthentication) {
-                    val currentDPoPNonce = loadActiveDPoPNonce(authentication.accessToken)
+                    val currentDPoPNonce = dpopNonce.loadActiveDPoPNonce(authentication.accessToken)
                     if (currentDPoPNonce == null) {
-                        val newDPoPNonce = generateDPoPNonce(authentication.accessToken)
+                        val newDPoPNonce = dpopNonce.generateDPoPNonce(authentication.accessToken)
                         val response = exchange.response
                         response.headers["DPoP-Nonce"] = newDPoPNonce.nonce.value
                     }

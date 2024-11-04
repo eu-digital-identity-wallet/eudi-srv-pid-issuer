@@ -32,7 +32,7 @@ import reactor.core.publisher.Mono
  */
 class DPoPTokenServerAuthenticationEntryPoint(
     private val realm: String? = null,
-    private val generateDPoPNonce: GenerateDPoPNonce,
+    private val dpopNonce: DPoPNoncePolicy,
 ) : ServerAuthenticationEntryPoint {
 
     override fun commence(exchange: ServerWebExchange, ex: AuthenticationException): Mono<Void> =
@@ -64,7 +64,7 @@ class DPoPTokenServerAuthenticationEntryPoint(
         when (this) {
             is OAuth2AuthenticationException ->
                 when (val error = error) {
-                    is DPoPTokenError.UseDPoPNonce -> generateDPoPNonce(error.accessToken)
+                    is DPoPTokenError.UseDPoPNonce -> dpopNonce.getActiveOrGenerateNew(error.accessToken)
                     else -> null
                 }
             else -> null

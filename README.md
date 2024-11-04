@@ -267,6 +267,10 @@ Variable: `ISSUER_DPOP_REALM`
 Description: Realm to report in the WWW-Authenticate header in case of DPoP authentication/authorization failure         
 Default value: `pid-issuer`
 
+Variable: `ISSUER_DPOP_NONCE_ENABLED`  
+Description: Whether Nonce values are required for DPoP authentication    
+Default value: `false`
+
 Variable: `ISSUER_DPOP_NONCE_EXPIRATION`  
 Description: Duration after which Nonce values for DPoP authentication expire    
 Default value: `PT5M`

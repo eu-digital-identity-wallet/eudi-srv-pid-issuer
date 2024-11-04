@@ -56,7 +56,7 @@ class InMemoryDPoPNonceRepository(
     private val data = mutableMapOf<DPoPAccessToken, DPoPNonce>()
     private val mutex = Mutex()
 
-    val loadActiveDPoPNonceByClient: LoadActiveDPoPNonce by lazy {
+    val loadActiveDPoPNonce: LoadActiveDPoPNonce by lazy {
         LoadActiveDPoPNonce { accessToken ->
             mutex.withLock {
                 data[accessToken]?.takeIf { dpopNonce -> dpopNonce.expiresAt > clock.instant() }
@@ -79,5 +79,35 @@ class InMemoryDPoPNonceRepository(
                 dpopNonce
             }
         }
+    }
+}
+
+/**
+ * Policy for DPoP Nonce.
+ */
+sealed interface DPoPNoncePolicy {
+
+    /**
+     * Gets the [DPoPNonce] associated with [accessToken].
+     * In case no [DPoPNonce] is associated with [accessToken] a new one might be generated.
+     */
+    suspend fun getActiveOrGenerateNew(accessToken: DPoPAccessToken): DPoPNonce?
+
+    /**
+     * [DPoPNonce] is enforced.
+     */
+    class Enforcing(
+        val loadActiveDPoPNonce: LoadActiveDPoPNonce,
+        val generateDPoPNonce: GenerateDPoPNonce,
+    ) : DPoPNoncePolicy {
+        override suspend fun getActiveOrGenerateNew(accessToken: DPoPAccessToken): DPoPNonce =
+            loadActiveDPoPNonce(accessToken) ?: generateDPoPNonce(accessToken)
+    }
+
+    /**
+     * [DPoPNonce] is disabled.
+     */
+    data object Disabled : DPoPNoncePolicy {
+        override suspend fun getActiveOrGenerateNew(accessToken: DPoPAccessToken): DPoPNonce? = null
     }
 }
