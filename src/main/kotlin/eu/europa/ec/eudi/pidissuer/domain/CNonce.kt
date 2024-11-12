@@ -19,7 +19,6 @@ import java.time.Duration
 import java.time.Instant
 
 data class CNonce(
-    val accessToken: String,
     val nonce: String,
     val activatedAt: Instant,
     val expiresIn: Duration,

@@ -28,6 +28,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.jose.DecryptCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
 import kotlinx.coroutines.Dispatchers
@@ -265,11 +266,12 @@ class IssueMsoMdocPid(
     private val generateNotificationId: GenerateNotificationId,
     private val clock: Clock,
     private val storeIssuedCredentials: StoreIssuedCredentials,
+    decryptCNonce: DecryptCNonce,
 ) : IssueSpecificCredential {
 
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
 
-    private val validateProof = ValidateProof(credentialIssuerId)
+    private val validateProof = ValidateProof(credentialIssuerId, decryptCNonce, clock)
     override val supportedCredential: MsoMdocCredentialConfiguration
         get() = PidMsoMdocV1
     override val publicKey: JWK? = null
@@ -279,12 +281,11 @@ class IssueMsoMdocPid(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-        expectedCNonce: CNonce,
     ): CredentialResponse = coroutineScope {
         log.info("Handling issuance request ...")
         val holderPubKeys = request.unvalidatedProofs.map {
             async(Dispatchers.Default) {
-                holderPubKey(it, expectedCNonce)
+                holderPubKey(it)
             }
         }
 
@@ -326,13 +327,13 @@ class IssueMsoMdocPid(
 
     context(Raise<IssueCredentialError>)
     @Suppress("DuplicatedCode")
-    private fun holderPubKey(unvalidatedProof: UnvalidatedProof, expectedCNonce: CNonce): ECKey {
+    private suspend fun holderPubKey(unvalidatedProof: UnvalidatedProof): ECKey {
         fun ecKeyOrFail(provider: () -> ECKey) = try {
             provider.invoke()
         } catch (t: Throwable) {
             raise(InvalidProof("Only EC Key is supported"))
         }
-        return when (val key = validateProof(unvalidatedProof, expectedCNonce, supportedCredential)) {
+        return when (val key = validateProof(unvalidatedProof, supportedCredential)) {
             is CredentialKey.DIDUrl -> ecKeyOrFail { key.jwk.toECKey() }
             is CredentialKey.Jwk -> ecKeyOrFail { key.value.toECKey() }
             is CredentialKey.X5c -> ecKeyOrFail { ECKey.parse(key.certificate) }

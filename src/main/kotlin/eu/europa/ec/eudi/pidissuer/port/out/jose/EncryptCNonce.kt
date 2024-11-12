@@ -13,10 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.out.persistence
+package eu.europa.ec.eudi.pidissuer.port.out.jose
 
-import java.time.Instant
+import eu.europa.ec.eudi.pidissuer.domain.CNonce
 
-fun interface DeleteExpiredCNonce {
-    suspend operator fun invoke(at: Instant)
+/**
+ * Encrypts a CNonce.
+ */
+fun interface EncryptCNonce {
+    suspend operator fun invoke(cnonce: CNonce): String
 }

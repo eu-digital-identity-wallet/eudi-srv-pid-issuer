@@ -13,22 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.out.persistence
+package eu.europa.ec.eudi.pidissuer.adapter.out.credential
 
+import com.nimbusds.openid.connect.sdk.Nonce
 import eu.europa.ec.eudi.pidissuer.domain.CNonce
+import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateCNonce
 import java.time.Clock
 import java.time.Duration
-import java.util.*
 
 /**
- * Generates a new [CNonce].
+ * Default implementation for [GenerateCNonce].
  */
-fun interface GenerateCNonce {
-    suspend operator fun invoke(accessToken: String, clock: Clock): CNonce
-
-    companion object {
-        fun random(duration: Duration): GenerateCNonce = GenerateCNonce { accessToken, clock ->
-            CNonce(accessToken, UUID.randomUUID().toString(), clock.instant(), duration)
-        }
-    }
+internal class DefaultGenerateCNonce(
+    private val clock: Clock,
+    private val expiresIn: Duration,
+    private val generator: suspend () -> String = { Nonce(128).value },
+) : GenerateCNonce {
+    override suspend fun invoke(): CNonce = CNonce(generator(), clock.instant(), expiresIn)
 }

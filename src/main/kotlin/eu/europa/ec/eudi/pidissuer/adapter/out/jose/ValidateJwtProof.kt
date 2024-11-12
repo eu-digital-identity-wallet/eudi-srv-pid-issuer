@@ -37,18 +37,21 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import com.nimbusds.jwt.proc.JWTProcessor
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import eu.europa.ec.eudi.pidissuer.port.out.jose.DecryptCNonce
 import java.security.interfaces.ECPublicKey
 import java.security.interfaces.EdECPublicKey
 import java.security.interfaces.RSAPublicKey
+import java.time.Clock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 
 context (Raise<IssueCredentialError.InvalidProof>)
-fun validateJwtProof(
+suspend fun validateJwtProof(
     credentialIssuerId: CredentialIssuerId,
     unvalidatedProof: UnvalidatedProof.Jwt,
-    expectedCNonce: CNonce,
+    decryptCNonce: DecryptCNonce,
     credentialConfiguration: CredentialConfiguration,
+    clock: Clock,
 ): CredentialKey {
     val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.JWT]
     ensureNotNull(proofType) {
@@ -56,21 +59,27 @@ fun validateJwtProof(
     }
     check(proofType is ProofType.Jwt)
 
-    return validateJwtProof(credentialIssuerId, unvalidatedProof, expectedCNonce, proofType)
+    return validateJwtProof(credentialIssuerId, unvalidatedProof, decryptCNonce, proofType, clock)
 }
 
 context (Raise<IssueCredentialError.InvalidProof>)
-fun validateJwtProof(
+suspend fun validateJwtProof(
     credentialIssuerId: CredentialIssuerId,
     unvalidatedProof: UnvalidatedProof.Jwt,
-    expectedCNonce: CNonce,
+    decryptCNonce: DecryptCNonce,
     proofType: ProofType.Jwt,
+    clock: Clock,
 ): CredentialKey = result {
     val signedJwt = SignedJWT.parse(unvalidatedProof.jwt)
     val (algorithm, credentialKey) = algorithmAndCredentialKey(signedJwt.header, proofType.signingAlgorithmsSupported)
     val keySelector = keySelector(credentialKey, algorithm)
-    val processor = processor(expectedCNonce, credentialIssuerId, keySelector)
-    processor.process(signedJwt, null)
+    val processor = processor(credentialIssuerId, keySelector)
+
+    val claimSet = processor.process(signedJwt, null)
+    val encryptedCNonce = requireNotNull(claimSet.getStringClaim("nonce"))
+    val cnonce = decryptCNonce(encryptedCNonce).getOrThrow()
+    check(!cnonce.isExpired(clock.instant())) { "CNonce is expired." }
+
     credentialKey
 }.getOrElse { raise(IssueCredentialError.InvalidProof("Invalid proof JWT", it)) }
 
@@ -152,7 +161,6 @@ private val expectedType = JOSEObjectType("openid4vci-proof+jwt")
 private val maxSkew = 30.seconds
 
 private fun processor(
-    expected: CNonce,
     credentialIssuerId: CredentialIssuerId,
     keySelector: JWSKeySelector<SecurityContext>,
 ): JWTProcessor<SecurityContext> =
@@ -163,9 +171,7 @@ private fun processor(
             jwtClaimsSetVerifier =
                 DefaultJWTClaimsVerifier<SecurityContext?>(
                     credentialIssuerId.externalForm, // aud
-                    JWTClaimsSet.Builder()
-                        .claim("nonce", expected.nonce)
-                        .build(),
+                    JWTClaimsSet.Builder().build(),
                     setOf("iat", "nonce"),
                 ).apply {
                     maxClockSkew = maxSkew.toInt(DurationUnit.SECONDS)

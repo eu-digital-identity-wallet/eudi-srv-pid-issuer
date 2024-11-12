@@ -13,18 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.out.persistence
+package eu.europa.ec.eudi.pidissuer.port.out.jose
 
 import eu.europa.ec.eudi.pidissuer.domain.CNonce
-import java.time.Clock
 
-fun interface LoadCNonceByAccessToken {
-
-    suspend operator fun invoke(accessToken: String): CNonce?
-
-    suspend operator fun invoke(accessToken: String, clock: Clock): CNonce? =
-        this(accessToken)
-            ?.takeIf {
-                (it.activatedAt + it.expiresIn) > clock.instant()
-            }
+/**
+ * Decrypts a CNonce.
+ */
+fun interface DecryptCNonce {
+    suspend operator fun invoke(encrypted: String): Result<CNonce>
 }

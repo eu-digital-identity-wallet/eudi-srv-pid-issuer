@@ -33,7 +33,6 @@ import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.loadResource
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import java.security.cert.X509Certificate
@@ -43,11 +42,13 @@ import kotlin.test.*
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 
-@OptIn(ExperimentalCoroutinesApi::class)
 internal class ValidateJwtProofTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.systemDefaultZone()
+    private val key = RSAKeyGenerator(4096, false).generate()
+    private val encryptCNonce = EncryptCNonceWithNimbus(issuer, key)
+    private val decryptCNonce = DecryptCNonceWithNimbus(issuer, key)
 
     @Test
     internal fun `proof validation fails with incorrect 'typ'`() = runTest {
@@ -63,8 +64,9 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 issuer,
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
-                nonce,
+                decryptCNonce,
                 proofType,
+                clock,
             )
         }
         assert(result.isLeft())
@@ -81,8 +83,9 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 issuer,
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
-                nonce,
+                decryptCNonce,
                 proofType,
+                clock,
             )
         }
         assert(result.isLeft())
@@ -103,8 +106,9 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 issuer,
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
-                nonce,
+                decryptCNonce,
                 proofType,
+                clock,
             )
         }
         assertTrue { result.isLeft() }
@@ -126,8 +130,9 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 issuer,
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
-                nonce,
+                decryptCNonce,
                 proofType,
+                clock,
             )
         }.fold(
             ifLeft = { fail("Unexpected $it") },
@@ -152,8 +157,9 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 issuer,
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
-                nonce,
+                decryptCNonce,
                 proofType,
+                clock,
             )
         }.fold(
             ifLeft = { fail("Unexpected $it") },
@@ -178,8 +184,9 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 issuer,
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
-                nonce,
+                decryptCNonce,
                 proofType,
+                clock,
             )
         }.fold(
             ifLeft = { fail("Unexpected $it") },
@@ -205,8 +212,9 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 issuer,
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
-                nonce,
+                decryptCNonce,
                 proofType,
+                clock,
             )
         }
         assertTrue { result.isLeft() }
@@ -227,8 +235,9 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 issuer,
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
-                nonce,
+                decryptCNonce,
                 proofType,
+                clock,
             )
         }
         assertTrue { result.isLeft() }
@@ -249,22 +258,17 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 issuer,
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
-                nonce,
+                decryptCNonce,
                 proofType,
+                clock,
             )
         }
         assertTrue { result.isLeft() }
     }
 
-    private fun generateCNonce(): CNonce =
-        CNonce(
-            UUID.randomUUID().toString(),
-            UUID.randomUUID().toString(),
-            clock.instant(),
-            5.minutes.toJavaDuration(),
-        )
+    private fun generateCNonce(): CNonce = CNonce(UUID.randomUUID().toString(), clock.instant(), 5.minutes.toJavaDuration())
 
-    private fun generateSignedJwt(
+    private suspend fun generateSignedJwt(
         key: RSAKey,
         nonce: CNonce,
         algorithm: JWSAlgorithm = RSASSASigner.SUPPORTED_ALGORITHMS.first(),
@@ -279,7 +283,7 @@ internal class ValidateJwtProofTest {
             .audience(issuer.externalForm)
             .issueTime(Date.from(nonce.activatedAt))
             .expirationTime(Date.from(nonce.activatedAt + nonce.expiresIn))
-            .claim("nonce", nonce.nonce)
+            .claim("nonce", encryptCNonce(nonce))
             .build()
 
         return SignedJWT(header, claims).apply { sign(RSASSASigner(key)) }

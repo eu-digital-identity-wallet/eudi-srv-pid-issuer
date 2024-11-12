@@ -23,11 +23,10 @@ import arrow.core.raise.ensureNotNull
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ResolveCredentialRequestByCredentialIdentifier
+import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateCNonce
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadCNonceByAccessToken
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.UpsertCNonce
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -36,6 +35,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import org.slf4j.LoggerFactory
 import java.time.Clock
+import java.time.Duration
 
 @Serializable
 enum class FormatTO {
@@ -305,9 +305,8 @@ class IssueCredential(
     private val clock: Clock,
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
     private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
-    private val loadCNonceByAccessToken: LoadCNonceByAccessToken,
-    private val genCNonce: GenerateCNonce,
-    private val upsertCNonce: UpsertCNonce,
+    private val generateCNonce: GenerateCNonce,
+    private val encryptCNonce: EncryptCNonce,
     private val encryptCredentialResponse: EncryptCredentialResponse,
 ) {
 
@@ -330,9 +329,9 @@ class IssueCredential(
                         resolve(unresolvedRequest) to unresolvedRequest.credentialIdentifier
                 }
             val issued = issue(authorizationContext, request, credentialIdentifier)
-            successResponse(authorizationContext, request, issued)
+            successResponse(request, issued)
         }.getOrElse { error ->
-            errorResponse(authorizationContext, error)
+            errorResponse(error)
         }
     }
 
@@ -359,9 +358,7 @@ class IssueCredential(
         val issueSpecificCredential = specificIssuerFor(credentialRequest)
         val expectedScope = checkNotNull(issueSpecificCredential.supportedCredential.scope)
         ensure(authorizationContext.scopes.contains(expectedScope)) { WrongScope(expectedScope) }
-        val cNonce = loadCNonceByAccessToken(authorizationContext.accessToken.toAuthorizationHeader(), clock)
-        ensureNotNull(cNonce) { MissingProof }
-        return issueSpecificCredential(authorizationContext, credentialRequest, credentialIdentifier, cNonce)
+        return issueSpecificCredential(authorizationContext, credentialRequest, credentialIdentifier)
     }
 
     context(Raise<IssueCredentialError>)
@@ -381,12 +378,11 @@ class IssueCredential(
     }
 
     private suspend fun successResponse(
-        authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credential: CredentialResponse,
     ): IssueCredentialResponse {
-        val newCNonce = newCNonce(authorizationContext)
-        val plain = credential.toTO(newCNonce)
+        val (newCNonce, newCNonceExpiresIn) = newCNonce()
+        val plain = credential.toTO(newCNonce, newCNonceExpiresIn)
         return when (val encryption = request.credentialResponseEncryption) {
             RequestedResponseEncryption.NotRequired -> plain
             is RequestedResponseEncryption.Required -> encryptCredentialResponse(plain, encryption).getOrThrow()
@@ -394,17 +390,17 @@ class IssueCredential(
     }
 
     private suspend fun errorResponse(
-        authorizationContext: AuthorizationContext,
         error: IssueCredentialError,
     ): IssueCredentialResponse {
         log.warn("Issuance failed: $error")
-        val newCNonce = newCNonce(authorizationContext)
-        return error.toTO(newCNonce)
+        val (newCNonce, newCNonceExpiresIn) = newCNonce()
+        return error.toTO(newCNonce, newCNonceExpiresIn)
     }
 
-    private suspend fun newCNonce(authorizationContext: AuthorizationContext): CNonce {
-        val newCNonce = genCNonce(authorizationContext.accessToken.toAuthorizationHeader(), clock)
-        return newCNonce.also { upsertCNonce(it) }
+    private suspend fun newCNonce(): Pair<String, Duration> {
+        val cnonce = generateCNonce()
+        val encryptedCNonce = encryptCNonce(cnonce)
+        return encryptedCNonce to cnonce.expiresIn
     }
 }
 //
@@ -619,20 +615,20 @@ private fun CredentialResponseEncryptionTO.toDomain(): RequestedResponseEncrypti
         method,
     ).getOrElse { raise(InvalidEncryptionParameters(it)) }
 
-fun CredentialResponse.toTO(nonce: CNonce): IssueCredentialResponse.PlainTO = when (this) {
+fun CredentialResponse.toTO(cnonce: String, cnonceExpiresIn: Duration): IssueCredentialResponse.PlainTO = when (this) {
     is CredentialResponse.Issued -> {
         when (credentials.size) {
             1 -> IssueCredentialResponse.PlainTO.single(
                 credential = credentials.head,
-                nonce = nonce.nonce,
-                nonceExpiresIn = nonce.expiresIn.toSeconds(),
+                nonce = cnonce,
+                nonceExpiresIn = cnonceExpiresIn.toSeconds(),
                 notificationId = notificationId?.value,
             )
 
             else -> IssueCredentialResponse.PlainTO.multiple(
                 credentials = JsonArray(credentials),
-                nonce = nonce.nonce,
-                nonceExpiresIn = nonce.expiresIn.toSeconds(),
+                nonce = cnonce,
+                nonceExpiresIn = cnonceExpiresIn.toSeconds(),
                 notificationId = notificationId?.value,
             )
         }
@@ -641,15 +637,15 @@ fun CredentialResponse.toTO(nonce: CNonce): IssueCredentialResponse.PlainTO = wh
     is CredentialResponse.Deferred ->
         IssueCredentialResponse.PlainTO.deferred(
             transactionId = transactionId.value,
-            nonce = nonce.nonce,
-            nonceExpiresIn = nonce.expiresIn.toSeconds(),
+            nonce = cnonce,
+            nonceExpiresIn = cnonceExpiresIn.toSeconds(),
         )
 }
 
 /**
  * Creates a new [IssueCredentialResponse.FailedTO] from the provided [error] and [nonce].
  */
-private fun IssueCredentialError.toTO(nonce: CNonce): IssueCredentialResponse.FailedTO {
+private fun IssueCredentialError.toTO(cnonce: String, cnonceExpiresIn: Duration): IssueCredentialResponse.FailedTO {
     val (type, description) = when (this) {
         is UnsupportedCredentialFormat ->
             CredentialErrorTypeTo.UNSUPPORTED_CREDENTIAL_FORMAT to "Unsupported '${format?.value}'"
@@ -691,7 +687,7 @@ private fun IssueCredentialError.toTO(nonce: CNonce): IssueCredentialResponse.Fa
     return IssueCredentialResponse.FailedTO(
         type,
         description,
-        nonce.nonce,
-        nonce.expiresIn.toSeconds(),
+        cnonce,
+        cnonceExpiresIn.toSeconds(),
     )
 }

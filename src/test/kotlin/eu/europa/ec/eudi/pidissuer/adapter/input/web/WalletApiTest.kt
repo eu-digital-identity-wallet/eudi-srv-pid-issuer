@@ -33,15 +33,15 @@ import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import eu.europa.ec.eudi.pidissuer.PidIssuerApplicationTest
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPConfigurationProperties
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
-import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.domain.CNonce
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.port.input.*
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateCNonce
-import kotlinx.coroutines.runBlocking
+import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateCNonce
+import eu.europa.ec.eudi.pidissuer.port.out.jose.DecryptCNonce
+import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCNonce
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
@@ -85,10 +85,13 @@ internal class BaseWalletApiTest {
     protected lateinit var clock: Clock
 
     @Autowired
-    protected lateinit var cNonceRepository: InMemoryCNonceRepository
+    protected lateinit var generateCNonce: GenerateCNonce
 
     @Autowired
-    protected lateinit var generateCNonce: GenerateCNonce
+    protected lateinit var encryptCNonce: EncryptCNonce
+
+    @Autowired
+    protected lateinit var decryptCNonce: DecryptCNonce
 
     @Autowired
     protected lateinit var credentialIssuerMetadata: CredentialIssuerMetaData
@@ -99,9 +102,26 @@ internal class BaseWalletApiTest {
             .configureClient()
             .build()
 
-    @BeforeTest
-    internal fun setup() = runBlocking {
-        cNonceRepository.clear()
+    protected suspend fun jwtProof(
+        audience: CredentialIssuerId,
+        clock: Clock,
+        nonce: CNonce,
+        key: ECKey,
+        headerCustomizer: JWSHeader.Builder.() -> Unit = { },
+    ): SignedJWT {
+        val header = JWSHeader.Builder(JWSAlgorithm.ES256)
+            .type(JOSEObjectType("openid4vci-proof+jwt"))
+            .apply(headerCustomizer)
+            .build()
+        val claims = JWTClaimsSet.Builder()
+            .audience(audience.externalForm)
+            .issueTime(Date.from(clock.instant()))
+            .claim("nonce", encryptCNonce(nonce))
+            .build()
+        val jwt = SignedJWT(header, claims)
+        jwt.sign(ECDSASigner(key))
+
+        return jwt
     }
 
     @TestConfiguration
@@ -232,18 +252,11 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .returnResult()
             .responseBody
 
-        val cNonce =
-            assertNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
-
-        assertEquals(
-            IssueCredentialResponse.FailedTO(
-                CredentialErrorTypeTo.INVALID_PROOF,
-                "The Credential Request must include Proof of Possession",
-                cNonce.nonce,
-                cNonce.expiresIn.toSeconds(),
-            ),
-            response,
-        )
+        val error = assertIs<IssueCredentialResponse.FailedTO>(response)
+        assertEquals(CredentialErrorTypeTo.INVALID_PROOF, error.type)
+        assertEquals("The Credential Request must include Proof of Possession", error.errorDescription)
+        assertNotNull(error.nonce)
+        assertNotNull(error.nonceExpiresIn)
     }
 
     /**
@@ -271,54 +284,11 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .returnResult()
             .responseBody
 
-        val cNonce =
-            assertNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
-
-        assertEquals(
-            IssueCredentialResponse.FailedTO(
-                CredentialErrorTypeTo.INVALID_REQUEST,
-                "Wrong scope. Expecting $PidMsoMdocScope",
-                cNonce.nonce,
-                cNonce.expiresIn.toSeconds(),
-            ),
-            response,
-        )
-    }
-
-    /**
-     * Verifies that when a CNonce is not active for the provided Access Token, issuance fails.
-     * Application is expected to fail.
-     * CNonce is expected to be generated.
-     */
-    @Test
-    fun `fails when using no c_nonce is active`() = runTest {
-        val authentication = dPoPTokenAuthentication(clock = clock)
-
-        val response = client()
-            .mutateWith(mockAuthentication(authentication))
-            .post()
-            .uri(WalletApi.CREDENTIAL_ENDPOINT)
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByFormat())
-            .accept(MediaType.APPLICATION_JSON)
-            .exchange()
-            .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
-            .expectBody<IssueCredentialResponse.FailedTO>()
-            .returnResult()
-            .responseBody
-
-        val cNonce =
-            assertNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
-
-        assertEquals(
-            IssueCredentialResponse.FailedTO(
-                CredentialErrorTypeTo.INVALID_PROOF,
-                "The Credential Request must include Proof of Possession",
-                cNonce.nonce,
-                cNonce.expiresIn.toSeconds(),
-            ),
-            response,
-        )
+        val error = assertIs<IssueCredentialResponse.FailedTO>(response)
+        assertEquals(CredentialErrorTypeTo.INVALID_REQUEST, error.type)
+        assertEquals("Wrong scope. Expecting $PidMsoMdocScope", error.errorDescription)
+        assertNotNull(error.nonce)
+        assertNotNull(error.nonceExpiresIn)
     }
 
     /**
@@ -327,8 +297,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
     @Test
     fun `fails when both proof and proofs is provided`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(authentication.accessToken.toAuthorizationHeader(), clock)
-        cNonceRepository.upsertCNonce(previousCNonce)
+        val previousCNonce = generateCNonce()
 
         val key = ECKeyGenerator(Curve.P_256).generate()
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, key) {
@@ -351,26 +320,18 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        val newCNonce =
-            checkNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
-        assertNotEquals(previousCNonce, newCNonce)
+        assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
+        assertEquals("Only one of `proof` or `proofs` is allowed", response.errorDescription)
+        val encryptedNewCNonce = assertNotNull(response.nonce)
+        assertNotNull(response.nonceExpiresIn)
 
-        assertEquals(
-            IssueCredentialResponse.FailedTO(
-                CredentialErrorTypeTo.INVALID_PROOF,
-                "Only one of `proof` or `proofs` is allowed",
-                newCNonce.nonce,
-                newCNonce.expiresIn.toSeconds(),
-            ),
-            response,
-        )
+        val newCNonce = decryptCNonce(encryptedNewCNonce).getOrThrow()
+        assertNotEquals(previousCNonce, newCNonce)
     }
 
     @Test
     fun `fails when multiple proof types are provided`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(authentication.accessToken.toAuthorizationHeader(), clock)
-        cNonceRepository.upsertCNonce(previousCNonce)
 
         val proofs = ProofsTO(jwtProofs = listOf("jwt"), ldpVpProofs = listOf("ldp_vc"))
 
@@ -387,26 +348,16 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        val newCNonce =
-            checkNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
-        assertNotEquals(previousCNonce, newCNonce)
-
-        assertEquals(
-            IssueCredentialResponse.FailedTO(
-                CredentialErrorTypeTo.INVALID_PROOF,
-                "Only a single proof type is allowed",
-                newCNonce.nonce,
-                newCNonce.expiresIn.toSeconds(),
-            ),
-            response,
-        )
+        assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
+        assertEquals("Only a single proof type is allowed", response.errorDescription)
+        assertNotNull(response.nonce)
+        assertNotNull(response.nonceExpiresIn)
     }
 
     @Test
     fun `fails when providing more proofs than allowed batch_size`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(authentication.accessToken.toAuthorizationHeader(), clock)
-        cNonceRepository.upsertCNonce(previousCNonce)
+        val previousCNonce = generateCNonce()
 
         val keys = List(5) { ECKeyGenerator(Curve.P_256).generate() }
         val proofs = keys.map { key ->
@@ -428,19 +379,13 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        val newCNonce =
-            checkNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
-        assertNotEquals(previousCNonce, newCNonce)
+        assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
+        assertEquals("You can provide at most '3' proofs", response.errorDescription)
+        val encryptedNewCNonce = assertNotNull(response.nonce)
+        assertNotNull(response.nonceExpiresIn)
 
-        assertEquals(
-            IssueCredentialResponse.FailedTO(
-                CredentialErrorTypeTo.INVALID_PROOF,
-                "You can provide at most '3' proofs",
-                newCNonce.nonce,
-                newCNonce.expiresIn.toSeconds(),
-            ),
-            response,
-        )
+        val newCNonce = decryptCNonce(encryptedNewCNonce).getOrThrow()
+        assertNotEquals(previousCNonce, newCNonce)
     }
 
     /**
@@ -453,8 +398,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
     @Test
     fun `issuance success by format`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(authentication.accessToken.toAuthorizationHeader(), clock)
-        cNonceRepository.upsertCNonce(previousCNonce)
+        val previousCNonce = generateCNonce()
 
         val key = ECKeyGenerator(Curve.P_256).generate()
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, key) {
@@ -474,15 +418,15 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        val newCNonce =
-            checkNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
-        assertNotEquals(previousCNonce, newCNonce)
-
         val issuedCredential = assertIs<JsonPrimitive>(response.credential)
         assertEquals("PID", issuedCredential.contentOrNull)
         assertNull(response.transactionId)
-        assertEquals(newCNonce.nonce, response.nonce)
-        assertEquals(newCNonce.expiresIn.seconds, response.nonceExpiresIn)
+
+        val encryptedNewCNonce = assertNotNull(response.nonce)
+        assertNotNull(response.nonceExpiresIn)
+
+        val newCNonce = decryptCNonce(encryptedNewCNonce).getOrThrow()
+        assertNotEquals(previousCNonce, newCNonce)
     }
 
     /**
@@ -495,8 +439,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
     @Test
     fun `batch issuance success by format`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(authentication.accessToken.toAuthorizationHeader(), clock)
-        cNonceRepository.upsertCNonce(previousCNonce)
+        val previousCNonce = generateCNonce()
 
         val keys = List(2) { ECKeyGenerator(Curve.P_256).generate() }
         val proofs = keys.map { key ->
@@ -518,10 +461,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        val newCNonce =
-            checkNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
-        assertNotEquals(previousCNonce, newCNonce)
-
         assertNull(response.credential)
         val issuedCredentials = assertNotNull(response.credentials)
         assertEquals(keys.size, issuedCredentials.size)
@@ -530,8 +469,12 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             assertEquals("PID", issuedCredential.contentOrNull)
         }
         assertNull(response.transactionId)
-        assertEquals(newCNonce.nonce, response.nonce)
-        assertEquals(newCNonce.expiresIn.seconds, response.nonceExpiresIn)
+
+        val encryptedNewCNonce = assertNotNull(response.nonce)
+        assertNotNull(response.nonceExpiresIn)
+
+        val newCNonce = decryptCNonce(encryptedNewCNonce).getOrThrow()
+        assertNotEquals(previousCNonce, newCNonce)
     }
 
     /**
@@ -544,8 +487,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
     @Test
     fun `issuance success by credential identifier`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(authentication.accessToken.toAuthorizationHeader(), clock)
-        cNonceRepository.upsertCNonce(previousCNonce)
+        val previousCNonce = generateCNonce()
 
         val key = ECKeyGenerator(Curve.P_256).generate()
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, key) {
@@ -565,15 +507,14 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        val newCNonce =
-            checkNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
-        assertNotEquals(previousCNonce, newCNonce)
-
         val issuedCredential = assertIs<JsonPrimitive>(response.credential)
         assertEquals("PID", issuedCredential.contentOrNull)
         assertNull(response.transactionId)
-        assertEquals(newCNonce.nonce, response.nonce)
-        assertEquals(newCNonce.expiresIn.seconds, response.nonceExpiresIn)
+        val encryptedNewCNonce = assertNotNull(response.nonce)
+        assertNotNull(response.nonceExpiresIn)
+
+        val newCNonce = decryptCNonce(encryptedNewCNonce).getOrThrow()
+        assertNotEquals(previousCNonce, newCNonce)
     }
 }
 
@@ -599,8 +540,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
     @Test
     fun `issuance failure by format when encryption is not requested`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(authentication.accessToken.toAuthorizationHeader(), clock)
-        cNonceRepository.upsertCNonce(previousCNonce)
+        val previousCNonce = generateCNonce()
 
         val key = ECKeyGenerator(Curve.P_256).generate()
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, key) {
@@ -620,13 +560,14 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        val newCNonce =
-            checkNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
-        assertNotEquals(previousCNonce, newCNonce)
         assertEquals(CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS, response.type)
         assertEquals("Invalid Credential Response Encryption Parameters", response.errorDescription)
-        assertEquals(newCNonce.nonce, response.nonce)
-        assertEquals(newCNonce.expiresIn.seconds, response.nonceExpiresIn)
+
+        val encryptedNewCNonce = assertNotNull(response.nonce)
+        assertNotNull(response.nonceExpiresIn)
+
+        val newCNonce = decryptCNonce(encryptedNewCNonce).getOrThrow()
+        assertNotEquals(previousCNonce, newCNonce)
     }
 
     /**
@@ -639,8 +580,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
     @Test
     fun `issuance success by format when encryption is requested`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(authentication.accessToken.toAuthorizationHeader(), clock)
-        cNonceRepository.upsertCNonce(previousCNonce)
+        val previousCNonce = generateCNonce()
 
         val walletKey = ECKeyGenerator(Curve.P_256).generate()
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, walletKey) {
@@ -662,10 +602,6 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        val newCNonce =
-            checkNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
-        assertNotEquals(previousCNonce, newCNonce)
-
         val claims = run {
             val jwt = EncryptedJWT.parse(response)
                 .also {
@@ -679,8 +615,12 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
             jwt.jwtClaimsSet
         }
         assertEquals("PID", claims.getStringClaim("credential"))
-        assertEquals(newCNonce.nonce, claims.getStringClaim("c_nonce"))
-        assertEquals(newCNonce.expiresIn.seconds, claims.getLongClaim("c_nonce_expires_in"))
+
+        val encryptedNewCNonce = assertNotNull(claims.getStringClaim("c_nonce"))
+        assertNotNull(claims.getLongClaim("c_nonce_expires_in"))
+
+        val newCNonce = decryptCNonce(encryptedNewCNonce).getOrThrow()
+        assertNotEquals(previousCNonce, newCNonce)
     }
 
     /**
@@ -693,8 +633,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
     @Test
     fun `batch issuance success by format when encryption is requested`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(authentication.accessToken.toAuthorizationHeader(), clock)
-        cNonceRepository.upsertCNonce(previousCNonce)
+        val previousCNonce = generateCNonce()
 
         val walletKeys = List(2) { ECKeyGenerator(Curve.P_256).generate() }
         val proofs = walletKeys.map { walletKey ->
@@ -718,10 +657,6 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        val newCNonce =
-            checkNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
-        assertNotEquals(previousCNonce, newCNonce)
-
         val claims = run {
             val jwt = EncryptedJWT.parse(response)
                 .also {
@@ -740,8 +675,12 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
         credentials.forEach {
             assertEquals("PID", it)
         }
-        assertEquals(newCNonce.nonce, claims.getStringClaim("c_nonce"))
-        assertEquals(newCNonce.expiresIn.seconds, claims.getLongClaim("c_nonce_expires_in"))
+
+        val encryptedNewCNonce = assertNotNull(claims.getStringClaim("c_nonce"))
+        assertNotNull(claims.getLongClaim("c_nonce_expires_in"))
+
+        val newCNonce = decryptCNonce(encryptedNewCNonce).getOrThrow()
+        assertNotEquals(previousCNonce, newCNonce)
     }
 
     /**
@@ -754,8 +693,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
     @Test
     fun `issuance failure by credential identifier when encryption is not requested`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(authentication.accessToken.toAuthorizationHeader(), clock)
-        cNonceRepository.upsertCNonce(previousCNonce)
+        val previousCNonce = generateCNonce()
 
         val key = ECKeyGenerator(Curve.P_256).generate()
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, key) {
@@ -775,13 +713,14 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        val newCNonce =
-            checkNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
-        assertNotEquals(previousCNonce, newCNonce)
         assertEquals(CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS, response.type)
         assertEquals("Invalid Credential Response Encryption Parameters", response.errorDescription)
-        assertEquals(newCNonce.nonce, response.nonce)
-        assertEquals(newCNonce.expiresIn.seconds, response.nonceExpiresIn)
+
+        val encryptedNewCNonce = assertNotNull(response.nonce)
+        assertNotNull(response.nonceExpiresIn)
+
+        val newCNonce = decryptCNonce(encryptedNewCNonce).getOrThrow()
+        assertNotEquals(previousCNonce, newCNonce)
     }
 
     /**
@@ -794,8 +733,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
     @Test
     fun `issuance success by credential identifier when encryption is requested`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(authentication.accessToken.toAuthorizationHeader(), clock)
-        cNonceRepository.upsertCNonce(previousCNonce)
+        val previousCNonce = generateCNonce()
 
         val walletKey = ECKeyGenerator(Curve.P_256).generate()
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, walletKey) {
@@ -822,10 +760,6 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        val newCNonce =
-            checkNotNull(cNonceRepository.loadCNonceByAccessToken(authentication.accessToken.toAuthorizationHeader()))
-        assertNotEquals(previousCNonce, newCNonce)
-
         val claims = run {
             val jwt = EncryptedJWT.parse(response)
                 .also {
@@ -839,8 +773,12 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
             jwt.jwtClaimsSet
         }
         assertEquals("PID", claims.getStringClaim("credential"))
-        assertEquals(newCNonce.nonce, claims.getStringClaim("c_nonce"))
-        assertEquals(newCNonce.expiresIn.seconds, claims.getLongClaim("c_nonce_expires_in"))
+
+        val encryptedNewCNonce = assertNotNull(claims.getStringClaim("c_nonce"))
+        assertNotNull(claims.getLongClaim("c_nonce_expires_in"))
+
+        val newCNonce = decryptCNonce(encryptedNewCNonce).getOrThrow()
+        assertNotEquals(previousCNonce, newCNonce)
     }
 }
 
@@ -909,28 +847,6 @@ private fun encryptionParameters(key: RSAKey): CredentialResponseEncryptionTO =
         algorithm = "RSA-OAEP-256",
         method = "A128CBC-HS256",
     )
-
-private fun jwtProof(
-    audience: CredentialIssuerId,
-    clock: Clock,
-    nonce: CNonce,
-    key: ECKey,
-    headerCustomizer: JWSHeader.Builder.() -> Unit = { },
-): SignedJWT {
-    val header = JWSHeader.Builder(JWSAlgorithm.ES256)
-        .type(JOSEObjectType("openid4vci-proof+jwt"))
-        .apply(headerCustomizer)
-        .build()
-    val claims = JWTClaimsSet.Builder()
-        .audience(audience.externalForm)
-        .issueTime(Date.from(clock.instant()))
-        .claim("nonce", nonce.nonce)
-        .build()
-    val jwt = SignedJWT(header, claims)
-    jwt.sign(ECDSASigner(key))
-
-    return jwt
-}
 
 private fun SignedJWT.toProof(): ProofTo = ProofTo(type = ProofTypeTO.JWT, jwt = serialize())
 private fun SignedJWT.toProofs(): ProofsTO = ProofsTO(jwtProofs = listOf(serialize()))

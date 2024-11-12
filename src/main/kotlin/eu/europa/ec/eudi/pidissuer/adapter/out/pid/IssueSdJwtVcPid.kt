@@ -31,6 +31,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.jose.DecryptCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
@@ -109,20 +110,21 @@ private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
  * Service for issuing PID SD JWT credential
  */
 class IssueSdJwtVcPid(
-    private val credentialIssuerId: CredentialIssuerId,
+    credentialIssuerId: CredentialIssuerId,
     private val clock: Clock,
-    private val hashAlgorithm: HashAlgorithm,
+    hashAlgorithm: HashAlgorithm,
     private val issuerSigningKey: IssuerSigningKey,
     private val getPidData: GetPidData,
     private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
-    private val calculateExpiresAt: TimeDependant<Instant>,
-    private val calculateNotUseBefore: TimeDependant<Instant>?,
+    calculateExpiresAt: TimeDependant<Instant>,
+    calculateNotUseBefore: TimeDependant<Instant>?,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredentials: StoreIssuedCredentials,
+    decryptCNonce: DecryptCNonce,
 ) : IssueSpecificCredential {
 
-    private val validateProof = ValidateProof(credentialIssuerId)
+    private val validateProof = ValidateProof(credentialIssuerId, decryptCNonce, clock)
 
     override val supportedCredential: SdJwtVcCredentialConfiguration = pidSdJwtVcV1(issuerSigningKey.signingAlgorithm)
     override val publicKey: JWK
@@ -143,12 +145,11 @@ class IssueSdJwtVcPid(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-        expectedCNonce: CNonce,
     ): CredentialResponse = coroutineScope {
         log.info("Handling issuance request ...")
         val holderPubKeys = request.unvalidatedProofs.map {
             async(Dispatchers.Default) {
-                holderPubKey(it, expectedCNonce)
+                holderPubKey(it)
             }
         }
 
@@ -186,11 +187,8 @@ class IssueSdJwtVcPid(
     }
 
     context(Raise<InvalidProof>)
-    private suspend fun holderPubKey(
-        unvalidatedProof: UnvalidatedProof,
-        expectedCNonce: CNonce,
-    ): JWK {
-        val key = validateProof(unvalidatedProof, expectedCNonce, supportedCredential)
+    private suspend fun holderPubKey(unvalidatedProof: UnvalidatedProof): JWK {
+        val key = validateProof(unvalidatedProof, supportedCredential)
         return extractJwkFromCredentialKey(key)
             .getOrElse {
                 raise(InvalidProof("Unable to extract JWK from CredentialKey", it))

@@ -18,19 +18,22 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 import arrow.core.raise.Raise
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
+import eu.europa.ec.eudi.pidissuer.port.out.jose.DecryptCNonce
+import java.time.Clock
 
 class ValidateProof(
     private val credentialIssuerId: CredentialIssuerId,
+    private val decryptCNonce: DecryptCNonce,
+    private val clock: Clock,
 ) {
 
     context (Raise<InvalidProof>)
-    operator fun invoke(
+    suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof,
-        expectedCNonce: CNonce,
         credentialConfiguration: CredentialConfiguration,
     ): CredentialKey {
-        fun jwt(jwt: UnvalidatedProof.Jwt): CredentialKey =
-            validateJwtProof(credentialIssuerId, jwt, expectedCNonce, credentialConfiguration)
+        suspend fun jwt(jwt: UnvalidatedProof.Jwt): CredentialKey =
+            validateJwtProof(credentialIssuerId, jwt, decryptCNonce, credentialConfiguration, clock)
 
         fun ldpVp(ldpVp: UnvalidatedProof.LdpVp): CredentialKey =
             raise(InvalidProof("Supporting only JWT proof"))

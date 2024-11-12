@@ -13,10 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.out.persistence
+package eu.europa.ec.eudi.pidissuer.port.out.credential
 
 import eu.europa.ec.eudi.pidissuer.domain.CNonce
 
-fun interface UpsertCNonce {
-    suspend operator fun invoke(cNonce: CNonce)
+/**
+ * Generates a new [CNonce].
+ */
+fun interface GenerateCNonce {
+    suspend operator fun invoke(): CNonce
 }

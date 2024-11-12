@@ -81,6 +81,9 @@ dependencies {
     implementation(libs.uri.kmp) {
         because("To generate Credentials Offer URIs using custom URIs")
     }
+    implementation(libs.tink) {
+        because("To support CNonce encryption using XC20P")
+    }
 
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
