@@ -20,15 +20,14 @@ import arrow.core.raise.Raise
 import arrow.core.raise.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProof
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.toECKeyOrFail
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
-import eu.europa.ec.eudi.pidissuer.port.out.jose.DecryptCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
 import kotlinx.coroutines.*
@@ -295,15 +294,14 @@ val MobileDrivingLicenceV1: MsoMdocCredentialConfiguration =
 /**
  * Issuing service for Mobile Driving Licence.
  */
-class IssueMobileDrivingLicence(
-    credentialIssuerId: CredentialIssuerId,
+internal class IssueMobileDrivingLicence(
+    private val validateProofs: ValidateProofs,
     private val getMobileDrivingLicenceData: GetMobileDrivingLicenceData,
     private val encodeMobileDrivingLicenceInCbor: EncodeMobileDrivingLicenceInCbor,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val clock: Clock,
     private val storeIssuedCredentials: StoreIssuedCredentials,
-    decryptCNonce: DecryptCNonce,
 ) : IssueSpecificCredential {
 
     override val supportedCredential: MsoMdocCredentialConfiguration
@@ -312,8 +310,6 @@ class IssueMobileDrivingLicence(
     override val publicKey: JWK?
         get() = null
 
-    private val validateProof: ValidateProof = ValidateProof(credentialIssuerId, decryptCNonce, clock)
-
     context(Raise<IssueCredentialError>)
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
@@ -321,11 +317,8 @@ class IssueMobileDrivingLicence(
         credentialIdentifier: CredentialIdentifier?,
     ): CredentialResponse = coroutineScope {
         log.info("Issuing mDL")
-        val holderKeys = request.unvalidatedProofs.map {
-            async(Dispatchers.Default) {
-                holderPubKey(it)
-            }
-        }
+        val holderKeys = validateProofs(request.unvalidatedProofs, supportedCredential)
+            .map { it.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
         val licence = ensureNotNull(getMobileDrivingLicenceData(authorizationContext)) {
             IssueCredentialError.Unexpected("Unable to fetch mDL data")
         }
@@ -334,11 +327,10 @@ class IssueMobileDrivingLicence(
             if (notificationsEnabled) generateNotificationId()
             else null
 
-        val issuedCredentials = holderKeys.awaitAll()
-            .map { holderKey ->
-                val cbor = encodeMobileDrivingLicenceInCbor(licence, holderKey)
-                cbor to holderKey.toPublicJWK()
-            }.toNonEmptyListOrNull()
+        val issuedCredentials = holderKeys.map { holderKey ->
+            val cbor = encodeMobileDrivingLicenceInCbor(licence, holderKey)
+            cbor to holderKey.toPublicJWK()
+        }.toNonEmptyListOrNull()
         ensureNotNull(issuedCredentials) {
             IssueCredentialError.Unexpected("Unable to issue mDL")
         }
@@ -361,21 +353,6 @@ class IssueMobileDrivingLicence(
                 log.info("Successfully issued mDL(s)")
                 log.debug("Issued mDL(s) data {}", it)
             }
-    }
-
-    context(Raise<IssueCredentialError>)
-    @Suppress("DuplicatedCode")
-    private suspend fun holderPubKey(unvalidatedProof: UnvalidatedProof): ECKey {
-        fun ecKeyOrFail(provider: () -> ECKey) = try {
-            provider.invoke()
-        } catch (t: Throwable) {
-            raise(InvalidProof("Only EC Key is supported"))
-        }
-        return when (val key = validateProof(unvalidatedProof, supportedCredential)) {
-            is CredentialKey.DIDUrl -> ecKeyOrFail { key.jwk.toECKey() }
-            is CredentialKey.Jwk -> ecKeyOrFail { key.value.toECKey() }
-            is CredentialKey.X5c -> ecKeyOrFail { ECKey.parse(key.certificate) }
-        }
     }
 
     companion object {

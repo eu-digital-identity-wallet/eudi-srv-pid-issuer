@@ -386,6 +386,9 @@ fun beans(clock: Clock) = beans {
     //
     // Specific Issuers
     //
+    bean { ValidateJwtProof(issuerPublicUrl, ref()) }
+    bean { DefaultExtractJwkFromCredentialKey }
+    bean { ValidateProofs(ref(), clock, ref()) }
     bean {
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
@@ -397,7 +400,6 @@ fun beans(clock: Clock) = beans {
             specificCredentialIssuers = buildList {
                 if (enableMsoMdocPid) {
                     val issueMsoMdocPid = IssueMsoMdocPid(
-                        credentialIssuerId = issuerPublicUrl,
                         getPidData = ref(),
                         encodePidInCbor = ref(),
                         notificationsEnabled = env.getProperty<Boolean>("issuer.pid.mso_mdoc.notifications.enabled")
@@ -405,7 +407,7 @@ fun beans(clock: Clock) = beans {
                         generateNotificationId = ref(),
                         clock = clock,
                         storeIssuedCredentials = ref(),
-                        decryptCNonce = ref(),
+                        validateProofs = ref(),
                     )
                     add(issueMsoMdocPid)
                 }
@@ -424,7 +426,6 @@ fun beans(clock: Clock) = beans {
                         getPidData = ref(),
                         clock = clock,
                         credentialIssuerId = issuerPublicUrl,
-                        extractJwkFromCredentialKey = DefaultExtractJwkFromCredentialKey,
                         calculateExpiresAt = { iat -> iat.plusDays(30).toInstant() },
                         calculateNotUseBefore = notUseBefore?.let { duration ->
                             {
@@ -436,7 +437,7 @@ fun beans(clock: Clock) = beans {
                             ?: true,
                         generateNotificationId = ref(),
                         storeIssuedCredentials = ref(),
-                        decryptCNonce = ref(),
+                        validateProofs = ref(),
                     )
 
                     val deferred = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.deferred") ?: false
@@ -448,14 +449,13 @@ fun beans(clock: Clock) = beans {
 
                 if (enableMobileDrivingLicence) {
                     val mdlIssuer = IssueMobileDrivingLicence(
-                        credentialIssuerId = issuerPublicUrl,
                         getMobileDrivingLicenceData = ref(),
                         encodeMobileDrivingLicenceInCbor = ref(),
                         notificationsEnabled = env.getProperty<Boolean>("issuer.mdl.notifications.enabled") ?: true,
                         generateNotificationId = ref(),
                         clock = clock,
                         storeIssuedCredentials = ref(),
-                        decryptCNonce = ref(),
+                        validateProofs = ref(),
                     )
                     add(mdlIssuer)
                 }
@@ -477,7 +477,7 @@ fun beans(clock: Clock) = beans {
     //
     bean(::GetCredentialIssuerMetaData)
     bean {
-        IssueCredential(clock, ref(), ref(), ref(), ref(), ref())
+        IssueCredential(ref(), ref(), ref(), ref(), ref())
     }
     bean {
         GetDeferredCredential(ref(), ref())

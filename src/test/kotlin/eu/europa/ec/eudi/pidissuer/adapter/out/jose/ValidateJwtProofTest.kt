@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.NonEmptyList
+import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
 import arrow.core.toNonEmptyListOrNull
 import arrow.core.toNonEmptySetOrNull
@@ -30,6 +31,7 @@ import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.MobileDrivingLicenceV1
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.loadResource
 import kotlinx.coroutines.Dispatchers
@@ -49,6 +51,14 @@ internal class ValidateJwtProofTest {
     private val key = RSAKeyGenerator(4096, false).generate()
     private val encryptCNonce = EncryptCNonceWithNimbus(issuer, key)
     private val decryptCNonce = DecryptCNonceWithNimbus(issuer, key)
+    private val validateJwtProof = ValidateJwtProof(issuer, decryptCNonce)
+    private val credentialConfiguration = MobileDrivingLicenceV1.copy(
+        proofTypesSupported = ProofTypesSupported(
+            nonEmptySetOf(
+                ProofType.Jwt(checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull())),
+            ),
+        ),
+    )
 
     @Test
     internal fun `proof validation fails with incorrect 'typ'`() = runTest {
@@ -59,14 +69,10 @@ internal class ValidateJwtProofTest {
                 type(JOSEObjectType.JWT)
                 jwk(key.toPublicJWK())
             }
-        val proofType = ProofType.Jwt(checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()))
         val result = either {
             validateJwtProof(
-                issuer,
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
-                decryptCNonce,
-                proofType,
-                clock,
+                credentialConfiguration,
             )
         }
         assert(result.isLeft())
@@ -78,14 +84,10 @@ internal class ValidateJwtProofTest {
         val nonce = generateCNonce()
         val signedJwt = generateSignedJwt(key, nonce)
 
-        val proofType = ProofType.Jwt(checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()))
         val result = either {
             validateJwtProof(
-                issuer,
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
-                decryptCNonce,
-                proofType,
-                clock,
+                credentialConfiguration,
             )
         }
         assert(result.isLeft())
@@ -101,14 +103,10 @@ internal class ValidateJwtProofTest {
             x509CertChain(chain.map { Base64.encode(it.encoded) })
         }
 
-        val proofType = ProofType.Jwt(checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()))
         val result = either {
             validateJwtProof(
-                issuer,
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
-                decryptCNonce,
-                proofType,
-                clock,
+                credentialConfiguration,
             )
         }
         assertTrue { result.isLeft() }
@@ -124,21 +122,16 @@ internal class ValidateJwtProofTest {
                 x509CertChain(chain.map { Base64.encode(it.encoded) })
             }
 
-        val proofType = ProofType.Jwt(checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()))
-
         either {
             validateJwtProof(
-                issuer,
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
-                decryptCNonce,
-                proofType,
-                clock,
+                credentialConfiguration,
             )
         }.fold(
-            ifLeft = { fail("Unexpected $it") },
+            ifLeft = { fail("Unexpected $it", it.cause) },
             ifRight = { credentialKey ->
-                val x5c = assertIs<CredentialKey.X5c>(credentialKey, "expected 'x5c' credential key")
-                assertEquals(chain, x5c.chain)
+                val x5c = assertIs<Pair<CredentialKey.X5c, CNonce>>(credentialKey, "expected 'x5c' credential key")
+                assertEquals(chain, x5c.first.chain)
             },
         )
     }
@@ -152,20 +145,16 @@ internal class ValidateJwtProofTest {
                 jwk(key.toPublicJWK())
             }
 
-        val proofType = ProofType.Jwt(checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()))
         either {
             validateJwtProof(
-                issuer,
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
-                decryptCNonce,
-                proofType,
-                clock,
+                credentialConfiguration,
             )
         }.fold(
-            ifLeft = { fail("Unexpected $it") },
+            ifLeft = { fail("Unexpected $it", it.cause) },
             ifRight = { credentialKey ->
-                val jwk = assertIs<CredentialKey.Jwk>(credentialKey, "expected 'jwk' credential key")
-                assertEquals(key.toPublicJWK(), jwk.value)
+                val jwk = assertIs<Pair<CredentialKey.Jwk, CNonce>>(credentialKey, "expected 'jwk' credential key")
+                assertEquals(key.toPublicJWK(), jwk.first.value)
             },
         )
     }
@@ -179,20 +168,16 @@ internal class ValidateJwtProofTest {
                 keyID("did:jwk:${Base64URL.encode(key.toPublicJWK().toJSONString())}#0")
             }
 
-        val proofType = ProofType.Jwt(checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()))
         either {
             validateJwtProof(
-                issuer,
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
-                decryptCNonce,
-                proofType,
-                clock,
+                credentialConfiguration,
             )
         }.fold(
-            ifLeft = { fail("Unexpected $it") },
+            ifLeft = { fail("Unexpected $it", it.cause) },
             ifRight = { credentialKey ->
-                val jwk = assertIs<CredentialKey.DIDUrl>(credentialKey, "expected 'jwk' credential key")
-                assertEquals(key.toPublicJWK(), jwk.jwk)
+                val jwk = assertIs<Pair<CredentialKey.DIDUrl, CNonce>>(credentialKey, "expected 'jwk' credential key")
+                assertEquals(key.toPublicJWK(), jwk.first.jwk)
             },
         )
     }
@@ -207,14 +192,10 @@ internal class ValidateJwtProofTest {
                 jwk(incorrectKey.toPublicJWK())
             }
 
-        val proofType = ProofType.Jwt(checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()))
         val result = either {
             validateJwtProof(
-                issuer,
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
-                decryptCNonce,
-                proofType,
-                clock,
+                credentialConfiguration,
             )
         }
         assertTrue { result.isLeft() }
@@ -230,14 +211,10 @@ internal class ValidateJwtProofTest {
                 x509CertChain(incorrectKey.toPublicJWK().x509CertChain)
             }
 
-        val proofType = ProofType.Jwt(checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()))
         val result = either {
             validateJwtProof(
-                issuer,
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
-                decryptCNonce,
-                proofType,
-                clock,
+                credentialConfiguration,
             )
         }
         assertTrue { result.isLeft() }
@@ -252,15 +229,10 @@ internal class ValidateJwtProofTest {
             generateSignedJwt(key, nonce) {
                 keyID("did:jwk:${Base64URL.encode(incorrectKey.toPublicJWK().toJSONString())}#0")
             }
-        val proofType = ProofType.Jwt(checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()))
-
         val result = either {
             validateJwtProof(
-                issuer,
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
-                decryptCNonce,
-                proofType,
-                clock,
+                credentialConfiguration,
             )
         }
         assertTrue { result.isLeft() }

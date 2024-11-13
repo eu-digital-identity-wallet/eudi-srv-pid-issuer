@@ -22,22 +22,17 @@ import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ExtractJwkFromCredentialKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProof
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
-import eu.europa.ec.eudi.pidissuer.port.out.jose.DecryptCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
@@ -109,22 +104,19 @@ private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
 /**
  * Service for issuing PID SD JWT credential
  */
-class IssueSdJwtVcPid(
+internal class IssueSdJwtVcPid(
+    private val validateProofs: ValidateProofs,
     credentialIssuerId: CredentialIssuerId,
     private val clock: Clock,
     hashAlgorithm: HashAlgorithm,
     private val issuerSigningKey: IssuerSigningKey,
     private val getPidData: GetPidData,
-    private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
     calculateExpiresAt: TimeDependant<Instant>,
     calculateNotUseBefore: TimeDependant<Instant>?,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredentials: StoreIssuedCredentials,
-    decryptCNonce: DecryptCNonce,
 ) : IssueSpecificCredential {
-
-    private val validateProof = ValidateProof(credentialIssuerId, decryptCNonce, clock)
 
     override val supportedCredential: SdJwtVcCredentialConfiguration = pidSdJwtVcV1(issuerSigningKey.signingAlgorithm)
     override val publicKey: JWK
@@ -147,18 +139,14 @@ class IssueSdJwtVcPid(
         credentialIdentifier: CredentialIdentifier?,
     ): CredentialResponse = coroutineScope {
         log.info("Handling issuance request ...")
-        val holderPubKeys = request.unvalidatedProofs.map {
-            async(Dispatchers.Default) {
-                holderPubKey(it)
-            }
-        }
+        val holderPubKeys = validateProofs(request.unvalidatedProofs, supportedCredential)
 
         val pidData = async { getPidData(authorizationContext) }
         val (pid, pidMetaData) = pidData.await()
         val notificationId =
             if (notificationsEnabled) generateNotificationId()
             else null
-        val issuedCredentials = holderPubKeys.awaitAll().map { holderPubKey ->
+        val issuedCredentials = holderPubKeys.map { holderPubKey ->
             val sdJwt = encodePidInSdJwt.invoke(pid, pidMetaData, holderPubKey)
             sdJwt to holderPubKey.toPublicJWK()
         }.toNonEmptyListOrNull()
@@ -183,15 +171,6 @@ class IssueSdJwtVcPid(
             .also {
                 log.info("Successfully issued PIDs")
                 log.debug("Issued PIDs data {}", it)
-            }
-    }
-
-    context(Raise<InvalidProof>)
-    private suspend fun holderPubKey(unvalidatedProof: UnvalidatedProof): JWK {
-        val key = validateProof(unvalidatedProof, supportedCredential)
-        return extractJwkFromCredentialKey(key)
-            .getOrElse {
-                raise(InvalidProof("Unable to extract JWK from CredentialKey", it))
             }
     }
 }

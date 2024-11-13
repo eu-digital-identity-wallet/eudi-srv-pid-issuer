@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
+import arrow.core.nonEmptyListOf
 import arrow.core.raise.either
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
@@ -22,20 +23,23 @@ import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import kotlinx.coroutines.test.runTest
 import java.time.Clock
-import kotlin.test.Test
-import kotlin.test.assertIs
+import kotlin.test.*
 
 class ValidateProofTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.systemDefaultZone()
-    private val validateProof = ValidateProof(issuer, { TODO() }, clock)
+    private val validateProofs = ValidateProofs(ValidateJwtProof(issuer) { TODO() }, clock) { _ -> TODO() }
 
     @Test
     internal fun `fails with unsupported proof type`() = runTest {
         val proof = UnvalidatedProof.LdpVp("foo")
-        val result = either { validateProof(proof, PidMsoMdocV1) }
+
+        val result = either { validateProofs(nonEmptyListOf(proof), PidMsoMdocV1) }
         assert(result.isLeft())
-        assertIs<IssueCredentialError.InvalidProof>(result.leftOrNull())
+
+        val error = assertIs<IssueCredentialError.InvalidProof>(result.leftOrNull())
+        assertEquals("Supporting only JWT proof", error.msg)
+        assertNull(error.cause)
     }
 }
