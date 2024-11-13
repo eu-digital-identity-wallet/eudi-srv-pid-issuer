@@ -388,6 +388,36 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
         assertNotEquals(previousCNonce, newCNonce)
     }
 
+    @Test
+    fun `fails when proofs do not contain the same cnonce`() = runTest {
+        val authentication = dPoPTokenAuthentication(clock = clock)
+
+        val keys = List(2) { ECKeyGenerator(Curve.P_256).generate() }
+        val proofs = keys.map { key ->
+            jwtProof(credentialIssuerMetadata.id, clock, generateCNonce(), key) {
+                jwk(key.toPublicJWK())
+            }
+        }.toProofs()
+
+        val response = client()
+            .mutateWith(mockAuthentication(authentication))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(requestByFormat(proofs = proofs))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest()
+            .expectBody<IssueCredentialResponse.FailedTO>()
+            .returnResult()
+            .let { assertNotNull(it.responseBody) }
+
+        assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
+        assertEquals("The Proofs of a Credential Request must contain the same CNonce", response.errorDescription)
+        assertNotNull(response.nonce)
+        assertNotNull(response.nonceExpiresIn)
+    }
+
     /**
      * Verifies issuance success.
      * Creates a CNonce value before doing the request.
