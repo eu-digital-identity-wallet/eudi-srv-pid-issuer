@@ -24,13 +24,19 @@ import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.RSASSASigner
+import com.nimbusds.jose.jwk.Curve
+import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.RSAKey
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
+import com.nimbusds.oauth2.sdk.id.Issuer
+import com.nimbusds.oauth2.sdk.util.X509CertificateUtils
+import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.MobileDrivingLicenceV1
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.loadResource
@@ -41,6 +47,7 @@ import java.security.cert.X509Certificate
 import java.time.Clock
 import java.util.*
 import kotlin.test.*
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 
@@ -48,9 +55,22 @@ internal class ValidateJwtProofTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.systemDefaultZone()
-    private val key = RSAKeyGenerator(4096, false).generate()
-    private val encryptCNonce = EncryptCNonceWithNimbus(issuer, key)
-    private val decryptCNonce = DecryptCNonceWithNimbus(issuer, key)
+    private val signingKey = run {
+        val key = ECKeyGenerator(Curve.P_256).keyID("signing-key-0").generate()
+        val issuedAt = clock.instant()
+        val expiresAt = issuedAt + 365.days.toJavaDuration()
+        val x509 = X509CertificateUtils.generateSelfSigned(
+            Issuer(issuer.externalForm),
+            Date.from(issuedAt),
+            Date.from(expiresAt),
+            key.toECPublicKey(),
+            key.toECPrivateKey(),
+        )
+        IssuerSigningKey(ECKey.Builder(key).x509CertChain(listOf(Base64.encode(x509.encoded))).build())
+    }
+    private val encryptionKey = RSAKeyGenerator(4096, false).generate()
+    private val encryptCNonce = EncryptCNonceWithNimbus(issuer, signingKey, encryptionKey)
+    private val decryptCNonce = DecryptCNonceWithNimbus(issuer, encryptionKey, signingKey)
     private val validateJwtProof = ValidateJwtProof(issuer, decryptCNonce)
     private val credentialConfiguration = MobileDrivingLicenceV1.copy(
         proofTypesSupported = ProofTypesSupported(
