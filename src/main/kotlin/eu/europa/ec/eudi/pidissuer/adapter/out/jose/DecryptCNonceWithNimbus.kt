@@ -65,7 +65,7 @@ internal class DecryptCNonceWithNimbus(
                     .issuer(issuer.externalForm)
                     .audience(issuer.externalForm)
                     .build(),
-                setOf("iss", "aud", "cnonce", "exi", "iat", "exp"),
+                setOf("iss", "aud", "cnonce", "exi", "iat"),
             )
         }
 

@@ -54,7 +54,6 @@ internal class EncryptCNonceWithNimbus(
                     claim("cnonce", cnonce.nonce)
                     claim("exi", cnonce.expiresIn.seconds)
                     issueTime(Date.from(cnonce.activatedAt))
-                    expirationTime(Date.from((cnonce.activatedAt + cnonce.expiresIn)))
                 }
                 .build(),
         ).apply {
