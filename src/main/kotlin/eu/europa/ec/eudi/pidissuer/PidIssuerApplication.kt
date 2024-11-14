@@ -386,7 +386,7 @@ fun beans(clock: Clock) = beans {
     //
     // Specific Issuers
     //
-    bean { ValidateJwtProof(issuerPublicUrl, ref()) }
+    bean { ValidateJwtProof(issuerPublicUrl) }
     bean { DefaultExtractJwkFromCredentialKey }
     bean { ValidateProofs(ref(), clock, ref()) }
     bean {
@@ -408,6 +408,7 @@ fun beans(clock: Clock) = beans {
                         clock = clock,
                         storeIssuedCredentials = ref(),
                         validateProofs = ref(),
+                        decryptCNonce = ref(),
                     )
                     add(issueMsoMdocPid)
                 }
@@ -438,6 +439,7 @@ fun beans(clock: Clock) = beans {
                         generateNotificationId = ref(),
                         storeIssuedCredentials = ref(),
                         validateProofs = ref(),
+                        decryptCNonce = ref(),
                     )
 
                     val deferred = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.deferred") ?: false
@@ -456,6 +458,7 @@ fun beans(clock: Clock) = beans {
                         clock = clock,
                         storeIssuedCredentials = ref(),
                         validateProofs = ref(),
+                        decryptCNonce = ref(),
                     )
                     add(mdlIssuer)
                 }

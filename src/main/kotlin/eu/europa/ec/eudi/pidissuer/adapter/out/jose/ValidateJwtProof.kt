@@ -49,37 +49,39 @@ import kotlin.time.DurationUnit
  */
 internal class ValidateJwtProof(
     private val credentialIssuerId: CredentialIssuerId,
-    private val decryptCNonce: DecryptCNonce,
 ) {
-    context (Raise<IssueCredentialError.InvalidProof>)
+    context(Raise<IssueCredentialError.InvalidProof>)
     suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof.Jwt,
         credentialConfiguration: CredentialConfiguration,
-    ): Pair<CredentialKey, CNonce> {
+        decryptCNonce: DecryptCNonce?,
+    ): Pair<CredentialKey, CNonce?> {
         val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.JWT]
         ensureNotNull(proofType) {
             IssueCredentialError.InvalidProof("credential configuration '${credentialConfiguration.id.value}' doesn't support 'jwt' proofs")
         }
         check(proofType is ProofType.Jwt)
 
-        return validate(unvalidatedProof, proofType)
+        val (credentialKey, nonce) = credentialKeyAndNonce(unvalidatedProof, proofType)
+        val cnonce = decryptCNonce?.let {
+            ensureNotNull(nonce) { IssueCredentialError.InvalidProof("Missing CNonce") }
+            decryptCNonce(nonce).getOrElse { raise(IssueCredentialError.InvalidProof("Invalid CNonce", it)) }
+        }
+        return credentialKey to cnonce
     }
 
-    context (Raise<IssueCredentialError.InvalidProof>)
-    private suspend fun validate(
+    context(Raise<IssueCredentialError.InvalidProof>)
+    private fun credentialKeyAndNonce(
         unvalidatedProof: UnvalidatedProof.Jwt,
         proofType: ProofType.Jwt,
-    ): Pair<CredentialKey, CNonce> = result {
+    ): Pair<CredentialKey, String?> = result {
         val signedJwt = SignedJWT.parse(unvalidatedProof.jwt)
         val (algorithm, credentialKey) = algorithmAndCredentialKey(signedJwt.header, proofType.signingAlgorithmsSupported)
         val keySelector = keySelector(credentialKey, algorithm)
         val processor = processor(credentialIssuerId, keySelector)
-
         val claimSet = processor.process(signedJwt, null)
-        val encryptedCNonce = requireNotNull(claimSet.getStringClaim("nonce"))
-        val cnonce = decryptCNonce(encryptedCNonce).getOrThrow()
 
-        credentialKey to cnonce
+        credentialKey to claimSet.getStringClaim("nonce")
     }.getOrElse { raise(IssueCredentialError.InvalidProof("Invalid proof JWT", it)) }
 }
 
@@ -172,7 +174,7 @@ private fun processor(
                 DefaultJWTClaimsVerifier<SecurityContext?>(
                     credentialIssuerId.externalForm, // aud
                     JWTClaimsSet.Builder().build(),
-                    setOf("iat", "nonce"),
+                    setOf("iat"),
                 ).apply {
                     maxClockSkew = maxSkew.toInt(DurationUnit.SECONDS)
                 }

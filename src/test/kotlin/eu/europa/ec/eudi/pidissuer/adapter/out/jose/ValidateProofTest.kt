@@ -29,13 +29,19 @@ class ValidateProofTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.systemDefaultZone()
-    private val validateProofs = ValidateProofs(ValidateJwtProof(issuer) { TODO() }, clock) { _ -> TODO() }
+    private val validateProofs = ValidateProofs(ValidateJwtProof(issuer), clock) { _ ->
+        fail("ExtractJwkFromCredentialKey should not have been invoked.")
+    }
 
     @Test
     internal fun `fails with unsupported proof type`() = runTest {
         val proof = UnvalidatedProof.LdpVp("foo")
 
-        val result = either { validateProofs(nonEmptyListOf(proof), PidMsoMdocV1) }
+        val result = either {
+            validateProofs(nonEmptyListOf(proof), PidMsoMdocV1) {
+                fail("DecryptCNonce should not have been invoked.")
+            }
+        }
         assert(result.isLeft())
 
         val error = assertIs<IssueCredentialError.InvalidProof>(result.leftOrNull())

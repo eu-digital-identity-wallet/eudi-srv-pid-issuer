@@ -28,6 +28,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.jose.DecryptCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
 import kotlinx.coroutines.async
@@ -263,6 +264,7 @@ internal class IssueMsoMdocPid(
     private val generateNotificationId: GenerateNotificationId,
     private val clock: Clock,
     private val storeIssuedCredentials: StoreIssuedCredentials,
+    private val decryptCNonce: DecryptCNonce,
 ) : IssueSpecificCredential {
 
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
@@ -278,7 +280,7 @@ internal class IssueMsoMdocPid(
         credentialIdentifier: CredentialIdentifier?,
     ): CredentialResponse = coroutineScope {
         log.info("Handling issuance request ...")
-        val holderPubKeys = validateProofs(request.unvalidatedProofs, supportedCredential)
+        val holderPubKeys = validateProofs(request.unvalidatedProofs, supportedCredential, decryptCNonce)
             .map { it.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
 
         val pidData = async { getPidData(authorizationContext) }

@@ -24,6 +24,7 @@ import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 import eu.europa.ec.eudi.pidissuer.domain.isExpired
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
+import eu.europa.ec.eudi.pidissuer.port.out.jose.DecryptCNonce
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -42,10 +43,11 @@ internal class ValidateProofs(
     suspend operator fun invoke(
         unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
         credentialConfiguration: CredentialConfiguration,
+        decryptCNonce: DecryptCNonce?,
     ): NonEmptyList<JWK> = coroutineScope {
         val credentialKeysAndCNonces = unvalidatedProofs.map {
             when (it) {
-                is UnvalidatedProof.Jwt -> async { validateJwtProof(it, credentialConfiguration) }
+                is UnvalidatedProof.Jwt -> async { validateJwtProof(it, credentialConfiguration, decryptCNonce) }
                 is UnvalidatedProof.LdpVp -> raise(InvalidProof("Supporting only JWT proof"))
             }
         }.awaitAll()
@@ -56,9 +58,10 @@ internal class ValidateProofs(
             InvalidProof("The Proofs of a Credential Request must contain the same CNonce")
         }
 
-        val cnonce = cnonces.head
-        ensure(!cnonce.isExpired(clock.instant())) {
-            InvalidProof("CNonce is expired")
+        cnonces.head?.let { cnonce ->
+            ensure(!cnonce.isExpired(clock.instant())) {
+                InvalidProof("CNonce is expired")
+            }
         }
 
         val jwks = credentialKeysAndCNonces.map {

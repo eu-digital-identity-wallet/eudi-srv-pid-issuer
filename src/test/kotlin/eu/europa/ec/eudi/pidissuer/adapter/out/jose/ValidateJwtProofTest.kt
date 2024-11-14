@@ -51,7 +51,7 @@ internal class ValidateJwtProofTest {
     private val key = RSAKeyGenerator(4096, false).generate()
     private val encryptCNonce = EncryptCNonceWithNimbus(issuer, key)
     private val decryptCNonce = DecryptCNonceWithNimbus(issuer, key)
-    private val validateJwtProof = ValidateJwtProof(issuer, decryptCNonce)
+    private val validateJwtProof = ValidateJwtProof(issuer)
     private val credentialConfiguration = MobileDrivingLicenceV1.copy(
         proofTypesSupported = ProofTypesSupported(
             nonEmptySetOf(
@@ -73,6 +73,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
+                decryptCNonce,
             )
         }
         assert(result.isLeft())
@@ -88,6 +89,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
+                decryptCNonce,
             )
         }
         assert(result.isLeft())
@@ -107,6 +109,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
+                decryptCNonce,
             )
         }
         assertTrue { result.isLeft() }
@@ -126,6 +129,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
+                decryptCNonce,
             )
         }.fold(
             ifLeft = { fail("Unexpected $it", it.cause) },
@@ -149,6 +153,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
+                decryptCNonce,
             )
         }.fold(
             ifLeft = { fail("Unexpected $it", it.cause) },
@@ -172,6 +177,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
+                decryptCNonce,
             )
         }.fold(
             ifLeft = { fail("Unexpected $it", it.cause) },
@@ -196,6 +202,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
+                decryptCNonce,
             )
         }
         assertTrue { result.isLeft() }
@@ -215,6 +222,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
+                decryptCNonce,
             )
         }
         assertTrue { result.isLeft() }
@@ -233,6 +241,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
+                decryptCNonce,
             )
         }
         assertTrue { result.isLeft() }

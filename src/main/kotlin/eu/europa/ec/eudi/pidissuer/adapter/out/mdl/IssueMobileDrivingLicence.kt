@@ -28,6 +28,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.jose.DecryptCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
 import kotlinx.coroutines.*
@@ -302,6 +303,7 @@ internal class IssueMobileDrivingLicence(
     private val generateNotificationId: GenerateNotificationId,
     private val clock: Clock,
     private val storeIssuedCredentials: StoreIssuedCredentials,
+    private val decryptCNonce: DecryptCNonce,
 ) : IssueSpecificCredential {
 
     override val supportedCredential: MsoMdocCredentialConfiguration
@@ -317,7 +319,7 @@ internal class IssueMobileDrivingLicence(
         credentialIdentifier: CredentialIdentifier?,
     ): CredentialResponse = coroutineScope {
         log.info("Issuing mDL")
-        val holderKeys = validateProofs(request.unvalidatedProofs, supportedCredential)
+        val holderKeys = validateProofs(request.unvalidatedProofs, supportedCredential, decryptCNonce)
             .map { it.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
         val licence = ensureNotNull(getMobileDrivingLicenceData(authorizationContext)) {
             IssueCredentialError.Unexpected("Unable to fetch mDL data")
