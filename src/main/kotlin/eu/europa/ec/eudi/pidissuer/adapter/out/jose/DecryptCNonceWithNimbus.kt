@@ -20,17 +20,16 @@ import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.crypto.factories.DefaultJWEDecrypterFactory
-import com.nimbusds.jose.crypto.factories.DefaultJWSVerifierFactory
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
-import com.nimbusds.jose.proc.*
+import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
+import com.nimbusds.jose.proc.JWEDecryptionKeySelector
+import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
-import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.CNonce
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.port.out.jose.DecryptCNonce
@@ -43,7 +42,6 @@ import java.time.Duration
 internal class DecryptCNonceWithNimbus(
     private val issuer: CredentialIssuerId,
     private val decryptionKey: RSAKey,
-    private val signingKey: IssuerSigningKey,
 ) : DecryptCNonce {
     init {
         require(decryptionKey.isPrivate) { "a private key is required for decryption" }
@@ -51,28 +49,16 @@ internal class DecryptCNonceWithNimbus(
 
     private val processor = DefaultJWTProcessor<SecurityContext>()
         .apply {
-            val jcaProvider = BouncyCastleProvider()
-            val typeVerifier = DefaultJOSEObjectTypeVerifier<SecurityContext>(JOSEObjectType("cnonce+jwt"))
-
-            jweTypeVerifier = typeVerifier
+            jweTypeVerifier = DefaultJOSEObjectTypeVerifier(JOSEObjectType("cnonce+jwt"))
             jweKeySelector = JWEDecryptionKeySelector(
                 JWEAlgorithm.RSA_OAEP_512,
                 EncryptionMethod.XC20P,
                 ImmutableJWKSet(JWKSet(decryptionKey)),
             )
-            jweDecrypterFactory = DefaultJWEDecrypterFactory().apply {
-                jcaContext.provider = jcaProvider
-            }
-
-            jwsTypeVerifier = typeVerifier
-            jwsKeySelector = JWSVerificationKeySelector(
-                signingKey.signingAlgorithm,
-                ImmutableJWKSet(JWKSet(signingKey.key)),
-            )
-            jwsVerifierFactory = DefaultJWSVerifierFactory().apply {
-                jcaContext.provider = jcaProvider
-            }
-
+            jweDecrypterFactory = DefaultJWEDecrypterFactory()
+                .apply {
+                    jcaContext.provider = BouncyCastleProvider()
+                }
             jwtClaimsSetVerifier = DefaultJWTClaimsVerifier(
                 issuer.externalForm,
                 JWTClaimsSet.Builder()

@@ -362,8 +362,8 @@ fun beans(clock: Clock) = beans {
     // CNonce
     //
     bean { DefaultGenerateCNonce(clock = clock, expiresIn = Duration.ofMinutes(5L)) }
-    bean { EncryptCNonceWithNimbus(issuerPublicUrl, ref(), ref<RSAKey>("cnonce-encryption-key")) }
-    bean { DecryptCNonceWithNimbus(issuerPublicUrl, ref<RSAKey>("cnonce-encryption-key"), ref()) }
+    bean { EncryptCNonceWithNimbus(issuerPublicUrl, ref<RSAKey>("cnonce-encryption-key")) }
+    bean { DecryptCNonceWithNimbus(issuerPublicUrl, ref<RSAKey>("cnonce-encryption-key")) }
 
     //
     // Credentials

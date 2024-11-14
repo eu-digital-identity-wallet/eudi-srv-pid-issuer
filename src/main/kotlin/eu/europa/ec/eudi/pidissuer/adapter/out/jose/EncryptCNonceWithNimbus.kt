@@ -19,17 +19,10 @@ import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWEHeader
-import com.nimbusds.jose.JWEObject
-import com.nimbusds.jose.JWSHeader
-import com.nimbusds.jose.Payload
 import com.nimbusds.jose.crypto.RSAEncrypter
-import com.nimbusds.jose.crypto.factories.DefaultJWSSignerFactory
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
-import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.CNonce
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCNonce
@@ -41,20 +34,17 @@ import java.util.*
  */
 internal class EncryptCNonceWithNimbus(
     private val issuer: CredentialIssuerId,
-    private val signingKey: IssuerSigningKey,
     encryptionKey: RSAKey,
 ) : EncryptCNonce {
 
-    private val jcaProvider = BouncyCastleProvider()
-    private val signer = run {
-        val factory = DefaultJWSSignerFactory().apply { jcaContext.provider = jcaProvider }
-        factory.createJWSSigner(signingKey.key, signingKey.signingAlgorithm)
-    }
-    private val encrypter = RSAEncrypter(encryptionKey).apply { jcaContext.provider = jcaProvider }
+    private val encrypter = RSAEncrypter(encryptionKey)
+        .apply {
+            jcaContext.provider = BouncyCastleProvider()
+        }
 
-    override suspend fun invoke(cnonce: CNonce): String {
-        val signedJwt = SignedJWT(
-            JWSHeader.Builder(signingKey.signingAlgorithm)
+    override suspend fun invoke(cnonce: CNonce): String =
+        EncryptedJWT(
+            JWEHeader.Builder(JWEAlgorithm.RSA_OAEP_512, EncryptionMethod.XC20P)
                 .type(JOSEObjectType("cnonce+jwt"))
                 .build(),
             JWTClaimsSet.Builder()
@@ -68,19 +58,6 @@ internal class EncryptCNonceWithNimbus(
                 }
                 .build(),
         ).apply {
-            sign(signer)
-        }
-
-        val encryptedJwt = JWEObject(
-            JWEHeader.Builder(JWEAlgorithm.RSA_OAEP_512, EncryptionMethod.XC20P)
-                .type(JOSEObjectType("cnonce+jwt"))
-                .contentType("JWT")
-                .build(),
-            Payload(signedJwt),
-        ).apply {
             encrypt(encrypter)
-        }
-
-        return encryptedJwt.serialize()
-    }
+        }.serialize()
 }
