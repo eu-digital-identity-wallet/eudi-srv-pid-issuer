@@ -288,7 +288,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
     @Test
     fun `fails when both proof and proofs is provided`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(Duration.ofMinutes(5L))
+        val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
 
         val key = ECKeyGenerator(Curve.P_256).generate()
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, key) {
@@ -346,7 +346,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
     @Test
     fun `fails when providing more proofs than allowed batch_size`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(Duration.ofMinutes(5L))
+        val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
 
         val keys = List(5) { ECKeyGenerator(Curve.P_256).generate() }
         val proofs = keys.map { key ->
@@ -381,7 +381,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
         val keys = List(2) { ECKeyGenerator(Curve.P_256).generate() }
         val proofs = keys.map { key ->
-            jwtProof(credentialIssuerMetadata.id, clock, generateCNonce(Duration.ofMinutes(5L)), key) {
+            jwtProof(credentialIssuerMetadata.id, clock, generateCNonce(clock.instant(), Duration.ofMinutes(5L)), key) {
                 jwk(key.toPublicJWK())
             }
         }.toProofs()
@@ -415,7 +415,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
     @Test
     fun `issuance success by format`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(Duration.ofMinutes(5L))
+        val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
 
         val key = ECKeyGenerator(Curve.P_256).generate()
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, key) {
@@ -454,7 +454,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
     @Test
     fun `batch issuance success by format`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(Duration.ofMinutes(5L))
+        val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
 
         val keys = List(2) { ECKeyGenerator(Curve.P_256).generate() }
         val proofs = keys.map { key ->
@@ -500,7 +500,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
     @Test
     fun `issuance success by credential identifier`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(Duration.ofMinutes(5L))
+        val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
 
         val key = ECKeyGenerator(Curve.P_256).generate()
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, key) {
@@ -551,7 +551,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
     @Test
     fun `issuance failure by format when encryption is not requested`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(Duration.ofMinutes(5L))
+        val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
 
         val key = ECKeyGenerator(Curve.P_256).generate()
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, key) {
@@ -589,7 +589,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
     @Test
     fun `issuance success by format when encryption is requested`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(Duration.ofMinutes(5L))
+        val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
 
         val walletKey = ECKeyGenerator(Curve.P_256).generate()
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, walletKey) {
@@ -640,7 +640,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
     @Test
     fun `batch issuance success by format when encryption is requested`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(Duration.ofMinutes(5L))
+        val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
 
         val walletKeys = List(2) { ECKeyGenerator(Curve.P_256).generate() }
         val proofs = walletKeys.map { walletKey ->
@@ -698,7 +698,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
     @Test
     fun `issuance failure by credential identifier when encryption is not requested`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(Duration.ofMinutes(5L))
+        val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
 
         val key = ECKeyGenerator(Curve.P_256).generate()
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, key) {
@@ -736,7 +736,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
     @Test
     fun `issuance success by credential identifier when encryption is requested`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(Duration.ofMinutes(5L))
+        val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
 
         val walletKey = ECKeyGenerator(Curve.P_256).generate()
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, walletKey) {

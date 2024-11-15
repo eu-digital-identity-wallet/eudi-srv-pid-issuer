@@ -361,7 +361,7 @@ fun beans(clock: Clock) = beans {
     //
     // CNonce
     //
-    bean { GenerateCNonceAndEncryptWithNimbus(clock, issuerPublicUrl, ref<RSAKey>("cnonce-encryption-key")) }
+    bean { GenerateCNonceAndEncryptWithNimbus(issuerPublicUrl, ref<RSAKey>("cnonce-encryption-key")) }
     bean { DecryptCNonceWithNimbusAndVerify(issuerPublicUrl, ref<RSAKey>("cnonce-encryption-key")) }
 
     //
@@ -477,6 +477,7 @@ fun beans(clock: Clock) = beans {
     bean(::GetCredentialIssuerMetaData)
     bean {
         IssueCredential(
+            clock = clock,
             credentialIssuerMetadata = ref(),
             resolveCredentialRequestByCredentialIdentifier = ref(),
             generateCNonce = ref(),

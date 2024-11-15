@@ -33,6 +33,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import org.slf4j.LoggerFactory
+import java.time.Clock
 import java.time.Duration
 
 @Serializable
@@ -300,6 +301,7 @@ private val log = LoggerFactory.getLogger(IssueCredential::class.java)
  * Usecase for issuing a Credential.
  */
 class IssueCredential(
+    private val clock: Clock,
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
     private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
     private val generateCNonce: GenerateCNonce,
@@ -378,7 +380,7 @@ class IssueCredential(
         request: CredentialRequest,
         credential: CredentialResponse,
     ): IssueCredentialResponse {
-        val newCNonce = generateCNonce(cnonceExpiresIn)
+        val newCNonce = generateCNonce(clock.instant(), cnonceExpiresIn)
         val plain = credential.toTO(newCNonce, cnonceExpiresIn)
         return when (val encryption = request.credentialResponseEncryption) {
             RequestedResponseEncryption.NotRequired -> plain
@@ -390,7 +392,7 @@ class IssueCredential(
         error: IssueCredentialError,
     ): IssueCredentialResponse {
         log.warn("Issuance failed: $error")
-        val newCNonce = generateCNonce(cnonceExpiresIn)
+        val newCNonce = generateCNonce(clock.instant(), cnonceExpiresIn)
         return error.toTO(newCNonce, cnonceExpiresIn)
     }
 }

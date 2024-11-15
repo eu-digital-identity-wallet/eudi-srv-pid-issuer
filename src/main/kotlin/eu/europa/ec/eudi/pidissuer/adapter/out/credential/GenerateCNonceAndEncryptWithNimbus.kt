@@ -27,15 +27,14 @@ import com.nimbusds.openid.connect.sdk.Nonce
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateCNonce
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import java.time.Clock
 import java.time.Duration
+import java.time.Instant
 import java.util.*
 
 /**
  * Generates a CNonce and encrypts it as a [EncryptedJWT] with Nimbus.
  */
 internal class GenerateCNonceAndEncryptWithNimbus(
-    private val clock: Clock,
     private val issuer: CredentialIssuerId,
     encryptionKey: RSAKey,
     private val generator: suspend () -> String = { Nonce(128).value },
@@ -46,9 +45,8 @@ internal class GenerateCNonceAndEncryptWithNimbus(
             jcaContext.provider = BouncyCastleProvider()
         }
 
-    override suspend fun invoke(cnonceExpiresIn: Duration): String {
-        val issuedAt = clock.instant()
-        val expiresAt = issuedAt + cnonceExpiresIn
+    override suspend fun invoke(generatedAt: Instant, expiresIn: Duration): String {
+        val expiresAt = generatedAt + expiresIn
 
         return EncryptedJWT(
             JWEHeader.Builder(JWEAlgorithm.RSA_OAEP_512, EncryptionMethod.XC20P)
@@ -59,7 +57,7 @@ internal class GenerateCNonceAndEncryptWithNimbus(
                     issuer(issuer.externalForm)
                     audience(issuer.externalForm)
                     claim("cnonce", generator())
-                    issueTime(Date.from(issuedAt))
+                    issueTime(Date.from(generatedAt))
                     expirationTime(Date.from(expiresAt))
                 }
                 .build(),
