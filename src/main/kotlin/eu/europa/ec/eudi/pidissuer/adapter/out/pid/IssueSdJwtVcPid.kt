@@ -29,7 +29,6 @@ import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
-import eu.europa.ec.eudi.pidissuer.port.out.jose.DecryptCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
@@ -117,7 +116,6 @@ internal class IssueSdJwtVcPid(
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredentials: StoreIssuedCredentials,
-    private val decryptCNonce: DecryptCNonce,
 ) : IssueSpecificCredential {
 
     override val supportedCredential: SdJwtVcCredentialConfiguration = pidSdJwtVcV1(issuerSigningKey.signingAlgorithm)
@@ -141,7 +139,7 @@ internal class IssueSdJwtVcPid(
         credentialIdentifier: CredentialIdentifier?,
     ): CredentialResponse = coroutineScope {
         log.info("Handling issuance request ...")
-        val holderPubKeys = validateProofs(request.unvalidatedProofs, supportedCredential, decryptCNonce)
+        val holderPubKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.instant())
 
         val pidData = async { getPidData(authorizationContext) }
         val (pid, pidMetaData) = pidData.await()

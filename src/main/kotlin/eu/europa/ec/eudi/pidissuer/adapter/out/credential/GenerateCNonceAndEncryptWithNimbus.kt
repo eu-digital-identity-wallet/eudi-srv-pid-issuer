@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.jose
+package eu.europa.ec.eudi.pidissuer.adapter.out.credential
 
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JOSEObjectType
@@ -23,27 +23,34 @@ import com.nimbusds.jose.crypto.RSAEncrypter
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
-import eu.europa.ec.eudi.pidissuer.domain.CNonce
+import com.nimbusds.openid.connect.sdk.Nonce
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
-import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCNonce
+import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateCNonce
 import org.bouncycastle.jce.provider.BouncyCastleProvider
+import java.time.Clock
+import java.time.Duration
 import java.util.*
 
 /**
- * Nimbus implementation of [EncryptCNonce] that encrypts [CNonce] as an [EncryptedJWT].
+ * Generates a CNonce and encrypts it as a [EncryptedJWT] with Nimbus.
  */
-internal class EncryptCNonceWithNimbus(
+internal class GenerateCNonceAndEncryptWithNimbus(
+    private val clock: Clock,
     private val issuer: CredentialIssuerId,
     encryptionKey: RSAKey,
-) : EncryptCNonce {
+    private val generator: suspend () -> String = { Nonce(128).value },
+) : GenerateCNonce {
 
     private val encrypter = RSAEncrypter(encryptionKey)
         .apply {
             jcaContext.provider = BouncyCastleProvider()
         }
 
-    override suspend fun invoke(cnonce: CNonce): String =
-        EncryptedJWT(
+    override suspend fun invoke(cnonceExpiresIn: Duration): String {
+        val issuedAt = clock.instant()
+        val expiresAt = issuedAt + cnonceExpiresIn
+
+        return EncryptedJWT(
             JWEHeader.Builder(JWEAlgorithm.RSA_OAEP_512, EncryptionMethod.XC20P)
                 .type(JOSEObjectType("cnonce+jwt"))
                 .build(),
@@ -51,12 +58,13 @@ internal class EncryptCNonceWithNimbus(
                 .apply {
                     issuer(issuer.externalForm)
                     audience(issuer.externalForm)
-                    claim("cnonce", cnonce.nonce)
-                    claim("exi", cnonce.expiresIn.seconds)
-                    issueTime(Date.from(cnonce.activatedAt))
+                    claim("cnonce", generator())
+                    issueTime(Date.from(issuedAt))
+                    expirationTime(Date.from(expiresAt))
                 }
                 .build(),
         ).apply {
             encrypt(encrypter)
         }.serialize()
+    }
 }

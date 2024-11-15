@@ -37,7 +37,6 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import com.nimbusds.jwt.proc.JWTProcessor
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.out.jose.DecryptCNonce
 import java.security.interfaces.ECPublicKey
 import java.security.interfaces.EdECPublicKey
 import java.security.interfaces.RSAPublicKey
@@ -51,23 +50,17 @@ internal class ValidateJwtProof(
     private val credentialIssuerId: CredentialIssuerId,
 ) {
     context(Raise<IssueCredentialError.InvalidProof>)
-    suspend operator fun invoke(
+    operator fun invoke(
         unvalidatedProof: UnvalidatedProof.Jwt,
         credentialConfiguration: CredentialConfiguration,
-        decryptCNonce: DecryptCNonce?,
-    ): Pair<CredentialKey, CNonce?> {
+    ): Pair<CredentialKey, String?> {
         val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.JWT]
         ensureNotNull(proofType) {
             IssueCredentialError.InvalidProof("credential configuration '${credentialConfiguration.id.value}' doesn't support 'jwt' proofs")
         }
         check(proofType is ProofType.Jwt)
 
-        val (credentialKey, nonce) = credentialKeyAndNonce(unvalidatedProof, proofType)
-        val cnonce = decryptCNonce?.let {
-            ensureNotNull(nonce) { IssueCredentialError.InvalidProof("Missing CNonce") }
-            decryptCNonce(nonce).getOrElse { raise(IssueCredentialError.InvalidProof("Invalid CNonce", it)) }
-        }
-        return credentialKey to cnonce
+        return credentialKeyAndNonce(unvalidatedProof, proofType)
     }
 
     context(Raise<IssueCredentialError.InvalidProof>)

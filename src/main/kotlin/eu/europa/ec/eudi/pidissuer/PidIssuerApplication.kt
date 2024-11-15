@@ -37,10 +37,10 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CredentialRequestFactory
-import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultGenerateCNonce
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DecryptCNonceWithNimbusAndVerify
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultResolveCredentialRequestByCredentialIdentifier
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.GenerateCNonceAndEncryptWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCNonceWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryIssuedCredentialRepository
@@ -361,9 +361,8 @@ fun beans(clock: Clock) = beans {
     //
     // CNonce
     //
-    bean { DefaultGenerateCNonce(clock = clock, expiresIn = Duration.ofMinutes(5L)) }
-    bean { EncryptCNonceWithNimbus(issuerPublicUrl, ref<RSAKey>("cnonce-encryption-key")) }
-    bean { DecryptCNonceWithNimbus(issuerPublicUrl, ref<RSAKey>("cnonce-encryption-key")) }
+    bean { GenerateCNonceAndEncryptWithNimbus(clock, issuerPublicUrl, ref<RSAKey>("cnonce-encryption-key")) }
+    bean { DecryptCNonceWithNimbusAndVerify(issuerPublicUrl, ref<RSAKey>("cnonce-encryption-key")) }
 
     //
     // Credentials
@@ -388,7 +387,7 @@ fun beans(clock: Clock) = beans {
     //
     bean { ValidateJwtProof(issuerPublicUrl) }
     bean { DefaultExtractJwkFromCredentialKey }
-    bean { ValidateProofs(ref(), clock, ref()) }
+    bean { ValidateProofs(ref(), ref(), ref()) }
     bean {
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
@@ -408,7 +407,6 @@ fun beans(clock: Clock) = beans {
                         clock = clock,
                         storeIssuedCredentials = ref(),
                         validateProofs = ref(),
-                        decryptCNonce = ref(),
                     )
                     add(issueMsoMdocPid)
                 }
@@ -439,7 +437,6 @@ fun beans(clock: Clock) = beans {
                         generateNotificationId = ref(),
                         storeIssuedCredentials = ref(),
                         validateProofs = ref(),
-                        decryptCNonce = ref(),
                     )
 
                     val deferred = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.deferred") ?: false
@@ -458,7 +455,6 @@ fun beans(clock: Clock) = beans {
                         clock = clock,
                         storeIssuedCredentials = ref(),
                         validateProofs = ref(),
-                        decryptCNonce = ref(),
                     )
                     add(mdlIssuer)
                 }
@@ -480,7 +476,12 @@ fun beans(clock: Clock) = beans {
     //
     bean(::GetCredentialIssuerMetaData)
     bean {
-        IssueCredential(ref(), ref(), ref(), ref(), ref())
+        IssueCredential(
+            credentialIssuerMetadata = ref(),
+            resolveCredentialRequestByCredentialIdentifier = ref(),
+            generateCNonce = ref(),
+            encryptCredentialResponse = ref(),
+        )
     }
     bean {
         GetDeferredCredential(ref(), ref())

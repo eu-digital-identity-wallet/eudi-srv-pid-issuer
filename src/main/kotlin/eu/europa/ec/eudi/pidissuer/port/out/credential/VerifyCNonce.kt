@@ -13,15 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.domain
+package eu.europa.ec.eudi.pidissuer.port.out.credential
 
-import java.time.Duration
 import java.time.Instant
 
-data class CNonce(
-    val nonce: String,
-    val activatedAt: Instant,
-    val expiresIn: Duration,
-)
+/**
+ * Verifies a CNonce value is valid at a specific [Instant].
+ */
+fun interface VerifyCNonce {
+    suspend operator fun invoke(value: String?, at: Instant): Boolean
 
-fun CNonce.isExpired(at: Instant): Boolean = (activatedAt + expiresIn) <= at
+    suspend operator fun invoke(values: List<String?>, at: Instant): Boolean =
+        when (values.distinct().size) {
+            1 -> this(values.first(), at)
+            else -> false
+        }
+
+    companion object {
+
+        /**
+         * Gets a [VerifyCNonce] that perform no verification.
+         */
+        fun noCNonceRequired(): VerifyCNonce = VerifyCNonce { _, _ -> true }
+    }
+}

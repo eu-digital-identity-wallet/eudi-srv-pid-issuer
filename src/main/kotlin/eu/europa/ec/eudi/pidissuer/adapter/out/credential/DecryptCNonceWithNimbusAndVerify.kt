@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.jose
+package eu.europa.ec.eudi.pidissuer.adapter.out.credential
 
 import arrow.core.raise.result
 import com.nimbusds.jose.EncryptionMethod
@@ -30,19 +30,18 @@ import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
-import eu.europa.ec.eudi.pidissuer.domain.CNonce
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
-import eu.europa.ec.eudi.pidissuer.port.out.jose.DecryptCNonce
+import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyCNonce
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import java.time.Duration
+import java.time.Instant
 
 /**
- * Nimbus implementation of [DecryptCNonce] that decrypts an [EncryptedJWT] as a [CNonce].
+ * Decrypts an [EncryptedJWT] using Nimbus and verifies it's still active.
  */
-internal class DecryptCNonceWithNimbus(
+internal class DecryptCNonceWithNimbusAndVerify(
     private val issuer: CredentialIssuerId,
     private val decryptionKey: RSAKey,
-) : DecryptCNonce {
+) : VerifyCNonce {
     init {
         require(decryptionKey.isPrivate) { "a private key is required for decryption" }
     }
@@ -65,17 +64,17 @@ internal class DecryptCNonceWithNimbus(
                     .issuer(issuer.externalForm)
                     .audience(issuer.externalForm)
                     .build(),
-                setOf("iss", "aud", "cnonce", "exi", "iat"),
+                setOf("iss", "aud", "cnonce", "iat", "exp"),
             )
         }
 
-    override suspend fun invoke(encrypted: String): Result<CNonce> = result {
-        val jwt = EncryptedJWT.parse(encrypted)
-        val claimSet = processor.process(jwt, null)
-        CNonce(
-            requireNotNull(claimSet.getStringClaim("cnonce")) { "missing 'cnonce' claim" },
-            requireNotNull(claimSet.issueTime.toInstant()) { "missing 'iat' claim" },
-            requireNotNull(claimSet.getLongClaim("exi")?.let { Duration.ofSeconds(it) }) { "missing 'exi' claim" },
-        )
-    }
+    override suspend fun invoke(value: String?, at: Instant): Boolean =
+        value?.let {
+            result {
+                val jwt = EncryptedJWT.parse(it)
+                val claimSet = processor.process(jwt, null)
+                val expiresAt = requireNotNull(claimSet.expirationTime) { "expirationTime is required" }
+                at < expiresAt.toInstant()
+            }.getOrElse { false }
+        } ?: false
 }

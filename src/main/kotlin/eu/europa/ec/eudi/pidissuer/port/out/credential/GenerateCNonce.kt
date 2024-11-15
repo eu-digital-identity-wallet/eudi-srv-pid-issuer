@@ -15,11 +15,11 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.credential
 
-import eu.europa.ec.eudi.pidissuer.domain.CNonce
+import java.time.Duration
 
 /**
- * Generates a new [CNonce].
+ * Generates a new CNonce that expires after a specific [Duration].
  */
 fun interface GenerateCNonce {
-    suspend operator fun invoke(): CNonce
+    suspend operator fun invoke(cnonceExpiresIn: Duration): String
 }

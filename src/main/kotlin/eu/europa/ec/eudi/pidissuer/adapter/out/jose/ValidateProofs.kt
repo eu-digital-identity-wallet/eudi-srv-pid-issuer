@@ -22,20 +22,17 @@ import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
-import eu.europa.ec.eudi.pidissuer.domain.isExpired
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
-import eu.europa.ec.eudi.pidissuer.port.out.jose.DecryptCNonce
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import java.time.Clock
+import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyCNonce
+import kotlinx.coroutines.*
+import java.time.Instant
 
 /**
  * Validators for Proofs.
  */
 internal class ValidateProofs(
     private val validateJwtProof: ValidateJwtProof,
-    private val clock: Clock,
+    private val verifyCNonce: VerifyCNonce,
     private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
 ) {
 
@@ -43,25 +40,23 @@ internal class ValidateProofs(
     suspend operator fun invoke(
         unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
         credentialConfiguration: CredentialConfiguration,
-        decryptCNonce: DecryptCNonce?,
+        at: Instant,
     ): NonEmptyList<JWK> = coroutineScope {
         val credentialKeysAndCNonces = unvalidatedProofs.map {
             when (it) {
-                is UnvalidatedProof.Jwt -> async { validateJwtProof(it, credentialConfiguration, decryptCNonce) }
+                is UnvalidatedProof.Jwt -> async {
+                    withContext(Dispatchers.Default) {
+                        validateJwtProof(it, credentialConfiguration)
+                    }
+                }
                 is UnvalidatedProof.LdpVp -> raise(InvalidProof("Supporting only JWT proof"))
             }
         }.awaitAll()
 
         val cnonces = credentialKeysAndCNonces.map { it.second }.toNonEmptyListOrNull()
         checkNotNull(cnonces)
-        ensure(cnonces.distinct().size == 1) {
-            InvalidProof("The Proofs of a Credential Request must contain the same CNonce")
-        }
-
-        cnonces.head?.let { cnonce ->
-            ensure(!cnonce.isExpired(clock.instant())) {
-                InvalidProof("CNonce is expired")
-            }
+        ensure(verifyCNonce(cnonces, at)) {
+            InvalidProof("CNonce is not valid")
         }
 
         val jwks = credentialKeysAndCNonces.map {

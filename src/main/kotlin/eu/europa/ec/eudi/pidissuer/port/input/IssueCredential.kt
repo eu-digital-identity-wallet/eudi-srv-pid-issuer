@@ -25,7 +25,6 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ResolveCredentialRequestByCredentialIdentifier
-import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Required
@@ -304,7 +303,7 @@ class IssueCredential(
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
     private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
     private val generateCNonce: GenerateCNonce,
-    private val encryptCNonce: EncryptCNonce,
+    private val cnonceExpiresIn: Duration = Duration.ofMinutes(5L),
     private val encryptCredentialResponse: EncryptCredentialResponse,
 ) {
 
@@ -379,8 +378,8 @@ class IssueCredential(
         request: CredentialRequest,
         credential: CredentialResponse,
     ): IssueCredentialResponse {
-        val (newCNonce, newCNonceExpiresIn) = newCNonce()
-        val plain = credential.toTO(newCNonce, newCNonceExpiresIn)
+        val newCNonce = generateCNonce(cnonceExpiresIn)
+        val plain = credential.toTO(newCNonce, cnonceExpiresIn)
         return when (val encryption = request.credentialResponseEncryption) {
             RequestedResponseEncryption.NotRequired -> plain
             is RequestedResponseEncryption.Required -> encryptCredentialResponse(plain, encryption).getOrThrow()
@@ -391,14 +390,8 @@ class IssueCredential(
         error: IssueCredentialError,
     ): IssueCredentialResponse {
         log.warn("Issuance failed: $error")
-        val (newCNonce, newCNonceExpiresIn) = newCNonce()
-        return error.toTO(newCNonce, newCNonceExpiresIn)
-    }
-
-    private suspend fun newCNonce(): Pair<String, Duration> {
-        val cnonce = generateCNonce()
-        val encryptedCNonce = encryptCNonce(cnonce)
-        return encryptedCNonce to cnonce.expiresIn
+        val newCNonce = generateCNonce(cnonceExpiresIn)
+        return error.toTO(newCNonce, cnonceExpiresIn)
     }
 }
 //
