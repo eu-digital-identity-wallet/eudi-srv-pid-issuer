@@ -111,7 +111,6 @@ class EncryptCredentialResponseNimbus(
                 credentialOrCredentials(plain.credential, plain.credentials)
                 transactionId?.let { claim("transaction_id", it) }
                 claim("c_nonce", nonce)
-                claim("c_nonce_expires_in", nonceExpiresIn)
                 notificationId?.let { claim("notification_id", it) }
             }
         }

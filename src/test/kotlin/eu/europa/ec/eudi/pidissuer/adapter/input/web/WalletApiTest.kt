@@ -247,7 +247,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, error.type)
         assertEquals("The Credential Request must include Proof of Possession", error.errorDescription)
         assertNotNull(error.nonce)
-        assertNotNull(error.nonceExpiresIn)
     }
 
     /**
@@ -279,7 +278,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
         assertEquals(CredentialErrorTypeTo.INVALID_REQUEST, error.type)
         assertEquals("Wrong scope. Expecting $PidMsoMdocScope", error.errorDescription)
         assertNotNull(error.nonce)
-        assertNotNull(error.nonceExpiresIn)
     }
 
     /**
@@ -315,7 +313,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
         assertEquals("Only one of `proof` or `proofs` is allowed", response.errorDescription)
         val newCNonce = assertNotNull(response.nonce)
         assertNotEquals(previousCNonce, newCNonce)
-        assertNotNull(response.nonceExpiresIn)
     }
 
     @Test
@@ -340,7 +337,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
         assertEquals("Only a single proof type is allowed", response.errorDescription)
         assertNotNull(response.nonce)
-        assertNotNull(response.nonceExpiresIn)
     }
 
     @Test
@@ -372,7 +368,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
         assertEquals("You can provide at most '3' proofs", response.errorDescription)
         val newCNonce = assertNotNull(response.nonce)
         assertNotEquals(previousCNonce, newCNonce)
-        assertNotNull(response.nonceExpiresIn)
     }
 
     @Test
@@ -402,7 +397,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
         assertEquals("CNonce is not valid", response.errorDescription)
         assertNotNull(response.nonce)
-        assertNotNull(response.nonceExpiresIn)
     }
 
     /**
@@ -441,7 +435,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
         val newCNonce = assertNotNull(response.nonce)
         assertNotEquals(previousCNonce, newCNonce)
-        assertNotNull(response.nonceExpiresIn)
     }
 
     /**
@@ -487,7 +480,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
         val newCNonce = assertNotNull(response.nonce)
         assertNotEquals(previousCNonce, newCNonce)
-        assertNotNull(response.nonceExpiresIn)
     }
 
     /**
@@ -525,7 +517,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
         assertNull(response.transactionId)
         val newCNonce = assertNotNull(response.nonce)
         assertNotEquals(previousCNonce, newCNonce)
-        assertNotNull(response.nonceExpiresIn)
     }
 }
 
@@ -576,7 +567,6 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
 
         val newCNonce = assertNotNull(response.nonce)
         assertNotEquals(previousCNonce, newCNonce)
-        assertNotNull(response.nonceExpiresIn)
     }
 
     /**
@@ -627,7 +617,6 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
 
         val newCNonce = assertNotNull(claims.getStringClaim("c_nonce"))
         assertNotEquals(previousCNonce, newCNonce)
-        assertNotNull(claims.getLongClaim("c_nonce_expires_in"))
     }
 
     /**
@@ -685,7 +674,6 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
 
         val newCNonce = assertNotNull(claims.getStringClaim("c_nonce"))
         assertNotEquals(previousCNonce, newCNonce)
-        assertNotNull(claims.getLongClaim("c_nonce_expires_in"))
     }
 
     /**
@@ -723,7 +711,6 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
 
         val newCNonce = assertNotNull(response.nonce)
         assertNotEquals(previousCNonce, newCNonce)
-        assertNotNull(response.nonceExpiresIn)
     }
 
     /**
@@ -779,7 +766,6 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
 
         val newCNonce = assertNotNull(claims.getStringClaim("c_nonce"))
         assertNotEquals(previousCNonce, newCNonce)
-        assertNotNull(claims.getLongClaim("c_nonce_expires_in"))
     }
 }
 
