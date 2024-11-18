@@ -1637,6 +1637,18 @@
         }
       }
     ],
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "id": "bfa86063-5fbd-444b-8c6b-52d9a6b8ed21",
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{}},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"credentials\",\"multivalued\":false},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"annotations\":{},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"credentials\",\"multivalued\":false},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"annotations\":{},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"annotations\":{},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"gender\",\"displayName\":\"Gender\",\"validations\":{\"options\":{\"options\":[\"0\",\"1\",\"2\",\"3\"]}},\"annotations\":{\"inputOptionLabels\":{\"0\":\"Not known\",\"1\":\"Male\",\"2\":\"Female\",\"3\":\"Not applicable\"},\"inputType\":\"select-radiobuttons\"},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"birthdate\",\"displayName\":\"Birthdate\",\"validations\":{\"iso-date\":{}},\"annotations\":{\"inputType\":\"html5-date\"},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"age_over_18\",\"displayName\":\"Age over 18\",\"validations\":{\"options\":{\"options\":[\"true\",\"false\"]}},\"annotations\":{\"inputType\":\"select\",\"inputOptionLabels\":{\"true\":\"Yes\",\"false\":\"No\"}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"picture\",\"displayName\":\"Picture\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"street\",\"displayName\":\"Street\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false},{\"name\":\"locality\",\"displayName\":\"Locality\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false},{\"name\":\"region\",\"displayName\":\"Region\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false},{\"name\":\"postal_code\",\"displayName\":\"Postal Code\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false},{\"name\":\"country\",\"displayName\":\"Country\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false},{\"name\":\"formatted\",\"displayName\":\"Formatted\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false}],\"groups\":[{\"name\":\"user-metadata\",\"displayHeader\":\"User metadata\",\"displayDescription\":\"Attributes, which refer to user metadata\"},{\"name\":\"address\",\"displayHeader\":\"Address\",\"displayDescription\":\"\",\"annotations\":{}},{\"name\":\"credentials\",\"displayHeader\":\"Credentials\",\"displayDescription\":\"\",\"annotations\":{}},{\"name\":\"profile\",\"displayHeader\":\"Profile\",\"displayDescription\":\"\",\"annotations\":{}}],\"unmanagedAttributePolicy\":\"ENABLED\"}"
+          ]
+        }
+      }
+    ],
     "org.keycloak.keys.KeyProvider": [
       {
         "id": "4da6878f-706e-416d-a679-250bd5368dbe",
@@ -2369,6 +2381,5 @@
   },
   "clientPolicies": {
     "policies": []
-  },
-  "loginTheme": "pid-issuer"
+  }
 }

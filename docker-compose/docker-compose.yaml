@@ -20,9 +20,6 @@ services:
       - KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true
       - KC_HTTPS_CERTIFICATE_FILE=/etc/ssl/certs/keycloak.tls.crt
       - KC_HTTPS_CERTIFICATE_KEY_FILE=/etc/ssl/certs/keycloak.tls.key
-      - KC_SPI_THEME_STATIC_MAX_AGE=-1
-      - KC_SPI_THEME_CACHE_THEMES=false
-      - KC_SPI_THEME_CACHE_TEMPLATES=false
       - KC_BOOTSTRAP_ADMIN_USERNAME=admin
       - KC_BOOTSTRAP_ADMIN_PASSWORD=password
     healthcheck:
@@ -34,7 +31,6 @@ services:
     volumes:
       - ./keycloak/extra/health-check.sh:/opt/keycloak/health-check.sh
       - ./keycloak/realms/:/opt/keycloak/data/import
-      - ./keycloak/themes/:/opt/keycloak/themes
       - ./keycloak/certs/:/etc/ssl/certs/
     networks:
       - default
