@@ -13,16 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.domain
+package eu.europa.ec.eudi.pidissuer.port.out.credential
 
 import java.time.Duration
 import java.time.Instant
 
-data class CNonce(
-    val accessToken: String,
-    val nonce: String,
-    val activatedAt: Instant,
-    val expiresIn: Duration,
-)
-
-fun CNonce.isExpired(at: Instant): Boolean = (activatedAt + expiresIn) <= at
+/**
+ * Generates a new CNonce that expires after a specific [Duration].
+ */
+fun interface GenerateCNonce {
+    suspend operator fun invoke(generatedAt: Instant, expiresIn: Duration): String
+}

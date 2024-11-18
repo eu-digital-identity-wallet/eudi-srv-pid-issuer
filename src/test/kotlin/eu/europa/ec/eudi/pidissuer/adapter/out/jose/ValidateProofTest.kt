@@ -15,33 +15,41 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
+import arrow.core.nonEmptyListOf
 import arrow.core.raise.either
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMsoMdocV1
-import eu.europa.ec.eudi.pidissuer.domain.CNonce
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import java.time.Clock
-import kotlin.test.Test
-import kotlin.test.assertIs
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.toJavaDuration
+import kotlin.test.*
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class ValidateProofTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
-    private val validateProof = ValidateProof(issuer)
     private val clock = Clock.systemDefaultZone()
+    private val validateProofs = ValidateProofs(
+        validateJwtProof = ValidateJwtProof(issuer),
+        verifyCNonce = { _, _ ->
+            fail("VerifyCNonce should not have been invoked")
+        },
+        extractJwkFromCredentialKey = { _ ->
+            fail("ExtractJwkFromCredentialKey should not have been invoked.")
+        },
+    )
 
     @Test
     internal fun `fails with unsupported proof type`() = runTest {
-        val nonce = CNonce("token", "nonce", clock.instant(), 5.minutes.toJavaDuration())
         val proof = UnvalidatedProof.LdpVp("foo")
-        val result = either { validateProof(proof, nonce, PidMsoMdocV1) }
+
+        val result = either {
+            validateProofs(nonEmptyListOf(proof), PidMsoMdocV1, clock.instant())
+        }
         assert(result.isLeft())
-        assertIs<IssueCredentialError.InvalidProof>(result.leftOrNull())
+
+        val error = assertIs<IssueCredentialError.InvalidProof>(result.leftOrNull())
+        assertEquals("Supporting only JWT proof", error.msg)
+        assertNull(error.cause)
     }
 }

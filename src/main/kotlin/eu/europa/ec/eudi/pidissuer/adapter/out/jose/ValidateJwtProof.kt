@@ -43,36 +43,40 @@ import java.security.interfaces.RSAPublicKey
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 
-context (Raise<IssueCredentialError.InvalidProof>)
-fun validateJwtProof(
-    credentialIssuerId: CredentialIssuerId,
-    unvalidatedProof: UnvalidatedProof.Jwt,
-    expectedCNonce: CNonce,
-    credentialConfiguration: CredentialConfiguration,
-): CredentialKey {
-    val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.JWT]
-    ensureNotNull(proofType) {
-        IssueCredentialError.InvalidProof("credential configuration '${credentialConfiguration.id.value}' doesn't support 'jwt' proofs")
+/**
+ * Validator for JWT Proofs.
+ */
+internal class ValidateJwtProof(
+    private val credentialIssuerId: CredentialIssuerId,
+) {
+    context(Raise<IssueCredentialError.InvalidProof>)
+    operator fun invoke(
+        unvalidatedProof: UnvalidatedProof.Jwt,
+        credentialConfiguration: CredentialConfiguration,
+    ): Pair<CredentialKey, String?> {
+        val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.JWT]
+        ensureNotNull(proofType) {
+            IssueCredentialError.InvalidProof("credential configuration '${credentialConfiguration.id.value}' doesn't support 'jwt' proofs")
+        }
+        check(proofType is ProofType.Jwt)
+
+        return credentialKeyAndNonce(unvalidatedProof, proofType)
     }
-    check(proofType is ProofType.Jwt)
 
-    return validateJwtProof(credentialIssuerId, unvalidatedProof, expectedCNonce, proofType)
+    context(Raise<IssueCredentialError.InvalidProof>)
+    private fun credentialKeyAndNonce(
+        unvalidatedProof: UnvalidatedProof.Jwt,
+        proofType: ProofType.Jwt,
+    ): Pair<CredentialKey, String?> = result {
+        val signedJwt = SignedJWT.parse(unvalidatedProof.jwt)
+        val (algorithm, credentialKey) = algorithmAndCredentialKey(signedJwt.header, proofType.signingAlgorithmsSupported)
+        val keySelector = keySelector(credentialKey, algorithm)
+        val processor = processor(credentialIssuerId, keySelector)
+        val claimSet = processor.process(signedJwt, null)
+
+        credentialKey to claimSet.getStringClaim("nonce")
+    }.getOrElse { raise(IssueCredentialError.InvalidProof("Invalid proof JWT", it)) }
 }
-
-context (Raise<IssueCredentialError.InvalidProof>)
-fun validateJwtProof(
-    credentialIssuerId: CredentialIssuerId,
-    unvalidatedProof: UnvalidatedProof.Jwt,
-    expectedCNonce: CNonce,
-    proofType: ProofType.Jwt,
-): CredentialKey = result {
-    val signedJwt = SignedJWT.parse(unvalidatedProof.jwt)
-    val (algorithm, credentialKey) = algorithmAndCredentialKey(signedJwt.header, proofType.signingAlgorithmsSupported)
-    val keySelector = keySelector(credentialKey, algorithm)
-    val processor = processor(expectedCNonce, credentialIssuerId, keySelector)
-    processor.process(signedJwt, null)
-    credentialKey
-}.getOrElse { raise(IssueCredentialError.InvalidProof("Invalid proof JWT", it)) }
 
 private fun algorithmAndCredentialKey(
     header: JWSHeader,
@@ -152,7 +156,6 @@ private val expectedType = JOSEObjectType("openid4vci-proof+jwt")
 private val maxSkew = 30.seconds
 
 private fun processor(
-    expected: CNonce,
     credentialIssuerId: CredentialIssuerId,
     keySelector: JWSKeySelector<SecurityContext>,
 ): JWTProcessor<SecurityContext> =
@@ -163,10 +166,8 @@ private fun processor(
             jwtClaimsSetVerifier =
                 DefaultJWTClaimsVerifier<SecurityContext?>(
                     credentialIssuerId.externalForm, // aud
-                    JWTClaimsSet.Builder()
-                        .claim("nonce", expected.nonce)
-                        .build(),
-                    setOf("iat", "nonce"),
+                    JWTClaimsSet.Builder().build(),
+                    setOf("iat"),
                 ).apply {
                     maxClockSkew = maxSkew.toInt(DurationUnit.SECONDS)
                 }

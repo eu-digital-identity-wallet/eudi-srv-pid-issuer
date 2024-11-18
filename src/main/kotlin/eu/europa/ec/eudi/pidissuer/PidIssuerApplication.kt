@@ -23,6 +23,7 @@ import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPProtectedResourceRequestVerifier
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DefaultDPoPSingleUseChecker
@@ -36,12 +37,11 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CredentialRequestFactory
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DecryptCNonceWithNimbusAndVerify
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultResolveCredentialRequestByCredentialIdentifier
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.DefaultExtractJwkFromCredentialKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseNimbus
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptDeferredResponseNimbus
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.GenerateCNonceAndEncryptWithNimbus
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.*
-import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryCNonceRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryIssuedCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
@@ -50,7 +50,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
@@ -189,7 +188,6 @@ fun beans(clock: Clock) = beans {
     //
     // Signing key
     //
-
     bean(isLazyInit = true) {
         val signingKey = when (env.getProperty<KeyOption>("issuer.signing-key")) {
             null, KeyOption.GenerateRandom -> {
@@ -214,6 +212,24 @@ fun beans(clock: Clock) = beans {
         }
         require(signingKey is ECKey) { "Only ECKeys are supported for signing" }
         IssuerSigningKey(signingKey)
+    }
+
+    //
+    // CNonce encryption key
+    //
+    bean(name = "cnonce-encryption-key") {
+        val encryptionKey = when (env.getProperty<KeyOption>("issuer.cnonce.encryption-key")) {
+            null, KeyOption.GenerateRandom -> {
+                log.info("Generating random encryption key for CNonce")
+                RSAKeyGenerator(4096, false).generate()
+            }
+            KeyOption.LoadFromKeystore -> {
+                log.info("Loading CNonce encryption key from keystore")
+                loadJwkFromKeystore(env, "issuer.cnonce.encryption-key")
+            }
+        }
+        require(encryptionKey is RSAKey) { "Only RSAKeys are supported for encryption" }
+        encryptionKey
     }
 
     //
@@ -345,13 +361,8 @@ fun beans(clock: Clock) = beans {
     //
     // CNonce
     //
-    with(InMemoryCNonceRepository()) {
-        bean { deleteExpiredCNonce }
-        bean { upsertCNonce }
-        bean { loadCNonceByAccessToken }
-        bean { GenerateCNonce.random(Duration.ofMinutes(5L)) }
-        bean { this@with } // this is needed for test
-    }
+    bean { GenerateCNonceAndEncryptWithNimbus(issuerPublicUrl, ref<RSAKey>("cnonce-encryption-key")) }
+    bean { DecryptCNonceWithNimbusAndVerify(issuerPublicUrl, ref<RSAKey>("cnonce-encryption-key")) }
 
     //
     // Credentials
@@ -374,6 +385,9 @@ fun beans(clock: Clock) = beans {
     //
     // Specific Issuers
     //
+    bean { ValidateJwtProof(issuerPublicUrl) }
+    bean { DefaultExtractJwkFromCredentialKey }
+    bean { ValidateProofs(ref(), ref(), ref()) }
     bean {
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
@@ -385,7 +399,6 @@ fun beans(clock: Clock) = beans {
             specificCredentialIssuers = buildList {
                 if (enableMsoMdocPid) {
                     val issueMsoMdocPid = IssueMsoMdocPid(
-                        credentialIssuerId = issuerPublicUrl,
                         getPidData = ref(),
                         encodePidInCbor = ref(),
                         notificationsEnabled = env.getProperty<Boolean>("issuer.pid.mso_mdoc.notifications.enabled")
@@ -393,6 +406,7 @@ fun beans(clock: Clock) = beans {
                         generateNotificationId = ref(),
                         clock = clock,
                         storeIssuedCredentials = ref(),
+                        validateProofs = ref(),
                     )
                     add(issueMsoMdocPid)
                 }
@@ -411,7 +425,6 @@ fun beans(clock: Clock) = beans {
                         getPidData = ref(),
                         clock = clock,
                         credentialIssuerId = issuerPublicUrl,
-                        extractJwkFromCredentialKey = DefaultExtractJwkFromCredentialKey,
                         calculateExpiresAt = { iat -> iat.plusDays(30).toInstant() },
                         calculateNotUseBefore = notUseBefore?.let { duration ->
                             {
@@ -423,6 +436,7 @@ fun beans(clock: Clock) = beans {
                             ?: true,
                         generateNotificationId = ref(),
                         storeIssuedCredentials = ref(),
+                        validateProofs = ref(),
                     )
 
                     val deferred = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.deferred") ?: false
@@ -434,13 +448,13 @@ fun beans(clock: Clock) = beans {
 
                 if (enableMobileDrivingLicence) {
                     val mdlIssuer = IssueMobileDrivingLicence(
-                        credentialIssuerId = issuerPublicUrl,
                         getMobileDrivingLicenceData = ref(),
                         encodeMobileDrivingLicenceInCbor = ref(),
                         notificationsEnabled = env.getProperty<Boolean>("issuer.mdl.notifications.enabled") ?: true,
                         generateNotificationId = ref(),
                         clock = clock,
                         storeIssuedCredentials = ref(),
+                        validateProofs = ref(),
                     )
                     add(mdlIssuer)
                 }
@@ -462,7 +476,13 @@ fun beans(clock: Clock) = beans {
     //
     bean(::GetCredentialIssuerMetaData)
     bean {
-        IssueCredential(clock, ref(), ref(), ref(), ref(), ref(), ref())
+        IssueCredential(
+            clock = clock,
+            credentialIssuerMetadata = ref(),
+            resolveCredentialRequestByCredentialIdentifier = ref(),
+            generateCNonce = ref(),
+            encryptCredentialResponse = ref(),
+        )
     }
     bean {
         GetDeferredCredential(ref(), ref())

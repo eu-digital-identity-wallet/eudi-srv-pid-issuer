@@ -34,7 +34,6 @@ interface IssueSpecificCredential {
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-        expectedCNonce: CNonce,
     ): CredentialResponse
 }
 
@@ -57,9 +56,8 @@ private class DeferredIssuer(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-        expectedCNonce: CNonce,
     ): CredentialResponse {
-        val credentialResponse = issuer.invoke(authorizationContext, request, credentialIdentifier, expectedCNonce)
+        val credentialResponse = issuer.invoke(authorizationContext, request, credentialIdentifier)
         require(credentialResponse is CredentialResponse.Issued) { "Actual issuer should return issued credentials" }
 
         val transactionId = generateTransactionId()

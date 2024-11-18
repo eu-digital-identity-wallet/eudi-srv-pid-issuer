@@ -20,9 +20,9 @@ import arrow.core.raise.Raise
 import arrow.core.raise.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProof
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.toECKeyOrFail
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
@@ -30,9 +30,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
@@ -257,8 +255,8 @@ private fun pidNameSpace(v: Int?): MsoNameSpace = pidDocType(v)
 /**
  * Service for issuing PID MsoMdoc credential
  */
-class IssueMsoMdocPid(
-    credentialIssuerId: CredentialIssuerId,
+internal class IssueMsoMdocPid(
+    private val validateProofs: ValidateProofs,
     private val getPidData: GetPidData,
     private val encodePidInCbor: EncodePidInCbor,
     private val notificationsEnabled: Boolean,
@@ -269,7 +267,6 @@ class IssueMsoMdocPid(
 
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
 
-    private val validateProof = ValidateProof(credentialIssuerId)
     override val supportedCredential: MsoMdocCredentialConfiguration
         get() = PidMsoMdocV1
     override val publicKey: JWK? = null
@@ -279,14 +276,10 @@ class IssueMsoMdocPid(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-        expectedCNonce: CNonce,
     ): CredentialResponse = coroutineScope {
         log.info("Handling issuance request ...")
-        val holderPubKeys = request.unvalidatedProofs.map {
-            async(Dispatchers.Default) {
-                holderPubKey(it, expectedCNonce)
-            }
-        }
+        val holderPubKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.instant())
+            .map { it.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
 
         val pidData = async { getPidData(authorizationContext) }
         val notificationId =
@@ -294,7 +287,7 @@ class IssueMsoMdocPid(
             else null
 
         val (pid, pidMetaData) = pidData.await()
-        val issuedCredentials = holderPubKeys.awaitAll().map { holderKey ->
+        val issuedCredentials = holderPubKeys.map { holderKey ->
             val cbor = encodePidInCbor(pid, pidMetaData, holderKey).also {
                 log.info("Issued $it")
             }
@@ -322,20 +315,5 @@ class IssueMsoMdocPid(
                 log.info("Successfully issued PIDs")
                 log.debug("Issued PIDs data {}", it)
             }
-    }
-
-    context(Raise<IssueCredentialError>)
-    @Suppress("DuplicatedCode")
-    private fun holderPubKey(unvalidatedProof: UnvalidatedProof, expectedCNonce: CNonce): ECKey {
-        fun ecKeyOrFail(provider: () -> ECKey) = try {
-            provider.invoke()
-        } catch (t: Throwable) {
-            raise(InvalidProof("Only EC Key is supported"))
-        }
-        return when (val key = validateProof(unvalidatedProof, expectedCNonce, supportedCredential)) {
-            is CredentialKey.DIDUrl -> ecKeyOrFail { key.jwk.toECKey() }
-            is CredentialKey.Jwk -> ecKeyOrFail { key.value.toECKey() }
-            is CredentialKey.X5c -> ecKeyOrFail { ECKey.parse(key.certificate) }
-        }
     }
 }

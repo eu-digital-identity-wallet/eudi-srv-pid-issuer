@@ -13,10 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.out.persistence
+package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import java.time.Instant
+import arrow.core.raise.Raise
+import com.nimbusds.jose.jwk.ECKey
+import com.nimbusds.jose.jwk.JWK
 
-fun interface DeleteExpiredCNonce {
-    suspend operator fun invoke(at: Instant)
-}
+/**
+ * Converts this [JWK] to an [ECKey] or raises [onFailure].
+ */
+context(Raise<E>)
+internal fun <E> JWK.toECKeyOrFail(onFailure: () -> E): ECKey =
+    when (this) {
+        is ECKey -> this
+        else -> raise(onFailure())
+    }

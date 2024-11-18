@@ -13,22 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.out.persistence
+package eu.europa.ec.eudi.pidissuer.port.out.credential
 
-import eu.europa.ec.eudi.pidissuer.domain.CNonce
-import java.time.Clock
-import java.time.Duration
-import java.util.*
+import java.time.Instant
 
 /**
- * Generates a new [CNonce].
+ * Verifies a CNonce value is valid at a specific [Instant].
  */
-fun interface GenerateCNonce {
-    suspend operator fun invoke(accessToken: String, clock: Clock): CNonce
+fun interface VerifyCNonce {
+    suspend operator fun invoke(value: String?, at: Instant): Boolean
+
+    suspend operator fun invoke(values: List<String?>, at: Instant): Boolean =
+        when (values.distinct().size) {
+            1 -> this(values.first(), at)
+            else -> false
+        }
 
     companion object {
-        fun random(duration: Duration): GenerateCNonce = GenerateCNonce { accessToken, clock ->
-            CNonce(accessToken, UUID.randomUUID().toString(), clock.instant(), duration)
-        }
+
+        /**
+         * Gets a [VerifyCNonce] that perform no verification.
+         */
+        fun noCNonceRequired(): VerifyCNonce = VerifyCNonce { _, _ -> true }
     }
 }
