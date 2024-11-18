@@ -170,9 +170,6 @@ enum class CredentialErrorTypeTo {
     @SerialName("invalid_request")
     INVALID_REQUEST,
 
-    @SerialName("invalid_token")
-    INVALID_TOKEN,
-
     @SerialName("unsupported_credential_type")
     UNSUPPORTED_CREDENTIAL_TYPE,
 
@@ -201,7 +198,6 @@ sealed interface IssueCredentialResponse {
         val credentials: JsonArray? = null,
         @SerialName("transaction_id") val transactionId: String? = null,
         @SerialName("c_nonce") val nonce: String? = null,
-        @SerialName("c_nonce_expires_in") val nonceExpiresIn: Long? = null,
         @SerialName("notification_id") val notificationId: String? = null,
     ) : IssueCredentialResponse {
         init {
@@ -237,12 +233,10 @@ sealed interface IssueCredentialResponse {
             fun single(
                 credential: JsonElement,
                 nonce: String,
-                nonceExpiresIn: Long,
                 notificationId: String? = null,
             ): PlainTO = PlainTO(
                 credential = credential,
                 nonce = nonce,
-                nonceExpiresIn = nonceExpiresIn,
                 notificationId = notificationId,
             )
 
@@ -252,14 +246,8 @@ sealed interface IssueCredentialResponse {
             fun multiple(
                 credentials: JsonArray,
                 nonce: String,
-                nonceExpiresIn: Long,
                 notificationId: String? = null,
-            ): PlainTO = PlainTO(
-                credentials = credentials,
-                nonce = nonce,
-                nonceExpiresIn = nonceExpiresIn,
-                notificationId = notificationId,
-            )
+            ): PlainTO = PlainTO(credentials = credentials, nonce = nonce, notificationId = notificationId)
 
             /**
              * Credential issuance has been deferred.
@@ -267,12 +255,7 @@ sealed interface IssueCredentialResponse {
             fun deferred(
                 transactionId: String,
                 nonce: String,
-                nonceExpiresIn: Long,
-            ): PlainTO = PlainTO(
-                transactionId = transactionId,
-                nonce = nonce,
-                nonceExpiresIn = nonceExpiresIn,
-            )
+            ): PlainTO = PlainTO(transactionId = transactionId, nonce = nonce)
         }
     }
 
@@ -291,7 +274,7 @@ sealed interface IssueCredentialResponse {
         @SerialName("error") @Required val type: CredentialErrorTypeTo,
         @SerialName("error_description") val errorDescription: String? = null,
         @SerialName("c_nonce") val nonce: String? = null,
-        @SerialName("c_nonce_expires_in") val nonceExpiresIn: Long? = null,
+
     ) : IssueCredentialResponse
 }
 
@@ -305,7 +288,7 @@ class IssueCredential(
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
     private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
     private val generateCNonce: GenerateCNonce,
-    private val cnonceExpiresIn: Duration = Duration.ofMinutes(5L),
+    private val cNonceDuration: Duration = Duration.ofMinutes(5L),
     private val encryptCredentialResponse: EncryptCredentialResponse,
 ) {
 
@@ -380,8 +363,8 @@ class IssueCredential(
         request: CredentialRequest,
         credential: CredentialResponse,
     ): IssueCredentialResponse {
-        val newCNonce = generateCNonce(clock.instant(), cnonceExpiresIn)
-        val plain = credential.toTO(newCNonce, cnonceExpiresIn)
+        val newCNonce = generateCNonce(clock.instant(), cNonceDuration)
+        val plain = credential.toTO(newCNonce)
         return when (val encryption = request.credentialResponseEncryption) {
             RequestedResponseEncryption.NotRequired -> plain
             is RequestedResponseEncryption.Required -> encryptCredentialResponse(plain, encryption).getOrThrow()
@@ -392,8 +375,8 @@ class IssueCredential(
         error: IssueCredentialError,
     ): IssueCredentialResponse {
         log.warn("Issuance failed: $error")
-        val newCNonce = generateCNonce(clock.instant(), cnonceExpiresIn)
-        return error.toTO(newCNonce, cnonceExpiresIn)
+        val newCNonce = generateCNonce(clock.instant(), cNonceDuration)
+        return error.toTO(newCNonce)
     }
 }
 //
@@ -446,7 +429,7 @@ private fun CredentialRequestTO.toDomain(
             proof == null && proofs != null -> {
                 val jwtProofs = proofs.jwtProofs?.map { UnvalidatedProof.Jwt(it) }
                 val ldpVpProofs = proofs.ldpVpProofs?.map { UnvalidatedProof.LdpVp(it) }
-                // proofs object contains exactly one parameter named as the proof type
+                // Proof object contains exactly one parameter named as the proof type
                 ensure(jwtProofs == null || ldpVpProofs == null) {
                     InvalidProof("Only a single proof type is allowed")
                 }
@@ -608,20 +591,18 @@ private fun CredentialResponseEncryptionTO.toDomain(): RequestedResponseEncrypti
         method,
     ).getOrElse { raise(InvalidEncryptionParameters(it)) }
 
-fun CredentialResponse.toTO(cnonce: String, cnonceExpiresIn: Duration): IssueCredentialResponse.PlainTO = when (this) {
+fun CredentialResponse.toTO(cNonce: String): IssueCredentialResponse.PlainTO = when (this) {
     is CredentialResponse.Issued -> {
         when (credentials.size) {
             1 -> IssueCredentialResponse.PlainTO.single(
                 credential = credentials.head,
-                nonce = cnonce,
-                nonceExpiresIn = cnonceExpiresIn.toSeconds(),
+                nonce = cNonce,
                 notificationId = notificationId?.value,
             )
 
             else -> IssueCredentialResponse.PlainTO.multiple(
                 credentials = JsonArray(credentials),
-                nonce = cnonce,
-                nonceExpiresIn = cnonceExpiresIn.toSeconds(),
+                nonce = cNonce,
                 notificationId = notificationId?.value,
             )
         }
@@ -630,15 +611,14 @@ fun CredentialResponse.toTO(cnonce: String, cnonceExpiresIn: Duration): IssueCre
     is CredentialResponse.Deferred ->
         IssueCredentialResponse.PlainTO.deferred(
             transactionId = transactionId.value,
-            nonce = cnonce,
-            nonceExpiresIn = cnonceExpiresIn.toSeconds(),
+            nonce = cNonce,
         )
 }
 
 /**
- * Creates a new [IssueCredentialResponse.FailedTO] from the provided [error] and [nonce].
+ * Creates a new [IssueCredentialResponse.FailedTO] from the provided [error] and [cNonce].
  */
-private fun IssueCredentialError.toTO(cnonce: String, cnonceExpiresIn: Duration): IssueCredentialResponse.FailedTO {
+private fun IssueCredentialError.toTO(cNonce: String): IssueCredentialResponse.FailedTO {
     val (type, description) = when (this) {
         is UnsupportedCredentialFormat ->
             CredentialErrorTypeTo.UNSUPPORTED_CREDENTIAL_FORMAT to "Unsupported '${format?.value}'"
@@ -650,7 +630,7 @@ private fun IssueCredentialError.toTO(cnonce: String, cnonceExpiresIn: Duration)
             CredentialErrorTypeTo.INVALID_PROOF to "The Credential Request must include Proof of Possession"
 
         is InvalidProof ->
-            (CredentialErrorTypeTo.INVALID_PROOF to msg).also { println(this@toTO.cause) }
+            (CredentialErrorTypeTo.INVALID_PROOF to msg)
 
         is InvalidEncryptionParameters ->
             CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS to "Invalid Credential Response Encryption Parameters"
@@ -677,10 +657,5 @@ private fun IssueCredentialError.toTO(cnonce: String, cnonceExpiresIn: Duration)
         is InvalidClaims ->
             CredentialErrorTypeTo.INVALID_REQUEST to "'claims' does not have the expected structure${error.message?.let { " : $it" } ?: ""}"
     }
-    return IssueCredentialResponse.FailedTO(
-        type,
-        description,
-        cnonce,
-        cnonceExpiresIn.toSeconds(),
-    )
+    return IssueCredentialResponse.FailedTO(type, description, cNonce)
 }
