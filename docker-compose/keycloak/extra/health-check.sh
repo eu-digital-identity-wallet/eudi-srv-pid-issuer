@@ -1,9 +1,8 @@
 #!/bin/bash
 exec 3<>/dev/tcp/localhost/8080
 
-echo -e "GET ${KC_HTTP_RELATIVE_PATH}/health/ready HTTP/1.1\nhost: localhost:8080\n" >&3
-
-timeout --preserve-status 1 cat <&3 | grep -m 1 status | grep -m 1 UP
+echo -e "GET ${KC_HTTP_RELATIVE_PATH} HTTP/1.1\nHost: localhost\n" >&3
+timeout --preserve-status 1 cat <&3 | grep -m 1 "HTTP/1.1" | grep -m 1 "303 See Other"
 ERROR=$?
 
 exec 3<&-

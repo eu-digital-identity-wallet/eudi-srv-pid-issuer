@@ -6,32 +6,31 @@ networks:
 
 services:
   keycloak:
-    image: quay.io/keycloak/keycloak:24.0.3-0
+    image: quay.io/keycloak/keycloak:26.0.5-0
     container_name: keycloak
     command:
       - start-dev
       - --import-realm
       - --features=dpop
     environment:
-      - KC_PROXY=edge
+      - KC_PROXY_HEADERS=xforwarded
+      - KC_HTTP_ENABLED=true
       - KC_HTTP_RELATIVE_PATH=/idp
-      - KC_HOSTNAME=localhost
-      - KC_HOSTNAME_STRICT=false
-      - KC_HOSTNAME_STRICT_BACKCHANNEL=false
+      - KC_HOSTNAME=https://localhost/idp
+      - KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true
       - KC_HTTPS_CERTIFICATE_FILE=/etc/ssl/certs/keycloak.tls.crt
       - KC_HTTPS_CERTIFICATE_KEY_FILE=/etc/ssl/certs/keycloak.tls.key
-      - KC_HEALTH_ENABLED=true
-      - KC_METRICS_ENABLED=true
       - KC_SPI_THEME_STATIC_MAX_AGE=-1
       - KC_SPI_THEME_CACHE_THEMES=false
       - KC_SPI_THEME_CACHE_TEMPLATES=false
-      - KEYCLOAK_ADMIN=admin
-      - KEYCLOAK_ADMIN_PASSWORD=password
+      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=password
     healthcheck:
       test: "bash /opt/keycloak/health-check.sh"
       interval: 5s
       timeout: 10s
       retries: 12
+      start_interval: 30s
     volumes:
       - ./keycloak/extra/health-check.sh:/opt/keycloak/health-check.sh
       - ./keycloak/realms/:/opt/keycloak/data/import
