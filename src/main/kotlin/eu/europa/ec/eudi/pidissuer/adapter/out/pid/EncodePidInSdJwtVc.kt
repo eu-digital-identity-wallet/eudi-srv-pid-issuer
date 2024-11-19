@@ -15,7 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
-import arrow.core.raise.Raise
+import arrow.core.Either
+import arrow.core.raise.either
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
@@ -87,12 +88,11 @@ class EncodePidInSdJwtVc(
         }
     }
 
-    context(Raise<IssueCredentialError>)
     fun invoke(
         pid: Pid,
         pidMetaData: PidMetaData,
         holderKey: JWK,
-    ): String {
+    ): Either<IssueCredentialError, String> = either {
         val at = clock.instant().atZone(clock.zone)
         val sdJwtSpec = selectivelyDisclosed(
             pid = pid,
@@ -111,7 +111,7 @@ class EncodePidInSdJwtVc(
             log.info(with(Printer) { issuedSdJwt.prettyPrint() })
         }
 
-        return issuedSdJwt.serialize()
+        issuedSdJwt.serialize()
     }
 }
 

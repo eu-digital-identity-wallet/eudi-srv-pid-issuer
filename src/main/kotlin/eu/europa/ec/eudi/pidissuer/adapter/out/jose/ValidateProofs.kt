@@ -15,8 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
+import arrow.core.Either
 import arrow.core.NonEmptyList
-import arrow.core.raise.Raise
+import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.jwk.JWK
@@ -24,7 +25,9 @@ import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyCNonce
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import java.time.Instant
 
 /**
@@ -36,34 +39,32 @@ internal class ValidateProofs(
     private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
 ) {
 
-    context(Raise<InvalidProof>)
     suspend operator fun invoke(
         unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
-    ): NonEmptyList<JWK> = coroutineScope {
-        val credentialKeysAndCNonces = unvalidatedProofs.map {
-            when (it) {
-                is UnvalidatedProof.Jwt -> async {
-                    withContext(Dispatchers.Default) {
-                        validateJwtProof(it, credentialConfiguration)
-                    }
+    ): Either<InvalidProof, NonEmptyList<JWK>> = coroutineScope {
+        either {
+            val credentialKeysAndCNonces = unvalidatedProofs.map {
+                when (it) {
+                    is UnvalidatedProof.Jwt ->
+                        withContext(Dispatchers.Default) { validateJwtProof(it, credentialConfiguration).bind() }
+                    is UnvalidatedProof.LdpVp -> raise(InvalidProof("Supporting only JWT proof"))
                 }
-                is UnvalidatedProof.LdpVp -> raise(InvalidProof("Supporting only JWT proof"))
             }
-        }.awaitAll()
 
-        val cnonces = credentialKeysAndCNonces.map { it.second }.toNonEmptyListOrNull()
-        checkNotNull(cnonces)
-        ensure(verifyCNonce(cnonces, at)) {
-            InvalidProof("CNonce is not valid")
+            val cnonces = credentialKeysAndCNonces.map { it.second }.toNonEmptyListOrNull()
+            checkNotNull(cnonces)
+            ensure(verifyCNonce(cnonces, at)) {
+                InvalidProof("CNonce is not valid")
+            }
+
+            val jwks = credentialKeysAndCNonces.map {
+                extractJwkFromCredentialKey(it.first).getOrElse { error ->
+                    raise(InvalidProof("Unable to extract JWK from CredentialKey", error))
+                }
+            }.toNonEmptyListOrNull()
+            checkNotNull(jwks)
         }
-
-        val jwks = credentialKeysAndCNonces.map {
-            extractJwkFromCredentialKey(it.first).getOrElse { error ->
-                raise(InvalidProof("Unable to extract JWK from CredentialKey", error))
-            }
-        }.toNonEmptyListOrNull()
-        checkNotNull(jwks)
     }
 }

@@ -53,14 +53,13 @@ data class SdJwtVcCredentialRequest(
     override val format: Format = SD_JWT_VC_FORMAT
 }
 
-context(Raise<String>)
-internal fun SdJwtVcCredentialRequest.validate(meta: SdJwtVcCredentialConfiguration) {
-    ensure(type == meta.type) { "doctype is $type but was expecting ${meta.type}" }
+internal fun Raise<String>.validate(sdJwtVcCredentialRequest: SdJwtVcCredentialRequest, meta: SdJwtVcCredentialConfiguration) {
+    ensure(sdJwtVcCredentialRequest.type == meta.type) { "doctype is ${sdJwtVcCredentialRequest.type} but was expecting ${meta.type}" }
     if (meta.claims.isEmpty()) {
-        ensure(claims.isEmpty()) { "Requested claims should be empty. " }
+        ensure(sdJwtVcCredentialRequest.claims.isEmpty()) { "Requested claims should be empty. " }
     } else {
         val expectedAttributeNames = meta.claims.map { it.name }
-        claims.forEach { name ->
+        sdJwtVcCredentialRequest.claims.forEach { name ->
             ensure(name in expectedAttributeNames) { "Unexpected attribute $name" }
         }
     }

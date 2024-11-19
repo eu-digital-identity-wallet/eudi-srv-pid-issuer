@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
-import arrow.core.raise.Raise
+import arrow.core.Either
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 
@@ -24,6 +24,5 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
  */
 fun interface EncodeMobileDrivingLicenceInCbor {
 
-    context(Raise<IssueCredentialError.Unexpected>)
-    suspend operator fun invoke(licence: MobileDrivingLicence, holderKey: ECKey): String
+    suspend operator fun invoke(licence: MobileDrivingLicence, holderKey: ECKey): Either<IssueCredentialError.Unexpected, String>
 }

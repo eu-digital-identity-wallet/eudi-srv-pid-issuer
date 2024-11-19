@@ -15,8 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
+import arrow.core.Either
 import arrow.core.nonEmptySetOf
-import arrow.core.raise.Raise
+import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JWSAlgorithm
@@ -96,7 +97,16 @@ fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration
         cryptographicBindingMethodsSupported = nonEmptySetOf(CryptographicBindingMethod.Jwk),
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
         scope = PidSdJwtVcScope,
-        proofTypesSupported = ProofTypesSupported(nonEmptySetOf(ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.RS256, JWSAlgorithm.ES256)))),
+        proofTypesSupported = ProofTypesSupported(
+            nonEmptySetOf(
+                ProofType.Jwt(
+                    nonEmptySetOf(
+                        JWSAlgorithm.RS256,
+                        JWSAlgorithm.ES256,
+                    ),
+                ),
+            ),
+        ),
     )
 
 typealias TimeDependant<F> = (ZonedDateTime) -> F
@@ -134,45 +144,45 @@ internal class IssueSdJwtVcPid(
         supportedCredential.type,
     )
 
-    context(Raise<IssueCredentialError>)
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): CredentialResponse = coroutineScope {
+    ): Either<IssueCredentialError, CredentialResponse> = coroutineScope {
         log.info("Handling issuance request ...")
-        val holderPubKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.instant())
-
-        val pidData = async { getPidData(authorizationContext) }
-        val (pid, pidMetaData) = pidData.await()
-        val notificationId =
-            if (notificationsEnabled) generateNotificationId()
-            else null
-        val issuedCredentials = holderPubKeys.map { holderPubKey ->
-            val sdJwt = encodePidInSdJwt.invoke(pid, pidMetaData, holderPubKey)
-            sdJwt to holderPubKey.toPublicJWK()
-        }.toNonEmptyListOrNull()
-        ensureNotNull(issuedCredentials) {
-            IssueCredentialError.Unexpected("Unable to issue PID")
-        }
-
-        storeIssuedCredentials(
-            IssuedCredentials(
-                format = SD_JWT_VC_FORMAT,
-                type = supportedCredential.type.value,
-                holder = with(pid) {
-                    "${familyName.value} ${givenName.value}"
-                },
-                holderPublicKeys = issuedCredentials.map { it.second },
-                issuedAt = clock.instant(),
-                notificationId = notificationId,
-            ),
-        )
-
-        CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it.first) }, notificationId)
-            .also {
-                log.info("Successfully issued PIDs")
-                log.debug("Issued PIDs data {}", it)
+        either {
+            val holderPubKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.instant()).bind()
+            val pidData = async { getPidData(authorizationContext) }
+            val (pid, pidMetaData) = pidData.await().bind()
+            val notificationId =
+                if (notificationsEnabled) generateNotificationId()
+                else null
+            val issuedCredentials = holderPubKeys.map { holderPubKey ->
+                val sdJwt = encodePidInSdJwt.invoke(pid, pidMetaData, holderPubKey).bind()
+                sdJwt to holderPubKey.toPublicJWK()
+            }.toNonEmptyListOrNull()
+            ensureNotNull(issuedCredentials) {
+                IssueCredentialError.Unexpected("Unable to issue PID")
             }
+
+            storeIssuedCredentials(
+                IssuedCredentials(
+                    format = SD_JWT_VC_FORMAT,
+                    type = supportedCredential.type.value,
+                    holder = with(pid) {
+                        "${familyName.value} ${givenName.value}"
+                    },
+                    holderPublicKeys = issuedCredentials.map { it.second },
+                    issuedAt = clock.instant(),
+                    notificationId = notificationId,
+                ),
+            )
+
+            CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it.first) }, notificationId)
+                .also {
+                    log.info("Successfully issued PIDs")
+                    log.debug("Issued PIDs data {}", it)
+                }
+        }
     }
 }

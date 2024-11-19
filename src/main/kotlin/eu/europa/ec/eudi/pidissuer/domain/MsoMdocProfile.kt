@@ -61,14 +61,15 @@ data class MsoMdocCredentialRequest(
     override val format: Format = MSO_MDOC_FORMAT
 }
 
-context(Raise<String>)
-internal fun MsoMdocCredentialRequest.validate(meta: MsoMdocCredentialConfiguration) {
-    ensure(docType == meta.docType) { "doctype is $docType but was expecting ${meta.docType}" }
+internal fun Raise<String>.validate(msoMdocCredentialRequest: MsoMdocCredentialRequest, meta: MsoMdocCredentialConfiguration) {
+    ensure(msoMdocCredentialRequest.docType == meta.docType) {
+        "doctype is ${msoMdocCredentialRequest.docType} but was expecting ${meta.docType}"
+    }
     if (meta.msoClaims.isEmpty()) {
-        ensure(claims.isEmpty()) { "Requested claims should be empty. " }
+        ensure(msoMdocCredentialRequest.claims.isEmpty()) { "Requested claims should be empty. " }
     } else {
         val expectedAttributeNames = meta.msoClaims.mapValues { kv -> kv.value.map { it.name } }
-        claims.forEach { (namespace, attributes) ->
+        msoMdocCredentialRequest.claims.forEach { (namespace, attributes) ->
             val expectedAttributeNamesForNamespace = expectedAttributeNames[namespace]
             ensureNotNull(expectedAttributeNamesForNamespace) { "Unexpected namespace $namespace" }
             attributes.forEach { attr ->

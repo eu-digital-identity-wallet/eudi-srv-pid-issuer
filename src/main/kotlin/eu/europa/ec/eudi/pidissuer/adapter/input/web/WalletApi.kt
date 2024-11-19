@@ -16,8 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.NonEmptySet
-import arrow.core.getOrElse
-import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import arrow.core.raise.result
@@ -87,23 +85,25 @@ class WalletApi(
 
     private suspend fun handleGetDeferredCredential(req: ServerRequest): ServerResponse = coroutineScope {
         val requestTO = req.awaitBody<DeferredCredentialRequestTO>()
-        either {
-            when (val deferredResponse = getDeferredCredential(requestTO)) {
-                is DeferredCredentialSuccessResponse.EncryptedJwtIssued ->
-                    ServerResponse
-                        .ok()
-                        .contentType(APPLICATION_JWT)
-                        .bodyValueAndAwait(deferredResponse.jwt)
+        getDeferredCredential(requestTO)
+            .fold(
+                ifRight = { deferredResponse ->
+                    when (deferredResponse) {
+                        is DeferredCredentialSuccessResponse.EncryptedJwtIssued ->
+                            ServerResponse
+                                .ok()
+                                .contentType(APPLICATION_JWT)
+                                .bodyValueAndAwait(deferredResponse.jwt)
 
-                is DeferredCredentialSuccessResponse.PlainTO ->
-                    ServerResponse
-                        .ok()
-                        .json()
-                        .bodyValueAndAwait(deferredResponse)
-            }
-        }.getOrElse { error ->
-            ServerResponse.badRequest().json().bodyValueAndAwait(error)
-        }
+                        is DeferredCredentialSuccessResponse.PlainTO ->
+                            ServerResponse
+                                .ok()
+                                .json()
+                                .bodyValueAndAwait(deferredResponse)
+                    }
+                },
+                ifLeft = { error -> ServerResponse.badRequest().json().bodyValueAndAwait(error) },
+            )
     }
 
     private suspend fun handleHelloHolder(req: ServerRequest): ServerResponse = coroutineScope {

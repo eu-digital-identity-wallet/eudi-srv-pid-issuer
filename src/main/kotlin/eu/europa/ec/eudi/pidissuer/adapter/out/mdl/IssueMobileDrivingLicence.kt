@@ -15,8 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
+import arrow.core.Either
 import arrow.core.nonEmptySetOf
-import arrow.core.raise.Raise
+import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JWSAlgorithm
@@ -30,7 +31,6 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
-import kotlinx.coroutines.*
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.time.Clock
@@ -310,16 +310,17 @@ internal class IssueMobileDrivingLicence(
     override val publicKey: JWK?
         get() = null
 
-    context(Raise<IssueCredentialError>)
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): CredentialResponse = coroutineScope {
+    ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Issuing mDL")
-        val holderKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.instant())
-            .map { it.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
-        val licence = ensureNotNull(getMobileDrivingLicenceData(authorizationContext)) {
+        val holderKeys =
+            validateProofs(request.unvalidatedProofs, supportedCredential, clock.instant()).bind()
+                .map { toECKeyOrFail(it) { InvalidProof("Only EC Key is supported") } }
+        val licence = getMobileDrivingLicenceData(authorizationContext).bind()
+        ensureNotNull(licence) {
             IssueCredentialError.Unexpected("Unable to fetch mDL data")
         }
 
@@ -328,7 +329,7 @@ internal class IssueMobileDrivingLicence(
             else null
 
         val issuedCredentials = holderKeys.map { holderKey ->
-            val cbor = encodeMobileDrivingLicenceInCbor(licence, holderKey)
+            val cbor = encodeMobileDrivingLicenceInCbor(licence, holderKey).bind()
             cbor to holderKey.toPublicJWK()
         }.toNonEmptyListOrNull()
         ensureNotNull(issuedCredentials) {

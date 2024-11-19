@@ -22,9 +22,8 @@ import com.nimbusds.jose.jwk.JWK
 /**
  * Converts this [JWK] to an [ECKey] or raises [onFailure].
  */
-context(Raise<E>)
-internal fun <E> JWK.toECKeyOrFail(onFailure: () -> E): ECKey =
-    when (this) {
-        is ECKey -> this
+internal fun <E> Raise<E>.toECKeyOrFail(jwk: JWK, onFailure: () -> E): ECKey =
+    when (jwk) {
+        is ECKey -> jwk
         else -> raise(onFailure())
     }

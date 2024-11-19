@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
-import arrow.core.raise.Raise
+import arrow.core.Either
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.GenericRestriction
@@ -45,13 +45,8 @@ class DefaultEncodeMobileDrivingLicenceInCbor(
         addItemsToSign(licence)
     }
 
-    context(Raise<Unexpected>)
-    override suspend fun invoke(licence: MobileDrivingLicence, holderKey: ECKey): String =
-        try {
-            signer.sign(licence, holderKey)
-        } catch (t: Throwable) {
-            raise(Unexpected("Failed to encode mDL", t))
-        }
+    override suspend fun invoke(licence: MobileDrivingLicence, holderKey: ECKey): Either<Unexpected, String> =
+        Either.catch { signer.sign(licence, holderKey) }.mapLeft { Unexpected("Failed to encode mDL", it) }
 }
 
 private fun MDocBuilder.addItemsToSign(licence: MobileDrivingLicence) {
