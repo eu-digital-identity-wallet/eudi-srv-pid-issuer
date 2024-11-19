@@ -25,9 +25,7 @@ import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyCNonce
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.withContext
 import java.time.Instant
 
 /**
@@ -48,7 +46,7 @@ internal class ValidateProofs(
             val credentialKeysAndCNonces = unvalidatedProofs.map {
                 when (it) {
                     is UnvalidatedProof.Jwt ->
-                        withContext(Dispatchers.Default) { validateJwtProof(it, credentialConfiguration).bind() }
+                        validateJwtProof(it, credentialConfiguration).bind()
                     is UnvalidatedProof.LdpVp -> raise(InvalidProof("Supporting only JWT proof"))
                 }
             }
