@@ -1161,6 +1161,40 @@
           }
         },
         {
+          "id": "ef49deeb-b0ee-47a4-8ffb-79b1e960e9ef",
+          "name": "Birth Family Name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "introspection.token.claim": "false",
+            "userinfo.token.claim": "true",
+            "user.attribute": "birth_family_name",
+            "id.token.claim": "false",
+            "lightweight.claim": "false",
+            "access.token.claim": "false",
+            "claim.name": "birth_family_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "c16dd91d-f816-4f66-ab04-e290ffdec4d7",
+          "name": "Birth Given Name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "introspection.token.claim": "false",
+            "userinfo.token.claim": "true",
+            "user.attribute": "birth_given_name",
+            "id.token.claim": "false",
+            "lightweight.claim": "false",
+            "access.token.claim": "false",
+            "claim.name": "birth_given_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
           "id": "3e551e24-0938-47c2-8125-deafcfd3492d",
           "name": "House Number",
           "protocol": "openid-connect",
@@ -1432,6 +1466,40 @@
             "access.token.claim": "false",
             "claim.name": "age_over_18",
             "jsonType.label": "boolean"
+          }
+        },
+        {
+          "id": "f7d6ae9c-f149-46c3-8538-17cb40422f94",
+          "name": "Birth Family Name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "introspection.token.claim": "false",
+            "userinfo.token.claim": "true",
+            "user.attribute": "birth_family_name",
+            "id.token.claim": "false",
+            "lightweight.claim": "false",
+            "access.token.claim": "false",
+            "claim.name": "birth_family_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "4585bcb1-d4c1-469e-9ce7-15be02d6f186",
+          "name": "Birth Given Name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "introspection.token.claim": "false",
+            "userinfo.token.claim": "true",
+            "user.attribute": "birth_given_name",
+            "id.token.claim": "false",
+            "lightweight.claim": "false",
+            "access.token.claim": "false",
+            "claim.name": "birth_given_name",
+            "jsonType.label": "String"
           }
         },
         {
@@ -1848,7 +1916,7 @@
         "subComponents": {},
         "config": {
           "kc.user.profile.config": [
-            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{}},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"credentials\",\"multivalued\":false},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"annotations\":{},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"credentials\",\"multivalued\":false},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"annotations\":{},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"annotations\":{},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"gender\",\"displayName\":\"Gender\",\"validations\":{\"options\":{\"options\":[\"0\",\"1\",\"2\",\"9\"]}},\"annotations\":{\"inputOptionLabels\":{\"0\":\"Not known\",\"1\":\"Male\",\"2\":\"Female\",\"9\":\"Not applicable\"},\"inputType\":\"select-radiobuttons\"},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"birthdate\",\"displayName\":\"Birthdate\",\"validations\":{\"iso-date\":{}},\"annotations\":{\"inputType\":\"html5-date\"},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"age_over_18\",\"displayName\":\"Age over 18\",\"validations\":{\"options\":{\"options\":[\"true\",\"false\"]}},\"annotations\":{\"inputOptionLabels\":{\"true\":\"Yes\",\"false\":\"No\"},\"inputType\":\"select\"},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"picture\",\"displayName\":\"Picture\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"street\",\"displayName\":\"Street\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false},{\"name\":\"address_house_number\",\"displayName\":\"House Number\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false},{\"name\":\"locality\",\"displayName\":\"Locality\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false},{\"name\":\"region\",\"displayName\":\"Region\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false},{\"name\":\"postal_code\",\"displayName\":\"Postal Code\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false},{\"name\":\"country\",\"displayName\":\"Country\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false},{\"name\":\"formatted\",\"displayName\":\"Formatted\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false},{\"name\":\"birth_place\",\"displayName\":\"Place\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"birth_place\",\"multivalued\":false},{\"name\":\"birth_city\",\"displayName\":\"City\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"birth_place\",\"multivalued\":false},{\"name\":\"birth_state\",\"displayName\":\"State\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"birth_place\",\"multivalued\":false},{\"name\":\"birth_country\",\"displayName\":\"Country\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"birth_place\",\"multivalued\":false},{\"name\":\"nationality\",\"displayName\":\"Nationality\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false}],\"groups\":[{\"name\":\"user-metadata\",\"displayHeader\":\"User metadata\",\"displayDescription\":\"Attributes, which refer to user metadata\"},{\"name\":\"address\",\"displayHeader\":\"Address\",\"displayDescription\":\"\",\"annotations\":{}},{\"name\":\"credentials\",\"displayHeader\":\"Credentials\",\"displayDescription\":\"\",\"annotations\":{}},{\"name\":\"profile\",\"displayHeader\":\"Profile\",\"displayDescription\":\"\",\"annotations\":{}},{\"name\":\"birth_place\",\"displayHeader\":\"Birth Place\",\"displayDescription\":\"\",\"annotations\":{}}],\"unmanagedAttributePolicy\":\"ENABLED\"}"
+            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{}},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"credentials\",\"multivalued\":false},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"annotations\":{},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"credentials\",\"multivalued\":false},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"annotations\":{},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"annotations\":{},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"birth_given_name\",\"displayName\":\"First name given at birth\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"birth_family_name\",\"displayName\":\"Last name given at birth\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"gender\",\"displayName\":\"Gender\",\"validations\":{\"options\":{\"options\":[\"0\",\"1\",\"2\",\"9\"]}},\"annotations\":{\"inputOptionLabels\":{\"0\":\"Not known\",\"1\":\"Male\",\"2\":\"Female\",\"9\":\"Not applicable\"},\"inputType\":\"select-radiobuttons\"},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"birthdate\",\"displayName\":\"Birthdate\",\"validations\":{\"iso-date\":{}},\"annotations\":{\"inputType\":\"html5-date\"},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"age_over_18\",\"displayName\":\"Age over 18\",\"validations\":{\"options\":{\"options\":[\"true\",\"false\"]}},\"annotations\":{\"inputOptionLabels\":{\"true\":\"Yes\",\"false\":\"No\"},\"inputType\":\"select\"},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"picture\",\"displayName\":\"Picture\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false},{\"name\":\"street\",\"displayName\":\"Street\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false},{\"name\":\"address_house_number\",\"displayName\":\"House Number\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false},{\"name\":\"locality\",\"displayName\":\"Locality\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false},{\"name\":\"region\",\"displayName\":\"Region\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false},{\"name\":\"postal_code\",\"displayName\":\"Postal Code\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false},{\"name\":\"country\",\"displayName\":\"Country\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false},{\"name\":\"formatted\",\"displayName\":\"Formatted\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"address\",\"multivalued\":false},{\"name\":\"birth_place\",\"displayName\":\"Place\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"birth_place\",\"multivalued\":false},{\"name\":\"birth_city\",\"displayName\":\"City\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"birth_place\",\"multivalued\":false},{\"name\":\"birth_state\",\"displayName\":\"State\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"birth_place\",\"multivalued\":false},{\"name\":\"birth_country\",\"displayName\":\"Country\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"birth_place\",\"multivalued\":false},{\"name\":\"nationality\",\"displayName\":\"Nationality\",\"validations\":{},\"annotations\":{},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"group\":\"profile\",\"multivalued\":false}],\"groups\":[{\"name\":\"user-metadata\",\"displayHeader\":\"User metadata\",\"displayDescription\":\"Attributes, which refer to user metadata\"},{\"name\":\"address\",\"displayHeader\":\"Address\",\"displayDescription\":\"\",\"annotations\":{}},{\"name\":\"credentials\",\"displayHeader\":\"Credentials\",\"displayDescription\":\"\",\"annotations\":{}},{\"name\":\"profile\",\"displayHeader\":\"Profile\",\"displayDescription\":\"\",\"annotations\":{}},{\"name\":\"birth_place\",\"displayHeader\":\"Birth Place\",\"displayDescription\":\"\",\"annotations\":{}}]}"
           ]
         }
       }

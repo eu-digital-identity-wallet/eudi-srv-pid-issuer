@@ -118,6 +118,8 @@ class GetPidDataFromAuthServer(
                 UserInfo(
                     familyName = user.lastName,
                     givenName = user.firstName,
+                    birthFamilyName = user.attributes["birth_family_name"]?.firstOrNull(),
+                    birthGivenName = user.attributes["birth_given_name"]?.firstOrNull(),
                     sub = user.username,
                     email = user.email,
                     address = user.address(),
@@ -159,8 +161,8 @@ class GetPidDataFromAuthServer(
             ageOver18 = userInfo.ageOver18 ?: false,
             ageBirthYear = Year.from(birthDate),
             ageInYears = ageInYears,
-            familyNameBirth = null,
-            givenNameBirth = null,
+            familyNameBirth = userInfo.birthFamilyName?.let { FamilyName(it) },
+            givenNameBirth = userInfo.birthGivenName?.let { GivenName(it) },
             birthPlace = null,
             birthCountry = userInfo.placeOfBirth?.country?.let { IsoCountry(it) },
             birthState = userInfo.placeOfBirth?.region?.let { State(it) },
@@ -186,6 +188,8 @@ class GetPidDataFromAuthServer(
 private data class UserInfo(
     @Required @SerialName("family_name") val familyName: String,
     @Required @SerialName("given_name") val givenName: String,
+    @SerialName("birth_family_name") val birthFamilyName: String? = null,
+    @SerialName("birth_given_name") val birthGivenName: String? = null,
     @Required val sub: String,
     val email: String? = null,
     @SerialName(OidcAddressClaim.NAME) val address: OidcAddressClaim? = null,
