@@ -123,7 +123,7 @@ private fun selectivelyDisclosed(
         nbf?.let { nbf(it.epochSecond) }
         exp(exp.epochSecond)
         cnf(holderPubKey)
-        plain("vct", vct.value) // TODO add "urn:"
+        plain("vct", vct.value)
 
         //
         // Selectively Disclosed claims

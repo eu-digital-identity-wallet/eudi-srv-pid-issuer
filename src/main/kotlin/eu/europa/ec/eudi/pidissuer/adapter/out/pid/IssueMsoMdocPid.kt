@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.util.*
 
-val PidMsoMdocScope: Scope = Scope("${PID_DOCTYPE}_${MSO_MDOC_FORMAT.value}")
+val PidMsoMdocScope: Scope = Scope("eu.europa.ec.eudi.pid_mso_mdoc")
 
 val PidMsoMdocNamespace: MsoNameSpace = pidNameSpace(1)
 
@@ -225,6 +225,18 @@ private val pidAttributes = PidMsoMdocNamespace to listOf(
     IssuingJurisdictionAttribute,
 )
 
+private const val PID_DOCTYPE = "eu.europa.ec.eudi.pid"
+
+private fun pidDocType(v: Int?): String =
+    if (v == null) PID_DOCTYPE
+    else "$PID_DOCTYPE.$v"
+
+private fun pidNameSpace(v: Int?): MsoNameSpace = pidDocType(v)
+
+private fun pidDomesticNameSpace(v: Int?, countryCode: String): MsoNameSpace =
+    if (v == null) "$PID_DOCTYPE.$countryCode"
+    else "$PID_DOCTYPE.$countryCode.$v"
+
 val PidMsoMdocV1: MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
         id = CredentialConfigurationId(PidMsoMdocScope.value),
@@ -241,16 +253,6 @@ val PidMsoMdocV1: MsoMdocCredentialConfiguration =
         ),
         policy = MsoMdocPolicy(oneTimeUse = true),
     )
-
-//
-// Meta
-//
-
-private fun pidDomesticNameSpace(v: Int?, countryCode: String): MsoNameSpace =
-    if (v == null) "$PID_DOCTYPE.$countryCode"
-    else "$PID_DOCTYPE.$countryCode.$v"
-
-private fun pidNameSpace(v: Int?): MsoNameSpace = pidDocType(v)
 
 /**
  * Service for issuing PID MsoMdoc credential

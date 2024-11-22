@@ -42,7 +42,7 @@ import java.time.ZonedDateTime
 import java.util.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcGender as OidcGenderAttribute
 
-val PidSdJwtVcScope: Scope = Scope("${PID_DOCTYPE}_vc_sd_jwt")
+val PidSdJwtVcScope: Scope = Scope("eu.europa.ec.eudi.pid_vc_sd_jwt")
 
 internal object Attributes {
 
@@ -84,6 +84,8 @@ internal object Attributes {
         IssuingJurisdictionAttribute,
     )
 }
+
+private fun pidDocType(version: Int): String = "urn:eu.europa.ec.eudi:pid:$version"
 
 fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(
