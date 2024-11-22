@@ -147,7 +147,6 @@ private fun selectivelyDisclosed(
             }
         }
         pid.oidcAddressClaim()?.let { address ->
-            // TODO double-check the names of the nested fields
             structured(OidcAddressClaim.NAME) {
                 address.formatted?.let { sd("formatted", it) }
                 address.country?.let { sd("country", it) }
