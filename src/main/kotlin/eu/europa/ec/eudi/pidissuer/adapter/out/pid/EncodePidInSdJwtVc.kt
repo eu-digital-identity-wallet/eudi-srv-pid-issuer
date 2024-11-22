@@ -122,42 +122,32 @@ private fun selectivelyDisclosed(
         nbf?.let { nbf(it.epochSecond) }
         exp(exp.epochSecond)
         cnf(holderPubKey)
-        plain("vct", vct.value)
+        plain("vct", vct.value) // TODO add "urn:"
 
         //
         // Selectively Disclosed claims
         //
-        // https://openid.net/specs/openid-connect-4-identity-assurance-1_0.html#section-4
-        sd(Attributes.IssuanceDate.name, pidMetaData.issuanceDate.toString()) // TODO Check issuance date
-        sd(OidcGivenName.name, pid.givenName.value)
-        // TODO Check also_known_as
         sd(OidcFamilyName.name, pid.familyName.value)
+        sd(OidcGivenName.name, pid.givenName.value)
         sd(OidcBirthDate.name, pid.birthDate.toString())
         structured(Attributes.AgeEqualOrOver.name) {
             pid.ageOver18?.let { sd(Attributes.AgeOver18.name, it) }
         }
-
-        // TODO
-        //  Here we need a mapping in OIDC gender can be male, female on null
-        //  In PID the use iso
-        pid.gender?.let { sd(OidcGender.name, it.value.toInt()) }
-        pid.nationality?.let {
-            val nationalities = buildJsonArray { add(it.value) }
-            sd(OidcAssuranceNationalities.name, nationalities)
-        }
         pid.ageInYears?.let { sd(Attributes.AgeInYears.name, it.toInt()) }
-        pid.ageBirthYear?.let { sd(Attributes.BirthDateYear.name, it.value.toString()) }
+        pid.ageBirthYear?.let { sd(Attributes.AgeBirthYear.name, it.value.toString()) }
         pid.familyNameBirth?.let { sd(OidcAssuranceBirthFamilyName.name, it.value) }
         pid.givenNameBirth?.let { sd(OidcAssuranceBirthGivenName.name, it.value) }
+
         pid.oidcAssurancePlaceOfBirth()?.let { placeOfBirth ->
-            recursive(OidcAssurancePlaceOfBirth.NAME) {
+            // TODO double-check the names of the nested fields
+            structured(OidcAssurancePlaceOfBirth.NAME) {
                 placeOfBirth.locality?.let { sd("locality", it) }
                 placeOfBirth.region?.let { sd("region", it) }
                 placeOfBirth.country?.let { sd("country", it) }
             }
         }
         pid.oidcAddressClaim()?.let { address ->
-            recursive(OidcAddressClaim.NAME) {
+            structured(OidcAddressClaim.NAME) {
                 address.formatted?.let { sd("formatted", it) }
                 address.country?.let { sd("country", it) }
                 address.region?.let { sd("region", it) }
@@ -167,30 +157,47 @@ private fun selectivelyDisclosed(
                 address.houseNumber?.let { sd("house_number", it) }
             }
         }
+        // TODO
+        //  Add a new field to the PID
+        pid.gender?.let { sd(OidcGender.name, it.value.toInt()) }
+        pid.nationality?.let {
+            val nationalities = buildJsonArray { add(it.value) }
+            sd(OidcAssuranceNationalities.name, nationalities)
+        }
+        sd(IssuingAuthorityAttribute.name, pidMetaData.issuingAuthority.valueAsString())
+        pidMetaData.documentNumber?.let { sd(DocumentNumberAttribute.name, it.value) }
+        pidMetaData.administrativeNumber?.let { sd(AdministrativeNumberAttribute.name, it.value) }
+        sd(IssuingCountryAttribute.name, pidMetaData.issuingCountry.value)
+        pidMetaData.issuingJurisdiction?.let { sd(IssuingJurisdictionAttribute.name, it) }
     }
 }
 
 private fun Pid.oidcAssurancePlaceOfBirth(): OidcAssurancePlaceOfBirth? =
     if (birthCountry != null || birthState != null || birthCity != null) {
+        // TODO
+        //  birth_lace and birth_city are both mapped to locality
+        //  https://github.com/eu-digital-identity-wallet/eudi-doc-architecture-and-reference-framework/pull/160#discussion_r1853638874
         OidcAssurancePlaceOfBirth(
+            locality = birthCity?.value,
             country = birthCountry?.value,
             region = residentState?.value,
-            locality = residentCity?.value,
         )
     } else null
 
 private fun Pid.oidcAddressClaim(): OidcAddressClaim? =
     if (
-        residentCountry != null || residentState != null ||
+        residentAddress != null || residentCountry != null || residentState != null ||
         residentCity != null || residentPostalCode != null ||
-        residentStreet != null
+        residentStreet != null || residentHouseNumber != null
     ) {
         OidcAddressClaim(
+            formatted = residentAddress,
             country = residentCountry?.value,
             region = residentState?.value,
             locality = residentCity?.value,
             postalCode = residentPostalCode?.value,
             streetAddress = residentStreet?.value,
+            houseNumber = residentHouseNumber,
         )
     } else null
 

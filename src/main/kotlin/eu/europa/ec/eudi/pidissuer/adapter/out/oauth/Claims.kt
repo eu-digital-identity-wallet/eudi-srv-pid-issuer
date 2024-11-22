@@ -69,11 +69,11 @@ val OidcGender: AttributeDetails by lazy {
 @Serializable
 data class OidcAddressClaim(
     @SerialName("street_address") val streetAddress: String? = null,
-    val locality: String? = null,
-    val region: String? = null,
+    @SerialName("locality") val locality: String? = null,
+    @SerialName("region") val region: String? = null,
     @SerialName("postal_code") val postalCode: String? = null,
-    val country: String? = null,
-    val formatted: String? = null,
+    @SerialName("country") val country: String? = null,
+    @SerialName("formatted") val formatted: String? = null,
     @SerialName("house_number") val houseNumber: String? = null,
 ) {
 

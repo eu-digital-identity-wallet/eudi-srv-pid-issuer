@@ -45,8 +45,8 @@ val PidSdJwtVcScope: Scope = Scope("${PID_DOCTYPE}_vc_sd_jwt")
 
 internal object Attributes {
 
-    val BirthDateYear = AttributeDetails(
-        name = "birthdate_year",
+    val AgeBirthYear = AttributeDetails(
+        name = "age_birth_year",
         mandatory = false,
     )
     val AgeEqualOrOver = AttributeDetails(
@@ -63,25 +63,24 @@ internal object Attributes {
         display = mapOf(Locale.ENGLISH to "The subject’s current age in years."),
     )
 
-    val IssuanceDate = AttributeDetails(
-        name = "issuance_date",
-        mandatory = true,
-    )
-
     val pidAttributes = listOf(
         OidcFamilyName,
         OidcGivenName,
         OidcBirthDate,
+        AgeEqualOrOver,
+        AgeInYears,
+        AgeBirthYear,
+        OidcAssuranceBirthFamilyName,
+        OidcAssuranceBirthGivenName,
+        OidcAssurancePlaceOfBirth.attribute,
         OidcAddressClaim.attribute,
         OidcGender,
         OidcAssuranceNationalities,
-        OidcAssuranceBirthFamilyName,
-        OidcAssuranceBirthGivenName,
-        AgeEqualOrOver,
-        AgeInYears,
-        OidcAssurancePlaceOfBirth.attribute,
-        IssuanceDate,
-        BirthDateYear,
+        IssuingAuthorityAttribute,
+        DocumentNumberAttribute,
+        AdministrativeNumberAttribute,
+        IssuingCountryAttribute,
+        IssuingJurisdictionAttribute,
     )
 }
 
