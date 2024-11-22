@@ -35,10 +35,20 @@ private val log = LoggerFactory.getLogger(GetPidDataFromAuthServer::class.java)
 
 class GetPidDataFromAuthServer(
     private val issuerCountry: IsoCountry,
+    private val issuingJurisdiction: IsoCountrySubdivision?,
+    private val generateDocumentNumber: suspend () -> DocumentNumber,
+    private val generateAdministrativeNumber: suspend () -> AdministrativeNumber,
     private val clock: Clock,
     private val keycloak: Keycloak,
     private val userRealm: String,
 ) : GetPidData {
+    init {
+        issuingJurisdiction?.let {
+            require(it.startsWith(issuerCountry.value)) {
+                "Issuing Jurisdiction must be within the Issuing Country"
+            }
+        }
+    }
 
     private val jsonSupport: Json by lazy {
         Json { prettyPrint = true }
@@ -100,20 +110,20 @@ class GetPidDataFromAuthServer(
         }
     }
 
-    private fun genPidMetaData(): PidMetaData {
+    private suspend fun genPidMetaData(): PidMetaData {
         val issuanceDate = LocalDate.now(clock)
         return PidMetaData(
             expiryDate = issuanceDate.plusDays(100),
             issuanceDate = issuanceDate,
             issuingCountry = issuerCountry,
-            issuingAuthority = IssuingAuthority.AdministrativeAuthority("Foo bar administrative authority"),
-            documentNumber = null,
-            administrativeNumber = null,
-            issuingJurisdiction = null,
+            issuingAuthority = IssuingAuthority.AdministrativeAuthority("${issuerCountry.value} Administrative authority"),
+            documentNumber = generateDocumentNumber(),
+            administrativeNumber = generateAdministrativeNumber(),
+            issuingJurisdiction = issuingJurisdiction,
         )
     }
 
-    private fun pid(userInfo: UserInfo): Pair<Pid, PidMetaData> {
+    private suspend fun pid(userInfo: UserInfo): Pair<Pid, PidMetaData> {
         val birthDate = requireNotNull(userInfo.birthDate) {
             "missing required attribute 'birthDate'"
         }.let { LocalDate.parse(it) }

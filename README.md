@@ -179,9 +179,13 @@ Variable: `ISSUER_PID_SD_JWT_VC_NOTIFICATIONS_ENABLED`
 Description: Whether to enabled Notifications Endpoint support for PIDs issued in *SD JWT VC*.  
 Default value: `true`
 
-Variable: `ISSUER_PID_ISSUING_COUNTRY`  
+Variable: `ISSUER_PID_ISSUINGCOUNTRY`  
 Description: Code of the Country issuing the PID  
 Default value: `GR`
+
+Variable: `ISSUER_PID_ISSUINGJURISDICTION`  
+Description: Country subdivision code of the jurisdiction issuing the PID  
+Default value: `GR-I`  
 
 Variable: `ISSUER_MDL_ENABLED`    
 Description: Whether to enable support for issuing mDL.    
