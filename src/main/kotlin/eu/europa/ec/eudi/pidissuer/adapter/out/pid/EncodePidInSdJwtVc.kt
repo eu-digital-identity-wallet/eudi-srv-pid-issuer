@@ -140,7 +140,6 @@ private fun selectivelyDisclosed(
         pid.givenNameBirth?.let { sd(OidcAssuranceBirthGivenName.name, it.value) }
 
         pid.oidcAssurancePlaceOfBirth()?.let { placeOfBirth ->
-            // TODO double-check the names of the nested fields
             structured(OidcAssurancePlaceOfBirth.NAME) {
                 placeOfBirth.locality?.let { sd("locality", it) }
                 placeOfBirth.region?.let { sd("region", it) }
@@ -148,6 +147,7 @@ private fun selectivelyDisclosed(
             }
         }
         pid.oidcAddressClaim()?.let { address ->
+            // TODO double-check the names of the nested fields
             structured(OidcAddressClaim.NAME) {
                 address.formatted?.let { sd("formatted", it) }
                 address.country?.let { sd("country", it) }
@@ -172,14 +172,14 @@ private fun selectivelyDisclosed(
 }
 
 private fun Pid.oidcAssurancePlaceOfBirth(): OidcAssurancePlaceOfBirth? =
-    if (birthCountry != null || birthState != null || birthCity != null) {
+    if (birthPlace != null || birthCountry != null || birthState != null || birthCity != null) {
         // TODO
-        //  birth_lace and birth_city are both mapped to locality
+        //  birth_place and birth_city are both mapped to locality
         //  https://github.com/eu-digital-identity-wallet/eudi-doc-architecture-and-reference-framework/pull/160#discussion_r1853638874
         OidcAssurancePlaceOfBirth(
-            locality = birthCity?.value,
+            locality = birthPlace ?: birthCity?.value,
             country = birthCountry?.value,
-            region = residentState?.value,
+            region = birthState?.value,
         )
     } else null
 
