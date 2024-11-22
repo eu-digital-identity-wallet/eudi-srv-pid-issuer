@@ -40,6 +40,7 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZonedDateTime
 import java.util.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcGender as OidcGenderAttribute
 
 val PidSdJwtVcScope: Scope = Scope("${PID_DOCTYPE}_vc_sd_jwt")
 
@@ -63,7 +64,7 @@ internal object Attributes {
         display = mapOf(Locale.ENGLISH to "The subject’s current age in years."),
     )
 
-    val pidAttributes = listOf(
+    val pidAttributes: List<AttributeDetails> = listOf(
         OidcFamilyName,
         OidcGivenName,
         OidcBirthDate,
@@ -74,7 +75,7 @@ internal object Attributes {
         OidcAssuranceBirthGivenName,
         OidcAssurancePlaceOfBirth.attribute,
         OidcAddressClaim.attribute,
-        OidcGender,
+        OidcGenderAttribute,
         OidcAssuranceNationalities,
         IssuingAuthorityAttribute,
         DocumentNumberAttribute,

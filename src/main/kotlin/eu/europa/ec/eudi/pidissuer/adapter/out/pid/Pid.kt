@@ -52,6 +52,24 @@ typealias Address = String
 @JvmInline
 value class IsoGender(val value: UInt)
 
+/**
+ * Gender, using a value as defined in OpenID Connect Core 1.0.
+ */
+@JvmInline
+value class OidcGender private constructor(val value: String) {
+    companion object {
+        val Male: OidcGender = OidcGender("male")
+        val Female: OidcGender = OidcGender("female")
+
+        operator fun invoke(value: String): OidcGender =
+            when (value) {
+                "male" -> Male
+                "female" -> Female
+                else -> OidcGender(value)
+            }
+    }
+}
+
 typealias Nationality = IsoCountry
 
 /**

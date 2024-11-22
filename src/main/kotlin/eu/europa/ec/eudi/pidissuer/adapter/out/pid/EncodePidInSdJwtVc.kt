@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.time.Instant
 import java.time.ZonedDateTime
+import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcGender as OidcGenderAttribute
 
 private val log = LoggerFactory.getLogger(EncodePidInSdJwtVc::class.java)
 
@@ -157,9 +158,7 @@ private fun selectivelyDisclosed(
                 address.houseNumber?.let { sd("house_number", it) }
             }
         }
-        // TODO
-        //  Add a new field to the PID
-        pid.gender?.let { sd(OidcGender.name, it.value.toInt()) }
+        pid.gender?.let { sd(OidcGenderAttribute.name, it.toOidGender().value) }
         pid.nationality?.let {
             val nationalities = buildJsonArray { add(it.value) }
             sd(OidcAssuranceNationalities.name, nationalities)
@@ -220,3 +219,15 @@ private object Printer {
         return str
     }
 }
+
+/**
+ * Converts an [IsoGender] to an [OidcGender].
+ */
+private fun IsoGender.toOidGender(): OidcGender =
+    when (value) {
+        0u -> OidcGender("not known")
+        1u -> OidcGender.Male
+        2u -> OidcGender.Female
+        9u -> OidcGender("not applicable")
+        else -> OidcGender(value.toString())
+    }
