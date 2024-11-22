@@ -65,15 +65,21 @@ class GetPidDataFromAuthServer(
     private suspend fun userInfo(username: Username): UserInfo? {
         fun UserRepresentation.address(): OidcAddressClaim? {
             val street = attributes["street"]?.firstOrNull()
+            val houseNumber = attributes["address_house_number"]?.firstOrNull()
             val locality = attributes["locality"]?.firstOrNull()
             val region = attributes["region"]?.firstOrNull()
             val postalCode = attributes["postal_code"]?.firstOrNull()
             val country = attributes["country"]?.firstOrNull()
             val formatted = attributes["formatted"]?.firstOrNull()
 
-            return if (street != null || locality != null || region != null || postalCode != null || country != null || formatted != null) {
+            return if (street != null || houseNumber != null ||
+                locality != null || region != null ||
+                postalCode != null || country != null ||
+                formatted != null
+            ) {
                 OidcAddressClaim(
                     streetAddress = street,
+                    houseNumber = houseNumber,
                     locality = locality,
                     region = region,
                     postalCode = postalCode,

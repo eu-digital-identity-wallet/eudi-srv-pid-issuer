@@ -22,7 +22,10 @@
           "true"
         ],
         "street": [
-          "101 Trauner"
+          "Trauner"
+        ],
+        "address_house_number": [
+          "101"
         ],
         "locality": [
           "Gemeinde Biberbach"
