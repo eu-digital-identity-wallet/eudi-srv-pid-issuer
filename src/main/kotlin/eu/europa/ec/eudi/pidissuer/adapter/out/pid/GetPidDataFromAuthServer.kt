@@ -126,6 +126,7 @@ class GetPidDataFromAuthServer(
                     placeOfBirth = user.birthPlace(),
                     ageOver18 = user.attributes["age_over_18"]?.firstOrNull()?.toBoolean(),
                     picture = null,
+                    nationality = user.attributes["nationality"]?.firstOrNull(),
                 )
             }
         }
@@ -158,16 +159,21 @@ class GetPidDataFromAuthServer(
             ageOver18 = userInfo.ageOver18 ?: false,
             ageBirthYear = Year.from(birthDate),
             ageInYears = ageInYears,
+            familyNameBirth = null,
+            givenNameBirth = null,
+            birthPlace = null,
+            birthCountry = userInfo.placeOfBirth?.country?.let { IsoCountry(it) },
+            birthState = userInfo.placeOfBirth?.region?.let { State(it) },
+            birthCity = userInfo.placeOfBirth?.locality?.let { City(it) },
             residentAddress = userInfo.address?.formatted,
             residentStreet = userInfo.address?.streetAddress?.let { Street(it) },
             residentCountry = userInfo.address?.country?.let { IsoCountry(it) },
             residentState = userInfo.address?.region?.let { State(it) },
             residentCity = userInfo.address?.locality?.let { City(it) },
             residentPostalCode = userInfo.address?.postalCode?.let { PostalCode(it) },
-            birthCity = userInfo.placeOfBirth?.locality?.let { City(it) },
-            birthCountry = userInfo.placeOfBirth?.country?.let { IsoCountry(it) },
-            birthState = userInfo.placeOfBirth?.region?.let { State(it) },
+            residentHouseNumber = userInfo.address?.houseNumber,
             gender = userInfo.gender?.let { IsoGender(it) },
+            nationality = userInfo.nationality?.let { IsoCountry(it) },
         )
 
         val pidMetaData = genPidMetaData()
@@ -188,4 +194,5 @@ private data class UserInfo(
     @SerialName(OidcAssurancePlaceOfBirth.NAME) val placeOfBirth: OidcAssurancePlaceOfBirth? = null,
     @SerialName("age_over_18") val ageOver18: Boolean? = null,
     val picture: String? = null,
+    val nationality: String? = null,
 )
