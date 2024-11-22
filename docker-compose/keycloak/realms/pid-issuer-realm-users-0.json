@@ -38,6 +38,15 @@
         ],
         "country": [
           "AT"
+        ],
+        "birth_country": [
+          "AT"
+        ],
+        "birth_city": [
+          "Gemeinde Biberbach"
+        ],
+        "birth_place": [
+          "101 Trauner"
         ]
       },
       "credentials": [

@@ -91,6 +91,21 @@ class GetPidDataFromAuthServer(
             }
         }
 
+        fun UserRepresentation.birthPlace(): OidcAssurancePlaceOfBirth? {
+            val birthPlace = attributes["birth_place"]?.firstOrNull()
+            val birthCountry = attributes["birth_country"]?.firstOrNull()
+            val birthState = attributes["birth_state"]?.firstOrNull()
+            val birthCity = attributes["birth_city"]?.firstOrNull()
+
+            return if (birthPlace != null || birthCountry != null || birthState != null || birthCity != null) {
+                OidcAssurancePlaceOfBirth(
+                    locality = birthPlace ?: birthCity,
+                    region = birthState,
+                    country = birthCountry,
+                )
+            } else null
+        }
+
         return withContext(Dispatchers.IO) {
             val users = keycloak.realm(userRealm)
                 .users()
@@ -108,7 +123,7 @@ class GetPidDataFromAuthServer(
                     address = user.address(),
                     birthDate = user.attributes["birthdate"]?.firstOrNull(),
                     gender = user.attributes["gender"]?.firstOrNull()?.toUInt(),
-                    placeOfBirth = null,
+                    placeOfBirth = user.birthPlace(),
                     ageOver18 = user.attributes["age_over_18"]?.firstOrNull()?.toBoolean(),
                     picture = null,
                 )
