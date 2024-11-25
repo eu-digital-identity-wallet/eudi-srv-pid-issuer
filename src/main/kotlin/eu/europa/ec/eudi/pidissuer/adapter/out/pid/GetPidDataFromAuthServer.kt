@@ -124,6 +124,7 @@ class GetPidDataFromAuthServer(
                     address = user.address(),
                     birthDate = user.attributes["birthdate"]?.firstOrNull(),
                     gender = user.attributes["gender"]?.firstOrNull()?.toUInt(),
+                    genderAsString = user.attributes["gender_as_string"]?.firstOrNull(),
                     placeOfBirth = user.birthPlace(),
                     ageOver18 = user.attributes["age_over_18"]?.firstOrNull()?.toBoolean(),
                     picture = null,
@@ -174,6 +175,7 @@ class GetPidDataFromAuthServer(
             residentPostalCode = userInfo.address?.postalCode?.let { PostalCode(it) },
             residentHouseNumber = userInfo.address?.houseNumber,
             gender = userInfo.gender?.let { IsoGender(it) },
+            genderAsString = userInfo.genderAsString,
             nationality = userInfo.nationality?.let { IsoCountry(it) },
         )
 
@@ -194,6 +196,7 @@ private data class UserInfo(
     @SerialName(OidcAddressClaim.NAME) val address: OidcAddressClaim? = null,
     @SerialName("birthdate") val birthDate: String? = null,
     @SerialName("gender") val gender: UInt? = null,
+    @SerialName("gender_as_string") val genderAsString: String? = null,
     @SerialName(OidcAssurancePlaceOfBirth.NAME) val placeOfBirth: OidcAssurancePlaceOfBirth? = null,
     @SerialName("age_over_18") val ageOver18: Boolean? = null,
     val picture: String? = null,

@@ -40,7 +40,6 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZonedDateTime
 import java.util.*
-import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcGender as OidcGenderAttribute
 
 val PidSdJwtVcScope: Scope = Scope("eu.europa.ec.eudi.pid_vc_sd_jwt")
 
@@ -76,7 +75,7 @@ internal object Attributes {
         OidcAssuranceBirthGivenName,
         OidcAssurancePlaceOfBirth.attribute,
         OidcAddressClaim.attribute,
-        OidcGenderAttribute,
+        OidcGender,
         OidcAssuranceNationalities,
         IssuingAuthorityAttribute,
         DocumentNumberAttribute,

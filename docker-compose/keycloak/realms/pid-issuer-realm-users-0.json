@@ -15,6 +15,9 @@
         "gender": [
           "1"
         ],
+        "gender_as_string": [
+          "male"
+        ],
         "birthdate": [
           "1955-04-12"
         ],
