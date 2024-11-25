@@ -274,7 +274,6 @@ sealed interface IssueCredentialResponse {
         @SerialName("error") @Required val type: CredentialErrorTypeTo,
         @SerialName("error_description") val errorDescription: String? = null,
         @SerialName("c_nonce") val nonce: String? = null,
-
     ) : IssueCredentialResponse
 }
 
@@ -292,70 +291,21 @@ class IssueCredential(
     private val encryptCredentialResponse: EncryptCredentialResponse,
 ) {
 
+    private fun Raise<IssueCredentialError>.services(): Services =
+        Services(this, credentialIssuerMetadata, resolveCredentialRequestByCredentialIdentifier)
+
     suspend operator fun invoke(
         authorizationContext: AuthorizationContext,
         credentialRequestTO: CredentialRequestTO,
     ): IssueCredentialResponse = coroutineScope {
         either {
             log.info("Handling issuance request for ${credentialRequestTO.format}..")
-            val unresolvedRequest = with(validations()) {
-                credentialRequestTO.toDomain(
-                    credentialIssuerMetadata.credentialResponseEncryption,
-                    credentialIssuerMetadata.batchCredentialIssuance,
-                )
-            }
-            val (request, credentialIdentifier) =
-                when (unresolvedRequest) {
-                    is UnresolvedCredentialRequest.ByFormat ->
-                        unresolvedRequest.credentialRequest to null
-
-                    is UnresolvedCredentialRequest.ByCredentialIdentifier ->
-                        resolve(unresolvedRequest) to unresolvedRequest.credentialIdentifier
-                }
-            val issued = issue(authorizationContext, request, credentialIdentifier)
+            val(request, issued) =
+                services().issueCredential(authorizationContext, credentialRequestTO)
             successResponse(request, issued)
         }.getOrElse { error ->
             errorResponse(error)
         }
-    }
-
-    private suspend fun Raise<IssueCredentialError>.resolve(
-        unresolvedRequest: UnresolvedCredentialRequest.ByCredentialIdentifier,
-    ): CredentialRequest =
-        either {
-            val resolvedRequest = resolveCredentialRequestByCredentialIdentifier(
-                unresolvedRequest.credentialIdentifier,
-                unresolvedRequest.unvalidatedProofs,
-                unresolvedRequest.credentialResponseEncryption,
-            )
-            ensureNotNull(resolvedRequest) { InvalidCredentialIdentifier(unresolvedRequest.credentialIdentifier) }
-            resolvedRequest
-        }.bind()
-
-    private suspend fun Raise<IssueCredentialError>.issue(
-        authorizationContext: AuthorizationContext,
-        credentialRequest: CredentialRequest,
-        credentialIdentifier: CredentialIdentifier?,
-    ): CredentialResponse {
-        val issueSpecificCredential = specificIssuerFor(credentialRequest)
-        val expectedScope = checkNotNull(issueSpecificCredential.supportedCredential.scope)
-        ensure(authorizationContext.scopes.contains(expectedScope)) { WrongScope(expectedScope) }
-        return issueSpecificCredential(authorizationContext, credentialRequest, credentialIdentifier).bind()
-    }
-
-    private fun Raise<IssueCredentialError>.specificIssuerFor(credentialRequest: CredentialRequest): IssueSpecificCredential {
-        val specificIssuer = credentialIssuerMetadata.specificCredentialIssuers
-            .find { issuer ->
-                either { assertIsSupported(credentialRequest, issuer.supportedCredential) }.isRight()
-            }
-        if (specificIssuer == null) {
-            val types = when (credentialRequest) {
-                is MsoMdocCredentialRequest -> listOf(credentialRequest.docType)
-                is SdJwtVcCredentialRequest -> listOf(credentialRequest.type).map { it.value }
-            }
-            raise(UnsupportedCredentialType(credentialRequest.format, types))
-        }
-        return specificIssuer
     }
 
     private suspend fun successResponse(
@@ -378,6 +328,75 @@ class IssueCredential(
         return error.toTO(newCNonce)
     }
 }
+
+private class Services(
+    raise: Raise<IssueCredentialError>,
+    private val credentialIssuerMetadata: CredentialIssuerMetaData,
+    private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
+) :
+    Validations,
+    Raise<IssueCredentialError> by raise {
+
+        suspend fun issueCredential(
+            authorizationContext: AuthorizationContext,
+            credentialRequestTO: CredentialRequestTO,
+        ): Pair<CredentialRequest, CredentialResponse> = coroutineScope {
+            val unresolvedRequest =
+                credentialRequestTO.toDomain(
+                    credentialIssuerMetadata.credentialResponseEncryption,
+                    credentialIssuerMetadata.batchCredentialIssuance,
+                )
+            val (request, credentialIdentifier) =
+                when (unresolvedRequest) {
+                    is UnresolvedCredentialRequest.ByFormat ->
+                        unresolvedRequest.credentialRequest to null
+
+                    is UnresolvedCredentialRequest.ByCredentialIdentifier ->
+                        resolve(unresolvedRequest) to unresolvedRequest.credentialIdentifier
+                }
+            val issued = issue(authorizationContext, request, credentialIdentifier)
+            request to issued
+        }
+
+        private suspend fun resolve(
+            unresolvedRequest: UnresolvedCredentialRequest.ByCredentialIdentifier,
+        ): CredentialRequest =
+            either {
+                val resolvedRequest = resolveCredentialRequestByCredentialIdentifier(
+                    unresolvedRequest.credentialIdentifier,
+                    unresolvedRequest.unvalidatedProofs,
+                    unresolvedRequest.credentialResponseEncryption,
+                )
+                ensureNotNull(resolvedRequest) { InvalidCredentialIdentifier(unresolvedRequest.credentialIdentifier) }
+                resolvedRequest
+            }.bind()
+
+        private suspend fun issue(
+            authorizationContext: AuthorizationContext,
+            credentialRequest: CredentialRequest,
+            credentialIdentifier: CredentialIdentifier?,
+        ): CredentialResponse {
+            val issueSpecificCredential = specificIssuerFor(credentialRequest)
+            val expectedScope = checkNotNull(issueSpecificCredential.supportedCredential.scope)
+            ensure(authorizationContext.scopes.contains(expectedScope)) { WrongScope(expectedScope) }
+            return issueSpecificCredential(authorizationContext, credentialRequest, credentialIdentifier).bind()
+        }
+
+        private fun specificIssuerFor(credentialRequest: CredentialRequest): IssueSpecificCredential {
+            val specificIssuer = credentialIssuerMetadata.specificCredentialIssuers
+                .find { issuer ->
+                    either { assertIsSupported(credentialRequest, issuer.supportedCredential) }.isRight()
+                }
+            if (specificIssuer == null) {
+                val types = when (credentialRequest) {
+                    is MsoMdocCredentialRequest -> listOf(credentialRequest.docType)
+                    is SdJwtVcCredentialRequest -> listOf(credentialRequest.type).map { it.value }
+                }
+                raise(UnsupportedCredentialType(credentialRequest.format, types))
+            }
+            return specificIssuer
+        }
+    }
 //
 // Mapping to domain
 //
@@ -613,14 +632,7 @@ private interface Validations : Raise<IssueCredentialError> {
             UnvalidatedProof.LdpVp(ldpVp)
         }
     }
-
-    companion object {
-        operator fun invoke(raise: Raise<IssueCredentialError>): Validations =
-            object : Validations, Raise<IssueCredentialError> by raise {}
-    }
 }
-private fun Raise<IssueCredentialError>.validations(): Validations =
-    Validations(this@validations)
 
 fun CredentialResponse.toTO(cNonce: String): IssueCredentialResponse.PlainTO = when (this) {
     is CredentialResponse.Issued -> {
