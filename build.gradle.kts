@@ -103,7 +103,6 @@ kotlin {
 
     compilerOptions {
         apiVersion = KotlinVersion.KOTLIN_2_0
-
         freeCompilerArgs.add("-Xjsr305=strict")
     }
 }

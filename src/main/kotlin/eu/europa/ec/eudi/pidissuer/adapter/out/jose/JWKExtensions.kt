@@ -19,11 +19,16 @@ import arrow.core.raise.Raise
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 
-/**
- * Converts this [JWK] to an [ECKey] or raises [onFailure].
- */
-internal fun <E> Raise<E>.toECKeyOrFail(jwk: JWK, onFailure: () -> E): ECKey =
-    when (jwk) {
-        is ECKey -> jwk
-        else -> raise(onFailure())
-    }
+internal interface JWKExtensions<in Error> : Raise<Error> {
+    /**
+     * Converts this [JWK] to an [ECKey] or raises [onFailure].
+     */
+    fun JWK.toECKeyOrFail(onFailure: () -> Error): ECKey =
+        when (this) {
+            is ECKey -> this
+            else -> raise(onFailure())
+        }
+}
+
+internal fun <Error> Raise<Error>.jwkExtensions(): JWKExtensions<Error> =
+    object : JWKExtensions<Error>, Raise<Error> by this {}

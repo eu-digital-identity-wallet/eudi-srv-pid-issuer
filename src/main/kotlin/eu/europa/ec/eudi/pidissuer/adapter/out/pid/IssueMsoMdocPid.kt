@@ -23,7 +23,7 @@ import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.toECKeyOrFail
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.jwkExtensions
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
@@ -281,9 +281,11 @@ internal class IssueMsoMdocPid(
     ): Either<IssueCredentialError, CredentialResponse> = coroutineScope {
         either {
             log.info("Handling issuance request ...")
-            val holderPubKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.instant())
-                .bind()
-                .map { toECKeyOrFail(it) { InvalidProof("Only EC Key is supported") } }
+            val holderPubKeys = with(jwkExtensions()) {
+                validateProofs(request.unvalidatedProofs, supportedCredential, clock.instant())
+                    .bind()
+                    .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
+            }
 
             val pidData = async { getPidData(authorizationContext) }
             val notificationId =

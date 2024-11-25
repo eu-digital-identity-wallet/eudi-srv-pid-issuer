@@ -23,7 +23,7 @@ import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.toECKeyOrFail
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.jwkExtensions
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
@@ -316,9 +316,10 @@ internal class IssueMobileDrivingLicence(
         credentialIdentifier: CredentialIdentifier?,
     ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Issuing mDL")
-        val holderKeys =
+        val holderKeys = with(jwkExtensions()) {
             validateProofs(request.unvalidatedProofs, supportedCredential, clock.instant()).bind()
-                .map { toECKeyOrFail(it) { InvalidProof("Only EC Key is supported") } }
+                .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
+        }
         val licence = getMobileDrivingLicenceData(authorizationContext).bind()
         ensureNotNull(licence) {
             IssueCredentialError.Unexpected("Unable to fetch mDL data")
