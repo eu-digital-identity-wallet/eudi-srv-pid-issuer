@@ -20,8 +20,10 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.util.X509CertChainUtils
+import com.nimbusds.jose.util.X509CertUtils
 import id.walt.mdoc.COSECryptoProviderKeyInfo
 import id.walt.mdoc.SimpleCOSECryptoProvider
+import java.security.cert.X509Certificate
 
 @JvmInline
 value class IssuerSigningKey(val key: ECKey) {
@@ -62,3 +64,6 @@ internal fun IssuerSigningKey.cryptoProvider(): SimpleCOSECryptoProvider {
         ),
     )
 }
+
+internal val IssuerSigningKey.certificate: X509Certificate
+    get() = X509CertUtils.parse(key.x509CertChain.first().decode())
