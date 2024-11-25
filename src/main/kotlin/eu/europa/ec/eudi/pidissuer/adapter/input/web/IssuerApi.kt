@@ -15,8 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
-import arrow.core.getOrElse
-import arrow.core.raise.either
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfigurationId
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOffer
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError
@@ -46,18 +44,16 @@ class IssuerApi(
             .map(::CredentialConfigurationId)
             .toSet()
 
-        return either {
-            val credentialsOffer = createCredentialsOffer(credentialIds)
-            log.info("Successfully generated Credentials Offer. URI: '{}'", credentialsOffer)
-
-            ServerResponse.ok()
-                .json()
-                .bodyValueAndAwait(CreateCredentialsOfferResponseTO.success(credentialsOffer))
-        }.getOrElse { error ->
-            ServerResponse.badRequest()
-                .json()
-                .bodyValueAndAwait(CreateCredentialsOfferResponseTO.error(error))
-        }
+        return createCredentialsOffer(credentialIds).fold(
+            ifRight = { credentialsOffer ->
+                ServerResponse.ok().json()
+                    .bodyValueAndAwait(CreateCredentialsOfferResponseTO.success(credentialsOffer))
+                    .also { log.info("Successfully generated Credentials Offer. URI: '{}'", credentialsOffer) }
+            },
+            ifLeft = { error ->
+                ServerResponse.badRequest().json().bodyValueAndAwait(CreateCredentialsOfferResponseTO.error(error))
+            },
+        )
     }
 
     companion object {

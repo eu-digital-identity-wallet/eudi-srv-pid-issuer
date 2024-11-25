@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.nonEmptyListOf
-import arrow.core.raise.either
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
@@ -43,9 +42,9 @@ class ValidateProofTest {
     internal fun `fails with unsupported proof type`() = runTest {
         val proof = UnvalidatedProof.LdpVp("foo")
 
-        val result = either {
+        val result =
             validateProofs(nonEmptyListOf(proof), PidMsoMdocV1, clock.instant())
-        }
+
         assert(result.isLeft())
 
         val error = assertIs<IssueCredentialError.InvalidProof>(result.leftOrNull())

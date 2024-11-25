@@ -15,10 +15,10 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
+import arrow.core.Either
 import arrow.core.NonEmptySet
-import arrow.core.raise.Raise
+import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
-import arrow.core.raise.result
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -49,33 +49,33 @@ import kotlin.time.DurationUnit
 internal class ValidateJwtProof(
     private val credentialIssuerId: CredentialIssuerId,
 ) {
-    context(Raise<IssueCredentialError.InvalidProof>)
     operator fun invoke(
         unvalidatedProof: UnvalidatedProof.Jwt,
         credentialConfiguration: CredentialConfiguration,
-    ): Pair<CredentialKey, String?> {
+    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey, String?>> = either {
         val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.JWT]
         ensureNotNull(proofType) {
             IssueCredentialError.InvalidProof("credential configuration '${credentialConfiguration.id.value}' doesn't support 'jwt' proofs")
         }
         check(proofType is ProofType.Jwt)
-
-        return credentialKeyAndNonce(unvalidatedProof, proofType)
+        credentialKeyAndNonce(unvalidatedProof, proofType).bind()
     }
 
-    context(Raise<IssueCredentialError.InvalidProof>)
     private fun credentialKeyAndNonce(
         unvalidatedProof: UnvalidatedProof.Jwt,
         proofType: ProofType.Jwt,
-    ): Pair<CredentialKey, String?> = result {
+    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey, String?>> = Either.catch {
         val signedJwt = SignedJWT.parse(unvalidatedProof.jwt)
-        val (algorithm, credentialKey) = algorithmAndCredentialKey(signedJwt.header, proofType.signingAlgorithmsSupported)
+        val (algorithm, credentialKey) = algorithmAndCredentialKey(
+            signedJwt.header,
+            proofType.signingAlgorithmsSupported,
+        )
         val keySelector = keySelector(credentialKey, algorithm)
         val processor = processor(credentialIssuerId, keySelector)
         val claimSet = processor.process(signedJwt, null)
 
         credentialKey to claimSet.getStringClaim("nonce")
-    }.getOrElse { raise(IssueCredentialError.InvalidProof("Invalid proof JWT", it)) }
+    }.mapLeft { IssueCredentialError.InvalidProof("Invalid proof JWT", it) }
 }
 
 private fun algorithmAndCredentialKey(

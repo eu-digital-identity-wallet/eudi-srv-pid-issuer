@@ -15,13 +15,14 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
+import arrow.core.Either
 import arrow.core.raise.Raise
+import arrow.core.raise.either
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.domain.TransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptDeferredResponse
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadDeferredCredentialByTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadDeferredCredentialResult
-import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -116,33 +117,40 @@ class GetDeferredCredential(
 
     private val log = LoggerFactory.getLogger(GetDeferredCredential::class.java)
 
-    context (Raise<GetDeferredCredentialErrorTO>)
-    suspend operator fun invoke(requestTO: DeferredCredentialRequestTO): DeferredCredentialSuccessResponse = coroutineScope {
+    suspend operator fun invoke(
+        requestTO: DeferredCredentialRequestTO,
+    ): Either<GetDeferredCredentialErrorTO, DeferredCredentialSuccessResponse> = either {
         val transactionId = TransactionId(requestTO.transactionId)
         log.info("GetDeferredCredential for $transactionId ...")
-        loadDeferredCredentialByTransactionId(transactionId).toTo()
+        toTo(loadDeferredCredentialByTransactionId(transactionId))
     }
 
-    context (Raise<GetDeferredCredentialErrorTO>)
-    private fun LoadDeferredCredentialResult.toTo(): DeferredCredentialSuccessResponse = when (this) {
-        is LoadDeferredCredentialResult.IssuancePending -> raise(GetDeferredCredentialErrorTO.IssuancePending)
-        is LoadDeferredCredentialResult.InvalidTransactionId -> raise(GetDeferredCredentialErrorTO.InvalidTransactionId)
-        is LoadDeferredCredentialResult.Found -> {
-            val plain = when (credential.credentials.size) {
-                1 -> DeferredCredentialSuccessResponse.PlainTO.single(
-                    credential.credentials.head,
-                    credential.notificationId?.value,
-                )
-                else -> DeferredCredentialSuccessResponse.PlainTO.multiple(
-                    JsonArray(credential.credentials),
-                    credential.notificationId?.value,
-                )
-            }
+    private fun Raise<GetDeferredCredentialErrorTO>.toTo(
+        loadDeferredCredentialResult: LoadDeferredCredentialResult,
+    ): DeferredCredentialSuccessResponse =
+        when (loadDeferredCredentialResult) {
+            is LoadDeferredCredentialResult.IssuancePending -> raise(GetDeferredCredentialErrorTO.IssuancePending)
+            is LoadDeferredCredentialResult.InvalidTransactionId -> raise(GetDeferredCredentialErrorTO.InvalidTransactionId)
+            is LoadDeferredCredentialResult.Found -> {
+                val plain = when (loadDeferredCredentialResult.credential.credentials.size) {
+                    1 -> DeferredCredentialSuccessResponse.PlainTO.single(
+                        loadDeferredCredentialResult.credential.credentials.head,
+                        loadDeferredCredentialResult.credential.notificationId?.value,
+                    )
 
-            when (responseEncryption) {
-                RequestedResponseEncryption.NotRequired -> plain
-                is RequestedResponseEncryption.Required -> encryptCredentialResponse(plain, responseEncryption).getOrThrow()
+                    else -> DeferredCredentialSuccessResponse.PlainTO.multiple(
+                        JsonArray(loadDeferredCredentialResult.credential.credentials),
+                        loadDeferredCredentialResult.credential.notificationId?.value,
+                    )
+                }
+
+                when (loadDeferredCredentialResult.responseEncryption) {
+                    RequestedResponseEncryption.NotRequired -> plain
+                    is RequestedResponseEncryption.Required -> encryptCredentialResponse(
+                        plain,
+                        loadDeferredCredentialResult.responseEncryption,
+                    ).getOrThrow()
+                }
             }
         }
-    }
 }

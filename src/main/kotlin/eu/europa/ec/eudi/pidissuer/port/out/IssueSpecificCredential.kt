@@ -15,9 +15,13 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out
 
-import arrow.core.raise.Raise
+import arrow.core.Either
+import arrow.core.raise.either
 import com.nimbusds.jose.jwk.JWK
-import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
+import eu.europa.ec.eudi.pidissuer.domain.CredentialIdentifier
+import eu.europa.ec.eudi.pidissuer.domain.CredentialRequest
+import eu.europa.ec.eudi.pidissuer.domain.CredentialResponse
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
@@ -29,12 +33,11 @@ interface IssueSpecificCredential {
     val supportedCredential: CredentialConfiguration
     val publicKey: JWK?
 
-    context(Raise<IssueCredentialError>)
     suspend operator fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): CredentialResponse
+    ): Either<IssueCredentialError, CredentialResponse>
 }
 
 fun IssueSpecificCredential.asDeferred(
@@ -51,18 +54,19 @@ private class DeferredIssuer(
 
     private val log = LoggerFactory.getLogger(DeferredIssuer::class.java)
 
-    context(Raise<IssueCredentialError>)
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): CredentialResponse {
-        val credentialResponse = issuer.invoke(authorizationContext, request, credentialIdentifier)
+    ): Either<IssueCredentialError, CredentialResponse> = either {
+        val credentialResponse =
+            issuer.invoke(authorizationContext, request, credentialIdentifier).bind()
+
         require(credentialResponse is CredentialResponse.Issued) { "Actual issuer should return issued credentials" }
 
         val transactionId = generateTransactionId()
         storeDeferredCredential.invoke(transactionId, credentialResponse, request.credentialResponseEncryption)
-        return CredentialResponse.Deferred(transactionId).also {
+        CredentialResponse.Deferred(transactionId).also {
             log.info("Repackaged $credentialResponse  as $it")
         }
     }

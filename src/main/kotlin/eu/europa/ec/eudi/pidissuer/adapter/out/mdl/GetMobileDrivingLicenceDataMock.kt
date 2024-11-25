@@ -15,9 +15,11 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
+import arrow.core.Either
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
 import arrow.core.raise.catch
+import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.GenericRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.ParameterizedRestriction
@@ -34,8 +36,7 @@ import java.time.Month
  */
 class GetMobileDrivingLicenceDataMock : GetMobileDrivingLicenceData {
 
-    context(Raise<IssueCredentialError.Unexpected>)
-    override suspend fun invoke(context: AuthorizationContext): MobileDrivingLicence {
+    override suspend fun invoke(context: AuthorizationContext): Either<IssueCredentialError.Unexpected, MobileDrivingLicence> = either {
         log.info("Getting mock data for Mobile Driving Licence")
 
         val driver = Driver(
@@ -80,7 +81,7 @@ class GetMobileDrivingLicenceDataMock : GetMobileDrivingLicenceData {
             ),
         )
 
-        return MobileDrivingLicence(
+        MobileDrivingLicence(
             driver,
             IssueAndExpiry(LocalDate.of(2000, Month.JANUARY, 1), LocalDate.of(2040, Month.DECEMBER, 31)),
             issuer,
@@ -94,8 +95,7 @@ class GetMobileDrivingLicenceDataMock : GetMobileDrivingLicenceData {
 
         private val log = LoggerFactory.getLogger(GetMobileDrivingLicenceDataMock::class.java)
 
-        context(Raise<IssueCredentialError.Unexpected>)
-        private suspend fun loadResource(path: String): ByteArray =
+        private suspend fun Raise<IssueCredentialError.Unexpected>.loadResource(path: String): ByteArray =
             withContext(Dispatchers.IO) {
                 val portrait =
                     ensureNotNull(Companion::class.java.getResourceAsStream(path)) {

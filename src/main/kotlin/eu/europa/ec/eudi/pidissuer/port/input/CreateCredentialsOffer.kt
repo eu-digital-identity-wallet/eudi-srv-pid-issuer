@@ -15,8 +15,10 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
+import arrow.core.Either
 import arrow.core.NonEmptySet
 import arrow.core.raise.Raise
+import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import arrow.core.toNonEmptySetOrNull
@@ -119,17 +121,17 @@ class CreateCredentialsOffer(
     private val credentialsOfferUri: String,
 ) {
 
-    context(Raise<CreateCredentialsOfferError>)
     operator fun invoke(
         unvalidatedCredentialConfigurationIds: Set<CredentialConfigurationId>,
         customCredentialsOfferUri: String? = null,
-    ): URI {
-        val offer = with(metadata) {
-            val credentialConfigurationIds = validate(unvalidatedCredentialConfigurationIds)
-            authorizationCodeGrantOffer(credentialConfigurationIds)
+    ): Either<CreateCredentialsOfferError, URI> = either {
+        val offer = run {
+            val credentialConfigurationIds =
+                validate(metadata, unvalidatedCredentialConfigurationIds)
+            authorizationCodeGrantOffer(metadata, credentialConfigurationIds)
         }
 
-        return runCatching {
+        runCatching {
             Uri.parse(customCredentialsOfferUri ?: credentialsOfferUri)
                 .buildUpon()
                 .appendQueryParameter("credential_offer", Json.encodeToString(offer))
@@ -139,11 +141,13 @@ class CreateCredentialsOffer(
     }
 }
 
-context(Raise<CreateCredentialsOfferError>, CredentialIssuerMetaData)
-private fun validate(unvalidatedIds: Set<CredentialConfigurationId>): NonEmptySet<CredentialConfigurationId> {
+private fun Raise<CreateCredentialsOfferError>.validate(
+    metadata: CredentialIssuerMetaData,
+    unvalidatedIds: Set<CredentialConfigurationId>,
+): NonEmptySet<CredentialConfigurationId> {
     val nonEmptyIds = unvalidatedIds.toNonEmptySetOrNull()
     ensureNotNull(nonEmptyIds) { MissingCredentialConfigurationIds }
-    val supportedIds = credentialConfigurationsSupported.map(CredentialConfiguration::id)
+    val supportedIds = metadata.credentialConfigurationsSupported.map(CredentialConfiguration::id)
     nonEmptyIds.forEach { id ->
         ensure(id in supportedIds) { InvalidCredentialConfigurationId(id) }
     }
@@ -160,16 +164,15 @@ private fun validate(unvalidatedIds: Set<CredentialConfigurationId>): NonEmptySe
  * @param credentialConfigurationIds the Ids of the Credentials to include in the generated request
  * @return the resulting TO
  */
-context(CredentialIssuerMetaData)
 private fun authorizationCodeGrantOffer(
+    metadata: CredentialIssuerMetaData,
     credentialConfigurationIds: NonEmptySet<CredentialConfigurationId>,
 ): CredentialsOfferTO {
     val authorizationCode = AuthorizationCodeTO(
-        authorizationServer = authorizationServers.firstOrNull()?.externalForm,
+        authorizationServer = metadata.authorizationServers.firstOrNull()?.externalForm,
     )
-
     return CredentialsOfferTO(
-        id.externalForm,
+        metadata.id.externalForm,
         credentialConfigurationIds.map(CredentialConfigurationId::value).toSet(),
         GrantsTO(authorizationCode),
     )

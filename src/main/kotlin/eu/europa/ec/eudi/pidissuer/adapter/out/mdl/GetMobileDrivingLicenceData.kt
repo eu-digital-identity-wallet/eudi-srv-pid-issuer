@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
-import arrow.core.raise.Raise
+import arrow.core.Either
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 
@@ -28,6 +28,6 @@ fun interface GetMobileDrivingLicenceData {
      * Gets the data of the Mobile Driving Licence of an authorized user. In case the authorized user
      * has no Driving Licence, null is returned.
      */
-    context(Raise<IssueCredentialError.Unexpected>)
-    suspend operator fun invoke(context: AuthorizationContext): MobileDrivingLicence?
+
+    suspend operator fun invoke(context: AuthorizationContext): Either<IssueCredentialError.Unexpected, MobileDrivingLicence?>
 }
