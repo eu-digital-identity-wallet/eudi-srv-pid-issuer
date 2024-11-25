@@ -104,6 +104,7 @@ data class Pid(
     val residentPostalCode: PostalCode? = null,
     val residentHouseNumber: String? = null,
     val gender: IsoGender? = null,
+    val genderAsString: String? = null,
     val nationality: Nationality? = null,
 ) {
     init {
@@ -121,8 +122,16 @@ data class Pid(
  * if there is no separate authority authorized to issue PID
  */
 sealed interface IssuingAuthority {
-    data class MemberState(val code: IsoCountry) : IssuingAuthority
-    data class AdministrativeAuthority(val value: String) : IssuingAuthority
+    @JvmInline
+    value class MemberState(val code: IsoCountry) : IssuingAuthority
+
+    @JvmInline
+    value class AdministrativeAuthority(val value: String) : IssuingAuthority
+
+    fun valueAsString(): String = when (this) {
+        is AdministrativeAuthority -> value
+        is MemberState -> code.value
+    }
 }
 
 @JvmInline

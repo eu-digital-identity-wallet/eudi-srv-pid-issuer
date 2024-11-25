@@ -41,49 +41,51 @@ import java.time.Instant
 import java.time.ZonedDateTime
 import java.util.*
 
-val PidSdJwtVcScope: Scope = Scope("${PID_DOCTYPE}_vc_sd_jwt")
+val PidSdJwtVcScope: Scope = Scope("eu.europa.ec.eudi.pid_vc_sd_jwt")
 
 internal object Attributes {
 
-    val BirthDateYear = AttributeDetails(
-        name = "birthdate_year",
+    val AgeBirthYear = AttributeDetails(
+        name = "age_birth_year",
         mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The year when the PID User was born."),
     )
     val AgeEqualOrOver = AttributeDetails(
         name = "age_equal_or_over",
-        display = mapOf(Locale.ENGLISH to "Age attestations"),
+        display = mapOf(Locale.ENGLISH to "Attesting attributes for the age of the PID User."),
     )
     val AgeOver18 = AttributeDetails(
         name = "18",
-        display = mapOf(Locale.ENGLISH to "Adult or minor"),
+        display = mapOf(Locale.ENGLISH to "Attesting whether the PID User is currently an adult (true) or a minor (false)."),
     )
 
     val AgeInYears = AttributeDetails(
         name = "age_in_years",
-        display = mapOf(Locale.ENGLISH to "The subject’s current age in years."),
+        display = mapOf(Locale.ENGLISH to "The current age of the PID User in years."),
     )
 
-    val IssuanceDate = AttributeDetails(
-        name = "issuance_date",
-        mandatory = true,
-    )
-
-    val pidAttributes = listOf(
+    val pidAttributes: List<AttributeDetails> = listOf(
         OidcFamilyName,
         OidcGivenName,
         OidcBirthDate,
+        AgeEqualOrOver,
+        AgeInYears,
+        AgeBirthYear,
+        OidcAssuranceBirthFamilyName,
+        OidcAssuranceBirthGivenName,
+        OidcAssurancePlaceOfBirth.attribute,
         OidcAddressClaim.attribute,
         OidcGender,
         OidcAssuranceNationalities,
-        OidcAssuranceBirthFamilyName,
-        OidcAssuranceBirthGivenName,
-        AgeEqualOrOver,
-        AgeInYears,
-        OidcAssurancePlaceOfBirth.attribute,
-        IssuanceDate,
-        BirthDateYear,
+        IssuingAuthorityAttribute,
+        DocumentNumberAttribute,
+        AdministrativeNumberAttribute,
+        IssuingCountryAttribute,
+        IssuingJurisdictionAttribute,
     )
 }
+
+private fun pidDocType(version: Int): String = "urn:eu.europa.ec.eudi:pid:$version"
 
 fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(

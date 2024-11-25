@@ -19,12 +19,6 @@ import eu.europa.ec.eudi.pidissuer.domain.*
 import java.net.URI
 import java.util.Locale.ENGLISH
 
-internal const val PID_DOCTYPE = "eu.europa.ec.eudi.pid"
-
-internal fun pidDocType(v: Int?): String =
-    if (v == null) PID_DOCTYPE
-    else "$PID_DOCTYPE.$v"
-
 val pidDisplay = listOf(
     CredentialDisplay(
         name = DisplayName("PID", ENGLISH),

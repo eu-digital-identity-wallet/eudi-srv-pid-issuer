@@ -15,6 +15,9 @@
         "gender": [
           "1"
         ],
+        "gender_as_string": [
+          "male"
+        ],
         "birthdate": [
           "1955-04-12"
         ],
@@ -22,7 +25,10 @@
           "true"
         ],
         "street": [
-          "101 Trauner"
+          "Trauner"
+        ],
+        "address_house_number": [
+          "101"
         ],
         "locality": [
           "Gemeinde Biberbach"
@@ -35,6 +41,24 @@
         ],
         "country": [
           "AT"
+        ],
+        "birth_country": [
+          "AT"
+        ],
+        "birth_city": [
+          "Gemeinde Biberbach"
+        ],
+        "birth_place": [
+          "101 Trauner"
+        ],
+        "nationality": [
+          "AT"
+        ],
+        "birth_family_name": [
+          "Neal"
+        ],
+        "birth_given_name": [
+          "Tyler"
         ]
       },
       "credentials": [

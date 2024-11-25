@@ -39,21 +39,21 @@ val OidcSub: AttributeDetails by lazy {
 val OidcFamilyName: AttributeDetails by lazy {
     AttributeDetails(
         name = "family_name",
-        display = mapOf(Locale.ENGLISH to "Current Family Name"),
+        display = mapOf(Locale.ENGLISH to "Current last name(s) or surname(s) of the PID User."),
     )
 }
 
 val OidcGivenName: AttributeDetails by lazy {
     AttributeDetails(
         name = "given_name",
-        display = mapOf(Locale.ENGLISH to "Current First Names"),
+        display = mapOf(Locale.ENGLISH to "Current first name(s), including middle name(s), of the PID User."),
     )
 }
 
 val OidcBirthDate: AttributeDetails by lazy {
     AttributeDetails(
         name = "birthdate",
-        display = mapOf(Locale.ENGLISH to "Date of Birth"),
+        display = mapOf(Locale.ENGLISH to "Day, month, and year on which the PID User was born."),
     )
 }
 
@@ -61,7 +61,7 @@ val OidcGender: AttributeDetails by lazy {
     AttributeDetails(
         name = "gender",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "PID User’s gender, using a value as defined in ISO/IEC 5218."),
+        display = mapOf(Locale.ENGLISH to "PID User’s gender, using a value as defined in OpenID Connect Core 1.0."),
     )
 }
 
@@ -69,11 +69,11 @@ val OidcGender: AttributeDetails by lazy {
 @Serializable
 data class OidcAddressClaim(
     @SerialName("street_address") val streetAddress: String? = null,
-    val locality: String? = null,
-    val region: String? = null,
+    @SerialName("locality") val locality: String? = null,
+    @SerialName("region") val region: String? = null,
     @SerialName("postal_code") val postalCode: String? = null,
-    val country: String? = null,
-    val formatted: String? = null,
+    @SerialName("country") val country: String? = null,
+    @SerialName("formatted") val formatted: String? = null,
     @SerialName("house_number") val houseNumber: String? = null,
 ) {
 
@@ -84,7 +84,8 @@ data class OidcAddressClaim(
                 name = NAME,
                 mandatory = false,
                 display = mapOf(
-                    Locale.ENGLISH to "Resident street_address, country, region, locality and postal_code",
+                    Locale.ENGLISH to "The full address of the place where the PID User currently resides and/or " +
+                        "can be contacted (street name, house number, city etc.).",
                 ),
             )
     }
@@ -98,7 +99,7 @@ val OidcAssuranceNationalities: AttributeDetails by lazy {
     AttributeDetails(
         name = "nationalities",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Array of nationalities"),
+        display = mapOf(Locale.ENGLISH to "Alpha-2 country code as specified in ISO 3166-1, representing the nationality of the PID User."),
     )
 }
 
@@ -129,7 +130,7 @@ data class OidcAssurancePlaceOfBirth(
             get() = AttributeDetails(
                 name = NAME,
                 mandatory = false,
-                display = mapOf(Locale.ENGLISH to "The country, region, and locality"),
+                display = mapOf(Locale.ENGLISH to "The country, state, and city where the PID User was born."),
             )
     }
 }

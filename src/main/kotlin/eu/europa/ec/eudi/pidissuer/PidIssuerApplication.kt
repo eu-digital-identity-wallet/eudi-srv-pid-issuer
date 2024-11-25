@@ -273,10 +273,11 @@ fun beans(clock: Clock) = beans {
             .build()
 
         GetPidDataFromAuthServer(
-            env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
-            clock,
-            keycloak,
-            keycloakProperties.userRealm,
+            issuerCountry = env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
+            issuingJurisdiction = env.getProperty("issuer.pid.issuingJurisdiction"),
+            clock = clock,
+            keycloak = keycloak,
+            userRealm = keycloakProperties.userRealm,
         )
     }
     bean<EncodePidInCbor>(isLazyInit = true) {

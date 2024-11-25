@@ -37,24 +37,24 @@ import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.util.*
 
-val PidMsoMdocScope: Scope = Scope("${PID_DOCTYPE}_${MSO_MDOC_FORMAT.value}")
+val PidMsoMdocScope: Scope = Scope("eu.europa.ec.eudi.pid_mso_mdoc")
 
 val PidMsoMdocNamespace: MsoNameSpace = pidNameSpace(1)
 
 val GivenNameAttribute = AttributeDetails(
     name = "given_name",
     mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Current First Names"),
+    display = mapOf(Locale.ENGLISH to "Current first name(s), including middle name(s), of the PID User."),
 )
 val FamilyNameAttribute = AttributeDetails(
     name = "family_name",
     mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Current Family Name"),
+    display = mapOf(Locale.ENGLISH to "Current last name(s) or surname(s) of the PID User."),
 )
 val BirthDateAttribute = AttributeDetails(
     name = "birth_date",
     mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Date of Birth"),
+    display = mapOf(Locale.ENGLISH to "Day, month, and year on which the PID User was born."),
 )
 val FamilyNameBirthAttribute = AttributeDetails(
     name = "family_name_birth",
@@ -69,7 +69,7 @@ val GivenNameBirthAttribute = AttributeDetails(
 val GenderAttribute = AttributeDetails(
     name = "gender",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "PID User’s gender, using a value as defined in ISO/IEC 5218."),
+    display = mapOf(Locale.ENGLISH to "PID User's gender, using a value as defined in ISO/IEC 5218."),
 )
 val AgeOver18Attribute = AttributeDetails(
     name = "age_over_18",
@@ -89,7 +89,7 @@ val AgeInYearsAttribute = AttributeDetails(
 val NationalityAttribute = AttributeDetails(
     name = "nationality",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Alpha-2 country code, representing the nationality of the PID User."),
+    display = mapOf(Locale.ENGLISH to "Alpha-2 country code as specified in ISO 3166-1, representing the nationality of the PID User."),
 )
 val IssuanceDateAttribute = AttributeDetails(
     name = "issuance_date",
@@ -113,22 +113,22 @@ val IssuingAuthorityAttribute = AttributeDetails(
 val BirthPlaceAttribute = AttributeDetails(
     name = "birth_place",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The country, state, and city where the PID User was born."),
+    display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User was born."),
 )
 val BirthCountryAttribute = AttributeDetails(
     name = "birth_country",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The country where the PID User was born, as an Alpha-2 country code."),
+    display = mapOf(Locale.ENGLISH to "The country where the PID User was born, as an Alpha-2 country code as specified in ISO 3166-1."),
 )
 val BirthStateAttribute = AttributeDetails(
     name = "birth_state",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User was born. "),
+    display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User was born."),
 )
 val BirthCityAttribute = AttributeDetails(
     name = "birth_city",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The municipality, city, town, or village where the PID User was born. "),
+    display = mapOf(Locale.ENGLISH to "The municipality, city, town, or village where the PID User was born."),
 )
 val ResidenceAddressAttribute = AttributeDetails(
     name = "resident_address",
@@ -142,13 +142,13 @@ val ResidenceCountryAttribute = AttributeDetails(
     name = "resident_country",
     mandatory = false,
     display = mapOf(
-        Locale.ENGLISH to "he country where the PID User currently resides, as an Alpha-2 country code as specified in ISO 3166-1.",
+        Locale.ENGLISH to "The country where the PID User currently resides, as an Alpha-2 country code as specified in ISO 3166-1.",
     ),
 )
 val ResidenceStateAttribute = AttributeDetails(
     name = "resident_state",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User currently resides"),
+    display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User currently resides."),
 )
 val ResidenceCityAttribute = AttributeDetails(
     name = "resident_city",
@@ -163,7 +163,7 @@ val ResidencePostalCodeAttribute = AttributeDetails(
 val ResidenceStreetAttribute = AttributeDetails(
     name = "resident_street",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The name of the street where the PID User currently resides"),
+    display = mapOf(Locale.ENGLISH to "The name of the street where the PID User currently resides."),
 )
 val ResidenceHouseNumberAttribute = AttributeDetails(
     name = "resident_house_number",
@@ -176,14 +176,14 @@ val DocumentNumberAttribute = AttributeDetails(
     display = mapOf(Locale.ENGLISH to "A number for the PID, assigned by the PID Provider."),
 )
 val AdministrativeNumberAttribute = AttributeDetails(
-    name = "document_number",
+    name = "administrative_number",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "A number for the PID, assigned by the PID Provider."),
+    display = mapOf(Locale.ENGLISH to "A number assigned by the PID Provider for audit control or other purposes."),
 )
 val IssuingCountryAttribute = AttributeDetails(
     name = "issuing_country",
     mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Alpha-2 country code, as defined in ISO 3166-1, of the PID Provider’s country or territory."),
+    display = mapOf(Locale.ENGLISH to "Alpha-2 country code, as defined in ISO 3166-1, of the PID Provider's country or territory."),
 )
 val IssuingJurisdictionAttribute = AttributeDetails(
     name = "issuing_jurisdiction",
@@ -199,8 +199,8 @@ private val pidAttributes = PidMsoMdocNamespace to listOf(
     GivenNameAttribute,
     BirthDateAttribute,
     AgeOver18Attribute,
-    AgeBirthYearAttribute,
     AgeInYearsAttribute,
+    AgeBirthYearAttribute,
     FamilyNameBirthAttribute,
     GivenNameBirthAttribute,
     BirthPlaceAttribute,
@@ -225,6 +225,18 @@ private val pidAttributes = PidMsoMdocNamespace to listOf(
     IssuingJurisdictionAttribute,
 )
 
+private const val PID_DOCTYPE = "eu.europa.ec.eudi.pid"
+
+private fun pidDocType(v: Int?): String =
+    if (v == null) PID_DOCTYPE
+    else "$PID_DOCTYPE.$v"
+
+private fun pidNameSpace(v: Int?): MsoNameSpace = pidDocType(v)
+
+private fun pidDomesticNameSpace(v: Int?, countryCode: String): MsoNameSpace =
+    if (v == null) "$PID_DOCTYPE.$countryCode"
+    else "$PID_DOCTYPE.$countryCode.$v"
+
 val PidMsoMdocV1: MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
         id = CredentialConfigurationId(PidMsoMdocScope.value),
@@ -241,16 +253,6 @@ val PidMsoMdocV1: MsoMdocCredentialConfiguration =
         ),
         policy = MsoMdocPolicy(oneTimeUse = true),
     )
-
-//
-// Meta
-//
-
-private fun pidDomesticNameSpace(v: Int?, countryCode: String): MsoNameSpace =
-    if (v == null) "$PID_DOCTYPE.$countryCode"
-    else "$PID_DOCTYPE.$countryCode.$v"
-
-private fun pidNameSpace(v: Int?): MsoNameSpace = pidDocType(v)
 
 /**
  * Service for issuing PID MsoMdoc credential
