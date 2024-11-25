@@ -66,7 +66,10 @@ class EncodePidInSdJwtVc(
         val sdJwtFactory = SdJwtFactory(hashAlgorithm = hashAlgorithm, fallbackMinimumDigests = null)
         val signer = ECDSASigner(issuerSigningKey.key)
         SdJwtIssuer.nimbus(sdJwtFactory, signer, issuerSigningKey.signingAlgorithm) {
+            // TODO: This will change to dc+sd-jwt in a future release
             type(JOSEObjectType("vc+sd-jwt"))
+            keyID(issuerSigningKey.key.keyID)
+            x509CertChain(issuerSigningKey.key.x509CertChain)
         }
     }
 
