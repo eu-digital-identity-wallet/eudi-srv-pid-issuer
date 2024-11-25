@@ -278,8 +278,6 @@ fun beans(clock: Clock) = beans {
             clock = clock,
             keycloak = keycloak,
             userRealm = keycloakProperties.userRealm,
-            generateDocumentNumber = { DocumentNumber(UUID.randomUUID().toString()) },
-            generateAdministrativeNumber = { AdministrativeNumber(UUID.randomUUID().toString()) },
         )
     }
     bean<EncodePidInCbor>(isLazyInit = true) {

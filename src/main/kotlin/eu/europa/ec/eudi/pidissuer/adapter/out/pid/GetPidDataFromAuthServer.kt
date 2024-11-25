@@ -29,6 +29,7 @@ import org.keycloak.admin.client.Keycloak
 import org.keycloak.representations.idm.UserRepresentation
 import org.slf4j.LoggerFactory
 import java.time.*
+import java.util.*
 import kotlin.math.ceil
 
 private val log = LoggerFactory.getLogger(GetPidDataFromAuthServer::class.java)
@@ -36,8 +37,6 @@ private val log = LoggerFactory.getLogger(GetPidDataFromAuthServer::class.java)
 class GetPidDataFromAuthServer(
     private val issuerCountry: IsoCountry,
     private val issuingJurisdiction: IsoCountrySubdivision?,
-    private val generateDocumentNumber: suspend () -> DocumentNumber,
-    private val generateAdministrativeNumber: suspend () -> AdministrativeNumber,
     private val clock: Clock,
     private val keycloak: Keycloak,
     private val userRealm: String,
@@ -134,20 +133,20 @@ class GetPidDataFromAuthServer(
         }
     }
 
-    private suspend fun genPidMetaData(): PidMetaData {
+    private fun genPidMetaData(): PidMetaData {
         val issuanceDate = LocalDate.now(clock)
         return PidMetaData(
             expiryDate = issuanceDate.plusDays(100),
             issuanceDate = issuanceDate,
             issuingCountry = issuerCountry,
             issuingAuthority = IssuingAuthority.AdministrativeAuthority("${issuerCountry.value} Administrative authority"),
-            documentNumber = generateDocumentNumber(),
-            administrativeNumber = generateAdministrativeNumber(),
+            documentNumber = DocumentNumber(UUID.randomUUID().toString()),
+            administrativeNumber = AdministrativeNumber(UUID.randomUUID().toString()),
             issuingJurisdiction = issuingJurisdiction,
         )
     }
 
-    private suspend fun pid(userInfo: UserInfo): Pair<Pid, PidMetaData> {
+    private fun pid(userInfo: UserInfo): Pair<Pid, PidMetaData> {
         val birthDate = requireNotNull(userInfo.birthDate) {
             "missing required attribute 'birthDate'"
         }.let { LocalDate.parse(it) }
