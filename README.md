@@ -1,6 +1,6 @@
 # PID Issuer
 
-:heavy_exclamation_mark: **Important!** Before you proceed, please read
+**Important!** Before you proceed, please read
 the [EUDI Wallet Reference Implementation project description](https://github.com/eu-digital-identity-wallet/.github/blob/main/profile/reference-implementation.md)
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
