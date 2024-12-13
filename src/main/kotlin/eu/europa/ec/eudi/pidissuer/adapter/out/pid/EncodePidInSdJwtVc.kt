@@ -80,7 +80,7 @@ class EncodePidInSdJwtVc(
 
         NimbusSdJwtOps.issuer(sdJwtFactory, signer, issuerSigningKey.signingAlgorithm) {
             // TODO: This will change to dc+sd-jwt in a future release
-            type(JOSEObjectType("vc+sd-jwt"))
+            type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_VC_SD_JWT))
             keyID(issuerSigningKey.key.keyID)
             x509CertChain(x509CertChain)
         }
@@ -134,12 +134,12 @@ private fun selectivelyDisclosed(
         //
         // Always disclosed claims
         //
-        claim("iss", credentialIssuerId.externalForm)
-        claim("iat", iat.toInstant().epochSecond)
-        nbf?.let { claim("nbf", it.epochSecond) }
-        claim("exp", exp.epochSecond)
+        claim(RFC7519.ISSUER, credentialIssuerId.externalForm)
+        claim(RFC7519.ISSUED_AT, iat.toInstant().epochSecond)
+        nbf?.let { claim(RFC7519.NOT_BEFORE, it.epochSecond) }
+        claim(RFC7519.EXPIRATION_TIME, exp.epochSecond)
         cnf(holderPubKey)
-        claim("vct", vct.value)
+        claim(SdJwtVcSpec.VCT, vct.value)
 
         //
         // Selectively Disclosed claims
