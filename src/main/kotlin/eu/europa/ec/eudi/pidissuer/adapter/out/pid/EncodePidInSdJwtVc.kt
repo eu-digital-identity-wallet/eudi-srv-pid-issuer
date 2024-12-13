@@ -37,8 +37,6 @@ import eu.europa.ec.eudi.sdjwt.vc.sanOfUniformResourceIdentifier
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.add
-import kotlinx.serialization.json.buildJsonArray
 import org.slf4j.LoggerFactory
 import java.net.URL
 import java.security.cert.X509Certificate
@@ -80,15 +78,15 @@ class EncodePidInSdJwtVc(
             }
         }
 
-        SdJwtIssuer.nimbus(sdJwtFactory, signer, issuerSigningKey.signingAlgorithm) {
+        NimbusSdJwtOps.issuer(sdJwtFactory, signer, issuerSigningKey.signingAlgorithm) {
             // TODO: This will change to dc+sd-jwt in a future release
-            type(JOSEObjectType("vc+sd-jwt"))
+            type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_VC_SD_JWT))
             keyID(issuerSigningKey.key.keyID)
             x509CertChain(x509CertChain)
         }
     }
 
-    fun invoke(
+    suspend fun invoke(
         pid: Pid,
         pidMetaData: PidMetaData,
         holderKey: JWK,
@@ -111,7 +109,9 @@ class EncodePidInSdJwtVc(
             log.info(with(Printer) { issuedSdJwt.prettyPrint() })
         }
 
-        issuedSdJwt.serialize()
+        with(NimbusSdJwtOps) {
+            issuedSdJwt.serialize()
+        }
     }
 }
 
@@ -124,7 +124,7 @@ private fun selectivelyDisclosed(
     iat: ZonedDateTime,
     exp: Instant,
     nbf: Instant?,
-): SdObject {
+): DisclosableObject {
     require(exp.epochSecond > iat.toInstant().epochSecond) { "exp should be after iat" }
     nbf?.let {
         require(nbf.epochSecond > iat.toInstant().epochSecond) { "nbe should be after iat" }
@@ -134,55 +134,56 @@ private fun selectivelyDisclosed(
         //
         // Always disclosed claims
         //
-        iss(credentialIssuerId.externalForm)
-        iat(iat.toInstant().epochSecond)
-        nbf?.let { nbf(it.epochSecond) }
-        exp(exp.epochSecond)
+        claim(RFC7519.ISSUER, credentialIssuerId.externalForm)
+        claim(RFC7519.ISSUED_AT, iat.toInstant().epochSecond)
+        nbf?.let { claim(RFC7519.NOT_BEFORE, it.epochSecond) }
+        claim(RFC7519.EXPIRATION_TIME, exp.epochSecond)
         cnf(holderPubKey)
-        plain("vct", vct.value)
+        claim(SdJwtVcSpec.VCT, vct.value)
 
         //
         // Selectively Disclosed claims
         //
-        sd(OidcFamilyName.name, pid.familyName.value)
-        sd(OidcGivenName.name, pid.givenName.value)
-        sd(OidcBirthDate.name, pid.birthDate.toString())
-        structured(Attributes.AgeEqualOrOver.name) {
-            pid.ageOver18?.let { sd(Attributes.AgeOver18.name, it) }
+        sdClaim(OidcFamilyName.name, pid.familyName.value)
+        sdClaim(OidcGivenName.name, pid.givenName.value)
+        sdClaim(OidcBirthDate.name, pid.birthDate.toString())
+        objClaim(Attributes.AgeEqualOrOver.name) {
+            pid.ageOver18?.let { sdClaim(Attributes.AgeOver18.name, it) }
         }
-        pid.ageInYears?.let { sd(Attributes.AgeInYears.name, it.toInt()) }
-        pid.ageBirthYear?.let { sd(Attributes.AgeBirthYear.name, it.value.toString()) }
-        pid.familyNameBirth?.let { sd(OidcAssuranceBirthFamilyName.name, it.value) }
-        pid.givenNameBirth?.let { sd(OidcAssuranceBirthGivenName.name, it.value) }
+        pid.ageInYears?.let { sdClaim(Attributes.AgeInYears.name, it.toInt()) }
+        pid.ageBirthYear?.let { sdClaim(Attributes.AgeBirthYear.name, it.value.toString()) }
+        pid.familyNameBirth?.let { sdClaim(OidcAssuranceBirthFamilyName.name, it.value) }
+        pid.givenNameBirth?.let { sdClaim(OidcAssuranceBirthGivenName.name, it.value) }
 
         pid.oidcAssurancePlaceOfBirth()?.let { placeOfBirth ->
-            structured(OidcAssurancePlaceOfBirth.NAME) {
-                placeOfBirth.locality?.let { sd("locality", it) }
-                placeOfBirth.region?.let { sd("region", it) }
-                placeOfBirth.country?.let { sd("country", it) }
+            objClaim(OidcAssurancePlaceOfBirth.NAME) {
+                placeOfBirth.locality?.let { sdClaim("locality", it) }
+                placeOfBirth.region?.let { sdClaim("region", it) }
+                placeOfBirth.country?.let { sdClaim("country", it) }
             }
         }
         pid.oidcAddressClaim()?.let { address ->
-            structured(OidcAddressClaim.NAME) {
-                address.formatted?.let { sd("formatted", it) }
-                address.country?.let { sd("country", it) }
-                address.region?.let { sd("region", it) }
-                address.locality?.let { sd("locality", it) }
-                address.postalCode?.let { sd("postal_code", it) }
-                address.streetAddress?.let { sd("street_address", it) }
-                address.houseNumber?.let { sd("house_number", it) }
+            objClaim(OidcAddressClaim.NAME) {
+                address.formatted?.let { sdClaim("formatted", it) }
+                address.country?.let { sdClaim("country", it) }
+                address.region?.let { sdClaim("region", it) }
+                address.locality?.let { sdClaim("locality", it) }
+                address.postalCode?.let { sdClaim("postal_code", it) }
+                address.streetAddress?.let { sdClaim("street_address", it) }
+                address.houseNumber?.let { sdClaim("house_number", it) }
             }
         }
-        pid.genderAsString?.let { sd(OidcGender.name, it) }
+        pid.genderAsString?.let { sdClaim(OidcGender.name, it) }
         pid.nationality?.let {
-            val nationalities = buildJsonArray { add(it.value) }
-            sd(OidcAssuranceNationalities.name, nationalities)
+            sdArrClaim(OidcAssuranceNationalities.name) {
+                claim(it.value)
+            }
         }
-        sd(IssuingAuthorityAttribute.name, pidMetaData.issuingAuthority.valueAsString())
-        pidMetaData.documentNumber?.let { sd(DocumentNumberAttribute.name, it.value) }
-        pidMetaData.administrativeNumber?.let { sd(AdministrativeNumberAttribute.name, it.value) }
-        sd(IssuingCountryAttribute.name, pidMetaData.issuingCountry.value)
-        pidMetaData.issuingJurisdiction?.let { sd(IssuingJurisdictionAttribute.name, it) }
+        sdClaim(IssuingAuthorityAttribute.name, pidMetaData.issuingAuthority.valueAsString())
+        pidMetaData.documentNumber?.let { sdClaim(DocumentNumberAttribute.name, it.value) }
+        pidMetaData.administrativeNumber?.let { sdClaim(AdministrativeNumberAttribute.name, it.value) }
+        sdClaim(IssuingCountryAttribute.name, pidMetaData.issuingCountry.value)
+        pidMetaData.issuingJurisdiction?.let { sdClaim(IssuingJurisdictionAttribute.name, it) }
     }
 }
 
