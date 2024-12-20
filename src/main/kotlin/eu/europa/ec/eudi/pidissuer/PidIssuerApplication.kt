@@ -68,6 +68,8 @@ import org.keycloak.admin.client.spi.ResteasyClientClassicProvider
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties
+import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
 import org.springframework.boot.web.codec.CodecCustomizer
 import org.springframework.context.ApplicationContextInitializer
@@ -105,6 +107,7 @@ import org.springframework.security.web.server.authorization.ServerWebExchangeDe
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
+import java.net.URI
 import java.net.URL
 import java.security.KeyStore
 import java.security.cert.X509Certificate
@@ -469,6 +472,14 @@ fun beans(clock: Clock) = beans {
                     BatchCredentialIssuance.NotSupported
                 }
             },
+            display = ref<IssuerMetadataProperties>().display
+                .map { display ->
+                    CredentialIssuerDisplay(
+                        name = display.name,
+                        locale = display.locale?.let { Locale.forLanguageTag(it) },
+                        logo = display.logo?.let { ImageUri(it.uri, it.alternativeText) },
+                    )
+                },
         )
     }
 
@@ -874,10 +885,30 @@ data class KeycloakConfigurationProperties(
     }
 }
 
+/**
+ * Configuration properties for Issuer metadata.
+ */
+@ConfigurationProperties("issuer.metadata")
+private data class IssuerMetadataProperties(
+    val display: List<DisplayProperties> = emptyList(),
+) {
+    data class DisplayProperties(
+        val name: String? = null,
+        val locale: String? = null,
+        val logo: LogoProperties? = null,
+    )
+
+    data class LogoProperties(
+        val uri: URI,
+        val alternativeText: String? = null,
+    )
+}
+
 fun BeanDefinitionDsl.initializer(): ApplicationContextInitializer<GenericApplicationContext> =
     ApplicationContextInitializer<GenericApplicationContext> { initialize(it) }
 
 @SpringBootApplication
+@EnableConfigurationProperties(IssuerMetadataProperties::class)
 @EnableScheduling
 class PidIssuerApplication
 

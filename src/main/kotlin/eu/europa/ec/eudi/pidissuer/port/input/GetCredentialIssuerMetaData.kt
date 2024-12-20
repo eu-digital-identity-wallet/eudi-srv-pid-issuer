@@ -129,8 +129,8 @@ private fun CredentialResponseEncryption.toTransferObject(): Option<CredentialIs
 
 private fun CredentialIssuerDisplay.toTransferObject(): DisplayTO =
     DisplayTO(
-        name = name?.name,
-        locale = name?.locale?.toString(),
+        name = name,
+        locale = locale?.toString(),
         logo = logo?.toTransferObject(),
     )
 

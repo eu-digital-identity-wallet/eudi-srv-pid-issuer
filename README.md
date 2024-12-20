@@ -287,6 +287,27 @@ Variable: `ISSUER_CREDENTIALENDPOINT_BATCHISSUANCE_BATCHSIZE`
 Description: Maximum length of `proofs` array supported by credential endpoint when batch issuance support is enabled          
 Default value: `10`
 
+### Metadata configuration
+
+You can configure the display objects of the Credential Issuer Metadata of PID Issuer, using the following 
+environment variables. 
+For each display object you must configure as a bare minimum either the name or the logo uri.
+Only one display object can be configured per locale.
+
+Replace `XX` with the index of the display object you want to configure.
+
+Variable: `ISSUER_METADATA_DISPLAY_XX_NAME` (e.g. `ISSUER_METADATA_DISPLAY_0_NAME`)    
+Description: Display name for the Credential Issuer  
+
+Variable: `ISSUER_METADATA_DISPLAY_XX_LOCALE` (e.g. `ISSUER_METADATA_DISPLAY_0_LOCALE`)    
+Description: Language tag of this display object  
+
+Variable: `ISSUER_METADATA_DISPLAY_XX_LOGO_URI` (e.g. `ISSUER_METADATA_DISPLAY_0_LOGO_URI`)  
+Description: URI where the Wallet can obtain the logo of the Credential Issuer  
+
+Variable: `ISSUER_METADATA_DISPLAY_XX_LOGO_ALTERNATIVETEXT` (e.g. `ISSUER_METADATA_DISPLAY_0_LOGO_ALTERNATIVETEXT`)  
+Description: Alternative text for the logo image  
+
 ### Signing Key
 
 When either PID issuance in SD-JWT is enabled, or the internal MSO MDoc encoder is used, an EC Key is required 
