@@ -771,7 +771,7 @@ private fun <T> Environment.readNonEmptySet(key: String, f: (String) -> T?): Non
 
 private fun HttpsUrl.appendPath(path: String): HttpsUrl =
     HttpsUrl.unsafe(
-        UriComponentsBuilder.fromHttpUrl(externalForm)
+        UriComponentsBuilder.fromUriString(externalForm)
             .path(path)
             .build()
             .toUriString(),
