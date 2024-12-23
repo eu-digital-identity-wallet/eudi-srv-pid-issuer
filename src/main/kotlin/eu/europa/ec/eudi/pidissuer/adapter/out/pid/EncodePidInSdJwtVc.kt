@@ -102,7 +102,7 @@ class EncodePidInSdJwtVc(
             exp = calculateExpiresAt(at),
             nbf = calculateNotUseBefore?.let { calculate -> calculate(at) },
         )
-        val issuedSdJwt: SdJwt.Issuance<SignedJWT> = issuer.issue(sdJwtSpec).getOrElse {
+        val issuedSdJwt: SdJwt<SignedJWT> = issuer.issue(sdJwtSpec).getOrElse {
             raise(Unexpected("Error while creating SD-JWT", it))
         }
         if (log.isInfoEnabled) {
@@ -219,7 +219,7 @@ private fun Pid.oidcAddressClaim(): OidcAddressClaim? =
 private object Printer {
     val json = Json { prettyPrint = true }
     private fun JsonElement.pretty(): String = json.encodeToString(this)
-    fun SdJwt.Issuance<SignedJWT>.prettyPrint(): String {
+    fun SdJwt<SignedJWT>.prettyPrint(): String {
         var str = "\nSD-JWT with ${disclosures.size} disclosures\n"
         disclosures.forEach { d ->
             val kind = when (d) {
