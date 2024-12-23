@@ -19,6 +19,7 @@ import arrow.core.NonEmptySet
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import java.util.Locale
 
 /**
  * Encryption algorithms and methods supported for encrypting Credential Responses.
@@ -79,9 +80,16 @@ fun <T> CredentialResponseEncryption.fold(
 }
 
 data class CredentialIssuerDisplay(
-    val name: DisplayName? = null,
+    val name: String? = null,
+    val locale: Locale? = null,
     val logo: ImageUri? = null,
-)
+) {
+    init {
+        require(name != null || logo != null) {
+            "provide at least one of 'name' or 'logo'"
+        }
+    }
+}
 
 /**
  * @param id The Credential Issuer's identifier
@@ -114,6 +122,13 @@ data class CredentialIssuerMetaData(
     val display: List<CredentialIssuerDisplay> = emptyList(),
     val specificCredentialIssuers: List<IssueSpecificCredential>,
 ) {
+    init {
+        val displayLocales = display.map { it.locale }
+        require(displayLocales.size == displayLocales.distinct().size) {
+            "only one display object can be configured per locale"
+        }
+    }
+
     val credentialConfigurationsSupported: List<CredentialConfiguration>
         get() = specificCredentialIssuers.map { it.supportedCredential }
 }
