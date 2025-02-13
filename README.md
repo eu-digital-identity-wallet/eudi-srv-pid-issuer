@@ -155,8 +155,7 @@ Description: Whether to enable support for PID issuance in *MSO MDOC* format
 Default value: `true`
 
 Variable: `ISSUER_PID_MSO_MDOC_ENCODER_DURATION`    
-Description: Configures the validity of issued PIDs when using the internal encoder. Uses Period syntax.
-Required when `ISSUER_PID_MSO_MDOC_ENCODER` is set to `Internal`.  
+Description: Configures the validity of issued PIDs in *MSO MDOC* format. Uses Period syntax. 
 Default value: `P30D`
 
 Variable: `ISSUER_PID_MSO_MDOC_NOTIFICATIONS_ENABLED`  
@@ -166,6 +165,10 @@ Default value: `true`
 Variable: `ISSUER_PID_SD_JWT_VC_ENABLED`  
 Description: Whether to enable support for PID issuance in *SD JWT VC* format.  
 Default value: `true`
+
+Variable: `ISSUER_PID_SD_JWT_VC_DURATION`  
+Description: Configures the validity of issued PIDs in *SD JWT VC* format. Uses Period syntax.  
+Default value: `P30D`
 
 Variable: `ISSUER_PID_SD_JWT_VC_NOTUSEBEFORE`  
 Description: Period after which a PID issued in *SD JWT VC* becomes valid. Used to calculate the value of the `nbf` claim.  
