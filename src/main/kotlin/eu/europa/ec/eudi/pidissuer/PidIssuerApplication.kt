@@ -416,6 +416,10 @@ fun beans(clock: Clock) = beans {
                 }
 
                 if (enableSdJwtVcPid) {
+                    val expiresIn = env.getProperty("issuer.pid.sd_jwt_vc.duration")?.let { duration ->
+                        Duration.parse(duration).takeUnless { it.isZero || it.isNegative }
+                    } ?: Duration.ofDays(30L)
+
                     val notUseBefore = env.getProperty("issuer.pid.sd_jwt_vc.notUseBefore")?.let {
                         runCatching {
                             Duration.parse(it).takeUnless { it.isZero || it.isNegative }
@@ -429,7 +433,7 @@ fun beans(clock: Clock) = beans {
                         getPidData = ref(),
                         clock = clock,
                         credentialIssuerId = issuerPublicUrl,
-                        calculateExpiresAt = { iat -> iat.plusDays(30).toInstant() },
+                        calculateExpiresAt = { iat -> (iat + expiresIn).toInstant() },
                         calculateNotUseBefore = notUseBefore?.let { duration ->
                             {
                                     iat ->
