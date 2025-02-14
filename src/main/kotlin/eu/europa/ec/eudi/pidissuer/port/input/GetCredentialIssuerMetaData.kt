@@ -41,6 +41,8 @@ data class CredentialIssuerMetaDataTO(
     val deferredCredentialEndpoint: String? = null,
     @SerialName("notification_endpoint")
     val notificationEndpoint: String? = null,
+    @SerialName("nonce_endpoint")
+    val nonceEndpoint: String? = null,
     @SerialName("credential_response_encryption")
     val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
     @SerialName("batch_credential_issuance")
@@ -97,6 +99,7 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
     credentialEndpoint = credentialEndPoint.externalForm,
     deferredCredentialEndpoint = deferredCredentialEndpoint?.externalForm,
     notificationEndpoint = notificationEndpoint?.externalForm,
+    nonceEndpoint = nonceEndpoint?.externalForm,
     credentialResponseEncryption = credentialResponseEncryption.toTransferObject().getOrNull(),
     batchCredentialIssuance = when (batchCredentialIssuance) {
         BatchCredentialIssuance.NotSupported -> null
