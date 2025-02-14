@@ -19,7 +19,6 @@ import arrow.core.Option
 import arrow.core.none
 import arrow.core.some
 import eu.europa.ec.eudi.pidissuer.domain.*
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -149,7 +148,6 @@ private fun CredentialConfiguration.format(): Format = when (this) {
     is SdJwtVcCredentialConfiguration -> SD_JWT_VC_FORMAT
 }
 
-@OptIn(ExperimentalSerializationApi::class)
 private fun credentialMetaDataJson(
     d: CredentialConfiguration,
     batchCredentialIssuance: BatchCredentialIssuance,
@@ -196,7 +194,6 @@ private fun ProofType.proofTypeName(): String =
         is ProofType.Jwt -> "jwt"
     }
 
-@OptIn(ExperimentalSerializationApi::class)
 private fun ProofType.toJsonObject(): JsonObject =
     buildJsonObject {
         when (this@toJsonObject) {
@@ -204,11 +201,24 @@ private fun ProofType.toJsonObject(): JsonObject =
                 putJsonArray("proof_signing_alg_values_supported") {
                     addAll(signingAlgorithmsSupported.map { it.name })
                 }
+                if (keyAttestation is KeyAttestation.Required) {
+                    putJsonObject("key_attestations_required") {
+                        keyAttestation.keyStorage?.let { keyStorage ->
+                            putJsonArray("key_storage") {
+                                addAll(keyStorage.map { it.value })
+                            }
+                        }
+                        keyAttestation.useAuthentication?.let { userAuthentication ->
+                            putJsonArray("user_authentication") {
+                                addAll(userAuthentication.map { it.value })
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
-@OptIn(ExperimentalSerializationApi::class)
 internal fun MsoMdocCredentialConfiguration.toTransferObject(
     batchCredentialIssuance: BatchCredentialIssuance,
 ): JsonObjectBuilder.() -> Unit = {
@@ -236,7 +246,6 @@ internal fun MsoMdocCredentialConfiguration.toTransferObject(
     }
 }
 
-@OptIn(ExperimentalSerializationApi::class)
 internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilder.() -> Unit = {
     if (display.isNotEmpty()) {
         putJsonArray("display") {

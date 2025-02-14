@@ -285,6 +285,7 @@ val MobileDrivingLicenceV1: MsoMdocCredentialConfiguration =
             nonEmptySetOf(
                 ProofType.Jwt(
                     signingAlgorithmsSupported = nonEmptySetOf(JWSAlgorithm.ES256),
+                    keyAttestation = KeyAttestation.NotRequired,
                 ),
             ),
         ),

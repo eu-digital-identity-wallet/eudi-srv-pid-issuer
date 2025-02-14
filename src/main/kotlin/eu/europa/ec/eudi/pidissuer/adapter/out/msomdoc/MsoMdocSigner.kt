@@ -31,10 +31,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.datetime.toKotlinInstant
 import java.time.Clock
 import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.time.Duration
 
-@OptIn(ExperimentalEncodingApi::class)
 internal class MsoMdocSigner<in Credential>(
     private val clock: Clock,
     private val issuerSigningKey: IssuerSigningKey,
