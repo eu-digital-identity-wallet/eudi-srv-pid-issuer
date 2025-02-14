@@ -29,6 +29,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonElement
+import org.springframework.http.CacheControl
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.core.GrantedAuthority
@@ -39,11 +40,12 @@ import org.springframework.web.server.ServerWebInputException
 
 private val APPLICATION_JWT = MediaType.parseMediaType("application/jwt")
 
-class WalletApi(
+internal class WalletApi(
     private val issueCredential: IssueCredential,
     private val getDeferredCredential: GetDeferredCredential,
     private val getPidData: GetPidData,
     private val handleNotificationRequest: HandleNotificationRequest,
+    private val handleNonceRequest: HandleNonceRequest,
 ) {
 
     val route = coRouter {
@@ -67,6 +69,10 @@ class WalletApi(
             contentType(MediaType.APPLICATION_JSON) and accept(MediaType.ALL),
             this@WalletApi::handleNotificationRequest,
         )
+        POST(
+            NONCE_ENDPOINT,
+            contentType(MediaType.ALL) and accept(MediaType.APPLICATION_JSON),
+        ) { handleNonceRequest() }
     }
 
     private suspend fun handleIssueCredential(req: ServerRequest): ServerResponse {
@@ -122,10 +128,17 @@ class WalletApi(
                     .bodyValueAndAwait(response)
         }
 
+    private suspend fun handleNonceRequest(): ServerResponse =
+        ServerResponse.ok()
+            .contentType(MediaType.APPLICATION_JSON)
+            .cacheControl(CacheControl.noStore())
+            .bodyValueAndAwait(handleNonceRequest.invoke())
+
     companion object {
         const val CREDENTIAL_ENDPOINT = "/wallet/credentialEndpoint"
         const val DEFERRED_ENDPOINT = "/wallet/deferredEndpoint"
         const val NOTIFICATION_ENDPOINT = "/wallet/notificationEndpoint"
+        const val NONCE_ENDPOINT = "/wallet/nonceEndpoint"
     }
 }
 

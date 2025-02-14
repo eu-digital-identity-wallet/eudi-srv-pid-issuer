@@ -172,7 +172,7 @@ Default value: `P30D`
 
 Variable: `ISSUER_PID_SD_JWT_VC_NOTUSEBEFORE`  
 Description: Period after which a PID issued in *SD JWT VC* becomes valid. Used to calculate the value of the `nbf` claim.  
-Default value: `PT20`
+Default value: `PT20S`
 
 Variable: `ISSUER_PID_SD_JWT_VC_DEFERRED`  
 Description: Whether PID issuance in *SD JWT VC* format should be *deferred* or *immediate*.  
@@ -289,6 +289,10 @@ Default value: `true`
 Variable: `ISSUER_CREDENTIALENDPOINT_BATCHISSUANCE_BATCHSIZE`  
 Description: Maximum length of `proofs` array supported by credential endpoint when batch issuance support is enabled          
 Default value: `10`
+
+Variable: `ISSUER_CNONCE_EXPIRATION`  
+Description: Duration after which CNonce values expire    
+Default value: `PT5M`
 
 ### Metadata configuration
 
