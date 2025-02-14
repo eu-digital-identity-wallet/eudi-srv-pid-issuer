@@ -106,6 +106,8 @@ data class CredentialIssuerDisplay(
  * @param notificationEndpoint URL of the Credential Issuer's Notification Endpoint. This URL MUST use
  * the https scheme and MAY contain port, path, and query parameter components. If omitted, the
  * Credential Issuer does not support the Notification Endpoint.
+ * @param nonceEndpoint URL of the Credential Issuer's Nonce Endpoint. If omitted,
+ * the Credential Issuer does not support the Nonce Endpoint.
  * @param credentialResponseEncryption indicates whether the issuer requires the
  * Credential Response encrypted or not.
  * @param display display properties of a Credential Issuer for a certain language
@@ -118,6 +120,7 @@ data class CredentialIssuerMetaData(
     val batchCredentialIssuance: BatchCredentialIssuance,
     val deferredCredentialEndpoint: HttpsUrl? = null,
     val notificationEndpoint: HttpsUrl? = null,
+    val nonceEndpoint: HttpsUrl? = null,
     val credentialResponseEncryption: CredentialResponseEncryption,
     val display: List<CredentialIssuerDisplay> = emptyList(),
     val specificCredentialIssuers: List<IssueSpecificCredential>,
