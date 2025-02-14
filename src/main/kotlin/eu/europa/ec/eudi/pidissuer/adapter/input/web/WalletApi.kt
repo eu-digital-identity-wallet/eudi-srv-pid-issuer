@@ -82,7 +82,7 @@ internal class WalletApi(
             issueCredential(context, credentialRequest)
         } catch (error: ServerWebInputException) {
             IssueCredentialResponse.FailedTO(
-                type = CredentialErrorTypeTo.INVALID_REQUEST,
+                type = CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST,
                 errorDescription = "Request body could not be parsed",
             )
         }

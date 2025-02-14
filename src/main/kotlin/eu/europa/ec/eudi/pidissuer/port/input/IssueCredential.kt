@@ -37,21 +37,15 @@ import java.time.Clock
 import java.time.Duration
 
 @Serializable
-enum class FormatTO {
-    @SerialName(MSO_MDOC_FORMAT_VALUE)
-    MsoMdoc,
-
-    @SerialName(SD_JWT_VC_FORMAT_VALUE)
-    SdJwtVc,
-}
-
-@Serializable
 enum class ProofTypeTO {
     @SerialName("jwt")
     JWT,
 
     @SerialName("ldp_vp")
     LDP_VP,
+
+    @SerialName("attestation")
+    ATTESTATION,
 }
 
 @Serializable
@@ -60,12 +54,14 @@ data class ProofTo(
     val jwt: String? = null,
     @SerialName("ldp_vp")
     val ldpVp: String? = null,
+    val attestation: String? = null,
 )
 
 @Serializable
 data class ProofsTO(
     @SerialName("jwt") val jwtProofs: List<String>? = null,
     @SerialName("ldp_vp") val ldpVpProofs: List<String>? = null,
+    @SerialName("attestation") val attestations: List<String>? = null,
 )
 
 @Serializable
@@ -75,22 +71,16 @@ data class CredentialResponseEncryptionTO(
     @SerialName("enc") @Required val method: String,
 )
 
-typealias ClaimsTO = Map<String, JsonElement>
-
 @Serializable
 data class CredentialRequestTO(
-    val format: FormatTO? = null,
-    val proof: ProofTo? = null,
-    val proofs: ProofsTO? = null,
     @SerialName("credential_identifier")
     val credentialIdentifier: String? = null,
+    @SerialName("credential_configuration_id")
+    val credentialConfigurationId: String? = null,
+    val proof: ProofTo? = null,
+    val proofs: ProofsTO? = null,
     @SerialName("credential_response_encryption")
     val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
-    @SerialName("doctype")
-    val docType: String? = null,
-    @SerialName("vct")
-    val type: String? = null,
-    val claims: ClaimsTO? = null,
 )
 
 /**
@@ -99,32 +89,19 @@ data class CredentialRequestTO(
 sealed interface IssueCredentialError {
 
     /**
-     * Indicates that both 'format' and 'credential_identifier' was missing from a Credential Request.
+     * Indicates that both 'credential_configuration_id' and 'credential_identifier' was missing from a Credential Request.
      */
-    data object MissingBothFormatAndCredentialIdentifier : IssueCredentialError
+    data object MissingBothCredentialConfigurationIdAndCredentialIdentifier : IssueCredentialError
 
     /**
-     * Indicates that a Credential Request erroneously contained both 'format' and 'credential_identifier'.
+     * Indicates that a Credential Request erroneously contained both 'credential_configuration_id' and 'credential_identifier'.
      */
-    data object BothFormatAndCredentialIdentifierProvided : IssueCredentialError
-
-    /**
-     * Indicates that a Credential Request contained Credential Format specific parameters when 'credential_identifier'
-     * was provided.
-     */
-    data class NoCredentialFormatSpecificParametersWhenCredentialIdentifierProvided(
-        val parameters: NonEmptySet<String>,
-    ) : IssueCredentialError {
-        companion object {
-            operator fun invoke(parameter: String): NoCredentialFormatSpecificParametersWhenCredentialIdentifierProvided =
-                NoCredentialFormatSpecificParametersWhenCredentialIdentifierProvided(nonEmptySetOf(parameter))
-        }
-    }
+    data object BothCredentialConfigurationIdAndCredentialIdentifierProvided : IssueCredentialError
 
     /**
      * Indicates a credential request contained an unsupported 'format'.
      */
-    data class UnsupportedCredentialFormat(val format: Format? = null) : IssueCredentialError
+    data class UnsupportedCredentialConfigurationId(val credentialConfigurationId: CredentialConfigurationId) : IssueCredentialError
 
     data class UnsupportedCredentialType(
         val format: Format,
@@ -167,14 +144,11 @@ sealed interface IssueCredentialError {
 @Serializable
 enum class CredentialErrorTypeTo {
 
-    @SerialName("invalid_request")
-    INVALID_REQUEST,
+    @SerialName("invalid_credential_request")
+    INVALID_CREDENTIAL_REQUEST,
 
     @SerialName("unsupported_credential_type")
     UNSUPPORTED_CREDENTIAL_TYPE,
-
-    @SerialName("unsupported_credential_format")
-    UNSUPPORTED_CREDENTIAL_FORMAT,
 
     @SerialName("invalid_proof")
     INVALID_PROOF,
@@ -299,7 +273,10 @@ class IssueCredential(
         credentialRequestTO: CredentialRequestTO,
     ): IssueCredentialResponse = coroutineScope {
         either {
-            log.info("Handling issuance request for ${credentialRequestTO.format}..")
+            val credentialConfigurationIdOrCredentialIdentifier =
+                credentialRequestTO.credentialConfigurationId
+                    ?: credentialRequestTO.credentialIdentifier
+            log.info("Handling issuance request for $credentialConfigurationIdOrCredentialIdentifier..")
             val(request, issued) =
                 services().issueCredential(authorizationContext, credentialRequestTO)
             successResponse(request, issued)
@@ -345,10 +322,11 @@ private class Services(
                 credentialRequestTO.toDomain(
                     credentialIssuerMetadata.credentialResponseEncryption,
                     credentialIssuerMetadata.batchCredentialIssuance,
+                    credentialIssuerMetadata.credentialConfigurationsSupported,
                 )
             val (request, credentialIdentifier) =
                 when (unresolvedRequest) {
-                    is UnresolvedCredentialRequest.ByFormat ->
+                    is UnresolvedCredentialRequest.ByCredentialConfigurationId ->
                         unresolvedRequest.credentialRequest to null
 
                     is UnresolvedCredentialRequest.ByCredentialIdentifier ->
@@ -407,9 +385,9 @@ private class Services(
 private sealed interface UnresolvedCredentialRequest {
 
     /**
-     * A Credential Request placed by Format.
+     * A Credential Request placed by Credential Configuration Id.
      */
-    data class ByFormat(val credentialRequest: CredentialRequest) : UnresolvedCredentialRequest
+    data class ByCredentialConfigurationId(val credentialRequest: CredentialRequest) : UnresolvedCredentialRequest
 
     /**
      * A Credential Request placed by Credential Identifier.
@@ -435,6 +413,7 @@ private interface Validations : Raise<IssueCredentialError> {
     fun CredentialRequestTO.toDomain(
         supportedEncryption: CredentialResponseEncryption,
         supportedBatchIssuance: BatchCredentialIssuance,
+        supportedCredentialConfigurations: List<CredentialConfiguration>,
     ): UnresolvedCredentialRequest {
         if (supportedBatchIssuance is BatchCredentialIssuance.NotSupported) {
             ensure(proofs == null) {
@@ -448,12 +427,13 @@ private interface Validations : Raise<IssueCredentialError> {
                 proof == null && proofs != null -> {
                     val jwtProofs = proofs.jwtProofs?.map { UnvalidatedProof.Jwt(it) }
                     val ldpVpProofs = proofs.ldpVpProofs?.map { UnvalidatedProof.LdpVp(it) }
+                    val attestations = proofs.attestations?.map { UnvalidatedProof.Attestation(it) }
                     // Proof object contains exactly one parameter named as the proof type
-                    ensure(jwtProofs == null || ldpVpProofs == null) {
+                    ensure(1 == listOfNotNull(jwtProofs, ldpVpProofs, attestations).size) {
                         InvalidProof("Only a single proof type is allowed")
                     }
 
-                    val proofs = (jwtProofs.orEmpty() + ldpVpProofs.orEmpty()).toNonEmptyListOrNull()
+                    val proofs = (jwtProofs.orEmpty() + ldpVpProofs.orEmpty() + attestations.orEmpty()).toNonEmptyListOrNull()
                     ensureNotNull(proofs) { MissingProof }
                 }
 
@@ -467,85 +447,43 @@ private interface Validations : Raise<IssueCredentialError> {
             InvalidProof("You can provide at most '${supportedBatchIssuance.maxProofsSupported}' proofs")
         }
 
-        val credentialResponseEncryption =
-            credentialResponseEncryption?.toDomain()
-                ?: RequestedResponseEncryption.NotRequired
+        val credentialResponseEncryption = credentialResponseEncryption?.toDomain() ?: RequestedResponseEncryption.NotRequired
         credentialResponseEncryption.ensureIsSupported(supportedEncryption)
 
-        fun credentialRequestByFormat(format: FormatTO): UnresolvedCredentialRequest.ByFormat =
-            when (format) {
-                FormatTO.MsoMdoc -> {
-                    val docType = run {
-                        ensure(!docType.isNullOrBlank()) { UnsupportedCredentialType(format = MSO_MDOC_FORMAT) }
-                        docType
+        fun credentialRequestByCredentialConfigurationId(
+            credentialConfigurationId: CredentialConfigurationId,
+        ): UnresolvedCredentialRequest.ByCredentialConfigurationId =
+            supportedCredentialConfigurations.firstOrNull { credentialConfigurationId == it.id }
+                ?.let { credentialConfiguration ->
+                    val credentialRequest = when (credentialConfiguration) {
+                        is MsoMdocCredentialConfiguration -> credentialConfiguration.credentialRequest(proofs, credentialResponseEncryption)
+                        is SdJwtVcCredentialConfiguration -> credentialConfiguration.credentialRequest(proofs, credentialResponseEncryption)
+                        is JwtVcJsonCredentialConfiguration -> raise(UnsupportedCredentialType(format = JWT_VS_JSON_FORMAT))
                     }
-                    val claims = claims
-                        ?.decodeAs<Map<String, Map<String, JsonObject>>>()
-                        ?.mapValues { (_, vs) -> vs.map { it.key } }
-                        ?: emptyMap()
-                    UnresolvedCredentialRequest.ByFormat(
-                        MsoMdocCredentialRequest(
-                            proofs,
-                            credentialResponseEncryption,
-                            docType,
-                            claims,
-                        ),
-                    )
-                }
+                    UnresolvedCredentialRequest.ByCredentialConfigurationId(credentialRequest)
+                } ?: raise(UnsupportedCredentialConfigurationId(credentialConfigurationId))
 
-                FormatTO.SdJwtVc -> {
-                    val type = run {
-                        ensure(!type.isNullOrBlank()) { UnsupportedCredentialType(format = SD_JWT_VC_FORMAT) }
-                        type
-                    }
-                    val claims = claims
-                        ?.decodeAs<Map<String, JsonObject>>()
-                        ?.keys
-                        ?: emptySet()
-
-                    UnresolvedCredentialRequest.ByFormat(
-                        SdJwtVcCredentialRequest(
-                            proofs,
-                            credentialResponseEncryption,
-                            SdJwtVcType(type),
-                            claims,
-                        ),
-                    )
-                }
-            }
-
-        fun credentialRequestByCredentialIdentifier(credentialIdentifier: String): UnresolvedCredentialRequest.ByCredentialIdentifier {
-            ensure(docType == null) {
-                NoCredentialFormatSpecificParametersWhenCredentialIdentifierProvided("doctype")
-            }
-            ensure(claims == null) {
-                NoCredentialFormatSpecificParametersWhenCredentialIdentifierProvided("claims")
-            }
-            ensure(type == null) {
-                NoCredentialFormatSpecificParametersWhenCredentialIdentifierProvided("vct")
-            }
-
-            return UnresolvedCredentialRequest.ByCredentialIdentifier(
+        fun credentialRequestByCredentialIdentifier(credentialIdentifier: String): UnresolvedCredentialRequest.ByCredentialIdentifier =
+            UnresolvedCredentialRequest.ByCredentialIdentifier(
                 CredentialIdentifier(credentialIdentifier),
                 proofs,
                 credentialResponseEncryption,
             )
-        }
 
-        val formatOrCredentialIdentifier =
+        val credentialConfigurationIdOrCredentialIdentifier =
             Ior.fromNullables(
-                format,
+                credentialConfigurationId,
                 credentialIdentifier,
-            ) ?: raise(MissingBothFormatAndCredentialIdentifier)
-        return formatOrCredentialIdentifier.fold(
-            { format -> credentialRequestByFormat(format) },
+            ) ?: raise(MissingBothCredentialConfigurationIdAndCredentialIdentifier)
+        return credentialConfigurationIdOrCredentialIdentifier.fold(
+            {
+                val credentialConfigurationId = CredentialConfigurationId(it)
+                credentialRequestByCredentialConfigurationId(credentialConfigurationId)
+            },
             { credentialIdentifier -> credentialRequestByCredentialIdentifier(credentialIdentifier) },
-            { _, _ -> raise(BothFormatAndCredentialIdentifierProvided) },
+            { _, _ -> raise(BothCredentialConfigurationIdAndCredentialIdentifierProvided) },
         )
     }
-
-    private inline fun <reified T> ClaimsTO.decodeAs(): T =
-        Either.catch { Json.decodeFromString<T>(Json.encodeToString(this)) }.getOrElse { raise(InvalidClaims(it)) }
 
     /**
      * Gets the [RequestedResponseEncryption] that corresponds to the provided values.
@@ -631,6 +569,11 @@ private interface Validations : Raise<IssueCredentialError> {
             ensureNotNull(ldpVp) { MissingProof }
             UnvalidatedProof.LdpVp(ldpVp)
         }
+
+        ProofTypeTO.ATTESTATION -> {
+            ensureNotNull(attestation) { MissingProof }
+            UnvalidatedProof.Attestation(attestation)
+        }
     }
 }
 
@@ -663,8 +606,9 @@ fun CredentialResponse.toTO(cNonce: String): IssueCredentialResponse.PlainTO = w
  */
 private fun IssueCredentialError.toTO(cNonce: String): IssueCredentialResponse.FailedTO {
     val (type, description) = when (this) {
-        is UnsupportedCredentialFormat ->
-            CredentialErrorTypeTo.UNSUPPORTED_CREDENTIAL_FORMAT to "Unsupported '${format?.value}'"
+        is UnsupportedCredentialConfigurationId ->
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
+                "Unsupported Credential Configuration Id '${credentialConfigurationId.value}'"
 
         is UnsupportedCredentialType ->
             CredentialErrorTypeTo.UNSUPPORTED_CREDENTIAL_TYPE to "Unsupported format '${format.value}' type `$types`"
@@ -679,26 +623,23 @@ private fun IssueCredentialError.toTO(cNonce: String): IssueCredentialResponse.F
             CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS to "Invalid Credential Response Encryption Parameters"
 
         is WrongScope ->
-            CredentialErrorTypeTo.INVALID_REQUEST to "Wrong scope. Expecting $expected"
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Wrong scope. Expecting $expected"
 
         is Unexpected ->
-            CredentialErrorTypeTo.INVALID_REQUEST to "$msg${cause?.message?.let { " : $it" } ?: ""}"
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "$msg${cause?.message?.let { " : $it" } ?: ""}"
 
-        is MissingBothFormatAndCredentialIdentifier ->
-            CredentialErrorTypeTo.INVALID_REQUEST to "Either 'format' or 'credential_identifier' must be provided"
+        is MissingBothCredentialConfigurationIdAndCredentialIdentifier ->
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Either 'format' or 'credential_identifier' must be provided"
 
-        is BothFormatAndCredentialIdentifierProvided ->
-            CredentialErrorTypeTo.INVALID_REQUEST to "Only one of 'format' or 'credential_identifier' must be provided"
-
-        is NoCredentialFormatSpecificParametersWhenCredentialIdentifierProvided ->
-            CredentialErrorTypeTo.INVALID_REQUEST to
-                "'${parameters.joinToString(", ")}' must not be provided when 'credential_identifier' is present"
+        is BothCredentialConfigurationIdAndCredentialIdentifierProvided ->
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Only one of 'format' or 'credential_identifier' must be provided"
 
         is InvalidCredentialIdentifier ->
-            CredentialErrorTypeTo.INVALID_REQUEST to "'${credentialIdentifier.value}' is not a valid Credential Identifier"
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "'${credentialIdentifier.value}' is not a valid Credential Identifier"
 
         is InvalidClaims ->
-            CredentialErrorTypeTo.INVALID_REQUEST to "'claims' does not have the expected structure${error.message?.let { " : $it" } ?: ""}"
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
+                "'claims' does not have the expected structure${error.message?.let { " : $it" } ?: ""}"
     }
     return IssueCredentialResponse.FailedTO(type, description, cNonce)
 }
