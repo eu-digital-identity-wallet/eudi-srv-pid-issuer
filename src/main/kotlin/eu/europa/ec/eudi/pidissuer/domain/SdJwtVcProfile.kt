@@ -20,8 +20,9 @@ import arrow.core.NonEmptySet
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
 import com.nimbusds.jose.JWSAlgorithm
+import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 
-const val SD_JWT_VC_FORMAT_VALUE = "vc+sd-jwt"
+const val SD_JWT_VC_FORMAT_VALUE = SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT
 val SD_JWT_VC_FORMAT = Format(SD_JWT_VC_FORMAT_VALUE)
 
 @JvmInline

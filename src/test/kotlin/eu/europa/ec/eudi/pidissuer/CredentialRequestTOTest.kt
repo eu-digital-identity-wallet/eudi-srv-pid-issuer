@@ -61,7 +61,7 @@ val msoMdoc = """
 
 val sdJwtVc = """
     {
-       "format": "vc+sd-jwt",
+       "format": "dc+sd-jwt",
        "vct": "IdentityCredential",
        "proof": {
           "proof_type": "jwt",

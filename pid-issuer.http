@@ -125,7 +125,7 @@ Accept: application/json
 Authorization: Bearer {{access_token}}
 
 {
-  "format": "vc+sd-jwt",
+  "format": "dc+sd-jwt",
   "credential_definition": {
     "type": "eu.europa.ec.eudi.pid.1"
   },
