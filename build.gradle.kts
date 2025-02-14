@@ -103,7 +103,15 @@ kotlin {
 
     compilerOptions {
         apiVersion = KotlinVersion.KOTLIN_2_0
-        freeCompilerArgs.add("-Xjsr305=strict")
+        freeCompilerArgs.addAll(
+            "-Xjsr305=strict",
+            "-Xconsistent-data-class-copy-visibility",
+        )
+        optIn = listOf(
+            "kotlinx.serialization.ExperimentalSerializationApi",
+            "kotlin.io.encoding.ExperimentalEncodingApi",
+            "kotlin.contracts.ExperimentalContracts",
+        )
     }
 }
 

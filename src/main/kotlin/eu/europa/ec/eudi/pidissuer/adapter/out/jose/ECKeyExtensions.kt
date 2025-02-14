@@ -20,7 +20,6 @@ import org.bouncycastle.util.io.pem.PemObject
 import org.bouncycastle.util.io.pem.PemWriter
 import java.io.StringWriter
 import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
 
 internal fun ECKey.toPem(): String =
     StringWriter().use { stringWriter ->
@@ -30,5 +29,4 @@ internal fun ECKey.toPem(): String =
         stringWriter.toString()
     }
 
-@OptIn(ExperimentalEncodingApi::class)
 internal fun ECKey.toBase64UrlSafeEncodedPem(): String = Base64.UrlSafe.encode(this.toPem().toByteArray())
