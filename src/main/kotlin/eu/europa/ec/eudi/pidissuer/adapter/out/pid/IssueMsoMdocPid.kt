@@ -249,7 +249,7 @@ val PidMsoMdocV1: MsoMdocCredentialConfiguration =
         scope = PidMsoMdocScope,
         proofTypesSupported = ProofTypesSupported(
             nonEmptySetOf(
-                ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.ES256)),
+                ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.ES256), KeyAttestation.NotRequired),
             ),
         ),
         policy = MsoMdocPolicy(oneTimeUse = true),
