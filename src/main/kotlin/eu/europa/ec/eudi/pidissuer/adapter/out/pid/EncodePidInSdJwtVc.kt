@@ -81,8 +81,7 @@ class EncodePidInSdJwtVc(
         }
 
         NimbusSdJwtOps.issuer(sdJwtFactory, signer, issuerSigningKey.signingAlgorithm) {
-            // TODO: This will change to dc+sd-jwt in a future release
-            type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_VC_SD_JWT))
+            type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
             keyID(issuerSigningKey.key.keyID)
             x509CertChain(x509CertChain)
         }
