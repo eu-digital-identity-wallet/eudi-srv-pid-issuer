@@ -98,32 +98,47 @@ internal class WalletApi(
                         is DeferredCredentialSuccessResponse.EncryptedJwtIssued ->
                             ServerResponse
                                 .ok()
+                                .cacheControl(CacheControl.noStore())
                                 .contentType(APPLICATION_JWT)
                                 .bodyValueAndAwait(deferredResponse.jwt)
 
                         is DeferredCredentialSuccessResponse.PlainTO ->
                             ServerResponse
                                 .ok()
+                                .cacheControl(CacheControl.noStore())
                                 .json()
                                 .bodyValueAndAwait(deferredResponse)
                     }
                 },
-                ifLeft = { error -> ServerResponse.badRequest().json().bodyValueAndAwait(error) },
+                ifLeft = { error ->
+                    ServerResponse.badRequest()
+                        .cacheControl(CacheControl.noStore())
+                        .json()
+                        .bodyValueAndAwait(error)
+                },
             )
     }
 
     private suspend fun handleHelloHolder(req: ServerRequest): ServerResponse = coroutineScope {
         val context = async { req.authorizationContext().getOrThrow() }
         val pid = getPidData(context.await().username)
-        if (null != pid) ServerResponse.ok().json().bodyValueAndAwait(pid)
-        else ServerResponse.notFound().buildAndAwait()
+        if (null != pid) ServerResponse.ok()
+            .cacheControl(CacheControl.noStore())
+            .json()
+            .bodyValueAndAwait(pid)
+        else ServerResponse.notFound()
+            .cacheControl(CacheControl.noStore())
+            .buildAndAwait()
     }
 
     private suspend fun handleNotificationRequest(request: ServerRequest): ServerResponse =
         when (val response = handleNotificationRequest(request.awaitBody<JsonElement>())) {
-            is NotificationResponse.Success -> ServerResponse.noContent().buildAndAwait()
+            is NotificationResponse.Success -> ServerResponse.noContent()
+                .cacheControl(CacheControl.noStore())
+                .buildAndAwait()
             is NotificationResponse.NotificationErrorResponseTO ->
                 ServerResponse.badRequest()
+                    .cacheControl(CacheControl.noStore())
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValueAndAwait(response)
         }
@@ -192,18 +207,21 @@ private suspend fun IssueCredentialResponse.toServerResponse(): ServerResponse =
         is IssueCredentialResponse.PlainTO ->
             ServerResponse
                 .status(transactionId?.let { HttpStatus.ACCEPTED } ?: HttpStatus.OK)
+                .cacheControl(CacheControl.noStore())
                 .json()
                 .bodyValueAndAwait(this)
 
         is IssueCredentialResponse.EncryptedJwtIssued ->
             ServerResponse
                 .ok()
+                .cacheControl(CacheControl.noStore())
                 .contentType(APPLICATION_JWT)
                 .bodyValueAndAwait(jwt)
 
         is IssueCredentialResponse.FailedTO ->
             ServerResponse
                 .badRequest()
+                .cacheControl(CacheControl.noStore())
                 .json()
                 .bodyValueAndAwait(this)
     }

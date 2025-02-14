@@ -23,7 +23,6 @@ import arrow.core.raise.ensureNotNull
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
-import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateCNonce
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ResolveCredentialRequestByCredentialIdentifier
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
 import kotlinx.coroutines.coroutineScope
@@ -33,8 +32,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import org.slf4j.LoggerFactory
-import java.time.Clock
-import java.time.Duration
 
 @Serializable
 enum class ProofTypeTO {
@@ -168,68 +165,52 @@ sealed interface IssueCredentialResponse {
      */
     @Serializable
     data class PlainTO(
-        val credential: JsonElement? = null,
-        val credentials: JsonArray? = null,
+        val credentials: List<CredentialTO>? = null,
         @SerialName("transaction_id") val transactionId: String? = null,
-        @SerialName("c_nonce") val nonce: String? = null,
         @SerialName("notification_id") val notificationId: String? = null,
     ) : IssueCredentialResponse {
         init {
-            if (transactionId != null) {
-                require(credential == null && credentials == null) {
-                    "cannot provide credential or credentials when transactionId is provided"
+            if (null != transactionId) {
+                require(null == credentials) {
+                    "cannot provide credentials when transactionId is provided"
                 }
-                require(notificationId == null) {
+                require(null == notificationId) {
                     "cannot provide notificationId when transactionId is provided"
                 }
             } else {
-                require((credential != null) xor (credentials != null)) {
-                    "exactly one of 'credential' or 'credentials' must be provided"
-                }
-                credential?.also { credential ->
-                    require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
-                        "credential must either be a JsonObject or a string JsonPrimitive"
-                    }
-                }
-                credentials?.forEach { credential ->
-                    require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
-                        "credentials must contain either JsonObjects or string JsonPrimitives"
-                    }
+                requireNotNull(!credentials.isNullOrEmpty()) {
+                    "'credentials' must be provided"
                 }
             }
         }
 
         companion object {
-
-            /**
-             * A single credential has been issued.
-             */
-            fun single(
-                credential: JsonElement,
-                nonce: String,
-                notificationId: String? = null,
-            ): PlainTO = PlainTO(
-                credential = credential,
-                nonce = nonce,
-                notificationId = notificationId,
-            )
-
             /**
              * Multiple credentials have been issued.
              */
-            fun multiple(
-                credentials: JsonArray,
-                nonce: String,
+            fun issued(
+                credentials: List<JsonElement>,
                 notificationId: String? = null,
-            ): PlainTO = PlainTO(credentials = credentials, nonce = nonce, notificationId = notificationId)
+            ): PlainTO = PlainTO(credentials = credentials.map { CredentialTO(it) }, notificationId = notificationId)
 
             /**
              * Credential issuance has been deferred.
              */
-            fun deferred(
-                transactionId: String,
-                nonce: String,
-            ): PlainTO = PlainTO(transactionId = transactionId, nonce = nonce)
+            fun deferred(transactionId: String): PlainTO = PlainTO(transactionId = transactionId)
+        }
+
+        /**
+         * A single issued Credential.
+         */
+        @Serializable
+        data class CredentialTO(
+            @Required val credential: JsonElement,
+        ) {
+            init {
+                require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
+                    "credential must be either a JsonObjects or a string JsonPrimitive"
+                }
+            }
         }
     }
 
@@ -247,7 +228,6 @@ sealed interface IssueCredentialResponse {
     data class FailedTO(
         @SerialName("error") @Required val type: CredentialErrorTypeTo,
         @SerialName("error_description") val errorDescription: String? = null,
-        @SerialName("c_nonce") val nonce: String? = null,
     ) : IssueCredentialResponse
 }
 
@@ -257,11 +237,8 @@ private val log = LoggerFactory.getLogger(IssueCredential::class.java)
  * Usecase for issuing a Credential.
  */
 class IssueCredential(
-    private val clock: Clock,
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
     private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
-    private val generateCNonce: GenerateCNonce,
-    private val cNonceDuration: Duration = Duration.ofMinutes(5L),
     private val encryptCredentialResponse: EncryptCredentialResponse,
 ) {
 
@@ -285,24 +262,20 @@ class IssueCredential(
         }
     }
 
-    private suspend fun successResponse(
+    private fun successResponse(
         request: CredentialRequest,
         credential: CredentialResponse,
     ): IssueCredentialResponse {
-        val newCNonce = generateCNonce(clock.instant(), cNonceDuration)
-        val plain = credential.toTO(newCNonce)
+        val plain = credential.toTO()
         return when (val encryption = request.credentialResponseEncryption) {
             RequestedResponseEncryption.NotRequired -> plain
             is RequestedResponseEncryption.Required -> encryptCredentialResponse(plain, encryption).getOrThrow()
         }
     }
 
-    private suspend fun errorResponse(
-        error: IssueCredentialError,
-    ): IssueCredentialResponse {
+    private fun errorResponse(error: IssueCredentialError): IssueCredentialResponse {
         log.warn("Issuance failed: $error")
-        val newCNonce = generateCNonce(clock.instant(), cNonceDuration)
-        return error.toTO(newCNonce)
+        return error.toTO()
     }
 }
 
@@ -577,34 +550,22 @@ private interface Validations : Raise<IssueCredentialError> {
     }
 }
 
-fun CredentialResponse.toTO(cNonce: String): IssueCredentialResponse.PlainTO = when (this) {
+fun CredentialResponse.toTO(): IssueCredentialResponse.PlainTO = when (this) {
     is CredentialResponse.Issued -> {
-        when (credentials.size) {
-            1 -> IssueCredentialResponse.PlainTO.single(
-                credential = credentials.head,
-                nonce = cNonce,
-                notificationId = notificationId?.value,
-            )
-
-            else -> IssueCredentialResponse.PlainTO.multiple(
-                credentials = JsonArray(credentials),
-                nonce = cNonce,
-                notificationId = notificationId?.value,
-            )
-        }
+        IssueCredentialResponse.PlainTO.issued(
+            credentials = JsonArray(credentials),
+            notificationId = notificationId?.value,
+        )
     }
 
     is CredentialResponse.Deferred ->
-        IssueCredentialResponse.PlainTO.deferred(
-            transactionId = transactionId.value,
-            nonce = cNonce,
-        )
+        IssueCredentialResponse.PlainTO.deferred(transactionId = transactionId.value)
 }
 
 /**
- * Creates a new [IssueCredentialResponse.FailedTO] from the provided [error] and [cNonce].
+ * Creates a new [IssueCredentialResponse.FailedTO] from the provided [error].
  */
-private fun IssueCredentialError.toTO(cNonce: String): IssueCredentialResponse.FailedTO {
+private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
     val (type, description) = when (this) {
         is UnsupportedCredentialConfigurationId ->
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
@@ -641,5 +602,5 @@ private fun IssueCredentialError.toTO(cNonce: String): IssueCredentialResponse.F
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
                 "'claims' does not have the expected structure${error.message?.let { " : $it" } ?: ""}"
     }
-    return IssueCredentialResponse.FailedTO(type, description, cNonce)
+    return IssueCredentialResponse.FailedTO(type, description)
 }

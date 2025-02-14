@@ -44,50 +44,40 @@ sealed interface DeferredCredentialSuccessResponse {
      */
     @Serializable
     data class PlainTO(
-        val credential: JsonElement?,
-        val credentials: JsonArray?,
+        val credentials: List<CredentialTO>,
         @SerialName("notification_id") val notificationId: String? = null,
     ) : DeferredCredentialSuccessResponse {
         init {
-            require((credential != null) xor (credentials != null)) {
-                "exactly one of 'credential' or 'credentials' must be provided"
-            }
-            credential?.also { credential ->
-                require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
-                    "credential must either be a JsonObject or a string JsonPrimitive"
-                }
-            }
-            credentials?.forEach { credential ->
-                require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
-                    "credentials must contain either JsonObjects or string JsonPrimitives"
-                }
+            require(credentials.isNotEmpty()) {
+                "credentials must not be empty"
             }
         }
 
         companion object {
             /**
-             * Single credential has been issued.
-             */
-            fun single(
-                credential: JsonElement,
-                notificationId: String?,
-            ): PlainTO = PlainTO(
-                credential = credential,
-                credentials = null,
-                notificationId = notificationId,
-            )
-
-            /**
              * Multiple credentials have been issued.
              */
-            fun multiple(
+            operator fun invoke(
                 credentials: JsonArray,
                 notificationId: String?,
             ): PlainTO = PlainTO(
-                credential = null,
-                credentials = credentials,
+                credentials = credentials.map { CredentialTO(it) },
                 notificationId = notificationId,
             )
+        }
+
+        /**
+         * A single issued Credential.
+         */
+        @Serializable
+        data class CredentialTO(
+            @Required val credential: JsonElement,
+        ) {
+            init {
+                require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
+                    "credential must be either a JsonObjects or a string JsonPrimitive"
+                }
+            }
         }
     }
 
@@ -132,17 +122,10 @@ class GetDeferredCredential(
             is LoadDeferredCredentialResult.IssuancePending -> raise(GetDeferredCredentialErrorTO.IssuancePending)
             is LoadDeferredCredentialResult.InvalidTransactionId -> raise(GetDeferredCredentialErrorTO.InvalidTransactionId)
             is LoadDeferredCredentialResult.Found -> {
-                val plain = when (loadDeferredCredentialResult.credential.credentials.size) {
-                    1 -> DeferredCredentialSuccessResponse.PlainTO.single(
-                        loadDeferredCredentialResult.credential.credentials.head,
-                        loadDeferredCredentialResult.credential.notificationId?.value,
-                    )
-
-                    else -> DeferredCredentialSuccessResponse.PlainTO.multiple(
-                        JsonArray(loadDeferredCredentialResult.credential.credentials),
-                        loadDeferredCredentialResult.credential.notificationId?.value,
-                    )
-                }
+                val plain = DeferredCredentialSuccessResponse.PlainTO(
+                    JsonArray(loadDeferredCredentialResult.credential.credentials),
+                    loadDeferredCredentialResult.credential.notificationId?.value,
+                )
 
                 when (loadDeferredCredentialResult.responseEncryption) {
                     RequestedResponseEncryption.NotRequired -> plain

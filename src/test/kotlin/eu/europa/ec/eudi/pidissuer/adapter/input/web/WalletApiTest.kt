@@ -15,6 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -42,7 +44,6 @@ import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateCNonce
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.ApplicationContext
@@ -171,7 +172,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
     /**
      * Verifies credential endpoint is not accessible by anonymous users.
-     * No CNonce is expected to be generated.
      */
     @Test
     fun `requires authorization`() = runTest {
@@ -187,7 +187,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
     /**
      * Verifies that unknown credential formats cannot be deserialized.
      * The Application is expected to fail.
-     * No CNonce is expected to be generated.
      */
     @Test
     fun `fails with unknown credential configuration id`() = runTest {
@@ -211,13 +210,11 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
         assertNotNull(response)
         assertEquals(CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST, response.type)
         assertEquals("Unsupported Credential Configuration Id 'foo'", response.errorDescription)
-        assertNotNull(response.nonce)
     }
 
     /**
      * Verifies that proof of possession is required.
      * The Application is expected to fail.
-     * CNonce is expected to be generated.
      */
     @Test
     fun `fails when proof is not provided`() = runTest {
@@ -239,13 +236,11 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
         val error = assertIs<IssueCredentialResponse.FailedTO>(response)
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, error.type)
         assertEquals("The Credential Request must include Proof of Possession", error.errorDescription)
-        assertNotNull(error.nonce)
     }
 
     /**
      * Verifies that when an incorrect scope is used, issuance fails.
      * The Application is expected to fail.
-     * CNonce is expected to be generated.
      */
     @Test
     fun `fails when using incorrect scope`() = runTest {
@@ -270,7 +265,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
         val error = assertIs<IssueCredentialResponse.FailedTO>(response)
         assertEquals(CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST, error.type)
         assertEquals("Wrong scope. Expecting $PidMsoMdocScope", error.errorDescription)
-        assertNotNull(error.nonce)
     }
 
     /**
@@ -304,8 +298,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
         assertEquals("Only one of `proof` or `proofs` is allowed", response.errorDescription)
-        val newCNonce = assertNotNull(response.nonce)
-        assertNotEquals(previousCNonce, newCNonce)
     }
 
     @Test
@@ -329,7 +321,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
         assertEquals("Only a single proof type is allowed", response.errorDescription)
-        assertNotNull(response.nonce)
     }
 
     @Test
@@ -359,8 +350,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
         assertEquals("You can provide at most '3' proofs", response.errorDescription)
-        val newCNonce = assertNotNull(response.nonce)
-        assertNotEquals(previousCNonce, newCNonce)
     }
 
     @Test
@@ -389,14 +378,12 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
         assertEquals("CNonce is not valid", response.errorDescription)
-        assertNotNull(response.nonce)
     }
 
     /**
      * Verifies issuance success.
      * Creates a CNonce value before doing the request.
      * Does the request.
-     * Verifies a new CNonce has been generated.
      * Verifies response values.
      */
     @Test
@@ -422,19 +409,15 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        val issuedCredential = assertIs<JsonPrimitive>(response.credential)
-        assertEquals("PID", issuedCredential.contentOrNull)
+        val issuedCredentials = assertNotNull(response.credentials)
+        assertEquals(listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID"))), issuedCredentials)
         assertNull(response.transactionId)
-
-        val newCNonce = assertNotNull(response.nonce)
-        assertNotEquals(previousCNonce, newCNonce)
     }
 
     /**
      * Verifies batch issuance success.
      * Creates a CNonce value before doing the request.
      * Does the request.
-     * Verifies a new CNonce has been generated.
      * Verifies response values.
      */
     @Test
@@ -462,24 +445,18 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        assertNull(response.credential)
         val issuedCredentials = assertNotNull(response.credentials)
         assertEquals(keys.size, issuedCredentials.size)
         issuedCredentials.forEach {
-            val issuedCredential = assertIs<JsonPrimitive>(it)
-            assertEquals("PID", issuedCredential.contentOrNull)
+            assertEquals(JsonPrimitive("PID"), it.credential)
         }
         assertNull(response.transactionId)
-
-        val newCNonce = assertNotNull(response.nonce)
-        assertNotEquals(previousCNonce, newCNonce)
     }
 
     /**
      * Verifies issuance success.
      * Creates a CNonce value before doing the request.
      * Does the request.
-     * Verifies a new CNonce has been generated.
      * Verifies response values.
      */
     @Test
@@ -505,11 +482,9 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        val issuedCredential = assertIs<JsonPrimitive>(response.credential)
-        assertEquals("PID", issuedCredential.contentOrNull)
+        val issuedCredentials = assertNotNull(response.credentials)
+        assertEquals(listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID"))), issuedCredentials)
         assertNull(response.transactionId)
-        val newCNonce = assertNotNull(response.nonce)
-        assertNotEquals(previousCNonce, newCNonce)
     }
 }
 
@@ -525,11 +500,12 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 )
 internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
 
+    private val jacksonObjectMapper: ObjectMapper by lazy { jacksonObjectMapper() }
+
     /**
      * Verifies issuance fails when encryption is not requested.
      * Creates a CNonce value before doing the request.
      * Does the request.
-     * Verifies a new CNonce has been generated.
      * Verifies response values.
      */
     @Test
@@ -557,16 +533,12 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
 
         assertEquals(CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS, response.type)
         assertEquals("Invalid Credential Response Encryption Parameters", response.errorDescription)
-
-        val newCNonce = assertNotNull(response.nonce)
-        assertNotEquals(previousCNonce, newCNonce)
     }
 
     /**
      * Verifies issuance succeeds when encryption is requested.
      * Creates a CNonce value before doing the request.
      * Does the request.
-     * Verifies a new CNonce has been generated.
      * Verifies response values.
      */
     @Test
@@ -606,17 +578,21 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
                 }
             jwt.jwtClaimsSet
         }
-        assertEquals("PID", claims.getStringClaim("credential"))
 
-        val newCNonce = assertNotNull(claims.getStringClaim("c_nonce"))
-        assertNotEquals(previousCNonce, newCNonce)
+        val issuedCredentials = assertNotNull(claims.getListClaim("credentials"))
+        assertEquals(1, issuedCredentials.size)
+        issuedCredentials.first().also {
+            assertEquals(
+                IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID")),
+                Json.decodeFromString<IssueCredentialResponse.PlainTO.CredentialTO>(jacksonObjectMapper.writeValueAsString(it)),
+            )
+        }
     }
 
     /**
      * Verifies issuance succeeds when encryption is requested.
      * Creates a CNonce value before doing the request.
      * Does the request.
-     * Verifies a new CNonce has been generated.
      * Verifies response values.
      */
     @Test
@@ -658,22 +634,20 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
                 }
             jwt.jwtClaimsSet
         }
-        assertNull(claims.getStringClaim("credential"))
         val credentials = assertNotNull(claims.getListClaim("credentials"))
         assertEquals(walletKeys.size, credentials.size)
         credentials.forEach {
-            assertEquals("PID", it)
+            assertEquals(
+                IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID")),
+                Json.decodeFromString<IssueCredentialResponse.PlainTO.CredentialTO>(jacksonObjectMapper.writeValueAsString(it)),
+            )
         }
-
-        val newCNonce = assertNotNull(claims.getStringClaim("c_nonce"))
-        assertNotEquals(previousCNonce, newCNonce)
     }
 
     /**
      * Verifies issuance fails when encryption is not requested.
      * Creates a CNonce value before doing the request.
      * Does the request.
-     * Verifies a new CNonce has been generated.
      * Verifies response values.
      */
     @Test
@@ -701,16 +675,12 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
 
         assertEquals(CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS, response.type)
         assertEquals("Invalid Credential Response Encryption Parameters", response.errorDescription)
-
-        val newCNonce = assertNotNull(response.nonce)
-        assertNotEquals(previousCNonce, newCNonce)
     }
 
     /**
      * Verifies issuance succeeds when encryption is requested.
      * Creates a CNonce value before doing the request.
      * Does the request.
-     * Verifies a new CNonce has been generated.
      * Verifies response values.
      */
     @Test
@@ -755,10 +725,15 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
                 }
             jwt.jwtClaimsSet
         }
-        assertEquals("PID", claims.getStringClaim("credential"))
 
-        val newCNonce = assertNotNull(claims.getStringClaim("c_nonce"))
-        assertNotEquals(previousCNonce, newCNonce)
+        val issuedCredentials = assertNotNull(claims.getListClaim("credentials"))
+        assertEquals(1, issuedCredentials.size)
+        issuedCredentials.first().also {
+            assertEquals(
+                IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID")),
+                Json.decodeFromString<IssueCredentialResponse.PlainTO.CredentialTO>(jacksonObjectMapper.writeValueAsString(it)),
+            )
+        }
     }
 }
 
