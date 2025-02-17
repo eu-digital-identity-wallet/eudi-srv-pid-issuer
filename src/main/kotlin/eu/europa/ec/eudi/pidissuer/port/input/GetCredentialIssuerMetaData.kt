@@ -272,7 +272,6 @@ internal fun CredentialDisplay.toTransferObject(): JsonObject = buildJsonObject 
     backgroundImage?.let { backgroundImage ->
         putJsonObject("background_image") {
             put("uri", backgroundImage.uri.toString())
-            backgroundImage.alternativeText?.let { put("alt_text", it) }
         }
     }
     textColor?.let { put("text_color", it) }

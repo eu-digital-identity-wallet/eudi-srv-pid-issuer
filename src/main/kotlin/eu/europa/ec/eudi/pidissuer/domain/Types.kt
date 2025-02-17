@@ -57,6 +57,10 @@ value class Format(val value: String)
 typealias CredentialIssuerId = HttpsUrl
 
 data class ImageUri(val uri: URI, val alternativeText: String? = null)
+
+@JvmInline
+value class BackgroundImage(val uri: URI)
+
 data class DisplayName(val name: String, val locale: Locale)
 typealias Color = String
 
@@ -65,7 +69,7 @@ data class CredentialDisplay(
     val logo: ImageUri? = null,
     val description: String? = null,
     val backgroundColor: Color? = null,
-    val backgroundImage: ImageUri? = null,
+    val backgroundImage: BackgroundImage? = null,
     val textColor: Color? = null,
 )
 
