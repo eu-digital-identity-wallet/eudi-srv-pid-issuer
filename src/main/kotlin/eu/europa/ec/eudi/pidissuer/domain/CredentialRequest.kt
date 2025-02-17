@@ -43,6 +43,12 @@ sealed interface UnvalidatedProof {
      * Proof of possession using a W3C Verifiable Presentation object signed using the Data Integrity Proof.
      */
     data class LdpVp(val vp: String) : UnvalidatedProof
+
+    /**
+     * A JWT representing a key attestation without using a proof of possession of
+     * the cryptographic key material that is being attested.
+     */
+    data class Attestation(val jwt: String) : UnvalidatedProof
 }
 
 /**
