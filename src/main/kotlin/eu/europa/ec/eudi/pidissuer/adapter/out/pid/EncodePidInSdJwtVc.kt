@@ -155,21 +155,21 @@ private fun selectivelyDisclosed(
         pid.givenNameBirth?.let { sdClaim(OidcAssuranceBirthGivenName.name, it.value) }
 
         pid.oidcAssurancePlaceOfBirth()?.let { placeOfBirth ->
-            objClaim(OidcAssurancePlaceOfBirth.NAME) {
-                placeOfBirth.locality?.let { sdClaim("locality", it) }
-                placeOfBirth.region?.let { sdClaim("region", it) }
-                placeOfBirth.country?.let { sdClaim("country", it) }
+            objClaim(OidcAssurancePlaceOfBirth.attribute.name) {
+                placeOfBirth.locality?.let { sdClaim(OidcAssurancePlaceOfBirth.Locality.name, it) }
+                placeOfBirth.region?.let { sdClaim(OidcAssurancePlaceOfBirth.Region.name, it) }
+                placeOfBirth.country?.let { sdClaim(OidcAssurancePlaceOfBirth.Country.name, it) }
             }
         }
         pid.oidcAddressClaim()?.let { address ->
-            objClaim(OidcAddressClaim.NAME) {
-                address.formatted?.let { sdClaim("formatted", it) }
-                address.country?.let { sdClaim("country", it) }
-                address.region?.let { sdClaim("region", it) }
-                address.locality?.let { sdClaim("locality", it) }
-                address.postalCode?.let { sdClaim("postal_code", it) }
-                address.streetAddress?.let { sdClaim("street_address", it) }
-                address.houseNumber?.let { sdClaim("house_number", it) }
+            objClaim(OidcAddressClaim.attribute.name) {
+                address.formatted?.let { sdClaim(OidcAddressClaim.Formatted.name, it) }
+                address.country?.let { sdClaim(OidcAddressClaim.Country.name, it) }
+                address.region?.let { sdClaim(OidcAddressClaim.Region.name, it) }
+                address.locality?.let { sdClaim(OidcAddressClaim.Locality.name, it) }
+                address.postalCode?.let { sdClaim(OidcAddressClaim.PostalCode.name, it) }
+                address.streetAddress?.let { sdClaim(OidcAddressClaim.Street.name, it) }
+                address.houseNumber?.let { sdClaim(OidcAddressClaim.HouseNumber.name, it) }
             }
         }
         pid.genderAsString?.let { sdClaim(OidcGender.name, it) }

@@ -25,6 +25,10 @@ interface IsAttribute {
     val attribute: AttributeDetails
 }
 
+interface HasNestedAttributes {
+    val nestedAttributes: List<AttributeDetails>
+}
+
 //
 // Open ID Connect Core
 //
@@ -78,8 +82,9 @@ data class OidcAddressClaim(
     @SerialName("house_number") val houseNumber: String? = null,
 ) {
 
-    companion object : IsAttribute {
+    companion object : IsAttribute, HasNestedAttributes {
         const val NAME = "address"
+
         override val attribute: AttributeDetails
             get() = AttributeDetails(
                 path = ClaimPath.claim(NAME),
@@ -88,6 +93,88 @@ data class OidcAddressClaim(
                     Locale.ENGLISH to "The full address of the place where the PID User currently resides and/or " +
                         "can be contacted (street name, house number, city etc.).",
                 ),
+            )
+
+        val HouseNumber: AttributeDetails
+            get() = AttributeDetails(
+                path = ClaimPath.claim(NAME).claim("house_number"),
+                mandatory = false,
+                display = mapOf(
+                    Locale.ENGLISH to "The house number where the user to whom the person identification data " +
+                        "relates currently resides, including any affix or suffix.",
+                ),
+            )
+
+        val Street: AttributeDetails
+            get() = AttributeDetails(
+                path = ClaimPath.claim(NAME).claim("street_address"),
+                mandatory = false,
+                display = mapOf(
+                    Locale.ENGLISH to "The name of the street where the user to whom the person identification " +
+                        "data relates currently resides.",
+                ),
+            )
+
+        val PostalCode: AttributeDetails
+            get() = AttributeDetails(
+                path = ClaimPath.claim(NAME).claim("postal_code"),
+                mandatory = false,
+                display = mapOf(
+                    Locale.ENGLISH to "The postal code of the place where the user to whom the person identification " +
+                        "data relates currently resides.",
+                ),
+            )
+
+        val Locality: AttributeDetails
+            get() = AttributeDetails(
+                path = ClaimPath.claim(NAME).claim("locality"),
+                mandatory = false,
+                display = mapOf(
+                    Locale.ENGLISH to "The municipality, city, town, or village where the user to whom the " +
+                        "person identification data relates currently resides.",
+                ),
+            )
+
+        val Region: AttributeDetails
+            get() = AttributeDetails(
+                path = ClaimPath.claim(NAME).claim("region"),
+                mandatory = false,
+                display = mapOf(
+                    Locale.ENGLISH to "The state, province, district, or local area where the user to " +
+                        "whom the person identification data relates currently resides.",
+                ),
+            )
+
+        val Country: AttributeDetails
+            get() = AttributeDetails(
+                path = ClaimPath.claim(NAME).claim("country"),
+                mandatory = false,
+                display = mapOf(
+                    Locale.ENGLISH to "The country where the user to whom the person identification data " +
+                        "relates currently resides, as an alpha-2 country code as specified in ISO 3166-1.",
+                ),
+            )
+
+        val Formatted: AttributeDetails
+            get() = AttributeDetails(
+                path = ClaimPath.claim(NAME).claim("formatted"),
+                mandatory = false,
+                display = mapOf(
+                    Locale.ENGLISH to "The full address of the place where the user to whom the person " +
+                        "identification data relates currently resides or can be contacted (street name, " +
+                        "house number, city etc.).",
+                ),
+            )
+
+        override val nestedAttributes: List<AttributeDetails>
+            get() = listOf(
+                HouseNumber,
+                Street,
+                PostalCode,
+                Locality,
+                Region,
+                Country,
+                Formatted,
             )
     }
 }
@@ -125,13 +212,38 @@ data class OidcAssurancePlaceOfBirth(
     val region: String? = null,
     val country: String? = null,
 ) {
-    companion object : IsAttribute {
+    companion object : IsAttribute, HasNestedAttributes {
         const val NAME = "place_of_birth"
+
         override val attribute: AttributeDetails
             get() = AttributeDetails(
                 path = ClaimPath.claim(NAME),
                 mandatory = false,
                 display = mapOf(Locale.ENGLISH to "The country, state, and city where the PID User was born."),
             )
+
+        val Country: AttributeDetails
+            get() = AttributeDetails(
+                path = ClaimPath.claim(NAME).claim("country"),
+                mandatory = false,
+                display = mapOf(Locale.ENGLISH to "The country where the PID User was born."),
+            )
+
+        val Region: AttributeDetails
+            get() = AttributeDetails(
+                path = ClaimPath.claim(NAME).claim("region"),
+                mandatory = false,
+                display = mapOf(Locale.ENGLISH to "The state where the PID User was born."),
+            )
+
+        val Locality: AttributeDetails
+            get() = AttributeDetails(
+                path = ClaimPath.claim(NAME).claim("locality"),
+                mandatory = false,
+                display = mapOf(Locale.ENGLISH to "The city where the PID User was born."),
+            )
+
+        override val nestedAttributes: List<AttributeDetails>
+            get() = listOf(Locality, Region, Country)
     }
 }
