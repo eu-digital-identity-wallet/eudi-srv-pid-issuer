@@ -418,6 +418,9 @@ private interface Validations : Raise<IssueCredentialError> {
                     val jwtProofs = proofs.jwtProofs?.map { UnvalidatedProof.Jwt(it) }
                     val ldpVpProofs = proofs.ldpVpProofs?.map { UnvalidatedProof.LdpVp(it) }
                     val attestations = proofs.attestations?.map { UnvalidatedProof.Attestation(it) }
+                        ?.also {
+                            ensure(1 == it.size) { InvalidProof("'attestation' can contain only a single element") }
+                        }
                     // Proof object contains exactly one parameter named as the proof type
                     ensure(1 == listOfNotNull(jwtProofs, ldpVpProofs, attestations).size) {
                         InvalidProof("Only a single proof type is allowed")
