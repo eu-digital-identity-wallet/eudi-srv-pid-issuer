@@ -49,7 +49,6 @@ internal fun SdJwtVcCredentialConfiguration.credentialRequest(
     unvalidatedProofs = unvalidatedProofs,
     credentialResponseEncryption = credentialResponseEncryption,
     type = type,
-    claims = claims.map { it.name }.toSet(),
 )
 
 //
@@ -59,19 +58,12 @@ data class SdJwtVcCredentialRequest(
     override val unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
     override val credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
     val type: SdJwtVcType,
-    val claims: Set<String> = emptySet(),
 ) : CredentialRequest {
     override val format: Format = SD_JWT_VC_FORMAT
 }
 
 internal fun Raise<String>.validate(sdJwtVcCredentialRequest: SdJwtVcCredentialRequest, meta: SdJwtVcCredentialConfiguration) {
-    ensure(sdJwtVcCredentialRequest.type == meta.type) { "doctype is ${sdJwtVcCredentialRequest.type} but was expecting ${meta.type}" }
-    if (meta.claims.isEmpty()) {
-        ensure(sdJwtVcCredentialRequest.claims.isEmpty()) { "Requested claims should be empty. " }
-    } else {
-        val expectedAttributeNames = meta.claims.map { it.name }
-        sdJwtVcCredentialRequest.claims.forEach { name ->
-            ensure(name in expectedAttributeNames) { "Unexpected attribute $name" }
-        }
+    ensure(sdJwtVcCredentialRequest.type == meta.type) {
+        "doctype is ${sdJwtVcCredentialRequest.type} but was expecting ${meta.type}"
     }
 }
