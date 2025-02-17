@@ -485,10 +485,8 @@ fun beans(clock: Clock) = beans {
     bean(::GetCredentialIssuerMetaData)
     bean {
         IssueCredential(
-            clock = clock,
             credentialIssuerMetadata = ref(),
             resolveCredentialRequestByCredentialIdentifier = ref(),
-            generateCNonce = ref(),
             encryptCredentialResponse = ref(),
         )
     }

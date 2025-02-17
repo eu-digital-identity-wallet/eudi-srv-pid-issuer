@@ -49,6 +49,16 @@ data class MsoMdocCredentialConfiguration(
     val policy: MsoMdocPolicy? = null,
 ) : CredentialConfiguration
 
+internal fun MsoMdocCredentialConfiguration.credentialRequest(
+    unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
+    credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
+): MsoMdocCredentialRequest = MsoMdocCredentialRequest(
+    unvalidatedProofs = unvalidatedProofs,
+    credentialResponseEncryption = credentialResponseEncryption,
+    docType = docType,
+    claims = msoClaims.mapValues { (_, attributeDetails) -> attributeDetails.map { it.name } },
+)
+
 //
 // Credential Request
 //
