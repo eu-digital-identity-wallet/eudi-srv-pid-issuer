@@ -16,6 +16,8 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.nonEmptyListOf
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -43,7 +45,6 @@ import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateCNonce
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.ApplicationContext
@@ -174,14 +175,13 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
     /**
      * Verifies credential endpoint is not accessible by anonymous users.
-     * No CNonce is expected to be generated.
      */
     @Test
     fun `requires authorization`() = runTest {
         client().post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByFormat())
+            .bodyValue(requestByCredentialConfigurationId())
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isUnauthorized()
@@ -190,16 +190,9 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
     /**
      * Verifies that unknown credential formats cannot be deserialized.
      * The Application is expected to fail.
-     * No CNonce is expected to be generated.
      */
     @Test
-    fun `fails with unknown credential request format`() = runTest {
-        val request = """
-            {
-              "format": "pid"
-            }
-        """.trimIndent()
-
+    fun `fails with unknown credential configuration id`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
 
         val response = client()
@@ -207,7 +200,9 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(request)
+            .bodyValue(
+                requestByCredentialConfigurationId(credentialConfigurationId = "foo", proofs = ProofsTO(jwtProofs = listOf("proof"))),
+            )
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isBadRequest
@@ -215,19 +210,14 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .returnResult()
             .responseBody
 
-        assertEquals(
-            IssueCredentialResponse.FailedTO(
-                type = CredentialErrorTypeTo.INVALID_REQUEST,
-                errorDescription = "Request body could not be parsed",
-            ),
-            response,
-        )
+        assertNotNull(response)
+        assertEquals(CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST, response.type)
+        assertEquals("Unsupported Credential Configuration Id 'foo'", response.errorDescription)
     }
 
     /**
      * Verifies that proof of possession is required.
      * The Application is expected to fail.
-     * CNonce is expected to be generated.
      */
     @Test
     fun `fails when proof is not provided`() = runTest {
@@ -238,7 +228,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByFormat(null))
+            .bodyValue(requestByCredentialConfigurationId())
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
@@ -249,13 +239,11 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
         val error = assertIs<IssueCredentialResponse.FailedTO>(response)
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, error.type)
         assertEquals("The Credential Request must include Proof of Possession", error.errorDescription)
-        assertNotNull(error.nonce)
     }
 
     /**
      * Verifies that when an incorrect scope is used, issuance fails.
      * The Application is expected to fail.
-     * CNonce is expected to be generated.
      */
     @Test
     fun `fails when using incorrect scope`() = runTest {
@@ -269,7 +257,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByFormat(proofs = ProofsTO(jwtProofs = listOf("proof"))))
+            .bodyValue(requestByCredentialConfigurationId(proofs = ProofsTO(jwtProofs = listOf("proof"))))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
@@ -278,9 +266,8 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .responseBody
 
         val error = assertIs<IssueCredentialResponse.FailedTO>(response)
-        assertEquals(CredentialErrorTypeTo.INVALID_REQUEST, error.type)
+        assertEquals(CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST, error.type)
         assertEquals("Wrong scope. Expecting $PidMsoMdocScope", error.errorDescription)
-        assertNotNull(error.nonce)
     }
 
     /**
@@ -304,7 +291,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByFormat(proof = proof, proofs = proofs))
+            .bodyValue(requestByCredentialConfigurationId(proof = proof, proofs = proofs))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isBadRequest
@@ -314,22 +301,20 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
         assertEquals("Only one of `proof` or `proofs` is allowed", response.errorDescription)
-        val newCNonce = assertNotNull(response.nonce)
-        assertNotEquals(previousCNonce, newCNonce)
     }
 
     @Test
     fun `fails when multiple proof types are provided`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
 
-        val proofs = ProofsTO(jwtProofs = listOf("jwt"), ldpVpProofs = listOf("ldp_vc"))
+        val proofs = ProofsTO(jwtProofs = listOf("jwt"), ldpVpProofs = listOf("ldp_vc"), attestations = listOf("attestation"))
 
         val response = client()
             .mutateWith(mockAuthentication(authentication))
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByFormat(proofs = proofs))
+            .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isBadRequest
@@ -339,7 +324,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
         assertEquals("Only a single proof type is allowed", response.errorDescription)
-        assertNotNull(response.nonce)
     }
 
     @Test
@@ -359,7 +343,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByFormat(proofs = proofs))
+            .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isBadRequest
@@ -369,8 +353,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
         assertEquals("You can provide at most '3' proofs", response.errorDescription)
-        val newCNonce = assertNotNull(response.nonce)
-        assertNotEquals(previousCNonce, newCNonce)
     }
 
     @Test
@@ -389,7 +371,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByFormat(proofs = proofs))
+            .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isBadRequest()
@@ -399,18 +381,16 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
         assertEquals("CNonce is not valid", response.errorDescription)
-        assertNotNull(response.nonce)
     }
 
     /**
      * Verifies issuance success.
      * Creates a CNonce value before doing the request.
      * Does the request.
-     * Verifies a new CNonce has been generated.
      * Verifies response values.
      */
     @Test
-    fun `issuance success by format`() = runTest {
+    fun `issuance success by credential configuration id`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
         val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
 
@@ -424,7 +404,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByFormat(proof))
+            .bodyValue(requestByCredentialConfigurationId(proof = proof))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk()
@@ -432,23 +412,19 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        val issuedCredential = assertIs<JsonPrimitive>(response.credential)
-        assertEquals("PID", issuedCredential.contentOrNull)
+        val issuedCredentials = assertNotNull(response.credentials)
+        assertEquals(listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID"))), issuedCredentials)
         assertNull(response.transactionId)
-
-        val newCNonce = assertNotNull(response.nonce)
-        assertNotEquals(previousCNonce, newCNonce)
     }
 
     /**
      * Verifies batch issuance success.
      * Creates a CNonce value before doing the request.
      * Does the request.
-     * Verifies a new CNonce has been generated.
      * Verifies response values.
      */
     @Test
-    fun `batch issuance success by format`() = runTest {
+    fun `batch issuance success by credential configuration id`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
         val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
 
@@ -464,7 +440,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByFormat(proofs = proofs))
+            .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk()
@@ -472,24 +448,18 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        assertNull(response.credential)
         val issuedCredentials = assertNotNull(response.credentials)
         assertEquals(keys.size, issuedCredentials.size)
         issuedCredentials.forEach {
-            val issuedCredential = assertIs<JsonPrimitive>(it)
-            assertEquals("PID", issuedCredential.contentOrNull)
+            assertEquals(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID")), it)
         }
         assertNull(response.transactionId)
-
-        val newCNonce = assertNotNull(response.nonce)
-        assertNotEquals(previousCNonce, newCNonce)
     }
 
     /**
      * Verifies issuance success.
      * Creates a CNonce value before doing the request.
      * Does the request.
-     * Verifies a new CNonce has been generated.
      * Verifies response values.
      */
     @Test
@@ -515,11 +485,9 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        val issuedCredential = assertIs<JsonPrimitive>(response.credential)
-        assertEquals("PID", issuedCredential.contentOrNull)
+        val issuedCredentials = assertNotNull(response.credentials)
+        assertEquals(listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID"))), issuedCredentials)
         assertNull(response.transactionId)
-        val newCNonce = assertNotNull(response.nonce)
-        assertNotEquals(previousCNonce, newCNonce)
     }
 }
 
@@ -535,15 +503,16 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 )
 internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
 
+    private val jacksonObjectMapper: ObjectMapper by lazy { jacksonObjectMapper() }
+
     /**
      * Verifies issuance fails when encryption is not requested.
      * Creates a CNonce value before doing the request.
      * Does the request.
-     * Verifies a new CNonce has been generated.
      * Verifies response values.
      */
     @Test
-    fun `issuance failure by format when encryption is not requested`() = runTest {
+    fun `issuance failure by credential configuration id when encryption is not requested`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
         val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
 
@@ -557,7 +526,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByFormat(proof))
+            .bodyValue(requestByCredentialConfigurationId(proof = proof))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isBadRequest()
@@ -567,20 +536,16 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
 
         assertEquals(CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS, response.type)
         assertEquals("Invalid Credential Response Encryption Parameters", response.errorDescription)
-
-        val newCNonce = assertNotNull(response.nonce)
-        assertNotEquals(previousCNonce, newCNonce)
     }
 
     /**
      * Verifies issuance succeeds when encryption is requested.
      * Creates a CNonce value before doing the request.
      * Does the request.
-     * Verifies a new CNonce has been generated.
      * Verifies response values.
      */
     @Test
-    fun `issuance success by format when encryption is requested`() = runTest {
+    fun `issuance success by credential configuration id when encryption is requested`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
         val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
 
@@ -596,7 +561,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByFormat(proof = proof, credentialResponseEncryption = encryptionParameters))
+            .bodyValue(requestByCredentialConfigurationId(proof = proof, credentialResponseEncryption = encryptionParameters))
             .accept(MediaType.parseMediaType("application/jwt"))
             .exchange()
             .expectStatus().isOk()
@@ -616,21 +581,25 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
                 }
             jwt.jwtClaimsSet
         }
-        assertEquals("PID", claims.getStringClaim("credential"))
 
-        val newCNonce = assertNotNull(claims.getStringClaim("c_nonce"))
-        assertNotEquals(previousCNonce, newCNonce)
+        val issuedCredentials = assertNotNull(claims.getListClaim("credentials"))
+        assertEquals(1, issuedCredentials.size)
+        issuedCredentials.first().also {
+            assertEquals(
+                IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID")),
+                Json.decodeFromString<IssueCredentialResponse.PlainTO.CredentialTO>(jacksonObjectMapper.writeValueAsString(it)),
+            )
+        }
     }
 
     /**
      * Verifies issuance succeeds when encryption is requested.
      * Creates a CNonce value before doing the request.
      * Does the request.
-     * Verifies a new CNonce has been generated.
      * Verifies response values.
      */
     @Test
-    fun `batch issuance success by format when encryption is requested`() = runTest {
+    fun `batch issuance success by credential configuration id when encryption is requested`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
         val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
 
@@ -648,7 +617,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByFormat(proofs = proofs, credentialResponseEncryption = encryptionParameters))
+            .bodyValue(requestByCredentialConfigurationId(proofs = proofs, credentialResponseEncryption = encryptionParameters))
             .accept(MediaType.parseMediaType("application/jwt"))
             .exchange()
             .expectStatus().isOk()
@@ -668,22 +637,20 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
                 }
             jwt.jwtClaimsSet
         }
-        assertNull(claims.getStringClaim("credential"))
         val credentials = assertNotNull(claims.getListClaim("credentials"))
         assertEquals(walletKeys.size, credentials.size)
         credentials.forEach {
-            assertEquals("PID", it)
+            assertEquals(
+                IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID")),
+                Json.decodeFromString<IssueCredentialResponse.PlainTO.CredentialTO>(jacksonObjectMapper.writeValueAsString(it)),
+            )
         }
-
-        val newCNonce = assertNotNull(claims.getStringClaim("c_nonce"))
-        assertNotEquals(previousCNonce, newCNonce)
     }
 
     /**
      * Verifies issuance fails when encryption is not requested.
      * Creates a CNonce value before doing the request.
      * Does the request.
-     * Verifies a new CNonce has been generated.
      * Verifies response values.
      */
     @Test
@@ -711,16 +678,12 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
 
         assertEquals(CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS, response.type)
         assertEquals("Invalid Credential Response Encryption Parameters", response.errorDescription)
-
-        val newCNonce = assertNotNull(response.nonce)
-        assertNotEquals(previousCNonce, newCNonce)
     }
 
     /**
      * Verifies issuance succeeds when encryption is requested.
      * Creates a CNonce value before doing the request.
      * Does the request.
-     * Verifies a new CNonce has been generated.
      * Verifies response values.
      */
     @Test
@@ -765,10 +728,15 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
                 }
             jwt.jwtClaimsSet
         }
-        assertEquals("PID", claims.getStringClaim("credential"))
 
-        val newCNonce = assertNotNull(claims.getStringClaim("c_nonce"))
-        assertNotEquals(previousCNonce, newCNonce)
+        val issuedCredentials = assertNotNull(claims.getListClaim("credentials"))
+        assertEquals(1, issuedCredentials.size)
+        issuedCredentials.first().also {
+            assertEquals(
+                IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID")),
+                Json.decodeFromString<IssueCredentialResponse.PlainTO.CredentialTO>(jacksonObjectMapper.writeValueAsString(it)),
+            )
+        }
     }
 }
 
@@ -806,14 +774,14 @@ private fun dPoPTokenAuthentication(
     ).authenticate(principal)
 }
 
-private fun requestByFormat(
+private fun requestByCredentialConfigurationId(
+    credentialConfigurationId: String = "eu.europa.ec.eudi.pid_mso_mdoc",
     proof: ProofTo? = null,
     proofs: ProofsTO? = null,
     credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
 ): CredentialRequestTO =
     CredentialRequestTO(
-        format = FormatTO.MsoMdoc,
-        docType = "eu.europa.ec.eudi.pid.1",
+        credentialConfigurationId = credentialConfigurationId,
         proof = proof,
         proofs = proofs,
         credentialResponseEncryption = credentialResponseEncryption,

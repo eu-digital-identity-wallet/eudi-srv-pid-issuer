@@ -42,6 +42,16 @@ data class SdJwtVcCredentialConfiguration(
     override val proofTypesSupported: ProofTypesSupported = ProofTypesSupported.Empty,
 ) : CredentialConfiguration
 
+internal fun SdJwtVcCredentialConfiguration.credentialRequest(
+    unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
+    credentialResponseEncryption: RequestedResponseEncryption,
+): SdJwtVcCredentialRequest = SdJwtVcCredentialRequest(
+    unvalidatedProofs = unvalidatedProofs,
+    credentialResponseEncryption = credentialResponseEncryption,
+    type = type,
+    claims = claims.map { it.name }.toSet(),
+)
+
 //
 // Credential Offer
 //
