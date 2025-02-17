@@ -53,57 +53,57 @@ private fun MDocBuilder.addItemsToSign(licence: MobileDrivingLicence) {
     addItemsToSign(licence.driver)
     addItemsToSign(licence.issueAndExpiry)
     addItemsToSign(licence.issuer)
-    addItemToSign(DocumentNumberAttribute, licence.documentNumber.value.toDataElement())
-    addItemToSign(DrivingPrivilegesAttribute, licence.privileges.map { it.toDE() }.toDataElement())
-    licence.administrativeNumber?.let { addItemToSign(AdministrativeNumberAttribute, it.value.toDataElement()) }
+    addItemToSign(MsoMdocMdlV1Attributes.DocumentNumber, licence.documentNumber.value.toDataElement())
+    addItemToSign(MsoMdocMdlV1Attributes.DrivingPrivileges, licence.privileges.map { it.toDE() }.toDataElement())
+    licence.administrativeNumber?.let { addItemToSign(MsoMdocMdlV1Attributes.AdministrativeNumber, it.value.toDataElement()) }
 }
 
 private fun MDocBuilder.addItemsToSign(driver: Driver) {
-    addItemToSign(FamilyNameAttribute, driver.familyName.latin.value.toDataElement())
-    addItemToSign(GivenNameAttribute, driver.givenName.latin.value.toDataElement())
-    addItemToSign(BirthDateAttribute, driver.birthDate.toKotlinLocalDate().toDataElement())
-    addItemToSign(PortraitAttribute, driver.portrait.image.content.toDataElement())
+    addItemToSign(MsoMdocMdlV1Attributes.FamilyName, driver.familyName.latin.value.toDataElement())
+    addItemToSign(MsoMdocMdlV1Attributes.GivenName, driver.givenName.latin.value.toDataElement())
+    addItemToSign(MsoMdocMdlV1Attributes.BirthDate, driver.birthDate.toKotlinLocalDate().toDataElement())
+    addItemToSign(MsoMdocMdlV1Attributes.Portrait, driver.portrait.image.content.toDataElement())
     driver.portrait.capturedAt?.let {
         addItemToSign(
-            PortraitCaptureDateAttribute,
+            MsoMdocMdlV1Attributes.PortraitCaptureDate,
             it.toLocalDate().toKotlinLocalDate().toDataElement(),
         )
     }
-    driver.sex?.let { addItemToSign(SexAttribute, it.code.toDataElement()) }
-    driver.height?.let { addItemToSign(HeightAttribute, it.value.toDataElement()) }
-    driver.weight?.let { addItemToSign(WeightAttribute, it.value.toDataElement()) }
-    driver.eyeColour?.let { addItemToSign(EyeColourAttribute, it.code.toDataElement()) }
-    driver.hairColour?.let { addItemToSign(HairColourAttribute, it.code.toDataElement()) }
-    driver.birthPlace?.let { addItemToSign(BirthPlaceAttribute, it.value.toDataElement()) }
+    driver.sex?.let { addItemToSign(MsoMdocMdlV1Attributes.Sex, it.code.toDataElement()) }
+    driver.height?.let { addItemToSign(MsoMdocMdlV1Attributes.Height, it.value.toDataElement()) }
+    driver.weight?.let { addItemToSign(MsoMdocMdlV1Attributes.Weight, it.value.toDataElement()) }
+    driver.eyeColour?.let { addItemToSign(MsoMdocMdlV1Attributes.EyeColour, it.code.toDataElement()) }
+    driver.hairColour?.let { addItemToSign(MsoMdocMdlV1Attributes.HairColour, it.code.toDataElement()) }
+    driver.birthPlace?.let { addItemToSign(MsoMdocMdlV1Attributes.BirthPlace, it.value.toDataElement()) }
     driver.residence?.let { residence ->
-        residence.address?.let { addItemToSign(ResidentAddressAttribute, it.value.toDataElement()) }
-        residence.city?.let { addItemToSign(ResidentCityAttribute, it.value.toDataElement()) }
-        residence.state?.let { addItemToSign(ResidentStateAttribute, it.value.toDataElement()) }
-        residence.postalCode?.let { addItemToSign(ResidentPostalCodeAttribute, it.value.toDataElement()) }
-        addItemToSign(ResidentCountryAttribute, residence.country.code.toDataElement())
+        residence.address?.let { addItemToSign(MsoMdocMdlV1Attributes.ResidentAddress, it.value.toDataElement()) }
+        residence.city?.let { addItemToSign(MsoMdocMdlV1Attributes.ResidentCity, it.value.toDataElement()) }
+        residence.state?.let { addItemToSign(MsoMdocMdlV1Attributes.ResidentState, it.value.toDataElement()) }
+        residence.postalCode?.let { addItemToSign(MsoMdocMdlV1Attributes.ResidentPostalCode, it.value.toDataElement()) }
+        addItemToSign(MsoMdocMdlV1Attributes.ResidentCountry, residence.country.code.toDataElement())
     }
     driver.age?.let { age ->
-        addItemToSign(AgeInYearsAttribute, age.value.value.toDataElement())
-        age.birthYear?.let { addItemToSign(AgeBirthYearAttribute, it.value.toDataElement()) }
-        addItemToSign(AgeOver18Attribute, age.over18.toDataElement())
-        addItemToSign(AgeOver21Attribute, age.over21.toDataElement())
+        addItemToSign(MsoMdocMdlV1Attributes.AgeInYears, age.value.value.toDataElement())
+        age.birthYear?.let { addItemToSign(MsoMdocMdlV1Attributes.AgeBirthYear, it.value.toDataElement()) }
+        addItemToSign(MsoMdocMdlV1Attributes.AgeOver18, age.over18.toDataElement())
+        addItemToSign(MsoMdocMdlV1Attributes.AgeOver21, age.over21.toDataElement())
     }
-    driver.nationality?.let { addItemToSign(NationalityAttribute, it.code.toDataElement()) }
-    driver.familyName.utf8?.let { addItemToSign(FamilyNameNationalCharacterAttribute, it.toDataElement()) }
-    driver.givenName.utf8?.let { addItemToSign(GivenNameNationalCharacterAttribute, it.toDataElement()) }
-    driver.signature?.let { addItemToSign(SignatureUsualMarkAttribute, it.content.toDataElement()) }
+    driver.nationality?.let { addItemToSign(MsoMdocMdlV1Attributes.Nationality, it.code.toDataElement()) }
+    driver.familyName.utf8?.let { addItemToSign(MsoMdocMdlV1Attributes.FamilyNameNationalCharacter, it.toDataElement()) }
+    driver.givenName.utf8?.let { addItemToSign(MsoMdocMdlV1Attributes.GivenNameNationalCharacter, it.toDataElement()) }
+    driver.signature?.let { addItemToSign(MsoMdocMdlV1Attributes.SignatureUsualMark, it.content.toDataElement()) }
 }
 
 private fun MDocBuilder.addItemsToSign(issueAndExpiry: IssueAndExpiry) {
-    addItemToSign(IssueDateAttribute, issueAndExpiry.issuedAt.toKotlinLocalDate().toDataElement())
-    addItemToSign(ExpiryDateAttribute, issueAndExpiry.expiresAt.toKotlinLocalDate().toDataElement())
+    addItemToSign(MsoMdocMdlV1Attributes.IssueDate, issueAndExpiry.issuedAt.toKotlinLocalDate().toDataElement())
+    addItemToSign(MsoMdocMdlV1Attributes.ExpiryDate, issueAndExpiry.expiresAt.toKotlinLocalDate().toDataElement())
 }
 
 private fun MDocBuilder.addItemsToSign(issuer: Issuer) {
-    addItemToSign(IssuingCountryAttribute, issuer.country.countryCode.code.toDataElement())
-    addItemToSign(IssuingAuthorityAttribute, issuer.authority.value.toDataElement())
-    addItemToSign(IssuingCountryDistinguishingSignAttribute, issuer.country.distinguishingSign.code.toDataElement())
-    issuer.jurisdiction?.let { addItemToSign(IssuingJurisdictionAttribute, it.value.toDataElement()) }
+    addItemToSign(MsoMdocMdlV1Attributes.IssuingCountry, issuer.country.countryCode.code.toDataElement())
+    addItemToSign(MsoMdocMdlV1Attributes.IssuingAuthority, issuer.authority.value.toDataElement())
+    addItemToSign(MsoMdocMdlV1Attributes.IssuingCountryDistinguishingSign, issuer.country.distinguishingSign.code.toDataElement())
+    issuer.jurisdiction?.let { addItemToSign(MsoMdocMdlV1Attributes.IssuingJurisdiction, it.value.toDataElement()) }
 }
 
 private fun MDocBuilder.addItemToSign(attr: AttributeDetails, value: DataElement) {

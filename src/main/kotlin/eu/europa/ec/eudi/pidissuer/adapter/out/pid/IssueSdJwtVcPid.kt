@@ -44,7 +44,17 @@ import java.util.*
 
 val PidSdJwtVcScope: Scope = Scope("eu.europa.ec.eudi.pid_vc_sd_jwt")
 
-internal object Attributes {
+internal object SdJwtVcPidAttributes {
+
+    val FamilyName by lazy { OidcFamilyName }
+    val GivenName by lazy { OidcGivenName }
+    val BirthDate by lazy { OidcBirthDate }
+    val BirthFamilyName by lazy { OidcAssuranceBirthFamilyName }
+    val BirthGivenName by lazy { OidcAssuranceBirthGivenName }
+    val PlaceOfBirth by lazy { OidcAssurancePlaceOfBirth }
+    val Address by lazy { OidcAddressClaim }
+    val Gender by lazy { OidcGender }
+    val Nationalities by lazy { OidcAssuranceNationalities }
 
     val AgeBirthYear = AttributeDetails(
         path = ClaimPath.claim("age_birth_year"),
@@ -65,28 +75,67 @@ internal object Attributes {
         display = mapOf(Locale.ENGLISH to "The current age of the PID User in years."),
     )
 
-    val pidAttributes: List<AttributeDetails> = listOf(
-        OidcFamilyName,
-        OidcGivenName,
-        OidcBirthDate,
-        AgeEqualOrOver,
-        AgeOver18,
-        AgeInYears,
-        AgeBirthYear,
-        OidcAssuranceBirthFamilyName,
-        OidcAssuranceBirthGivenName,
-        OidcAssurancePlaceOfBirth.attribute,
-        *OidcAssurancePlaceOfBirth.nestedAttributes.toTypedArray(),
-        OidcAddressClaim.attribute,
-        *OidcAddressClaim.nestedAttributes.toTypedArray(),
-        OidcGender,
-        OidcAssuranceNationalities,
-        IssuingAuthorityAttribute,
-        DocumentNumberAttribute,
-        AdministrativeNumberAttribute,
-        IssuingCountryAttribute,
-        IssuingJurisdictionAttribute,
+    val IssuingAuthority = AttributeDetails(
+        path = ClaimPath.claim("issuing_authority"),
+        mandatory = true,
+        display = mapOf(
+            Locale.ENGLISH to "Name of the administrative authority that has issued this PID instance, " +
+                "or the ISO 3166 Alpha-2 country code of the respective Member State if there is " +
+                "no separate authority authorized to issue PIDs.",
+        ),
     )
+
+    val DocumentNumber = AttributeDetails(
+        path = ClaimPath.claim("document_number"),
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "A number for the PID, assigned by the PID Provider."),
+    )
+
+    val AdministrativeNumber = AttributeDetails(
+        path = ClaimPath.claim("administrative_number"),
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "A number assigned by the PID Provider for audit control or other purposes."),
+    )
+
+    val IssuingCountry = AttributeDetails(
+        path = ClaimPath.claim("issuing_country"),
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Alpha-2 country code, as defined in ISO 3166-1, of the PID Provider's country or territory."),
+    )
+
+    val IssuingJurisdiction = AttributeDetails(
+        path = ClaimPath.claim("issuing_jurisdiction"),
+        mandatory = false,
+        display = mapOf(
+            Locale.ENGLISH to "Country subdivision code of the jurisdiction that issued the PID, " +
+                "as defined in ISO 3166-2:2020, Clause 8. The first part of the code SHALL be the same " +
+                "as the value for issuing_country.",
+        ),
+    )
+
+    val pidAttributes: List<AttributeDetails>
+        get() = listOf(
+            FamilyName,
+            GivenName,
+            BirthDate,
+            AgeEqualOrOver,
+            AgeOver18,
+            AgeInYears,
+            AgeBirthYear,
+            BirthFamilyName,
+            BirthGivenName,
+            PlaceOfBirth.attribute,
+            *PlaceOfBirth.nestedAttributes.toTypedArray(),
+            Address.attribute,
+            *Address.nestedAttributes.toTypedArray(),
+            Gender,
+            Nationalities,
+            IssuingAuthority,
+            DocumentNumber,
+            AdministrativeNumber,
+            IssuingCountry,
+            IssuingJurisdiction,
+        )
 }
 
 private fun pidDocType(version: Int): String = "urn:eu.europa.ec.eudi:pid:$version"
@@ -96,7 +145,7 @@ fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration
         id = CredentialConfigurationId(PidSdJwtVcScope.value),
         type = SdJwtVcType(pidDocType(1)),
         display = pidDisplay,
-        claims = Attributes.pidAttributes,
+        claims = SdJwtVcPidAttributes.pidAttributes,
         cryptographicBindingMethodsSupported = nonEmptySetOf(CryptographicBindingMethod.Jwk),
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
         scope = PidSdJwtVcScope,
