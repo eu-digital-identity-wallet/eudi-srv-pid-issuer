@@ -448,7 +448,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
         val issuedCredentials = assertNotNull(response.credentials)
         assertEquals(keys.size, issuedCredentials.size)
         issuedCredentials.forEach {
-            assertEquals(JsonPrimitive("PID"), it.credential)
+            assertEquals(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID")), it)
         }
         assertNull(response.transactionId)
     }

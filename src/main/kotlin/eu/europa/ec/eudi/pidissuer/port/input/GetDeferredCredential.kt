@@ -26,10 +26,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadDeferredCredentialRe
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.*
 import org.slf4j.LoggerFactory
 
 @Serializable
@@ -70,13 +67,29 @@ sealed interface DeferredCredentialSuccessResponse {
          * A single issued Credential.
          */
         @Serializable
-        data class CredentialTO(
-            @Required val credential: JsonElement,
-        ) {
+        @JvmInline
+        value class CredentialTO(val value: JsonObject) {
             init {
+                val credential = requireNotNull(value["credential"]) {
+                    "value must have a 'credential' property"
+                }
+
                 require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
                     "credential must be either a JsonObjects or a string JsonPrimitive"
                 }
+            }
+
+            companion object {
+                operator fun invoke(
+                    credential: JsonElement,
+                    builder: JsonObjectBuilder.() -> Unit = { },
+                ): CredentialTO =
+                    CredentialTO(
+                        buildJsonObject {
+                            put("credential", credential)
+                            builder()
+                        },
+                    )
             }
         }
     }

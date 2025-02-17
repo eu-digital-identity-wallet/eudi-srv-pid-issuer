@@ -203,13 +203,29 @@ sealed interface IssueCredentialResponse {
          * A single issued Credential.
          */
         @Serializable
-        data class CredentialTO(
-            @Required val credential: JsonElement,
-        ) {
+        @JvmInline
+        value class CredentialTO(val value: JsonObject) {
             init {
+                val credential = requireNotNull(value["credential"]) {
+                    "value must have a 'credential' property"
+                }
+
                 require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
                     "credential must be either a JsonObjects or a string JsonPrimitive"
                 }
+            }
+
+            companion object {
+                operator fun invoke(
+                    credential: JsonElement,
+                    builder: JsonObjectBuilder.() -> Unit = { },
+                ): CredentialTO =
+                    CredentialTO(
+                        buildJsonObject {
+                            put("credential", credential)
+                            builder()
+                        },
+                    )
             }
         }
     }
