@@ -28,7 +28,23 @@ typealias MsoNameSpace = String
 
 const val MSO_MDOC_FORMAT_VALUE = "mso_mdoc"
 val MSO_MDOC_FORMAT = Format(MSO_MDOC_FORMAT_VALUE)
-typealias MsoClaims = Map<MsoNameSpace, List<AttributeDetails>>
+
+@JvmInline
+value class MsoClaims(val claims: Map<MsoNameSpace, List<AttributeDetails>>) : Map<MsoNameSpace, List<AttributeDetails>> by claims {
+    init {
+        require(claims.all { (nameSpace, attributes) -> attributes.all { attribute -> attribute.path.isMsoMDoc(nameSpace) } }) {
+            "claims contains attributes with invalid MSO MDoc ClaimPaths"
+        }
+    }
+}
+
+fun ClaimPath.isMsoMDoc(nameSpace: MsoNameSpace): Boolean =
+    when (size) {
+        2 -> ClaimPathElement.Claim(nameSpace) == first() && last() is ClaimPathElement.Claim
+        else -> false
+    }
+
+fun ClaimPath.Companion.msoMDoc(nameSpace: MsoNameSpace, name: String): ClaimPath = ClaimPath.claim(nameSpace).claim(name)
 
 data class MsoMdocPolicy(val oneTimeUse: Boolean)
 
@@ -42,7 +58,7 @@ data class MsoMdocCredentialConfiguration(
     override val credentialSigningAlgorithmsSupported: Set<JWSAlgorithm>,
     override val scope: Scope? = null,
     override val display: List<CredentialDisplay> = emptyList(),
-    val msoClaims: MsoClaims = emptyMap(),
+    val msoClaims: MsoClaims = MsoClaims(emptyMap()),
     override val proofTypesSupported: ProofTypesSupported = ProofTypesSupported.Empty,
     val policy: MsoMdocPolicy? = null,
 ) : CredentialConfiguration

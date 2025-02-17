@@ -42,68 +42,70 @@ val PidMsoMdocScope: Scope = Scope("eu.europa.ec.eudi.pid_mso_mdoc")
 
 val PidMsoMdocNamespace: MsoNameSpace = pidNameSpace(1)
 
+private fun pidV1ClaimPath(name: String): ClaimPath = ClaimPath.msoMDoc(PidMsoMdocNamespace, name)
+
 val GivenNameAttribute = AttributeDetails(
-    name = "given_name",
+    path = pidV1ClaimPath("given_name"),
     mandatory = true,
     display = mapOf(Locale.ENGLISH to "Current first name(s), including middle name(s), of the PID User."),
 )
 val FamilyNameAttribute = AttributeDetails(
-    name = "family_name",
+    path = pidV1ClaimPath("family_name"),
     mandatory = true,
     display = mapOf(Locale.ENGLISH to "Current last name(s) or surname(s) of the PID User."),
 )
 val BirthDateAttribute = AttributeDetails(
-    name = "birth_date",
+    path = pidV1ClaimPath("birth_date"),
     mandatory = true,
     display = mapOf(Locale.ENGLISH to "Day, month, and year on which the PID User was born."),
 )
 val FamilyNameBirthAttribute = AttributeDetails(
-    name = "family_name_birth",
+    path = pidV1ClaimPath("family_name_birth"),
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "Last name(s) or surname(s) of the PID User at the time of birth."),
 )
 val GivenNameBirthAttribute = AttributeDetails(
-    name = "given_name_birth",
+    path = pidV1ClaimPath("given_name_birth"),
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "First name(s), including middle name(s), of the PID User at the time of birth."),
 )
 val GenderAttribute = AttributeDetails(
-    name = "gender",
+    path = pidV1ClaimPath("gender"),
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "PID User's gender, using a value as defined in ISO/IEC 5218."),
 )
 val AgeOver18Attribute = AttributeDetails(
-    name = "age_over_18",
+    path = pidV1ClaimPath("age_over_18"),
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "Attesting whether the PID User is currently an adult (true) or a minor (false)."),
 )
 val AgeBirthYearAttribute = AttributeDetails(
-    name = "age_birth_year",
+    path = pidV1ClaimPath("age_birth_year"),
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "The year when the PID User was born."),
 )
 val AgeInYearsAttribute = AttributeDetails(
-    name = "age_in_years",
+    path = pidV1ClaimPath("age_in_years"),
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "The current age of the PID User in years."),
 )
 val NationalityAttribute = AttributeDetails(
-    name = "nationality",
+    path = pidV1ClaimPath("nationality"),
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "Alpha-2 country code as specified in ISO 3166-1, representing the nationality of the PID User."),
 )
 val IssuanceDateAttribute = AttributeDetails(
-    name = "issuance_date",
+    path = pidV1ClaimPath("issuance_date"),
     mandatory = true,
     display = mapOf(Locale.ENGLISH to "Date (and possibly time) when the PID was issued."),
 )
 val ExpiryDateAttribute = AttributeDetails(
-    name = "expiry_date",
+    path = pidV1ClaimPath("expiry_date"),
     mandatory = true,
     display = mapOf(Locale.ENGLISH to "Date (and possibly time) when the PID will expire."),
 )
 val IssuingAuthorityAttribute = AttributeDetails(
-    name = "issuing_authority",
+    path = pidV1ClaimPath("issuing_authority"),
     mandatory = true,
     display = mapOf(
         Locale.ENGLISH to "Name of the administrative authority that has issued this PID instance, " +
@@ -112,27 +114,27 @@ val IssuingAuthorityAttribute = AttributeDetails(
     ),
 )
 val BirthPlaceAttribute = AttributeDetails(
-    name = "birth_place",
+    path = pidV1ClaimPath("birth_place"),
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User was born."),
 )
 val BirthCountryAttribute = AttributeDetails(
-    name = "birth_country",
+    path = pidV1ClaimPath("birth_country"),
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "The country where the PID User was born, as an Alpha-2 country code as specified in ISO 3166-1."),
 )
 val BirthStateAttribute = AttributeDetails(
-    name = "birth_state",
+    path = pidV1ClaimPath("birth_state"),
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User was born."),
 )
 val BirthCityAttribute = AttributeDetails(
-    name = "birth_city",
+    path = pidV1ClaimPath("birth_city"),
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "The municipality, city, town, or village where the PID User was born."),
 )
 val ResidenceAddressAttribute = AttributeDetails(
-    name = "resident_address",
+    path = pidV1ClaimPath("resident_address"),
     mandatory = false,
     display = mapOf(
         Locale.ENGLISH to "The full address of the place where the PID User currently resides and/or " +
@@ -140,54 +142,54 @@ val ResidenceAddressAttribute = AttributeDetails(
     ),
 )
 val ResidenceCountryAttribute = AttributeDetails(
-    name = "resident_country",
+    path = pidV1ClaimPath("resident_country"),
     mandatory = false,
     display = mapOf(
         Locale.ENGLISH to "The country where the PID User currently resides, as an Alpha-2 country code as specified in ISO 3166-1.",
     ),
 )
 val ResidenceStateAttribute = AttributeDetails(
-    name = "resident_state",
+    path = pidV1ClaimPath("resident_state"),
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User currently resides."),
 )
 val ResidenceCityAttribute = AttributeDetails(
-    name = "resident_city",
+    path = pidV1ClaimPath("resident_city"),
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "The municipality, city, town, or village where the PID User currently resides."),
 )
 val ResidencePostalCodeAttribute = AttributeDetails(
-    name = "resident_postal_code",
+    path = pidV1ClaimPath("resident_postal_code"),
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "Postal code of the place where the PID User currently resides."),
 )
 val ResidenceStreetAttribute = AttributeDetails(
-    name = "resident_street",
+    path = pidV1ClaimPath("resident_street"),
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "The name of the street where the PID User currently resides."),
 )
 val ResidenceHouseNumberAttribute = AttributeDetails(
-    name = "resident_house_number",
+    path = pidV1ClaimPath("resident_house_number"),
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "The house number where the PID User currently resides, including any affix or suffix."),
 )
 val DocumentNumberAttribute = AttributeDetails(
-    name = "document_number",
+    path = pidV1ClaimPath("document_number"),
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "A number for the PID, assigned by the PID Provider."),
 )
 val AdministrativeNumberAttribute = AttributeDetails(
-    name = "administrative_number",
+    path = pidV1ClaimPath("administrative_number"),
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "A number assigned by the PID Provider for audit control or other purposes."),
 )
 val IssuingCountryAttribute = AttributeDetails(
-    name = "issuing_country",
+    path = pidV1ClaimPath("issuing_country"),
     mandatory = true,
     display = mapOf(Locale.ENGLISH to "Alpha-2 country code, as defined in ISO 3166-1, of the PID Provider's country or territory."),
 )
 val IssuingJurisdictionAttribute = AttributeDetails(
-    name = "issuing_jurisdiction",
+    path = pidV1ClaimPath("issuing_jurisdiction"),
     mandatory = false,
     display = mapOf(
         Locale.ENGLISH to "Country subdivision code of the jurisdiction that issued the PID, " +
@@ -195,6 +197,7 @@ val IssuingJurisdictionAttribute = AttributeDetails(
             "as the value for issuing_country.",
     ),
 )
+
 private val pidAttributes = PidMsoMdocNamespace to listOf(
     FamilyNameAttribute,
     GivenNameAttribute,
@@ -243,7 +246,7 @@ val PidMsoMdocV1: MsoMdocCredentialConfiguration =
         id = CredentialConfigurationId(PidMsoMdocScope.value),
         docType = pidDocType(1),
         display = pidDisplay,
-        msoClaims = mapOf(pidAttributes),
+        msoClaims = MsoClaims(mapOf(pidAttributes)),
         cryptographicBindingMethodsSupported = emptySet(),
         credentialSigningAlgorithmsSupported = emptySet(),
         scope = PidMsoMdocScope,

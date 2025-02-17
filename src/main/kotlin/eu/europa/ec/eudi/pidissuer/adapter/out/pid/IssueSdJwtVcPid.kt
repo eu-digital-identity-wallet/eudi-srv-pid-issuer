@@ -47,21 +47,21 @@ val PidSdJwtVcScope: Scope = Scope("eu.europa.ec.eudi.pid_vc_sd_jwt")
 internal object Attributes {
 
     val AgeBirthYear = AttributeDetails(
-        name = "age_birth_year",
+        path = ClaimPath.claim("age_birth_year"),
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "The year when the PID User was born."),
     )
     val AgeEqualOrOver = AttributeDetails(
-        name = "age_equal_or_over",
+        path = ClaimPath.claim("age_equal_or_over"),
         display = mapOf(Locale.ENGLISH to "Attesting attributes for the age of the PID User."),
     )
     val AgeOver18 = AttributeDetails(
-        name = "18",
+        path = AgeEqualOrOver.path.claim("18"),
         display = mapOf(Locale.ENGLISH to "Attesting whether the PID User is currently an adult (true) or a minor (false)."),
     )
 
     val AgeInYears = AttributeDetails(
-        name = "age_in_years",
+        path = ClaimPath.claim("age_in_years"),
         display = mapOf(Locale.ENGLISH to "The current age of the PID User in years."),
     )
 

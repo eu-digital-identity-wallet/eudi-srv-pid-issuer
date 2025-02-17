@@ -72,11 +72,17 @@ data class CredentialDisplay(
 typealias Display = Map<Locale, String>
 
 data class AttributeDetails(
-    val name: String,
+    val path: ClaimPath,
     val mandatory: Boolean = false,
-    val valueType: String? = null,
     val display: Display = emptyMap(),
-)
+) {
+    init {
+        require(path.last() is ClaimPathElement.Claim) { "The provided ClaimPath does not correspond to an Attribute" }
+    }
+
+    val name: String
+        get() = (path.last() as ClaimPathElement.Claim).name
+}
 
 /**
  * Identify how the Credential is bound to the identifier

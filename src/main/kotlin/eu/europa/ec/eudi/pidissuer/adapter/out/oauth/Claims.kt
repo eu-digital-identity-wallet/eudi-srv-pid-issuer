@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.oauth
 
 import eu.europa.ec.eudi.pidissuer.domain.AttributeDetails
+import eu.europa.ec.eudi.pidissuer.domain.ClaimPath
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.util.*
@@ -30,7 +31,7 @@ interface IsAttribute {
 
 val OidcSub: AttributeDetails by lazy {
     AttributeDetails(
-        name = "sub",
+        path = ClaimPath.claim("sub"),
         mandatory = true,
         display = mapOf(Locale.ENGLISH to "Subject - Identifier for the End-User at the Issuer"),
     )
@@ -38,28 +39,28 @@ val OidcSub: AttributeDetails by lazy {
 
 val OidcFamilyName: AttributeDetails by lazy {
     AttributeDetails(
-        name = "family_name",
+        path = ClaimPath.claim("family_name"),
         display = mapOf(Locale.ENGLISH to "Current last name(s) or surname(s) of the PID User."),
     )
 }
 
 val OidcGivenName: AttributeDetails by lazy {
     AttributeDetails(
-        name = "given_name",
+        path = ClaimPath.claim("given_name"),
         display = mapOf(Locale.ENGLISH to "Current first name(s), including middle name(s), of the PID User."),
     )
 }
 
 val OidcBirthDate: AttributeDetails by lazy {
     AttributeDetails(
-        name = "birthdate",
+        path = ClaimPath.claim("birthdate"),
         display = mapOf(Locale.ENGLISH to "Day, month, and year on which the PID User was born."),
     )
 }
 
 val OidcGender: AttributeDetails by lazy {
     AttributeDetails(
-        name = "gender",
+        path = ClaimPath.claim("gender"),
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "PID User’s gender, using a value as defined in OpenID Connect Core 1.0."),
     )
@@ -81,7 +82,7 @@ data class OidcAddressClaim(
         const val NAME = "address"
         override val attribute: AttributeDetails
             get() = AttributeDetails(
-                name = NAME,
+                path = ClaimPath.claim(NAME),
                 mandatory = false,
                 display = mapOf(
                     Locale.ENGLISH to "The full address of the place where the PID User currently resides and/or " +
@@ -97,7 +98,7 @@ data class OidcAddressClaim(
 
 val OidcAssuranceNationalities: AttributeDetails by lazy {
     AttributeDetails(
-        name = "nationalities",
+        path = ClaimPath.claim("nationalities"),
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "Alpha-2 country code as specified in ISO 3166-1, representing the nationality of the PID User."),
     )
@@ -105,14 +106,14 @@ val OidcAssuranceNationalities: AttributeDetails by lazy {
 
 val OidcAssuranceBirthFamilyName: AttributeDetails by lazy {
     AttributeDetails(
-        name = "birth_family_name",
+        path = ClaimPath.claim("birth_family_name"),
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "Last name(s) or surname(s) of the PID User at the time of birth."),
     )
 }
 val OidcAssuranceBirthGivenName: AttributeDetails by lazy {
     AttributeDetails(
-        name = "birth_given_name",
+        path = ClaimPath.claim("birth_given_name"),
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "First name(s), including middle name(s), of the PID User at the time of birth."),
     )
@@ -128,7 +129,7 @@ data class OidcAssurancePlaceOfBirth(
         const val NAME = "place_of_birth"
         override val attribute: AttributeDetails
             get() = AttributeDetails(
-                name = NAME,
+                path = ClaimPath.claim(NAME),
                 mandatory = false,
                 display = mapOf(Locale.ENGLISH to "The country, state, and city where the PID User was born."),
             )
