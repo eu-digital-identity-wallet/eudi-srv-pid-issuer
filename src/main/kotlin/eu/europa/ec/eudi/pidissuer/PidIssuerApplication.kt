@@ -313,9 +313,6 @@ fun beans(clock: Clock) = beans {
                             unvalidatedProofs = unvalidatedProofs,
                             credentialResponseEncryption = requestedResponseEncryption,
                             docType = MobileDrivingLicenceV1.docType,
-                            claims = MobileDrivingLicenceV1.msoClaims.mapValues { entry ->
-                                entry.value.map { attribute -> attribute.name }
-                            },
                         )
                     }
             }
@@ -327,7 +324,6 @@ fun beans(clock: Clock) = beans {
                             unvalidatedProofs = unvalidatedProofs,
                             credentialResponseEncryption = requestedResponseEncryption,
                             docType = PidMsoMdocV1.docType,
-                            claims = PidMsoMdocV1.msoClaims.mapValues { entry -> entry.value.map { attribute -> attribute.name } },
                         )
                     }
             }
@@ -341,7 +337,6 @@ fun beans(clock: Clock) = beans {
                                 unvalidatedProofs = unvalidatedProofs,
                                 credentialResponseEncryption = requestedResponseEncryption,
                                 type = sdJwtVcPid.type,
-                                claims = sdJwtVcPid.claims.map { it.name }.toSet(),
                             )
                         }
                 }
