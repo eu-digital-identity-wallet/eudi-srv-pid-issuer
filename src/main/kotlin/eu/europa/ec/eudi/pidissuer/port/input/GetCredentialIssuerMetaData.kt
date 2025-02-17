@@ -237,11 +237,9 @@ internal fun MsoMdocCredentialConfiguration.toTransferObject(
         }
     }
 
-    putJsonObject("claims") {
-        msoClaims.forEach { (nameSpace, attributes) ->
-            putJsonObject(nameSpace) {
-                attributes.forEach { attribute -> attribute.toTransferObject(this) }
-            }
+    if (msoClaims.isNotEmpty()) {
+        putJsonArray("claims") {
+            addAll(msoClaims.values.flatten().map { it.toJsonObject() })
         }
     }
 }
@@ -253,8 +251,10 @@ internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilde
         }
     }
     put("vct", type.value)
-    putJsonObject("claims") {
-        claims.forEach { attribute -> attribute.toTransferObject(this) }
+    if (claims.isNotEmpty()) {
+        putJsonArray("claims") {
+            addAll(claims.map { it.toJsonObject() })
+        }
     }
 }
 
@@ -272,22 +272,18 @@ internal fun CredentialDisplay.toTransferObject(): JsonObject = buildJsonObject 
     backgroundImage?.let { backgroundImage ->
         putJsonObject("background_image") {
             put("uri", backgroundImage.uri.toString())
-            backgroundImage.alternativeText?.let { put("alt_text", it) }
         }
     }
     textColor?.let { put("text_color", it) }
 }
 
-internal val AttributeDetails.toTransferObject: JsonObjectBuilder.() -> Unit
-    get() = {
-        putJsonObject(name) {
-            put("mandatory", mandatory)
-            valueType?.let { put("value_type", it) }
-            if (display.isNotEmpty()) {
-                put("display", display.toTransferObject())
-            }
-        }
+private fun AttributeDetails.toJsonObject(): JsonObject = buildJsonObject {
+    put("path", Json.encodeToJsonElement(path))
+    put("mandatory", mandatory)
+    if (display.isNotEmpty()) {
+        put("display", display.toTransferObject())
     }
+}
 
 internal fun Display.toTransferObject(): JsonArray =
     map { (locale, value) ->

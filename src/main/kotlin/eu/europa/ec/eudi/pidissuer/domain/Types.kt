@@ -57,6 +57,10 @@ value class Format(val value: String)
 typealias CredentialIssuerId = HttpsUrl
 
 data class ImageUri(val uri: URI, val alternativeText: String? = null)
+
+@JvmInline
+value class BackgroundImage(val uri: URI)
+
 data class DisplayName(val name: String, val locale: Locale)
 typealias Color = String
 
@@ -65,18 +69,24 @@ data class CredentialDisplay(
     val logo: ImageUri? = null,
     val description: String? = null,
     val backgroundColor: Color? = null,
-    val backgroundImage: ImageUri? = null,
+    val backgroundImage: BackgroundImage? = null,
     val textColor: Color? = null,
 )
 
 typealias Display = Map<Locale, String>
 
 data class AttributeDetails(
-    val name: String,
+    val path: ClaimPath,
     val mandatory: Boolean = false,
-    val valueType: String? = null,
     val display: Display = emptyMap(),
-)
+) {
+    init {
+        require(path.last() is ClaimPathElement.Claim) { "The provided ClaimPath does not correspond to an Attribute" }
+    }
+
+    val name: String
+        get() = (path.last() as ClaimPathElement.Claim).name
+}
 
 /**
  * Identify how the Credential is bound to the identifier
