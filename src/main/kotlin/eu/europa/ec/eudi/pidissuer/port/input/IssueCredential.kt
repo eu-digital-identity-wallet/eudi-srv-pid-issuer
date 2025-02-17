@@ -74,6 +74,7 @@ data class CredentialRequestTO(
     val credentialIdentifier: String? = null,
     @SerialName("credential_configuration_id")
     val credentialConfigurationId: String? = null,
+    @Deprecated(message = "Will be removed in a future draft.")
     val proof: ProofTo? = null,
     val proofs: ProofsTO? = null,
     @SerialName("credential_response_encryption")
