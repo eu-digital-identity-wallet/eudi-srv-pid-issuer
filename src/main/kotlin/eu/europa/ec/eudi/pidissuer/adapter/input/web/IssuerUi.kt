@@ -28,7 +28,6 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.server.*
 import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
 
 class IssuerUi(
     private val credentialsOfferUri: String,
@@ -72,7 +71,6 @@ class IssuerUi(
             )
     }
 
-    @OptIn(ExperimentalEncodingApi::class)
     private suspend fun handleGenerateCredentialsOffer(request: ServerRequest): ServerResponse {
         log.info("Generating Credentials Offer")
         val formData = request.awaitFormData()

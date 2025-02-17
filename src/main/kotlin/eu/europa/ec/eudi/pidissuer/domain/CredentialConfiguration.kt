@@ -24,12 +24,41 @@ import com.nimbusds.jose.JWSAlgorithm
 @JvmInline
 value class CredentialConfigurationId(val value: String)
 
+@JvmInline
+value class AttackPotentialResistance(val value: String) {
+    init {
+        require(value.isNotEmpty())
+    }
+
+    override fun toString(): String = value
+
+    companion object {
+        val Iso18045High: AttackPotentialResistance get() = AttackPotentialResistance("iso_18045_high")
+        val Iso18045Moderate: AttackPotentialResistance get() = AttackPotentialResistance("iso_18045_moderate")
+        val Iso18045EnhancedBasic: AttackPotentialResistance get() = AttackPotentialResistance("iso_18045_enhanced-basic")
+        val Iso18045Basic: AttackPotentialResistance get() = AttackPotentialResistance("iso_18045_basic")
+    }
+}
+
+sealed interface KeyAttestation {
+
+    data object NotRequired : KeyAttestation
+
+    data class Required(
+        val keyStorage: NonEmptySet<AttackPotentialResistance>?,
+        val useAuthentication: NonEmptySet<AttackPotentialResistance>?,
+    ) : KeyAttestation
+}
+
 sealed interface ProofType {
 
     /**
      * A JWT is used as proof of possession.
      */
-    data class Jwt(val signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>) : ProofType
+    data class Jwt(
+        val signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
+        val keyAttestation: KeyAttestation,
+    ) : ProofType
 }
 
 fun ProofType.type(): ProofTypeEnum = when (this) {

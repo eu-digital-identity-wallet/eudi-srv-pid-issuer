@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer
 
 import eu.europa.ec.eudi.pidissuer.port.input.CredentialRequestTO
-import eu.europa.ec.eudi.pidissuer.port.input.FormatTO
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 
@@ -24,29 +23,18 @@ class CredentialRequestTOTest {
 
     @Test
     fun checkMsoMdoc() {
-        assert(Json.decodeFromString<CredentialRequestTO>(msoMdoc).format == FormatTO.MsoMdoc)
+        assert("eu.europa.ec.eudi.pid_mso_mdo" == Json.decodeFromString<CredentialRequestTO>(msoMdoc).credentialConfigurationId)
     }
 
     @Test
     fun checkSdJwtVc() {
-        assert(Json.decodeFromString<CredentialRequestTO>(sdJwtVc).format == FormatTO.SdJwtVc)
+        assert("eu.europa.ec.eudi.pid_vc_sd_jwt" == Json.decodeFromString<CredentialRequestTO>(sdJwtVc).credentialConfigurationId)
     }
 }
 
 val msoMdoc = """
     {
-       "format": "mso_mdoc",
-       "doctype": "org.iso.18013.5.1.mDL",
-       "claims": {
-          "org.iso.18013.5.1": {
-             "given_name": {},
-             "family_name": {},
-             "birth_date": {}
-          },
-          "org.iso.18013.5.1.aamva": {
-             "organ_donor": {}
-          }
-       },
+       "credential_configuration_id": "eu.europa.ec.eudi.pid_mso_mdo",
        "credential_response_encryption": {
         "jwk": {},
         "alg": "ECDH-ES",
@@ -61,8 +49,7 @@ val msoMdoc = """
 
 val sdJwtVc = """
     {
-       "format": "vc+sd-jwt",
-       "vct": "IdentityCredential",
+       "credential_configuration_id": "eu.europa.ec.eudi.pid_vc_sd_jwt",
        "proof": {
           "proof_type": "jwt",
           "jwt":"${

@@ -104,6 +104,7 @@ fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration
                         JWSAlgorithm.RS256,
                         JWSAlgorithm.ES256,
                     ),
+                    KeyAttestation.NotRequired,
                 ),
             ),
         ),
