@@ -47,7 +47,9 @@ internal class ValidateProofs(
                 when (it) {
                     is UnvalidatedProof.Jwt ->
                         validateJwtProof(it, credentialConfiguration).bind()
-                    is UnvalidatedProof.LdpVp -> raise(InvalidProof("Supporting only JWT proof"))
+                    is UnvalidatedProof.LdpVp,
+                    is UnvalidatedProof.Attestation,
+                    -> raise(InvalidProof("Supporting only JWT proof"))
                 }
             }
 
