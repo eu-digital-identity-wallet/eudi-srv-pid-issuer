@@ -34,6 +34,8 @@ fun ClaimPath.isMsoMDoc(): Boolean = 2 == size && all { it is ClaimPathElement.C
 operator fun ClaimPath.Companion.invoke(nameSpace: MsoNameSpace, attributeName: String): ClaimPath =
     claim(nameSpace).claim(attributeName)
 
+fun ClaimDefinition.isMsoMDoc(): Boolean = nested.isEmpty() && path.isMsoMDoc()
+
 operator fun ClaimDefinition.Companion.invoke(
     nameSpace: MsoNameSpace,
     attributeName: String,
@@ -58,7 +60,7 @@ data class MsoMdocCredentialConfiguration(
     val policy: MsoMdocPolicy? = null,
 ) : CredentialConfiguration {
     init {
-        require(claims.all { it.path.isMsoMDoc() }) {
+        require(claims.all { it.isMsoMDoc() }) {
             "'claims' does not contain valid MSO MDoc ClaimDefinitions"
         }
     }

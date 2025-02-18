@@ -156,20 +156,20 @@ private fun selectivelyDisclosed(
 
         pid.oidcAssurancePlaceOfBirth()?.let { placeOfBirth ->
             objClaim(SdJwtVcPidClaims.PlaceOfBirth.attribute.name) {
-                placeOfBirth.locality?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirthLocality.name, it) }
-                placeOfBirth.region?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirthRegion.name, it) }
-                placeOfBirth.country?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirthCountry.name, it) }
+                placeOfBirth.locality?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Locality.name, it) }
+                placeOfBirth.region?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Region.name, it) }
+                placeOfBirth.country?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Country.name, it) }
             }
         }
         pid.oidcAddressClaim()?.let { address ->
             objClaim(SdJwtVcPidClaims.Address.attribute.name) {
-                address.formatted?.let { sdClaim(SdJwtVcPidClaims.AddressFormatted.name, it) }
-                address.country?.let { sdClaim(SdJwtVcPidClaims.AddressCountry.name, it) }
-                address.region?.let { sdClaim(SdJwtVcPidClaims.AddressRegion.name, it) }
-                address.locality?.let { sdClaim(SdJwtVcPidClaims.AddressLocality.name, it) }
-                address.postalCode?.let { sdClaim(SdJwtVcPidClaims.AddressPostalCode.name, it) }
-                address.streetAddress?.let { sdClaim(SdJwtVcPidClaims.AddressStreet.name, it) }
-                address.houseNumber?.let { sdClaim(SdJwtVcPidClaims.AddressHouseNumber.name, it) }
+                address.formatted?.let { sdClaim(SdJwtVcPidClaims.Address.Formatted.name, it) }
+                address.country?.let { sdClaim(SdJwtVcPidClaims.Address.Country.name, it) }
+                address.region?.let { sdClaim(SdJwtVcPidClaims.Address.Region.name, it) }
+                address.locality?.let { sdClaim(SdJwtVcPidClaims.Address.Locality.name, it) }
+                address.postalCode?.let { sdClaim(SdJwtVcPidClaims.Address.PostalCode.name, it) }
+                address.streetAddress?.let { sdClaim(SdJwtVcPidClaims.Address.Street.name, it) }
+                address.houseNumber?.let { sdClaim(SdJwtVcPidClaims.Address.HouseNumber.name, it) }
             }
         }
         pid.genderAsString?.let { sdClaim(SdJwtVcPidClaims.Gender.name, it) }

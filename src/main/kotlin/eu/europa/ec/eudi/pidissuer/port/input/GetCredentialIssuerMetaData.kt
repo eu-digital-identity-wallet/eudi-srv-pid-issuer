@@ -253,7 +253,7 @@ internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilde
     put("vct", type.value)
     if (claims.isNotEmpty()) {
         putJsonArray("claims") {
-            addAll(claims.map { it.toJsonObject() })
+            addAll(claims.flatMap { listOf(it, *it.nested.toTypedArray()) }.map { it.toJsonObject() })
         }
     }
 }

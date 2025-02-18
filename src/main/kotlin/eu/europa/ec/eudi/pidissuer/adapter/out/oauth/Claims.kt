@@ -89,7 +89,66 @@ data class OidcAddressClaim(
                     Locale.ENGLISH to "The full address of the place where the PID User currently resides and/or " +
                         "can be contacted (street name, house number, city etc.).",
                 ),
+                nested = listOf(Street, Locality, Region, PostalCode, Country, Formatted, HouseNumber),
             )
+
+        val Street = ClaimDefinition(
+            path = ClaimPath.claim(NAME).claim("street_address"),
+            mandatory = false,
+            display = mapOf(
+                Locale.ENGLISH to "The name of the street where the user to whom the person identification " +
+                    "data relates currently resides.",
+            ),
+        )
+        val Locality = ClaimDefinition(
+            path = ClaimPath.claim(NAME).claim("locality"),
+            mandatory = false,
+            display = mapOf(
+                Locale.ENGLISH to "The municipality, city, town, or village where the user to whom the " +
+                    "person identification data relates currently resides.",
+            ),
+        )
+        val Region = ClaimDefinition(
+            path = ClaimPath.claim(NAME).claim("region"),
+            mandatory = false,
+            display = mapOf(
+                Locale.ENGLISH to "The state, province, district, or local area where the user to " +
+                    "whom the person identification data relates currently resides.",
+            ),
+        )
+        val PostalCode = ClaimDefinition(
+            path = ClaimPath.claim(NAME).claim("postal_code"),
+            mandatory = false,
+            display = mapOf(
+                Locale.ENGLISH to "The postal code of the place where the user to whom the person identification " +
+                    "data relates currently resides.",
+            ),
+        )
+        val Country = ClaimDefinition(
+            path = ClaimPath.claim(NAME).claim("country"),
+            mandatory = false,
+            display = mapOf(
+                Locale.ENGLISH to "The country where the user to whom the person identification data " +
+                    "relates currently resides, as an alpha-2 country code as specified in ISO 3166-1.",
+            ),
+        )
+        val HouseNumber = ClaimDefinition(
+            path = ClaimPath.claim(NAME).claim("house_number"),
+            mandatory = false,
+            display = mapOf(
+                Locale.ENGLISH to "The house number where the user to whom the person identification data " +
+                    "relates currently resides, including any affix or suffix.",
+            ),
+        )
+        val Formatted = ClaimDefinition(
+            path = ClaimPath.claim(NAME).claim("formatted"),
+            mandatory = false,
+            display = mapOf(
+                Locale.ENGLISH to "The full address of the place where the user to whom the person " +
+                    "identification data relates currently resides or can be contacted (street name, " +
+                    "house number, city etc.).",
+            ),
+        )
     }
 }
 
@@ -134,6 +193,25 @@ data class OidcAssurancePlaceOfBirth(
                 path = ClaimPath.claim(NAME),
                 mandatory = false,
                 display = mapOf(Locale.ENGLISH to "The country, state, and city where the PID User was born."),
+                nested = listOf(Locality, Region, Country),
             )
+
+        val Locality = ClaimDefinition(
+            path = ClaimPath.claim(NAME).claim("locality"),
+            mandatory = false,
+            display = mapOf(Locale.ENGLISH to "The city where the PID User was born."),
+        )
+
+        val Region = ClaimDefinition(
+            path = ClaimPath.claim(NAME).claim("region"),
+            mandatory = false,
+            display = mapOf(Locale.ENGLISH to "The state where the PID User was born."),
+        )
+
+        val Country = ClaimDefinition(
+            path = ClaimPath.claim(NAME).claim("country"),
+            mandatory = false,
+            display = mapOf(Locale.ENGLISH to "The country where the PID User was born."),
+        )
     }
 }

@@ -52,81 +52,7 @@ internal object SdJwtVcPidClaims {
     val BirthFamilyName = OidcAssuranceBirthFamilyName
     val BirthGivenName = OidcAssuranceBirthGivenName
     val PlaceOfBirth = OidcAssurancePlaceOfBirth
-    val PlaceOfBirthCountry = ClaimDefinition(
-        path = PlaceOfBirth.attribute.path.claim("country"),
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "The country where the PID User was born."),
-    )
-
-    val PlaceOfBirthRegion = ClaimDefinition(
-        path = PlaceOfBirth.attribute.path.claim("region"),
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "The state where the PID User was born."),
-    )
-
-    val PlaceOfBirthLocality = ClaimDefinition(
-        path = PlaceOfBirth.attribute.path.claim("locality"),
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "The city where the PID User was born."),
-    )
     val Address = OidcAddressClaim
-    val AddressHouseNumber = ClaimDefinition(
-        path = Address.attribute.path.claim("house_number"),
-        mandatory = false,
-        display = mapOf(
-            Locale.ENGLISH to "The house number where the user to whom the person identification data " +
-                "relates currently resides, including any affix or suffix.",
-        ),
-    )
-    val AddressStreet = ClaimDefinition(
-        path = Address.attribute.path.claim("street_address"),
-        mandatory = false,
-        display = mapOf(
-            Locale.ENGLISH to "The name of the street where the user to whom the person identification " +
-                "data relates currently resides.",
-        ),
-    )
-    val AddressPostalCode = ClaimDefinition(
-        path = Address.attribute.path.claim("postal_code"),
-        mandatory = false,
-        display = mapOf(
-            Locale.ENGLISH to "The postal code of the place where the user to whom the person identification " +
-                "data relates currently resides.",
-        ),
-    )
-    val AddressLocality = ClaimDefinition(
-        path = Address.attribute.path.claim("locality"),
-        mandatory = false,
-        display = mapOf(
-            Locale.ENGLISH to "The municipality, city, town, or village where the user to whom the " +
-                "person identification data relates currently resides.",
-        ),
-    )
-    val AddressRegion = ClaimDefinition(
-        path = Address.attribute.path.claim("region"),
-        mandatory = false,
-        display = mapOf(
-            Locale.ENGLISH to "The state, province, district, or local area where the user to " +
-                "whom the person identification data relates currently resides.",
-        ),
-    )
-    val AddressCountry = ClaimDefinition(
-        path = Address.attribute.path.claim("country"),
-        mandatory = false,
-        display = mapOf(
-            Locale.ENGLISH to "The country where the user to whom the person identification data " +
-                "relates currently resides, as an alpha-2 country code as specified in ISO 3166-1.",
-        ),
-    )
-    val AddressFormatted = ClaimDefinition(
-        path = Address.attribute.path.claim("formatted"),
-        mandatory = false,
-        display = mapOf(
-            Locale.ENGLISH to "The full address of the place where the user to whom the person " +
-                "identification data relates currently resides or can be contacted (street name, " +
-                "house number, city etc.).",
-        ),
-    )
     val Gender = OidcGender
     val Nationalities = OidcAssuranceNationalities
     val AgeBirthYear = ClaimDefinition(
@@ -191,17 +117,7 @@ internal object SdJwtVcPidClaims {
         BirthFamilyName,
         BirthGivenName,
         PlaceOfBirth.attribute,
-        PlaceOfBirthLocality,
-        PlaceOfBirthRegion,
-        PlaceOfBirthCountry,
         Address.attribute,
-        AddressFormatted,
-        AddressCountry,
-        AddressRegion,
-        AddressLocality,
-        AddressPostalCode,
-        AddressStreet,
-        AddressHouseNumber,
         Gender,
         Nationalities,
         IssuingAuthority,
