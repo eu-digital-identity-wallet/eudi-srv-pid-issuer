@@ -77,7 +77,7 @@ typealias Display = Map<Locale, String>
 
 data class ClaimDefinition(
     val path: ClaimPath,
-    val mandatory: Boolean = false,
+    val mandatory: Boolean? = null,
     val display: Display = emptyMap(),
     val nested: List<ClaimDefinition> = emptyList(),
 ) {

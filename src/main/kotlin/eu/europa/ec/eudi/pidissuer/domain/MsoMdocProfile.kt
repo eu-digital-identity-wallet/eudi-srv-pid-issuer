@@ -39,7 +39,7 @@ fun ClaimDefinition.isMsoMDoc(): Boolean = nested.isEmpty() && path.isMsoMDoc()
 operator fun ClaimDefinition.Companion.invoke(
     nameSpace: MsoNameSpace,
     attributeName: String,
-    mandatory: Boolean = false,
+    mandatory: Boolean? = null,
     display: Display = emptyMap(),
 ): ClaimDefinition = ClaimDefinition(ClaimPath(nameSpace, attributeName), mandatory, display)
 

@@ -280,7 +280,7 @@ internal fun CredentialDisplay.toTransferObject(): JsonObject = buildJsonObject 
 private fun ClaimDefinition.toJsonObjects(): List<JsonObject> {
     fun ClaimDefinition.toJsonObject(): JsonObject = buildJsonObject {
         put("path", Json.encodeToJsonElement(path))
-        put("mandatory", mandatory)
+        mandatory?.let { put("mandatory", it) }
         if (display.isNotEmpty()) {
             put("display", display.toTransferObject())
         }
