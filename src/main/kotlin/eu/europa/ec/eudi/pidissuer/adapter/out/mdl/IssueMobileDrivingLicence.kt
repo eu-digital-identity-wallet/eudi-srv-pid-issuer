@@ -40,216 +40,253 @@ val MobileDrivingLicenceV1Scope: Scope = Scope(mdlDocType(1u))
 
 val MobileDrivingLicenceV1Namespace: MsoNameSpace = mdlNamespace(1u)
 
-val FamilyNameAttribute = AttributeDetails(
-    name = "family_name",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Family Name(s)"),
-)
-val GivenNameAttribute = AttributeDetails(
-    name = "given_name",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Given Name(s)"),
-)
-val BirthDateAttribute = AttributeDetails(
-    name = "birth_date",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Birth Date"),
-)
-val IssueDateAttribute = AttributeDetails(
-    name = "issue_date",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Issuance Date"),
-)
-val ExpiryDateAttribute = AttributeDetails(
-    name = "expiry_date",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Expiry Date"),
-)
-val PortraitAttribute = AttributeDetails(
-    name = "portrait",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Portrait Image"),
-)
-val PortraitCaptureDateAttribute = AttributeDetails(
-    name = "portrait_capture_date",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Capture Date of Portrait Image"),
-)
-val SexAttribute = AttributeDetails(
-    name = "sex",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Sex"),
-)
-val HeightAttribute = AttributeDetails(
-    name = "height",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Height"),
-)
-val WeightAttribute = AttributeDetails(
-    name = "weight",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Weight"),
-)
-val HairColourAttribute = AttributeDetails(
-    name = "hair_colour",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Hair Colour"),
-)
-val BirthPlaceAttribute = AttributeDetails(
-    name = "birth_place",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Birth Place"),
-)
-val ResidentAddressAttribute = AttributeDetails(
-    name = "resident_address",
-    mandatory = false,
-    display = buildMap {
-        put(Locale.ENGLISH, "Resident Address")
-    },
-)
-val EyeColourAttribute = AttributeDetails(
-    name = "eye_colour",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Eye Colour"),
-)
-val ResidentCityAttribute = AttributeDetails(
-    name = "resident_city",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Resident City"),
-)
-val ResidentStateAttribute = AttributeDetails(
-    name = "resident_state",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Resident State"),
-)
-val ResidentPostalCodeAttribute = AttributeDetails(
-    name = "resident_postal_code",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Resident Postal Code"),
-)
-val ResidentCountryAttribute = AttributeDetails(
-    name = "resident_country",
-    mandatory = false,
-    display = buildMap {
-        put(Locale.ENGLISH, "Resident Country")
-    },
-)
-val AgeInYearsAttribute = AttributeDetails(
-    name = "age_in_years",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Age in Years"),
-)
-val AgeBirthYearAttribute = AttributeDetails(
-    name = "age_birth_year",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Age Year of Birth"),
-)
-val AgeOver18Attribute = AttributeDetails(
-    name = "age_over_18",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Age Over 18"),
-)
-val AgeOver21Attribute = AttributeDetails(
-    name = "age_over_21",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Age Over 21"),
-)
-val NationalityAttribute = AttributeDetails(
-    name = "nationality",
-    mandatory = false,
-    display = buildMap {
-        put(Locale.ENGLISH, "Nationality")
-    },
-)
-val FamilyNameNationalCharacterAttribute = AttributeDetails(
-    name = "family_name_national_character",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "National Family Name(s)"),
-)
-val GivenNameNationalCharacterAttribute = AttributeDetails(
-    name = "given_name_national_character",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "National Given Name(s)"),
-)
-val SignatureUsualMarkAttribute = AttributeDetails(
-    name = "signature_usual_mark",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Signature"),
-)
-val IssuingCountryAttribute = AttributeDetails(
-    name = "issuing_country",
-    mandatory = true,
-    display = buildMap {
-        put(Locale.ENGLISH, "Issuing Country")
-    },
-)
-val IssuingAuthorityAttribute = AttributeDetails(
-    name = "issuing_authority",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Issuing Authority"),
-)
-val IssuingCountryDistinguishingSignAttribute = AttributeDetails(
-    name = "un_distinguishing_sign",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Distinguishing Sign"),
-)
-val IssuingJurisdictionAttribute = AttributeDetails(
-    name = "issuing_jurisdiction",
-    mandatory = false,
-    display = buildMap {
-        put(Locale.ENGLISH, "Issuing Jurisdiction")
-    },
-)
-val DocumentNumberAttribute = AttributeDetails(
-    name = "document_number",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Document Number"),
-)
-val AdministrativeNumberAttribute = AttributeDetails(
-    name = "administrative_number",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Administrative Number"),
-)
-val DrivingPrivilegesAttribute = AttributeDetails(
-    name = "driving_privileges",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Driving Privileges"),
-)
-val MobileDrivingLicenceV1Attributes: List<AttributeDetails> = listOf(
-    FamilyNameAttribute,
-    GivenNameAttribute,
-    BirthDateAttribute,
-    IssueDateAttribute,
-    ExpiryDateAttribute,
-    IssuingCountryAttribute,
-    IssuingAuthorityAttribute,
-    DocumentNumberAttribute,
-    PortraitAttribute,
-    DrivingPrivilegesAttribute,
-    IssuingCountryDistinguishingSignAttribute,
-    AdministrativeNumberAttribute,
-    SexAttribute,
-    HeightAttribute,
-    WeightAttribute,
-    EyeColourAttribute,
-    HairColourAttribute,
-    BirthPlaceAttribute,
-    ResidentAddressAttribute,
-    PortraitCaptureDateAttribute,
-    AgeInYearsAttribute,
-    AgeBirthYearAttribute,
-    AgeOver18Attribute,
-    AgeOver21Attribute,
-    IssuingJurisdictionAttribute,
-    NationalityAttribute,
-    ResidentCityAttribute,
-    ResidentStateAttribute,
-    ResidentPostalCodeAttribute,
-    ResidentCountryAttribute,
-    FamilyNameNationalCharacterAttribute,
-    GivenNameNationalCharacterAttribute,
-    SignatureUsualMarkAttribute,
-)
+internal object MsoMdocMdlV1Claims {
+
+    val FamilyName = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "family_name",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Family Name(s)"),
+    )
+    val GivenName = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "given_name",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Given Name(s)"),
+    )
+    val BirthDate = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "birth_date",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Birth Date"),
+    )
+    val IssueDate = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "issue_date",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Issuance Date"),
+    )
+    val ExpiryDate = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "expiry_date",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Expiry Date"),
+    )
+    val Portrait = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "portrait",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Portrait Image"),
+    )
+    val PortraitCaptureDate = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "portrait_capture_date",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Capture Date of Portrait Image"),
+    )
+    val Sex = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "sex",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Sex"),
+    )
+    val Height = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "height",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Height"),
+    )
+    val Weight = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "weight",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Weight"),
+    )
+    val HairColour = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "hair_colour",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Hair Colour"),
+    )
+    val BirthPlace = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "birth_place",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Birth Place"),
+    )
+    val ResidentAddress = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "resident_address",
+        mandatory = false,
+        display = buildMap {
+            put(Locale.ENGLISH, "Resident Address")
+        },
+    )
+    val EyeColour = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "eye_colour",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Eye Colour"),
+    )
+    val ResidentCity = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "resident_city",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Resident City"),
+    )
+    val ResidentState = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "resident_state",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Resident State"),
+    )
+    val ResidentPostalCode = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "resident_postal_code",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Resident Postal Code"),
+    )
+    val ResidentCountry = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "resident_country",
+        mandatory = false,
+        display = buildMap {
+            put(Locale.ENGLISH, "Resident Country")
+        },
+    )
+    val AgeInYears = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "age_in_years",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Age in Years"),
+    )
+    val AgeBirthYear = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "age_birth_year",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Age Year of Birth"),
+    )
+    val AgeOver18 = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "age_over_18",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Age Over 18"),
+    )
+    val AgeOver21 = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "age_over_21",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Age Over 21"),
+    )
+    val Nationality = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "nationality",
+        mandatory = false,
+        display = buildMap {
+            put(Locale.ENGLISH, "Nationality")
+        },
+    )
+    val FamilyNameNationalCharacter = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "family_name_national_character",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "National Family Name(s)"),
+    )
+    val GivenNameNationalCharacter = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "given_name_national_character",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "National Given Name(s)"),
+    )
+    val SignatureUsualMark = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "signature_usual_mark",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Signature"),
+    )
+    val IssuingCountry = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "issuing_country",
+        mandatory = true,
+        display = buildMap {
+            put(Locale.ENGLISH, "Issuing Country")
+        },
+    )
+    val IssuingAuthority = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "issuing_authority",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Issuing Authority"),
+    )
+    val IssuingCountryDistinguishingSign = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "un_distinguishing_sign",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Distinguishing Sign"),
+    )
+    val IssuingJurisdiction = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "issuing_jurisdiction",
+        mandatory = false,
+        display = buildMap {
+            put(Locale.ENGLISH, "Issuing Jurisdiction")
+        },
+    )
+    val DocumentNumber = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "document_number",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Document Number"),
+    )
+    val AdministrativeNumber = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "administrative_number",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Administrative Number"),
+    )
+    val DrivingPrivileges = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "driving_privileges",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Driving Privileges"),
+    )
+
+    fun all(): List<ClaimDefinition> = listOf(
+        FamilyName,
+        GivenName,
+        BirthDate,
+        IssueDate,
+        ExpiryDate,
+        IssuingCountry,
+        IssuingAuthority,
+        DocumentNumber,
+        Portrait,
+        DrivingPrivileges,
+        IssuingCountryDistinguishingSign,
+        AdministrativeNumber,
+        Sex,
+        Height,
+        Weight,
+        EyeColour,
+        HairColour,
+        BirthPlace,
+        ResidentAddress,
+        PortraitCaptureDate,
+        AgeInYears,
+        AgeBirthYear,
+        AgeOver18,
+        AgeOver21,
+        IssuingJurisdiction,
+        Nationality,
+        ResidentCity,
+        ResidentState,
+        ResidentPostalCode,
+        ResidentCountry,
+        FamilyNameNationalCharacter,
+        GivenNameNationalCharacter,
+        SignatureUsualMark,
+    )
+}
 
 val MobileDrivingLicenceDisplay: List<CredentialDisplay> = listOf(
     CredentialDisplay(
@@ -262,7 +299,7 @@ val MobileDrivingLicenceV1: MsoMdocCredentialConfiguration =
         id = CredentialConfigurationId(MobileDrivingLicenceV1Scope.value),
         docType = mdlDocType(1u),
         display = MobileDrivingLicenceDisplay,
-        msoClaims = mapOf(MobileDrivingLicenceV1Namespace to MobileDrivingLicenceV1Attributes),
+        claims = MsoMdocMdlV1Claims.all(),
         cryptographicBindingMethodsSupported = emptySet(),
         credentialSigningAlgorithmsSupported = emptySet(),
         scope = MobileDrivingLicenceV1Scope,

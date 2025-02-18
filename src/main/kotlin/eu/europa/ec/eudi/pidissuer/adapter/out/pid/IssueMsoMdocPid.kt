@@ -42,191 +42,208 @@ val PidMsoMdocScope: Scope = Scope("eu.europa.ec.eudi.pid_mso_mdoc")
 
 val PidMsoMdocNamespace: MsoNameSpace = pidNameSpace(1)
 
-val GivenNameAttribute = AttributeDetails(
-    name = "given_name",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Given Name(s)"),
-)
-val FamilyNameAttribute = AttributeDetails(
-    name = "family_name",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Family Name(s)"),
-)
-val BirthDateAttribute = AttributeDetails(
-    name = "birth_date",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Birth Date"),
-)
-val FamilyNameBirthAttribute = AttributeDetails(
-    name = "family_name_birth",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Birth Family Name(s)"),
-)
-val GivenNameBirthAttribute = AttributeDetails(
-    name = "given_name_birth",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Birth Given Name(s)"),
-)
-val SexAttribute = AttributeDetails(
-    name = "sex",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Sex"),
-)
-val AgeOver18Attribute = AttributeDetails(
-    name = "age_over_18",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Age Over 18"),
-)
-val AgeBirthYearAttribute = AttributeDetails(
-    name = "age_birth_year",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Age Year of Birth"),
-)
-val AgeInYearsAttribute = AttributeDetails(
-    name = "age_in_years",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Age in Years"),
-)
-val NationalityAttribute = AttributeDetails(
-    name = "nationality",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Nationality"),
-)
-val IssuanceDateAttribute = AttributeDetails(
-    name = "issuance_date",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Issuance Date"),
-)
-val ExpiryDateAttribute = AttributeDetails(
-    name = "expiry_date",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Expiry Date"),
-)
-val IssuingAuthorityAttribute = AttributeDetails(
-    name = "issuing_authority",
-    mandatory = true,
-    display = mapOf(
-        Locale.ENGLISH to "Issuance Authority",
-    ),
-)
-val BirthPlaceAttribute = AttributeDetails(
-    name = "birth_place",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Birth Place"),
-)
-val ResidenceAddressAttribute = AttributeDetails(
-    name = "resident_address",
-    mandatory = false,
-    display = mapOf(
-        Locale.ENGLISH to "Resident Address",
-    ),
-)
-val ResidenceCountryAttribute = AttributeDetails(
-    name = "resident_country",
-    mandatory = false,
-    display = mapOf(
-        Locale.ENGLISH to "Resident Country",
-    ),
-)
-val ResidenceStateAttribute = AttributeDetails(
-    name = "resident_state",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Resident State"),
-)
-val ResidenceCityAttribute = AttributeDetails(
-    name = "resident_city",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Resident City"),
-)
-val ResidencePostalCodeAttribute = AttributeDetails(
-    name = "resident_postal_code",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Resident Postal Code"),
-)
-val ResidenceStreetAttribute = AttributeDetails(
-    name = "resident_street",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Resident Street"),
-)
-val ResidenceHouseNumberAttribute = AttributeDetails(
-    name = "resident_house_number",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Resident House Number"),
-)
-val DocumentNumberAttribute = AttributeDetails(
-    name = "document_number",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Document Number"),
-)
-val PersonalAdministrativeNumberAttribute = AttributeDetails(
-    name = "personal_administrative_number",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Personal Administrative Number"),
-)
-val IssuingCountryAttribute = AttributeDetails(
-    name = "issuing_country",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Issuing Country"),
-)
-val IssuingJurisdictionAttribute = AttributeDetails(
-    name = "issuing_jurisdiction",
-    mandatory = false,
-    display = mapOf(
-        Locale.ENGLISH to "Issuing Jurisdiction",
-    ),
-)
-val PortraitAttribute = AttributeDetails(
-    name = "portrait",
-    mandatory = false,
-    display = mapOf(
-        Locale.ENGLISH to "Portrait Image",
-    ),
-)
-val EmailAddressAttribute = AttributeDetails(
-    name = "email_address",
-    mandatory = false,
-    display = mapOf(
-        Locale.ENGLISH to "Email Address",
-    ),
-)
-val MobilePhoneNumberAttribute = AttributeDetails(
-    name = "mobile_phone_number",
-    mandatory = false,
-    display = mapOf(
-        Locale.ENGLISH to "Mobile Phone Number",
-    ),
-)
+internal object MsoMdocPidClaims {
 
-private val pidAttributes = PidMsoMdocNamespace to listOf(
-    FamilyNameAttribute,
-    GivenNameAttribute,
-    BirthDateAttribute,
-    BirthPlaceAttribute,
-    NationalityAttribute,
-    ResidenceAddressAttribute,
-    ResidenceCountryAttribute,
-    ResidenceStateAttribute,
-    ResidenceCityAttribute,
-    ResidencePostalCodeAttribute,
-    ResidenceStreetAttribute,
-    ResidenceHouseNumberAttribute,
-    PersonalAdministrativeNumberAttribute,
-    PortraitAttribute,
-    FamilyNameBirthAttribute,
-    GivenNameBirthAttribute,
-    SexAttribute,
-    EmailAddressAttribute,
-    MobilePhoneNumberAttribute,
-    ExpiryDateAttribute,
-    IssuingAuthorityAttribute,
-    IssuingCountryAttribute,
-    DocumentNumberAttribute,
-    IssuingJurisdictionAttribute,
-    IssuanceDateAttribute,
-    AgeOver18Attribute,
-    AgeInYearsAttribute,
-    AgeBirthYearAttribute,
-)
+    val GivenName = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "given_name",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Given Name(s)"),
+    )
+    val FamilyName = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "family_name",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Family Name(s)"),
+    )
+    val BirthDate = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "birth_date",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Birth Date"),
+    )
+    val FamilyNameBirth = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "family_name_birth",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Birth Family Name(s)"),
+    )
+    val GivenNameBirth = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "given_name_birth",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Birth Given Name(s)"),
+    )
+    val Sex = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "sex",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Sex"),
+    )
+    val AgeOver18 = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "age_over_18",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Age Over 18"),
+    )
+    val AgeBirthYear = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "age_birth_year",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Age Year of Birth"),
+    )
+    val AgeInYears = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "age_in_years",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Age in Years"),
+    )
+    val Nationality = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "nationality",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Nationality"),
+    )
+    val IssuanceDate = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "issuance_date",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Issuance Date"),
+    )
+    val ExpiryDate = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "expiry_date",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Expiry Date"),
+    )
+    val IssuingAuthority = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "issuing_authority",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Issuance Authority"),
+    )
+    val BirthPlace = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "birth_place",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Birth Place"),
+    )
+    val ResidenceAddress = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "resident_address",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Resident Address"),
+    )
+    val ResidenceCountry = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "resident_country",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Resident Country"),
+    )
+    val ResidenceState = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "resident_state",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Resident State"),
+    )
+    val ResidenceCity = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "resident_city",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Resident City"),
+    )
+    val ResidencePostalCode = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "resident_postal_code",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Resident Postal Code"),
+    )
+    val ResidenceStreet = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "resident_street",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Resident Street"),
+    )
+    val ResidenceHouseNumber = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "resident_house_number",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Resident House Number"),
+    )
+    val DocumentNumber = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "document_number",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Document Number"),
+    )
+    val PersonalAdministrativeNumber = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "personal_administrative_number",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Personal Administrative Number"),
+    )
+    val IssuingCountry = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "issuing_country",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Issuing Country"),
+    )
+    val IssuingJurisdiction = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "issuing_jurisdiction",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Issuing Jurisdiction"),
+    )
+    val Portrait = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "portrait",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Portrait Image"),
+    )
+    val EmailAddress = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "email_address",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Email Address"),
+    )
+    val MobilePhoneNumberAttribute = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "mobile_phone_number",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Mobile Phone Number"),
+    )
+
+    fun all(): List<ClaimDefinition> = listOf(
+        FamilyName,
+        GivenName,
+        BirthDate,
+        BirthPlace,
+        Nationality,
+        ResidenceAddress,
+        ResidenceCountry,
+        ResidenceState,
+        ResidenceCity,
+        ResidencePostalCode,
+        ResidenceStreet,
+        ResidenceHouseNumber,
+        PersonalAdministrativeNumber,
+        Portrait,
+        FamilyNameBirth,
+        GivenNameBirth,
+        Sex,
+        EmailAddress,
+        MobilePhoneNumberAttribute,
+        ExpiryDate,
+        IssuingAuthority,
+        IssuingCountry,
+        DocumentNumber,
+        IssuingJurisdiction,
+        IssuanceDate,
+        AgeOver18,
+        AgeInYears,
+        AgeBirthYear,
+    )
+}
 
 private const val PID_DOCTYPE = "eu.europa.ec.eudi.pid"
 
@@ -245,7 +262,7 @@ val PidMsoMdocV1: MsoMdocCredentialConfiguration =
         id = CredentialConfigurationId(PidMsoMdocScope.value),
         docType = pidDocType(1),
         display = pidDisplay,
-        msoClaims = mapOf(pidAttributes),
+        claims = MsoMdocPidClaims.all(),
         cryptographicBindingMethodsSupported = emptySet(),
         credentialSigningAlgorithmsSupported = emptySet(),
         scope = PidMsoMdocScope,

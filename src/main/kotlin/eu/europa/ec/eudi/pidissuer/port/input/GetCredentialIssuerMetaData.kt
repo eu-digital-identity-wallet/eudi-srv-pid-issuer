@@ -240,11 +240,9 @@ internal fun MsoMdocCredentialConfiguration.toTransferObject(
         }
     }
 
-    putJsonObject("claims") {
-        msoClaims.forEach { (nameSpace, attributes) ->
-            putJsonObject(nameSpace) {
-                attributes.forEach { attribute -> attribute.toTransferObject(this) }
-            }
+    if (claims.isNotEmpty()) {
+        putJsonArray("claims") {
+            addAll(claims.flatMap { it.toJsonObjects() })
         }
     }
 }
@@ -256,8 +254,10 @@ internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilde
         }
     }
     put("vct", type.value)
-    putJsonObject("claims") {
-        claims.forEach { attribute -> attribute.toTransferObject(this) }
+    if (claims.isNotEmpty()) {
+        putJsonArray("claims") {
+            addAll(claims.flatMap { it.toJsonObjects() })
+        }
     }
 }
 
@@ -275,22 +275,25 @@ internal fun CredentialDisplay.toTransferObject(): JsonObject = buildJsonObject 
     backgroundImage?.let { backgroundImage ->
         putJsonObject("background_image") {
             put("uri", backgroundImage.uri.toString())
-            backgroundImage.alternativeText?.let { put("alt_text", it) }
         }
     }
     textColor?.let { put("text_color", it) }
 }
 
-internal val AttributeDetails.toTransferObject: JsonObjectBuilder.() -> Unit
-    get() = {
-        putJsonObject(name) {
-            put("mandatory", mandatory)
-            valueType?.let { put("value_type", it) }
-            if (display.isNotEmpty()) {
-                put("display", display.toTransferObject())
-            }
+private fun ClaimDefinition.toJsonObjects(): List<JsonObject> {
+    fun ClaimDefinition.toJsonObject(): JsonObject = buildJsonObject {
+        put("path", Json.encodeToJsonElement(path))
+        mandatory?.let { put("mandatory", it) }
+        if (display.isNotEmpty()) {
+            put("display", display.toTransferObject())
         }
     }
+
+    return buildList {
+        add(toJsonObject())
+        addAll(nested.flatMap { it.toJsonObjects() })
+    }
+}
 
 internal fun Display.toTransferObject(): JsonArray =
     map { (locale, value) ->
