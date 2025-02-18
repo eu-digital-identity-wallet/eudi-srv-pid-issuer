@@ -239,7 +239,7 @@ internal fun MsoMdocCredentialConfiguration.toTransferObject(
 
     if (claims.isNotEmpty()) {
         putJsonArray("claims") {
-            addAll(claims.map { it.toJsonObject() })
+            addAll(claims.flatMap { it.toJsonObjects() })
         }
     }
 }
@@ -253,7 +253,7 @@ internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilde
     put("vct", type.value)
     if (claims.isNotEmpty()) {
         putJsonArray("claims") {
-            addAll(claims.flatMap { listOf(it, *it.nested.toTypedArray()) }.map { it.toJsonObject() })
+            addAll(claims.flatMap { it.toJsonObjects() })
         }
     }
 }
@@ -277,11 +277,18 @@ internal fun CredentialDisplay.toTransferObject(): JsonObject = buildJsonObject 
     textColor?.let { put("text_color", it) }
 }
 
-private fun ClaimDefinition.toJsonObject(): JsonObject = buildJsonObject {
-    put("path", Json.encodeToJsonElement(path))
-    put("mandatory", mandatory)
-    if (display.isNotEmpty()) {
-        put("display", display.toTransferObject())
+private fun ClaimDefinition.toJsonObjects(): List<JsonObject> {
+    fun ClaimDefinition.toJsonObject(): JsonObject = buildJsonObject {
+        put("path", Json.encodeToJsonElement(path))
+        put("mandatory", mandatory)
+        if (display.isNotEmpty()) {
+            put("display", display.toTransferObject())
+        }
+    }
+
+    return buildList {
+        add(toJsonObject())
+        addAll(nested.flatMap { it.toJsonObjects() })
     }
 }
 
