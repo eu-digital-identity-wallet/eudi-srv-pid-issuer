@@ -40,231 +40,268 @@ val MobileDrivingLicenceV1Scope: Scope = Scope(mdlDocType(1u))
 
 val MobileDrivingLicenceV1Namespace: MsoNameSpace = mdlNamespace(1u)
 
-val FamilyNameAttribute = AttributeDetails(
-    name = "family_name",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Last name, surname, or primary identifier of the mDL holder."),
-)
-val GivenNameAttribute = AttributeDetails(
-    name = "given_name",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "First name(s), other name(s), or secondary identifier, of the mDL holder."),
-)
-val BirthDateAttribute = AttributeDetails(
-    name = "birth_date",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Day, month and year on which the mDL holder was born."),
-)
-val IssueDateAttribute = AttributeDetails(
-    name = "issue_date",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Date when mDL was issued."),
-)
-val ExpiryDateAttribute = AttributeDetails(
-    name = "expiry_date",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Date when mDL expires."),
-)
-val PortraitAttribute = AttributeDetails(
-    name = "portrait",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "A reproduction of the mDL holder’s portrait."),
-)
-val PortraitCaptureDateAttribute = AttributeDetails(
-    name = "portrait_capture_date",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Date when portrait was taken."),
-)
-val SexAttribute = AttributeDetails(
-    name = "sex",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "mDL holder’s sex using values as defined in ISO/IEC 5218."),
-)
-val HeightAttribute = AttributeDetails(
-    name = "height",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "mDL holder’s height in centimetres."),
-)
-val WeightAttribute = AttributeDetails(
-    name = "weight",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "mDL holder’s weight in kilograms."),
-)
-val HairColourAttribute = AttributeDetails(
-    name = "hair_colour",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "mDL holder’s hair colour."),
-)
-val BirthPlaceAttribute = AttributeDetails(
-    name = "birth_place",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Country and municipality or state/province where the mDL holder was born."),
-)
-val ResidentAddressAttribute = AttributeDetails(
-    name = "resident_address",
-    mandatory = false,
-    display = buildMap {
-        put(
-            Locale.ENGLISH,
-            "The place where the mDL holder resides and/or may be contacted (street/house number, municipality etc.).",
-        )
-    },
-)
-val EyeColourAttribute = AttributeDetails(
-    name = "eye_colour",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "mDL holder’s eye colour."),
-)
-val ResidentCityAttribute = AttributeDetails(
-    name = "resident_city",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The city where the mDL holder lives."),
-)
-val ResidentStateAttribute = AttributeDetails(
-    name = "resident_state",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The state/province/district where the mDL holder lives."),
-)
-val ResidentPostalCodeAttribute = AttributeDetails(
-    name = "resident_postal_code",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The postal code of the mDL holder."),
-)
-val ResidentCountryAttribute = AttributeDetails(
-    name = "resident_country",
-    mandatory = false,
-    display = buildMap {
-        put(
-            Locale.ENGLISH,
-            "The country where the mDL holder lives as a two letter country code (alpha-2 code) defined in ISO 3166-1.",
-        )
-    },
-)
-val AgeInYearsAttribute = AttributeDetails(
-    name = "age_in_years",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The age of the mDL holder."),
-)
-val AgeBirthYearAttribute = AttributeDetails(
-    name = "age_birth_year",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The year when the mDL holder was born."),
-)
-val AgeOver18Attribute = AttributeDetails(
-    name = "age_over_18",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Whether the mDL holder is over 18 years old."),
-)
-val AgeOver21Attribute = AttributeDetails(
-    name = "age_over_21",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Whether the mDL holder is over 21 years old."),
-)
-val NationalityAttribute = AttributeDetails(
-    name = "nationality",
-    mandatory = false,
-    display = buildMap {
-        put(
-            Locale.ENGLISH,
-            "Nationality of the mDL holder as a two letter country code (alpha-2 code) defined in ISO 3166-1.",
-        )
-    },
-)
-val FamilyNameNationalCharacterAttribute = AttributeDetails(
-    name = "family_name_national_character",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The family name of the mDL holder using full UTF-8 character set."),
-)
-val GivenNameNationalCharacterAttribute = AttributeDetails(
-    name = "given_name_national_character",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The given name of the mDL holder using full UTF-8 character set."),
-)
-val SignatureUsualMarkAttribute = AttributeDetails(
-    name = "signature_usual_mark",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Image of the signature or usual mark of the mDL holder."),
-)
-val IssuingCountryAttribute = AttributeDetails(
-    name = "issuing_country",
-    mandatory = true,
-    display = buildMap {
-        put(
-            Locale.ENGLISH,
-            "Alpha-2 country code, as defined in ISO 3166-1 of the issuing authority’s country or territory.",
-        )
-    },
-)
-val IssuingAuthorityAttribute = AttributeDetails(
-    name = "issuing_authority",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Issuing authority name."),
-)
-val IssuingCountryDistinguishingSignAttribute = AttributeDetails(
-    name = "un_distinguishing_sign",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Distinguishing sign of the issuing country according to ISO/IEC 18013-1:2018, Annex F."),
-)
-val IssuingJurisdictionAttribute = AttributeDetails(
-    name = "issuing_jurisdiction",
-    mandatory = false,
-    display = buildMap {
-        put(
-            Locale.ENGLISH,
-            "Country subdivision code of the jurisdiction that issued the mDL as defined in ISO 3166-2:2020, Clause 8.",
-        )
-    },
-)
-val DocumentNumberAttribute = AttributeDetails(
-    name = "document_number",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "The number assigned or calculated by the issuing authority."),
-)
-val AdministrativeNumberAttribute = AttributeDetails(
-    name = "administrative_number",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "An audit control number assigned by the issuing authority."),
-)
-val DrivingPrivilegesAttribute = AttributeDetails(
-    name = "driving_privileges",
-    mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Driving privileges of the mDL holder."),
-)
-val MobileDrivingLicenceV1Attributes: List<AttributeDetails> = listOf(
-    FamilyNameAttribute,
-    GivenNameAttribute,
-    BirthDateAttribute,
-    IssueDateAttribute,
-    ExpiryDateAttribute,
-    IssuingCountryAttribute,
-    IssuingAuthorityAttribute,
-    DocumentNumberAttribute,
-    PortraitAttribute,
-    DrivingPrivilegesAttribute,
-    IssuingCountryDistinguishingSignAttribute,
-    AdministrativeNumberAttribute,
-    SexAttribute,
-    HeightAttribute,
-    WeightAttribute,
-    EyeColourAttribute,
-    HairColourAttribute,
-    BirthPlaceAttribute,
-    ResidentAddressAttribute,
-    PortraitCaptureDateAttribute,
-    AgeInYearsAttribute,
-    AgeBirthYearAttribute,
-    AgeOver18Attribute,
-    AgeOver21Attribute,
-    IssuingJurisdictionAttribute,
-    NationalityAttribute,
-    ResidentCityAttribute,
-    ResidentStateAttribute,
-    ResidentPostalCodeAttribute,
-    ResidentCountryAttribute,
-    FamilyNameNationalCharacterAttribute,
-    GivenNameNationalCharacterAttribute,
-    SignatureUsualMarkAttribute,
-)
+internal object MsoMdocMdlV1Claims {
+
+    val FamilyName = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "family_name",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Last name, surname, or primary identifier of the mDL holder."),
+    )
+    val GivenName = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "given_name",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "First name(s), other name(s), or secondary identifier, of the mDL holder."),
+    )
+    val BirthDate = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "birth_date",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Day, month and year on which the mDL holder was born."),
+    )
+    val IssueDate = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "issue_date",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Date when mDL was issued."),
+    )
+    val ExpiryDate = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "expiry_date",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Date when mDL expires."),
+    )
+    val Portrait = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "portrait",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "A reproduction of the mDL holder’s portrait."),
+    )
+    val PortraitCaptureDate = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "portrait_capture_date",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Date when portrait was taken."),
+    )
+    val Sex = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "sex",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "mDL holder’s sex using values as defined in ISO/IEC 5218."),
+    )
+    val Height = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "height",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "mDL holder’s height in centimetres."),
+    )
+    val Weight = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "weight",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "mDL holder’s weight in kilograms."),
+    )
+    val HairColour = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "hair_colour",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "mDL holder’s hair colour."),
+    )
+    val BirthPlace = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "birth_place",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Country and municipality or state/province where the mDL holder was born."),
+    )
+    val ResidentAddress = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "resident_address",
+        mandatory = false,
+        display = buildMap {
+            put(
+                Locale.ENGLISH,
+                "The place where the mDL holder resides and/or may be contacted (street/house number, municipality etc.).",
+            )
+        },
+    )
+    val EyeColour = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "eye_colour",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "mDL holder’s eye colour."),
+    )
+    val ResidentCity = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "resident_city",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The city where the mDL holder lives."),
+    )
+    val ResidentState = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "resident_state",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The state/province/district where the mDL holder lives."),
+    )
+    val ResidentPostalCode = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "resident_postal_code",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The postal code of the mDL holder."),
+    )
+    val ResidentCountry = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "resident_country",
+        mandatory = false,
+        display = buildMap {
+            put(
+                Locale.ENGLISH,
+                "The country where the mDL holder lives as a two letter country code (alpha-2 code) defined in ISO 3166-1.",
+            )
+        },
+    )
+    val AgeInYears = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "age_in_years",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The age of the mDL holder."),
+    )
+    val AgeBirthYear = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "age_birth_year",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The year when the mDL holder was born."),
+    )
+    val AgeOver18 = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "age_over_18",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Whether the mDL holder is over 18 years old."),
+    )
+    val AgeOver21 = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "age_over_21",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Whether the mDL holder is over 21 years old."),
+    )
+    val Nationality = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "nationality",
+        mandatory = false,
+        display = buildMap {
+            put(
+                Locale.ENGLISH,
+                "Nationality of the mDL holder as a two letter country code (alpha-2 code) defined in ISO 3166-1.",
+            )
+        },
+    )
+    val FamilyNameNationalCharacter = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "family_name_national_character",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The family name of the mDL holder using full UTF-8 character set."),
+    )
+    val GivenNameNationalCharacter = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "given_name_national_character",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The given name of the mDL holder using full UTF-8 character set."),
+    )
+    val SignatureUsualMark = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "signature_usual_mark",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Image of the signature or usual mark of the mDL holder."),
+    )
+    val IssuingCountry = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "issuing_country",
+        mandatory = true,
+        display = buildMap {
+            put(
+                Locale.ENGLISH,
+                "Alpha-2 country code, as defined in ISO 3166-1 of the issuing authority’s country or territory.",
+            )
+        },
+    )
+    val IssuingAuthority = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "issuing_authority",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Issuing authority name."),
+    )
+    val IssuingCountryDistinguishingSign = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "un_distinguishing_sign",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Distinguishing sign of the issuing country according to ISO/IEC 18013-1:2018, Annex F."),
+    )
+    val IssuingJurisdiction = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "issuing_jurisdiction",
+        mandatory = false,
+        display = buildMap {
+            put(
+                Locale.ENGLISH,
+                "Country subdivision code of the jurisdiction that issued the mDL as defined in ISO 3166-2:2020, Clause 8.",
+            )
+        },
+    )
+    val DocumentNumber = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "document_number",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "The number assigned or calculated by the issuing authority."),
+    )
+    val AdministrativeNumber = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "administrative_number",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "An audit control number assigned by the issuing authority."),
+    )
+    val DrivingPrivileges = ClaimDefinition(
+        MobileDrivingLicenceV1Namespace,
+        "driving_privileges",
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Driving privileges of the mDL holder."),
+    )
+
+    fun all(): List<ClaimDefinition> = listOf(
+        FamilyName,
+        GivenName,
+        BirthDate,
+        IssueDate,
+        ExpiryDate,
+        IssuingCountry,
+        IssuingAuthority,
+        DocumentNumber,
+        Portrait,
+        DrivingPrivileges,
+        IssuingCountryDistinguishingSign,
+        AdministrativeNumber,
+        Sex,
+        Height,
+        Weight,
+        EyeColour,
+        HairColour,
+        BirthPlace,
+        ResidentAddress,
+        PortraitCaptureDate,
+        AgeInYears,
+        AgeBirthYear,
+        AgeOver18,
+        AgeOver21,
+        IssuingJurisdiction,
+        Nationality,
+        ResidentCity,
+        ResidentState,
+        ResidentPostalCode,
+        ResidentCountry,
+        FamilyNameNationalCharacter,
+        GivenNameNationalCharacter,
+        SignatureUsualMark,
+    )
+}
 
 val MobileDrivingLicenceDisplay: List<CredentialDisplay> = listOf(
     CredentialDisplay(
@@ -277,7 +314,7 @@ val MobileDrivingLicenceV1: MsoMdocCredentialConfiguration =
         id = CredentialConfigurationId(MobileDrivingLicenceV1Scope.value),
         docType = mdlDocType(1u),
         display = MobileDrivingLicenceDisplay,
-        msoClaims = mapOf(MobileDrivingLicenceV1Namespace to MobileDrivingLicenceV1Attributes),
+        claims = MsoMdocMdlV1Claims.all(),
         cryptographicBindingMethodsSupported = emptySet(),
         credentialSigningAlgorithmsSupported = emptySet(),
         scope = MobileDrivingLicenceV1Scope,
