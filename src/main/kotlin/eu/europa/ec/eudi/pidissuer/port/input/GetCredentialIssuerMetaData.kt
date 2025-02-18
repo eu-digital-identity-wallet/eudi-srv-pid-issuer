@@ -289,10 +289,19 @@ private fun ClaimDefinition.toJsonObjects(): List<JsonObject> {
         }
     }
 
-    return buildList {
-        add(toJsonObject())
-        addAll(nested.flatMap { it.toJsonObjects() })
+    fun ClaimDefinition.flatten(): List<ClaimDefinition> {
+        tailrec fun flatten(accumulator: List<ClaimDefinition>, remainder: List<ClaimDefinition>): List<ClaimDefinition> =
+            if (remainder.isEmpty()) {
+                accumulator
+            } else {
+                val head = remainder.first()
+                val tail = remainder.drop(1)
+                flatten(accumulator + head, head.nested + tail)
+            }
+        return flatten(emptyList(), listOf(this))
     }
+
+    return flatten().map { it.toJsonObject() }
 }
 
 internal fun Display.toTransferObject(): JsonArray =
