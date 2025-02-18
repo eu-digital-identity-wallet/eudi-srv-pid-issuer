@@ -21,7 +21,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.GenericRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.ParameterizedRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.MsoMdocSigner
-import eu.europa.ec.eudi.pidissuer.domain.AttributeDetails
+import eu.europa.ec.eudi.pidissuer.domain.ClaimDefinition
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import id.walt.mdoc.dataelement.DataElement
 import id.walt.mdoc.dataelement.toDataElement
@@ -53,61 +53,61 @@ private fun MDocBuilder.addItemsToSign(licence: MobileDrivingLicence) {
     addItemsToSign(licence.driver)
     addItemsToSign(licence.issueAndExpiry)
     addItemsToSign(licence.issuer)
-    addItemToSign(DocumentNumberAttribute, licence.documentNumber.value.toDataElement())
-    addItemToSign(DrivingPrivilegesAttribute, licence.privileges.map { it.toDE() }.toDataElement())
-    licence.administrativeNumber?.let { addItemToSign(AdministrativeNumberAttribute, it.value.toDataElement()) }
+    addItemToSign(MsoMdocMdlV1Claims.DocumentNumber, licence.documentNumber.value.toDataElement())
+    addItemToSign(MsoMdocMdlV1Claims.DrivingPrivileges, licence.privileges.map { it.toDE() }.toDataElement())
+    licence.administrativeNumber?.let { addItemToSign(MsoMdocMdlV1Claims.AdministrativeNumber, it.value.toDataElement()) }
 }
 
 private fun MDocBuilder.addItemsToSign(driver: Driver) {
-    addItemToSign(FamilyNameAttribute, driver.familyName.latin.value.toDataElement())
-    addItemToSign(GivenNameAttribute, driver.givenName.latin.value.toDataElement())
-    addItemToSign(BirthDateAttribute, driver.birthDate.toKotlinLocalDate().toDataElement())
-    addItemToSign(PortraitAttribute, driver.portrait.image.content.toDataElement())
+    addItemToSign(MsoMdocMdlV1Claims.FamilyName, driver.familyName.latin.value.toDataElement())
+    addItemToSign(MsoMdocMdlV1Claims.GivenName, driver.givenName.latin.value.toDataElement())
+    addItemToSign(MsoMdocMdlV1Claims.BirthDate, driver.birthDate.toKotlinLocalDate().toDataElement())
+    addItemToSign(MsoMdocMdlV1Claims.Portrait, driver.portrait.image.content.toDataElement())
     driver.portrait.capturedAt?.let {
         addItemToSign(
-            PortraitCaptureDateAttribute,
+            MsoMdocMdlV1Claims.PortraitCaptureDate,
             it.toLocalDate().toKotlinLocalDate().toDataElement(),
         )
     }
-    driver.sex?.let { addItemToSign(SexAttribute, it.code.toDataElement()) }
-    driver.height?.let { addItemToSign(HeightAttribute, it.value.toDataElement()) }
-    driver.weight?.let { addItemToSign(WeightAttribute, it.value.toDataElement()) }
-    driver.eyeColour?.let { addItemToSign(EyeColourAttribute, it.code.toDataElement()) }
-    driver.hairColour?.let { addItemToSign(HairColourAttribute, it.code.toDataElement()) }
-    driver.birthPlace?.let { addItemToSign(BirthPlaceAttribute, it.value.toDataElement()) }
+    driver.sex?.let { addItemToSign(MsoMdocMdlV1Claims.Sex, it.code.toDataElement()) }
+    driver.height?.let { addItemToSign(MsoMdocMdlV1Claims.Height, it.value.toDataElement()) }
+    driver.weight?.let { addItemToSign(MsoMdocMdlV1Claims.Weight, it.value.toDataElement()) }
+    driver.eyeColour?.let { addItemToSign(MsoMdocMdlV1Claims.EyeColour, it.code.toDataElement()) }
+    driver.hairColour?.let { addItemToSign(MsoMdocMdlV1Claims.HairColour, it.code.toDataElement()) }
+    driver.birthPlace?.let { addItemToSign(MsoMdocMdlV1Claims.BirthPlace, it.value.toDataElement()) }
     driver.residence?.let { residence ->
-        residence.address?.let { addItemToSign(ResidentAddressAttribute, it.value.toDataElement()) }
-        residence.city?.let { addItemToSign(ResidentCityAttribute, it.value.toDataElement()) }
-        residence.state?.let { addItemToSign(ResidentStateAttribute, it.value.toDataElement()) }
-        residence.postalCode?.let { addItemToSign(ResidentPostalCodeAttribute, it.value.toDataElement()) }
-        addItemToSign(ResidentCountryAttribute, residence.country.code.toDataElement())
+        residence.address?.let { addItemToSign(MsoMdocMdlV1Claims.ResidentAddress, it.value.toDataElement()) }
+        residence.city?.let { addItemToSign(MsoMdocMdlV1Claims.ResidentCity, it.value.toDataElement()) }
+        residence.state?.let { addItemToSign(MsoMdocMdlV1Claims.ResidentState, it.value.toDataElement()) }
+        residence.postalCode?.let { addItemToSign(MsoMdocMdlV1Claims.ResidentPostalCode, it.value.toDataElement()) }
+        addItemToSign(MsoMdocMdlV1Claims.ResidentCountry, residence.country.code.toDataElement())
     }
     driver.age?.let { age ->
-        addItemToSign(AgeInYearsAttribute, age.value.value.toDataElement())
-        age.birthYear?.let { addItemToSign(AgeBirthYearAttribute, it.value.toDataElement()) }
-        addItemToSign(AgeOver18Attribute, age.over18.toDataElement())
-        addItemToSign(AgeOver21Attribute, age.over21.toDataElement())
+        addItemToSign(MsoMdocMdlV1Claims.AgeInYears, age.value.value.toDataElement())
+        age.birthYear?.let { addItemToSign(MsoMdocMdlV1Claims.AgeBirthYear, it.value.toDataElement()) }
+        addItemToSign(MsoMdocMdlV1Claims.AgeOver18, age.over18.toDataElement())
+        addItemToSign(MsoMdocMdlV1Claims.AgeOver21, age.over21.toDataElement())
     }
-    driver.nationality?.let { addItemToSign(NationalityAttribute, it.code.toDataElement()) }
-    driver.familyName.utf8?.let { addItemToSign(FamilyNameNationalCharacterAttribute, it.toDataElement()) }
-    driver.givenName.utf8?.let { addItemToSign(GivenNameNationalCharacterAttribute, it.toDataElement()) }
-    driver.signature?.let { addItemToSign(SignatureUsualMarkAttribute, it.content.toDataElement()) }
+    driver.nationality?.let { addItemToSign(MsoMdocMdlV1Claims.Nationality, it.code.toDataElement()) }
+    driver.familyName.utf8?.let { addItemToSign(MsoMdocMdlV1Claims.FamilyNameNationalCharacter, it.toDataElement()) }
+    driver.givenName.utf8?.let { addItemToSign(MsoMdocMdlV1Claims.GivenNameNationalCharacter, it.toDataElement()) }
+    driver.signature?.let { addItemToSign(MsoMdocMdlV1Claims.SignatureUsualMark, it.content.toDataElement()) }
 }
 
 private fun MDocBuilder.addItemsToSign(issueAndExpiry: IssueAndExpiry) {
-    addItemToSign(IssueDateAttribute, issueAndExpiry.issuedAt.toKotlinLocalDate().toDataElement())
-    addItemToSign(ExpiryDateAttribute, issueAndExpiry.expiresAt.toKotlinLocalDate().toDataElement())
+    addItemToSign(MsoMdocMdlV1Claims.IssueDate, issueAndExpiry.issuedAt.toKotlinLocalDate().toDataElement())
+    addItemToSign(MsoMdocMdlV1Claims.ExpiryDate, issueAndExpiry.expiresAt.toKotlinLocalDate().toDataElement())
 }
 
 private fun MDocBuilder.addItemsToSign(issuer: Issuer) {
-    addItemToSign(IssuingCountryAttribute, issuer.country.countryCode.code.toDataElement())
-    addItemToSign(IssuingAuthorityAttribute, issuer.authority.value.toDataElement())
-    addItemToSign(IssuingCountryDistinguishingSignAttribute, issuer.country.distinguishingSign.code.toDataElement())
-    issuer.jurisdiction?.let { addItemToSign(IssuingJurisdictionAttribute, it.value.toDataElement()) }
+    addItemToSign(MsoMdocMdlV1Claims.IssuingCountry, issuer.country.countryCode.code.toDataElement())
+    addItemToSign(MsoMdocMdlV1Claims.IssuingAuthority, issuer.authority.value.toDataElement())
+    addItemToSign(MsoMdocMdlV1Claims.IssuingCountryDistinguishingSign, issuer.country.distinguishingSign.code.toDataElement())
+    issuer.jurisdiction?.let { addItemToSign(MsoMdocMdlV1Claims.IssuingJurisdiction, it.value.toDataElement()) }
 }
 
-private fun MDocBuilder.addItemToSign(attr: AttributeDetails, value: DataElement) {
-    addItemToSign(MobileDrivingLicenceV1Namespace, attr.name, value)
+private fun MDocBuilder.addItemToSign(claim: ClaimDefinition, value: DataElement) {
+    addItemToSign(MobileDrivingLicenceV1Namespace, claim.name, value)
 }
 
 private fun DrivingPrivilege.toDE() =

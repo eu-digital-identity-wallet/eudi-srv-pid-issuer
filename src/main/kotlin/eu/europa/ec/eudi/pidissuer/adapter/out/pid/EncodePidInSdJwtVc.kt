@@ -25,7 +25,8 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.certificate
-import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAddressClaim
+import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAssurancePlaceOfBirth
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType
@@ -143,46 +144,46 @@ private fun selectivelyDisclosed(
         //
         // Selectively Disclosed claims
         //
-        sdClaim(OidcFamilyName.name, pid.familyName.value)
-        sdClaim(OidcGivenName.name, pid.givenName.value)
-        sdClaim(OidcBirthDate.name, pid.birthDate.toString())
-        objClaim(Attributes.AgeEqualOrOver.name) {
-            pid.ageOver18?.let { sdClaim(Attributes.AgeOver18.name, it) }
+        sdClaim(SdJwtVcPidClaims.FamilyName.name, pid.familyName.value)
+        sdClaim(SdJwtVcPidClaims.GivenName.name, pid.givenName.value)
+        sdClaim(SdJwtVcPidClaims.BirthDate.name, pid.birthDate.toString())
+        objClaim(SdJwtVcPidClaims.AgeEqualOrOver.attribute.name) {
+            pid.ageOver18?.let { sdClaim(SdJwtVcPidClaims.AgeEqualOrOver.Over18.name, it) }
         }
-        pid.ageInYears?.let { sdClaim(Attributes.AgeInYears.name, it.toInt()) }
-        pid.ageBirthYear?.let { sdClaim(Attributes.AgeBirthYear.name, it.value.toString()) }
-        pid.familyNameBirth?.let { sdClaim(OidcAssuranceBirthFamilyName.name, it.value) }
-        pid.givenNameBirth?.let { sdClaim(OidcAssuranceBirthGivenName.name, it.value) }
+        pid.ageInYears?.let { sdClaim(SdJwtVcPidClaims.AgeInYears.name, it.toInt()) }
+        pid.ageBirthYear?.let { sdClaim(SdJwtVcPidClaims.AgeBirthYear.name, it.value.toString()) }
+        pid.familyNameBirth?.let { sdClaim(SdJwtVcPidClaims.BirthFamilyName.name, it.value) }
+        pid.givenNameBirth?.let { sdClaim(SdJwtVcPidClaims.BirthGivenName.name, it.value) }
 
         pid.oidcAssurancePlaceOfBirth()?.let { placeOfBirth ->
-            objClaim(OidcAssurancePlaceOfBirth.NAME) {
-                placeOfBirth.locality?.let { sdClaim("locality", it) }
-                placeOfBirth.region?.let { sdClaim("region", it) }
-                placeOfBirth.country?.let { sdClaim("country", it) }
+            objClaim(SdJwtVcPidClaims.PlaceOfBirth.attribute.name) {
+                placeOfBirth.locality?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Locality.name, it) }
+                placeOfBirth.region?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Region.name, it) }
+                placeOfBirth.country?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Country.name, it) }
             }
         }
         pid.oidcAddressClaim()?.let { address ->
-            objClaim(OidcAddressClaim.NAME) {
-                address.formatted?.let { sdClaim("formatted", it) }
-                address.country?.let { sdClaim("country", it) }
-                address.region?.let { sdClaim("region", it) }
-                address.locality?.let { sdClaim("locality", it) }
-                address.postalCode?.let { sdClaim("postal_code", it) }
-                address.streetAddress?.let { sdClaim("street_address", it) }
-                address.houseNumber?.let { sdClaim("house_number", it) }
+            objClaim(SdJwtVcPidClaims.Address.attribute.name) {
+                address.formatted?.let { sdClaim(SdJwtVcPidClaims.Address.Formatted.name, it) }
+                address.country?.let { sdClaim(SdJwtVcPidClaims.Address.Country.name, it) }
+                address.region?.let { sdClaim(SdJwtVcPidClaims.Address.Region.name, it) }
+                address.locality?.let { sdClaim(SdJwtVcPidClaims.Address.Locality.name, it) }
+                address.postalCode?.let { sdClaim(SdJwtVcPidClaims.Address.PostalCode.name, it) }
+                address.streetAddress?.let { sdClaim(SdJwtVcPidClaims.Address.Street.name, it) }
+                address.houseNumber?.let { sdClaim(SdJwtVcPidClaims.Address.HouseNumber.name, it) }
             }
         }
-        pid.genderAsString?.let { sdClaim(OidcGender.name, it) }
+        pid.genderAsString?.let { sdClaim(SdJwtVcPidClaims.Gender.name, it) }
         pid.nationality?.let {
-            sdArrClaim(OidcAssuranceNationalities.name) {
+            sdArrClaim(SdJwtVcPidClaims.Nationalities.name) {
                 claim(it.value)
             }
         }
-        sdClaim(IssuingAuthorityAttribute.name, pidMetaData.issuingAuthority.valueAsString())
-        pidMetaData.documentNumber?.let { sdClaim(DocumentNumberAttribute.name, it.value) }
-        pidMetaData.administrativeNumber?.let { sdClaim(AdministrativeNumberAttribute.name, it.value) }
-        sdClaim(IssuingCountryAttribute.name, pidMetaData.issuingCountry.value)
-        pidMetaData.issuingJurisdiction?.let { sdClaim(IssuingJurisdictionAttribute.name, it) }
+        sdClaim(SdJwtVcPidClaims.IssuingAuthority.name, pidMetaData.issuingAuthority.valueAsString())
+        pidMetaData.documentNumber?.let { sdClaim(SdJwtVcPidClaims.DocumentNumber.name, it.value) }
+        pidMetaData.administrativeNumber?.let { sdClaim(SdJwtVcPidClaims.AdministrativeNumber.name, it.value) }
+        sdClaim(SdJwtVcPidClaims.IssuingCountry.name, pidMetaData.issuingCountry.value)
+        pidMetaData.issuingJurisdiction?.let { sdClaim(SdJwtVcPidClaims.IssuingJurisdiction.name, it) }
     }
 }
 

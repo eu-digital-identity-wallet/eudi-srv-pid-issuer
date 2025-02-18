@@ -44,45 +44,95 @@ import java.util.*
 
 val PidSdJwtVcScope: Scope = Scope("eu.europa.ec.eudi.pid_vc_sd_jwt")
 
-internal object Attributes {
+internal object SdJwtVcPidAgeEqualOrOver : IsAttribute {
+    const val NAME = "age_equal_or_over"
 
-    val AgeBirthYear = AttributeDetails(
-        name = "age_birth_year",
+    override val attribute: ClaimDefinition
+        get() = ClaimDefinition(
+            path = ClaimPath.claim(NAME),
+            display = mapOf(Locale.ENGLISH to "Attesting attributes for the age of the PID User."),
+            nested = listOf(Over18),
+        )
+
+    val Over18 = ClaimDefinition(
+        path = ClaimPath.claim(NAME).claim("18"),
+        display = mapOf(Locale.ENGLISH to "Attesting whether the PID User is currently an adult (true) or a minor (false)."),
+    )
+}
+
+internal object SdJwtVcPidClaims {
+
+    val FamilyName = OidcFamilyName
+    val GivenName = OidcGivenName
+    val BirthDate = OidcBirthDate
+    val BirthFamilyName = OidcAssuranceBirthFamilyName
+    val BirthGivenName = OidcAssuranceBirthGivenName
+    val PlaceOfBirth = OidcAssurancePlaceOfBirth
+    val Address = OidcAddressClaim
+    val Gender = OidcGender
+    val Nationalities = OidcAssuranceNationalities
+    val AgeBirthYear = ClaimDefinition(
+        path = ClaimPath.claim("age_birth_year"),
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "The year when the PID User was born."),
     )
-    val AgeEqualOrOver = AttributeDetails(
-        name = "age_equal_or_over",
-        display = mapOf(Locale.ENGLISH to "Attesting attributes for the age of the PID User."),
-    )
-    val AgeOver18 = AttributeDetails(
-        name = "18",
-        display = mapOf(Locale.ENGLISH to "Attesting whether the PID User is currently an adult (true) or a minor (false)."),
-    )
-
-    val AgeInYears = AttributeDetails(
-        name = "age_in_years",
+    val AgeEqualOrOver = SdJwtVcPidAgeEqualOrOver
+    val AgeInYears = ClaimDefinition(
+        path = ClaimPath.claim("age_in_years"),
         display = mapOf(Locale.ENGLISH to "The current age of the PID User in years."),
     )
+    val IssuingAuthority = ClaimDefinition(
+        path = ClaimPath.claim("issuing_authority"),
+        mandatory = true,
+        display = mapOf(
+            Locale.ENGLISH to "Name of the administrative authority that has issued this PID instance, " +
+                "or the ISO 3166 Alpha-2 country code of the respective Member State if there is " +
+                "no separate authority authorized to issue PIDs.",
+        ),
+    )
+    val DocumentNumber = ClaimDefinition(
+        path = ClaimPath.claim("document_number"),
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "A number for the PID, assigned by the PID Provider."),
+    )
+    val AdministrativeNumber = ClaimDefinition(
+        path = ClaimPath.claim("administrative_number"),
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "A number assigned by the PID Provider for audit control or other purposes."),
+    )
+    val IssuingCountry = ClaimDefinition(
+        path = ClaimPath.claim("issuing_country"),
+        mandatory = true,
+        display = mapOf(Locale.ENGLISH to "Alpha-2 country code, as defined in ISO 3166-1, of the PID Provider's country or territory."),
+    )
+    val IssuingJurisdiction = ClaimDefinition(
+        path = ClaimPath.claim("issuing_jurisdiction"),
+        mandatory = false,
+        display = mapOf(
+            Locale.ENGLISH to "Country subdivision code of the jurisdiction that issued the PID, " +
+                "as defined in ISO 3166-2:2020, Clause 8. The first part of the code SHALL be the same " +
+                "as the value for issuing_country.",
+        ),
+    )
 
-    val pidAttributes: List<AttributeDetails> = listOf(
-        OidcFamilyName,
-        OidcGivenName,
-        OidcBirthDate,
-        AgeEqualOrOver,
+    fun all(): List<ClaimDefinition> = listOf(
+        FamilyName,
+        GivenName,
+        BirthDate,
+        AgeEqualOrOver.attribute,
         AgeInYears,
         AgeBirthYear,
-        OidcAssuranceBirthFamilyName,
-        OidcAssuranceBirthGivenName,
-        OidcAssurancePlaceOfBirth.attribute,
-        OidcAddressClaim.attribute,
-        OidcGender,
-        OidcAssuranceNationalities,
-        IssuingAuthorityAttribute,
-        DocumentNumberAttribute,
-        AdministrativeNumberAttribute,
-        IssuingCountryAttribute,
-        IssuingJurisdictionAttribute,
+        BirthFamilyName,
+        BirthGivenName,
+        PlaceOfBirth.attribute,
+        Address.attribute,
+        Gender,
+        Nationalities,
+        IssuingAuthority,
+        DocumentNumber,
+        AdministrativeNumber,
+        IssuingCountry,
+        IssuingJurisdiction,
     )
 }
 
@@ -93,7 +143,7 @@ fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration
         id = CredentialConfigurationId(PidSdJwtVcScope.value),
         type = SdJwtVcType(pidDocType(1)),
         display = pidDisplay,
-        claims = Attributes.pidAttributes,
+        claims = SdJwtVcPidClaims.all(),
         cryptographicBindingMethodsSupported = nonEmptySetOf(CryptographicBindingMethod.Jwk),
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
         scope = PidSdJwtVcScope,
