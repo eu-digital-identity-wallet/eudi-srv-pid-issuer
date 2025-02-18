@@ -44,6 +44,22 @@ import java.util.*
 
 val PidSdJwtVcScope: Scope = Scope("eu.europa.ec.eudi.pid_vc_sd_jwt")
 
+internal object SdJwtVcPidAgeEqualOrOver : IsAttribute {
+    const val NAME = "age_equal_or_over"
+
+    override val attribute: ClaimDefinition
+        get() = ClaimDefinition(
+            path = ClaimPath.claim(NAME),
+            display = mapOf(Locale.ENGLISH to "Attesting attributes for the age of the PID User."),
+            nested = listOf(Over18),
+        )
+
+    val Over18 = ClaimDefinition(
+        path = ClaimPath.claim(NAME).claim("18"),
+        display = mapOf(Locale.ENGLISH to "Attesting whether the PID User is currently an adult (true) or a minor (false)."),
+    )
+}
+
 internal object SdJwtVcPidClaims {
 
     val FamilyName = OidcFamilyName
@@ -60,14 +76,7 @@ internal object SdJwtVcPidClaims {
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "The year when the PID User was born."),
     )
-    val AgeEqualOrOver = ClaimDefinition(
-        path = ClaimPath.claim("age_equal_or_over"),
-        display = mapOf(Locale.ENGLISH to "Attesting attributes for the age of the PID User."),
-    )
-    val AgeOver18 = ClaimDefinition(
-        path = AgeEqualOrOver.path.claim("18"),
-        display = mapOf(Locale.ENGLISH to "Attesting whether the PID User is currently an adult (true) or a minor (false)."),
-    )
+    val AgeEqualOrOver = SdJwtVcPidAgeEqualOrOver
     val AgeInYears = ClaimDefinition(
         path = ClaimPath.claim("age_in_years"),
         display = mapOf(Locale.ENGLISH to "The current age of the PID User in years."),
@@ -110,8 +119,7 @@ internal object SdJwtVcPidClaims {
         FamilyName,
         GivenName,
         BirthDate,
-        AgeEqualOrOver,
-        AgeOver18,
+        AgeEqualOrOver.attribute,
         AgeInYears,
         AgeBirthYear,
         BirthFamilyName,

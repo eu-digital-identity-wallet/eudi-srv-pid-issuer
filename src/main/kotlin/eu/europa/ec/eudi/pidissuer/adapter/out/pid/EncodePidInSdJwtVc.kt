@@ -25,7 +25,8 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.certificate
-import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAddressClaim
+import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAssurancePlaceOfBirth
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType
@@ -146,8 +147,8 @@ private fun selectivelyDisclosed(
         sdClaim(SdJwtVcPidClaims.FamilyName.name, pid.familyName.value)
         sdClaim(SdJwtVcPidClaims.GivenName.name, pid.givenName.value)
         sdClaim(SdJwtVcPidClaims.BirthDate.name, pid.birthDate.toString())
-        objClaim(SdJwtVcPidClaims.AgeEqualOrOver.name) {
-            pid.ageOver18?.let { sdClaim(SdJwtVcPidClaims.AgeOver18.name, it) }
+        objClaim(SdJwtVcPidClaims.AgeEqualOrOver.attribute.name) {
+            pid.ageOver18?.let { sdClaim(SdJwtVcPidClaims.AgeEqualOrOver.Over18.name, it) }
         }
         pid.ageInYears?.let { sdClaim(SdJwtVcPidClaims.AgeInYears.name, it.toInt()) }
         pid.ageBirthYear?.let { sdClaim(SdJwtVcPidClaims.AgeBirthYear.name, it.value.toString()) }
