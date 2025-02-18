@@ -75,7 +75,7 @@ data class CredentialDisplay(
 
 typealias Display = Map<Locale, String>
 
-data class AttributeDetails(
+data class ClaimDefinition(
     val path: ClaimPath,
     val mandatory: Boolean = false,
     val display: Display = emptyMap(),
@@ -86,6 +86,8 @@ data class AttributeDetails(
 
     val name: String
         get() = (path.last() as ClaimPathElement.Claim).name
+
+    companion object
 }
 
 /**

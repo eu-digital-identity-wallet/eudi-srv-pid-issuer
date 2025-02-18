@@ -44,38 +44,109 @@ import java.util.*
 
 val PidSdJwtVcScope: Scope = Scope("eu.europa.ec.eudi.pid_vc_sd_jwt")
 
-internal object SdJwtVcPidAttributes {
+internal object SdJwtVcPidClaims {
 
-    val FamilyName by lazy { OidcFamilyName }
-    val GivenName by lazy { OidcGivenName }
-    val BirthDate by lazy { OidcBirthDate }
-    val BirthFamilyName by lazy { OidcAssuranceBirthFamilyName }
-    val BirthGivenName by lazy { OidcAssuranceBirthGivenName }
-    val PlaceOfBirth by lazy { OidcAssurancePlaceOfBirth }
-    val Address by lazy { OidcAddressClaim }
-    val Gender by lazy { OidcGender }
-    val Nationalities by lazy { OidcAssuranceNationalities }
+    val FamilyName = OidcFamilyName
+    val GivenName = OidcGivenName
+    val BirthDate = OidcBirthDate
+    val BirthFamilyName = OidcAssuranceBirthFamilyName
+    val BirthGivenName = OidcAssuranceBirthGivenName
+    val PlaceOfBirth = OidcAssurancePlaceOfBirth
+    val PlaceOfBirthCountry = ClaimDefinition(
+        path = PlaceOfBirth.attribute.path.claim("country"),
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The country where the PID User was born."),
+    )
 
-    val AgeBirthYear = AttributeDetails(
+    val PlaceOfBirthRegion = ClaimDefinition(
+        path = PlaceOfBirth.attribute.path.claim("region"),
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The state where the PID User was born."),
+    )
+
+    val PlaceOfBirthLocality = ClaimDefinition(
+        path = PlaceOfBirth.attribute.path.claim("locality"),
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "The city where the PID User was born."),
+    )
+    val Address = OidcAddressClaim
+    val AddressHouseNumber = ClaimDefinition(
+        path = Address.attribute.path.claim("house_number"),
+        mandatory = false,
+        display = mapOf(
+            Locale.ENGLISH to "The house number where the user to whom the person identification data " +
+                "relates currently resides, including any affix or suffix.",
+        ),
+    )
+    val AddressStreet = ClaimDefinition(
+        path = Address.attribute.path.claim("street_address"),
+        mandatory = false,
+        display = mapOf(
+            Locale.ENGLISH to "The name of the street where the user to whom the person identification " +
+                "data relates currently resides.",
+        ),
+    )
+    val AddressPostalCode = ClaimDefinition(
+        path = Address.attribute.path.claim("postal_code"),
+        mandatory = false,
+        display = mapOf(
+            Locale.ENGLISH to "The postal code of the place where the user to whom the person identification " +
+                "data relates currently resides.",
+        ),
+    )
+    val AddressLocality = ClaimDefinition(
+        path = Address.attribute.path.claim("locality"),
+        mandatory = false,
+        display = mapOf(
+            Locale.ENGLISH to "The municipality, city, town, or village where the user to whom the " +
+                "person identification data relates currently resides.",
+        ),
+    )
+    val AddressRegion = ClaimDefinition(
+        path = Address.attribute.path.claim("region"),
+        mandatory = false,
+        display = mapOf(
+            Locale.ENGLISH to "The state, province, district, or local area where the user to " +
+                "whom the person identification data relates currently resides.",
+        ),
+    )
+    val AddressCountry = ClaimDefinition(
+        path = Address.attribute.path.claim("country"),
+        mandatory = false,
+        display = mapOf(
+            Locale.ENGLISH to "The country where the user to whom the person identification data " +
+                "relates currently resides, as an alpha-2 country code as specified in ISO 3166-1.",
+        ),
+    )
+    val AddressFormatted = ClaimDefinition(
+        path = Address.attribute.path.claim("formatted"),
+        mandatory = false,
+        display = mapOf(
+            Locale.ENGLISH to "The full address of the place where the user to whom the person " +
+                "identification data relates currently resides or can be contacted (street name, " +
+                "house number, city etc.).",
+        ),
+    )
+    val Gender = OidcGender
+    val Nationalities = OidcAssuranceNationalities
+    val AgeBirthYear = ClaimDefinition(
         path = ClaimPath.claim("age_birth_year"),
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "The year when the PID User was born."),
     )
-    val AgeEqualOrOver = AttributeDetails(
+    val AgeEqualOrOver = ClaimDefinition(
         path = ClaimPath.claim("age_equal_or_over"),
         display = mapOf(Locale.ENGLISH to "Attesting attributes for the age of the PID User."),
     )
-    val AgeOver18 = AttributeDetails(
+    val AgeOver18 = ClaimDefinition(
         path = AgeEqualOrOver.path.claim("18"),
         display = mapOf(Locale.ENGLISH to "Attesting whether the PID User is currently an adult (true) or a minor (false)."),
     )
-
-    val AgeInYears = AttributeDetails(
+    val AgeInYears = ClaimDefinition(
         path = ClaimPath.claim("age_in_years"),
         display = mapOf(Locale.ENGLISH to "The current age of the PID User in years."),
     )
-
-    val IssuingAuthority = AttributeDetails(
+    val IssuingAuthority = ClaimDefinition(
         path = ClaimPath.claim("issuing_authority"),
         mandatory = true,
         display = mapOf(
@@ -84,26 +155,22 @@ internal object SdJwtVcPidAttributes {
                 "no separate authority authorized to issue PIDs.",
         ),
     )
-
-    val DocumentNumber = AttributeDetails(
+    val DocumentNumber = ClaimDefinition(
         path = ClaimPath.claim("document_number"),
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "A number for the PID, assigned by the PID Provider."),
     )
-
-    val AdministrativeNumber = AttributeDetails(
+    val AdministrativeNumber = ClaimDefinition(
         path = ClaimPath.claim("administrative_number"),
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "A number assigned by the PID Provider for audit control or other purposes."),
     )
-
-    val IssuingCountry = AttributeDetails(
+    val IssuingCountry = ClaimDefinition(
         path = ClaimPath.claim("issuing_country"),
         mandatory = true,
         display = mapOf(Locale.ENGLISH to "Alpha-2 country code, as defined in ISO 3166-1, of the PID Provider's country or territory."),
     )
-
-    val IssuingJurisdiction = AttributeDetails(
+    val IssuingJurisdiction = ClaimDefinition(
         path = ClaimPath.claim("issuing_jurisdiction"),
         mandatory = false,
         display = mapOf(
@@ -113,29 +180,36 @@ internal object SdJwtVcPidAttributes {
         ),
     )
 
-    val pidAttributes: List<AttributeDetails>
-        get() = listOf(
-            FamilyName,
-            GivenName,
-            BirthDate,
-            AgeEqualOrOver,
-            AgeOver18,
-            AgeInYears,
-            AgeBirthYear,
-            BirthFamilyName,
-            BirthGivenName,
-            PlaceOfBirth.attribute,
-            *PlaceOfBirth.nestedAttributes.toTypedArray(),
-            Address.attribute,
-            *Address.nestedAttributes.toTypedArray(),
-            Gender,
-            Nationalities,
-            IssuingAuthority,
-            DocumentNumber,
-            AdministrativeNumber,
-            IssuingCountry,
-            IssuingJurisdiction,
-        )
+    fun all(): List<ClaimDefinition> = listOf(
+        FamilyName,
+        GivenName,
+        BirthDate,
+        AgeEqualOrOver,
+        AgeOver18,
+        AgeInYears,
+        AgeBirthYear,
+        BirthFamilyName,
+        BirthGivenName,
+        PlaceOfBirth.attribute,
+        PlaceOfBirthLocality,
+        PlaceOfBirthRegion,
+        PlaceOfBirthCountry,
+        Address.attribute,
+        AddressFormatted,
+        AddressCountry,
+        AddressRegion,
+        AddressLocality,
+        AddressPostalCode,
+        AddressStreet,
+        AddressHouseNumber,
+        Gender,
+        Nationalities,
+        IssuingAuthority,
+        DocumentNumber,
+        AdministrativeNumber,
+        IssuingCountry,
+        IssuingJurisdiction,
+    )
 }
 
 private fun pidDocType(version: Int): String = "urn:eu.europa.ec.eudi:pid:$version"
@@ -145,7 +219,7 @@ fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration
         id = CredentialConfigurationId(PidSdJwtVcScope.value),
         type = SdJwtVcType(pidDocType(1)),
         display = pidDisplay,
-        claims = SdJwtVcPidAttributes.pidAttributes,
+        claims = SdJwtVcPidClaims.all(),
         cryptographicBindingMethodsSupported = nonEmptySetOf(CryptographicBindingMethod.Jwk),
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
         scope = PidSdJwtVcScope,

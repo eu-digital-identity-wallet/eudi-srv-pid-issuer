@@ -237,9 +237,9 @@ internal fun MsoMdocCredentialConfiguration.toTransferObject(
         }
     }
 
-    if (msoClaims.isNotEmpty()) {
+    if (claims.isNotEmpty()) {
         putJsonArray("claims") {
-            addAll(msoClaims.values.flatten().map { it.toJsonObject() })
+            addAll(claims.map { it.toJsonObject() })
         }
     }
 }
@@ -277,7 +277,7 @@ internal fun CredentialDisplay.toTransferObject(): JsonObject = buildJsonObject 
     textColor?.let { put("text_color", it) }
 }
 
-private fun AttributeDetails.toJsonObject(): JsonObject = buildJsonObject {
+private fun ClaimDefinition.toJsonObject(): JsonObject = buildJsonObject {
     put("path", Json.encodeToJsonElement(path))
     put("mandatory", mandatory)
     if (display.isNotEmpty()) {

@@ -29,22 +29,17 @@ typealias MsoNameSpace = String
 const val MSO_MDOC_FORMAT_VALUE = "mso_mdoc"
 val MSO_MDOC_FORMAT = Format(MSO_MDOC_FORMAT_VALUE)
 
-@JvmInline
-value class MsoClaims(val claims: Map<MsoNameSpace, List<AttributeDetails>>) : Map<MsoNameSpace, List<AttributeDetails>> by claims {
-    init {
-        require(claims.all { (nameSpace, attributes) -> attributes.all { attribute -> attribute.path.isMsoMDoc(nameSpace) } }) {
-            "claims contains attributes with invalid MSO MDoc ClaimPaths"
-        }
-    }
-}
+fun ClaimPath.isMsoMDoc(): Boolean = 2 == size && all { it is ClaimPathElement.Claim }
 
-fun ClaimPath.isMsoMDoc(nameSpace: MsoNameSpace): Boolean =
-    when (size) {
-        2 -> ClaimPathElement.Claim(nameSpace) == first() && last() is ClaimPathElement.Claim
-        else -> false
-    }
+operator fun ClaimPath.Companion.invoke(nameSpace: MsoNameSpace, attributeName: String): ClaimPath =
+    claim(nameSpace).claim(attributeName)
 
-fun ClaimPath.Companion.msoMDoc(nameSpace: MsoNameSpace, name: String): ClaimPath = ClaimPath.claim(nameSpace).claim(name)
+operator fun ClaimDefinition.Companion.invoke(
+    nameSpace: MsoNameSpace,
+    attributeName: String,
+    mandatory: Boolean = false,
+    display: Display = emptyMap(),
+): ClaimDefinition = ClaimDefinition(ClaimPath(nameSpace, attributeName), mandatory, display)
 
 data class MsoMdocPolicy(val oneTimeUse: Boolean)
 
@@ -58,10 +53,16 @@ data class MsoMdocCredentialConfiguration(
     override val credentialSigningAlgorithmsSupported: Set<JWSAlgorithm>,
     override val scope: Scope? = null,
     override val display: List<CredentialDisplay> = emptyList(),
-    val msoClaims: MsoClaims = MsoClaims(emptyMap()),
+    val claims: List<ClaimDefinition> = emptyList(),
     override val proofTypesSupported: ProofTypesSupported = ProofTypesSupported.Empty,
     val policy: MsoMdocPolicy? = null,
-) : CredentialConfiguration
+) : CredentialConfiguration {
+    init {
+        require(claims.all { it.path.isMsoMDoc() }) {
+            "'claims' does not contain valid MSO MDoc ClaimDefinitions"
+        }
+    }
+}
 
 internal fun MsoMdocCredentialConfiguration.credentialRequest(
     unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
