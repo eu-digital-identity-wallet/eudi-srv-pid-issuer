@@ -35,6 +35,7 @@ class IssuerUi(
     private val metadata: CredentialIssuerMetaData,
     private val createCredentialsOffer: CreateCredentialsOffer,
     private val generateQrCode: GenerateQqCode,
+    private val credentialIssuerMetadata: CredentialIssuerMetaData,
 ) {
     val router: RouterFunction<ServerResponse> = coRouter {
         // Redirect / to 'generate credentials offer' form
@@ -68,6 +69,7 @@ class IssuerUi(
                 mapOf(
                     "credentialIds" to credentialIds,
                     "credentialsOfferUri" to credentialsOfferUri,
+                    "openid4VciVersion" to credentialIssuerMetadata.openid4VciVersion,
                 ),
             )
     }
@@ -96,13 +98,20 @@ class IssuerUi(
                         "uri" to credentialsOffer.toString(),
                         "qrCode" to Base64.encode(qrCode),
                         "qrCodeMediaType" to "image/png",
+                        "openid4VciVersion" to credentialIssuerMetadata.openid4VciVersion,
                     ),
                 )
         }.getOrElse { error ->
             log.warn("Unable to generated Credentials Offer. Error: {}", error)
             ServerResponse.badRequest()
                 .contentType(MediaType.TEXT_HTML)
-                .renderAndAwait("generate-credentials-offer-error", mapOf("error" to error::class.java.canonicalName))
+                .renderAndAwait(
+                    "generate-credentials-offer-error",
+                    mapOf(
+                        "error" to error::class.java.canonicalName,
+                        "openid4VciVersion" to credentialIssuerMetadata.openid4VciVersion,
+                    ),
+                )
         }
     }
 

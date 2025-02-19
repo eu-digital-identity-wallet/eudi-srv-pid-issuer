@@ -514,7 +514,7 @@ fun beans(clock: Clock) = beans {
     bean {
         val metaDataApi = MetaDataApi(ref(), ref())
         val walletApi = WalletApi(ref(), ref(), ref(), ref())
-        val issuerUi = IssuerUi(credentialsOfferUri, ref(), ref(), ref())
+        val issuerUi = IssuerUi(credentialsOfferUri, ref(), ref(), ref(), ref())
         val issuerApi = IssuerApi(ref())
         metaDataApi.route.and(walletApi.route).and(issuerUi.router).and(issuerApi.router)
     }
