@@ -19,7 +19,7 @@ import arrow.core.NonEmptySet
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
-import java.util.Locale
+import java.util.*
 
 /**
  * Encryption algorithms and methods supported for encrypting Credential Responses.
