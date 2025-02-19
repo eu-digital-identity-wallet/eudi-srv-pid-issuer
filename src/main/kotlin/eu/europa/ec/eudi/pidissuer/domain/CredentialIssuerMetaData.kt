@@ -110,7 +110,6 @@ data class CredentialIssuerDisplay(
  * Credential Response encrypted or not.
  * @param display display properties of a Credential Issuer for a certain language
  * @param specificCredentialIssuers the list of the specific issuers supported
- * @param openid4VciVersion the version of OpenId4VCI supported by the Credential Issuer
  */
 data class CredentialIssuerMetaData(
     val id: CredentialIssuerId,
@@ -122,15 +121,11 @@ data class CredentialIssuerMetaData(
     val credentialResponseEncryption: CredentialResponseEncryption,
     val display: List<CredentialIssuerDisplay> = emptyList(),
     val specificCredentialIssuers: List<IssueSpecificCredential>,
-    val openid4VciVersion: String? = null,
 ) {
     init {
         val displayLocales = display.map { it.locale }
         require(displayLocales.size == displayLocales.distinct().size) {
             "only one display object can be configured per locale"
-        }
-        openid4VciVersion?.let {
-            require(it.isNotBlank()) { "openid4VciVersion cannot be blank" }
         }
     }
 

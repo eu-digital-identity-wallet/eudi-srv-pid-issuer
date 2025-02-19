@@ -484,7 +484,6 @@ fun beans(clock: Clock) = beans {
                         logo = display.logo?.let { ImageUri(it.uri, it.alternativeText) },
                     )
                 },
-            openid4VciVersion = env.getProperty("issuer.metadata.openid4vci.version")?.takeIf { it.isNotBlank() },
         )
     }
 
@@ -514,7 +513,7 @@ fun beans(clock: Clock) = beans {
     bean {
         val metaDataApi = MetaDataApi(ref(), ref())
         val walletApi = WalletApi(ref(), ref(), ref(), ref())
-        val issuerUi = IssuerUi(credentialsOfferUri, ref(), ref(), ref(), ref())
+        val issuerUi = IssuerUi(credentialsOfferUri, ref(), ref(), ref())
         val issuerApi = IssuerApi(ref())
         metaDataApi.route.and(walletApi.route).and(issuerUi.router).and(issuerApi.router)
     }

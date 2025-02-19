@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 import arrow.core.getOrElse
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfigurationId
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
+import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOffer
 import eu.europa.ec.eudi.pidissuer.port.out.qr.Dimensions
 import eu.europa.ec.eudi.pidissuer.port.out.qr.Format
@@ -35,7 +36,6 @@ class IssuerUi(
     private val metadata: CredentialIssuerMetaData,
     private val createCredentialsOffer: CreateCredentialsOffer,
     private val generateQrCode: GenerateQqCode,
-    private val credentialIssuerMetadata: CredentialIssuerMetaData,
 ) {
     val router: RouterFunction<ServerResponse> = coRouter {
         // Redirect / to 'generate credentials offer' form
@@ -69,7 +69,7 @@ class IssuerUi(
                 mapOf(
                     "credentialIds" to credentialIds,
                     "credentialsOfferUri" to credentialsOfferUri,
-                    "openid4VciVersion" to credentialIssuerMetadata.openid4VciVersion,
+                    "openid4VciVersion" to OpenId4VciSpec.VERSION,
                 ),
             )
     }
@@ -98,7 +98,7 @@ class IssuerUi(
                         "uri" to credentialsOffer.toString(),
                         "qrCode" to Base64.encode(qrCode),
                         "qrCodeMediaType" to "image/png",
-                        "openid4VciVersion" to credentialIssuerMetadata.openid4VciVersion,
+                        "openid4VciVersion" to OpenId4VciSpec.VERSION,
                     ),
                 )
         }.getOrElse { error ->
@@ -109,7 +109,7 @@ class IssuerUi(
                     "generate-credentials-offer-error",
                     mapOf(
                         "error" to error::class.java.canonicalName,
-                        "openid4VciVersion" to credentialIssuerMetadata.openid4VciVersion,
+                        "openid4VciVersion" to OpenId4VciSpec.VERSION,
                     ),
                 )
         }

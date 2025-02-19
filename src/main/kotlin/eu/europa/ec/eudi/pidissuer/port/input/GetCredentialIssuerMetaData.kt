@@ -108,7 +108,7 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
     credentialConfigurationsSupported = JsonObject(
         credentialConfigurationsSupported.associate { it.id.value to credentialMetaDataJson(it, batchCredentialIssuance) },
     ),
-    openid4VciVersion = openid4VciVersion,
+    openid4VciVersion = OpenId4VciSpec.VERSION,
 )
 
 private fun CredentialResponseEncryption.toTransferObject(): Option<CredentialIssuerMetaDataTO.CredentialResponseEncryptionTO> =
