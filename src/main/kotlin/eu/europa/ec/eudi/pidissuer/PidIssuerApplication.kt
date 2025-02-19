@@ -484,6 +484,7 @@ fun beans(clock: Clock) = beans {
                         logo = display.logo?.let { ImageUri(it.uri, it.alternativeText) },
                     )
                 },
+            openid4VciVersion = env.getProperty("issuer.metadata.openid4vci.version")?.takeIf { it.isNotBlank() },
         )
     }
 

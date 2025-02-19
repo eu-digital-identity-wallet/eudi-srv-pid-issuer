@@ -292,6 +292,9 @@ Default value: `10`
 
 ### Metadata configuration
 
+Variable: `ISSUER_METADATA_OPENID4VCI_VERSION`  
+Description: OpenId4VCI version advertised using the `openid4vci_version` property in the Credential Issuer Metadata
+
 You can configure the display objects of the Credential Issuer Metadata of PID Issuer, using the following 
 environment variables. 
 For each display object you must configure as a bare minimum either the name or the logo uri.

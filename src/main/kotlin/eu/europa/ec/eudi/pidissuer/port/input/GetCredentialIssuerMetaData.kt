@@ -53,6 +53,8 @@ data class CredentialIssuerMetaDataTO(
     val display: List<DisplayTO>? = null,
     @Required @SerialName("credential_configurations_supported")
     val credentialConfigurationsSupported: JsonObject,
+    @SerialName("openid4vci_version")
+    val openid4VciVersion: String? = null,
 ) {
 
     @Serializable
@@ -106,6 +108,7 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
     credentialConfigurationsSupported = JsonObject(
         credentialConfigurationsSupported.associate { it.id.value to credentialMetaDataJson(it, batchCredentialIssuance) },
     ),
+    openid4VciVersion = openid4VciVersion,
 )
 
 private fun CredentialResponseEncryption.toTransferObject(): Option<CredentialIssuerMetaDataTO.CredentialResponseEncryptionTO> =
