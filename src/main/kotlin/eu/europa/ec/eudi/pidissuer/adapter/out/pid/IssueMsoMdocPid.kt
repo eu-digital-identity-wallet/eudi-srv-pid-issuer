@@ -94,7 +94,7 @@ val NationalityAttribute = AttributeDetails(
 )
 val IssuanceDateAttribute = AttributeDetails(
     name = "issuance_date",
-    mandatory = true,
+    mandatory = false,
     display = mapOf(Locale.ENGLISH to "Date (and possibly time) when the PID was issued."),
 )
 val ExpiryDateAttribute = AttributeDetails(
@@ -115,21 +115,6 @@ val BirthPlaceAttribute = AttributeDetails(
     name = "birth_place",
     mandatory = true,
     display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User was born."),
-)
-val BirthCountryAttribute = AttributeDetails(
-    name = "birth_country",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The country where the PID User was born, as an Alpha-2 country code as specified in ISO 3166-1."),
-)
-val BirthStateAttribute = AttributeDetails(
-    name = "birth_state",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User was born."),
-)
-val BirthCityAttribute = AttributeDetails(
-    name = "birth_city",
-    mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The municipality, city, town, or village where the PID User was born."),
 )
 val ResidenceAddressAttribute = AttributeDetails(
     name = "resident_address",
@@ -219,19 +204,13 @@ val MobilePhoneNumberAttribute = AttributeDetails(
             "by numbers only.",
     ),
 )
+
 private val pidAttributes = PidMsoMdocNamespace to listOf(
     FamilyNameAttribute,
     GivenNameAttribute,
     BirthDateAttribute,
-    AgeOver18Attribute,
-    AgeInYearsAttribute,
-    AgeBirthYearAttribute,
-    FamilyNameBirthAttribute,
-    GivenNameBirthAttribute,
     BirthPlaceAttribute,
-    BirthCountryAttribute,
-    BirthStateAttribute,
-    BirthCityAttribute,
+    NationalityAttribute,
     ResidenceAddressAttribute,
     ResidenceCountryAttribute,
     ResidenceStateAttribute,
@@ -239,18 +218,22 @@ private val pidAttributes = PidMsoMdocNamespace to listOf(
     ResidencePostalCodeAttribute,
     ResidenceStreetAttribute,
     ResidenceHouseNumberAttribute,
-    SexAttribute,
-    NationalityAttribute,
-    IssuanceDateAttribute,
-    ExpiryDateAttribute,
-    IssuingAuthorityAttribute,
-    DocumentNumberAttribute,
     PersonalAdministrativeNumberAttribute,
-    IssuingCountryAttribute,
-    IssuingJurisdictionAttribute,
     PortraitAttribute,
+    FamilyNameBirthAttribute,
+    GivenNameBirthAttribute,
+    SexAttribute,
     EmailAddressAttribute,
     MobilePhoneNumberAttribute,
+    ExpiryDateAttribute,
+    IssuingAuthorityAttribute,
+    IssuingCountryAttribute,
+    DocumentNumberAttribute,
+    IssuingJurisdictionAttribute,
+    IssuanceDateAttribute,
+    AgeOver18Attribute,
+    AgeInYearsAttribute,
+    AgeBirthYearAttribute,
 )
 
 private const val PID_DOCTYPE = "eu.europa.ec.eudi.pid"
