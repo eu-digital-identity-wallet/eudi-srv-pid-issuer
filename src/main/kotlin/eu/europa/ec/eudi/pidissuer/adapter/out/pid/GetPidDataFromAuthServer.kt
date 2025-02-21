@@ -15,14 +15,11 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
-import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAddressClaim
+import arrow.core.nonEmptyListOf
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAssurancePlaceOfBirth
 import eu.europa.ec.eudi.pidissuer.port.input.Username
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.keycloak.admin.client.Keycloak
@@ -62,7 +59,7 @@ class GetPidDataFromAuthServer(
     }
 
     private suspend fun userInfo(username: Username): UserInfo? {
-        fun UserRepresentation.address(): OidcAddressClaim? {
+        fun UserRepresentation.address(): AddressData? {
             val street = attributes["street"]?.firstOrNull()
             val houseNumber = attributes["address_house_number"]?.firstOrNull()
             val locality = attributes["locality"]?.firstOrNull()
@@ -76,7 +73,7 @@ class GetPidDataFromAuthServer(
                 postalCode != null || country != null ||
                 formatted != null
             ) {
-                OidcAddressClaim(
+                AddressData(
                     streetAddress = street,
                     houseNumber = houseNumber,
                     locality = locality,
@@ -137,13 +134,14 @@ class GetPidDataFromAuthServer(
     private fun genPidMetaData(): PidMetaData {
         val issuanceDate = LocalDate.now(clock)
         return PidMetaData(
+            personalAdministrativeNumber = AdministrativeNumber(UUID.randomUUID().toString()),
             expiryDate = issuanceDate.plusDays(100),
-            issuanceDate = issuanceDate,
-            issuingCountry = issuerCountry,
             issuingAuthority = IssuingAuthority.AdministrativeAuthority("${issuerCountry.value} Administrative authority"),
+            issuingCountry = issuerCountry,
             documentNumber = DocumentNumber(UUID.randomUUID().toString()),
-            administrativeNumber = AdministrativeNumber(UUID.randomUUID().toString()),
             issuingJurisdiction = issuingJurisdiction,
+            issuanceDate = issuanceDate,
+            trustAnchor = null,
         )
     }
 
@@ -154,29 +152,34 @@ class GetPidDataFromAuthServer(
         val ageInYears = Duration.between(birthDate.atStartOfDay(clock.zone), ZonedDateTime.now(clock))
             .takeIf { !it.isZero && !it.isNegative }
             ?.let { ceil(it.toDays().toDouble() / 365).toUInt() }
+        val birthPlace = userInfo.placeOfBirth?.let { placeOfBirth ->
+            listOfNotNull(placeOfBirth.locality, placeOfBirth.region, placeOfBirth.region)
+                .joinToString(separator = ", ")
+                .takeIf { it.isNotBlank() }
+        } ?: "Not known"
+        val nationality = IsoCountry(requireNotNull(userInfo.nationality) { "missing required attribute 'nationality'" })
         val pid = Pid(
             familyName = FamilyName(userInfo.familyName),
             givenName = GivenName(userInfo.givenName),
             birthDate = birthDate,
-            ageOver18 = userInfo.ageOver18 ?: false,
-            ageBirthYear = Year.from(birthDate),
-            ageInYears = ageInYears,
-            familyNameBirth = userInfo.birthFamilyName?.let { FamilyName(it) },
-            givenNameBirth = userInfo.birthGivenName?.let { GivenName(it) },
-            birthPlace = null,
-            birthCountry = userInfo.placeOfBirth?.country?.let { IsoCountry(it) },
-            birthState = userInfo.placeOfBirth?.region?.let { State(it) },
-            birthCity = userInfo.placeOfBirth?.locality?.let { City(it) },
+            birthPlace = birthPlace,
+            nationalities = nonEmptyListOf(nationality),
             residentAddress = userInfo.address?.formatted,
-            residentStreet = userInfo.address?.streetAddress?.let { Street(it) },
             residentCountry = userInfo.address?.country?.let { IsoCountry(it) },
             residentState = userInfo.address?.region?.let { State(it) },
             residentCity = userInfo.address?.locality?.let { City(it) },
             residentPostalCode = userInfo.address?.postalCode?.let { PostalCode(it) },
+            residentStreet = userInfo.address?.streetAddress?.let { Street(it) },
             residentHouseNumber = userInfo.address?.houseNumber,
-            gender = userInfo.gender?.let { IsoGender(it) },
-            genderAsString = userInfo.genderAsString,
-            nationality = userInfo.nationality?.let { IsoCountry(it) },
+            portrait = null,
+            familyNameBirth = userInfo.birthFamilyName?.let { FamilyName(it) },
+            givenNameBirth = userInfo.birthGivenName?.let { GivenName(it) },
+            sex = userInfo.gender?.let { IsoGender(it) },
+            emailAddress = userInfo.email,
+            mobilePhoneNumber = null,
+            ageOver18 = userInfo.ageOver18 ?: false,
+            ageInYears = ageInYears,
+            ageBirthYear = Year.from(birthDate),
         )
 
         val pidMetaData = genPidMetaData()
@@ -185,20 +188,29 @@ class GetPidDataFromAuthServer(
     }
 }
 
-@Serializable
 private data class UserInfo(
-    @Required @SerialName("family_name") val familyName: String,
-    @Required @SerialName("given_name") val givenName: String,
-    @SerialName("birth_family_name") val birthFamilyName: String? = null,
-    @SerialName("birth_given_name") val birthGivenName: String? = null,
-    @Required val sub: String,
+    val familyName: String,
+    val givenName: String,
+    val birthFamilyName: String? = null,
+    val birthGivenName: String? = null,
+    val sub: String,
     val email: String? = null,
-    @SerialName(OidcAddressClaim.NAME) val address: OidcAddressClaim? = null,
-    @SerialName("birthdate") val birthDate: String? = null,
-    @SerialName("gender") val gender: UInt? = null,
-    @SerialName("gender_as_string") val genderAsString: String? = null,
-    @SerialName(OidcAssurancePlaceOfBirth.NAME) val placeOfBirth: OidcAssurancePlaceOfBirth? = null,
-    @SerialName("age_over_18") val ageOver18: Boolean? = null,
+    val address: AddressData? = null,
+    val birthDate: String? = null,
+    val gender: UInt? = null,
+    val genderAsString: String? = null,
+    val placeOfBirth: OidcAssurancePlaceOfBirth? = null,
+    val ageOver18: Boolean? = null,
     val picture: String? = null,
     val nationality: String? = null,
+)
+
+private data class AddressData(
+    val streetAddress: String? = null,
+    val locality: String? = null,
+    val region: String? = null,
+    val postalCode: String? = null,
+    val country: String? = null,
+    val formatted: String? = null,
+    val houseNumber: String? = null,
 )

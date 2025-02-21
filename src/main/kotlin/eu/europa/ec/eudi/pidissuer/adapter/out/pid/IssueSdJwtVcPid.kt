@@ -76,13 +76,15 @@ internal object Attributes {
         OidcAssuranceBirthGivenName,
         OidcAssurancePlaceOfBirth.attribute,
         OidcAddressClaim.attribute,
-        OidcGender,
+        SexAttribute,
         OidcAssuranceNationalities,
         IssuingAuthorityAttribute,
         DocumentNumberAttribute,
-        AdministrativeNumberAttribute,
+        PersonalAdministrativeNumberAttribute,
         IssuingCountryAttribute,
         IssuingJurisdictionAttribute,
+        EmailAddressAttribute,
+        MobilePhoneNumberAttribute,
     )
 }
 

@@ -67,10 +67,10 @@ val GivenNameBirthAttribute = AttributeDetails(
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "First name(s), including middle name(s), of the PID User at the time of birth."),
 )
-val GenderAttribute = AttributeDetails(
-    name = "gender",
+val SexAttribute = AttributeDetails(
+    name = "sex",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "PID User's gender, using a value as defined in ISO/IEC 5218."),
+    display = mapOf(Locale.ENGLISH to "PID User's sex, using a value as defined in ISO/IEC 5218."),
 )
 val AgeOver18Attribute = AttributeDetails(
     name = "age_over_18",
@@ -113,7 +113,7 @@ val IssuingAuthorityAttribute = AttributeDetails(
 )
 val BirthPlaceAttribute = AttributeDetails(
     name = "birth_place",
-    mandatory = false,
+    mandatory = true,
     display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User was born."),
 )
 val BirthCountryAttribute = AttributeDetails(
@@ -176,8 +176,8 @@ val DocumentNumberAttribute = AttributeDetails(
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "A number for the PID, assigned by the PID Provider."),
 )
-val AdministrativeNumberAttribute = AttributeDetails(
-    name = "administrative_number",
+val PersonalAdministrativeNumberAttribute = AttributeDetails(
+    name = "personal_administrative_number",
     mandatory = false,
     display = mapOf(Locale.ENGLISH to "A number assigned by the PID Provider for audit control or other purposes."),
 )
@@ -193,6 +193,30 @@ val IssuingJurisdictionAttribute = AttributeDetails(
         Locale.ENGLISH to "Country subdivision code of the jurisdiction that issued the PID, " +
             "as defined in ISO 3166-2:2020, Clause 8. The first part of the code SHALL be the same " +
             "as the value for issuing_country.",
+    ),
+)
+val PortraitAttribute = AttributeDetails(
+    name = "portrait",
+    mandatory = false,
+    display = mapOf(
+        Locale.ENGLISH to "Facial image of the PID user compliant with ISO 19794-5 or ISO 39794 specifications.",
+    ),
+)
+val EmailAddressAttribute = AttributeDetails(
+    name = "email_address",
+    mandatory = false,
+    display = mapOf(
+        Locale.ENGLISH to "Electronic mail address of the PID User to whom the person identification data relates, " +
+            "* in conformance with [RFC 5322].",
+    ),
+)
+val MobilePhoneNumberAttribute = AttributeDetails(
+    name = "mobile_phone_number",
+    mandatory = false,
+    display = mapOf(
+        Locale.ENGLISH to "Mobile telephone number of the User to whom the person identification data relates, " +
+            "starting with the '+' symbol as the international code prefix and the country code, followed " +
+            "by numbers only.",
     ),
 )
 private val pidAttributes = PidMsoMdocNamespace to listOf(
@@ -215,15 +239,18 @@ private val pidAttributes = PidMsoMdocNamespace to listOf(
     ResidencePostalCodeAttribute,
     ResidenceStreetAttribute,
     ResidenceHouseNumberAttribute,
-    GenderAttribute,
+    SexAttribute,
     NationalityAttribute,
     IssuanceDateAttribute,
     ExpiryDateAttribute,
     IssuingAuthorityAttribute,
     DocumentNumberAttribute,
-    AdministrativeNumberAttribute,
+    PersonalAdministrativeNumberAttribute,
     IssuingCountryAttribute,
     IssuingJurisdictionAttribute,
+    PortraitAttribute,
+    EmailAddressAttribute,
+    MobilePhoneNumberAttribute,
 )
 
 private const val PID_DOCTYPE = "eu.europa.ec.eudi.pid"

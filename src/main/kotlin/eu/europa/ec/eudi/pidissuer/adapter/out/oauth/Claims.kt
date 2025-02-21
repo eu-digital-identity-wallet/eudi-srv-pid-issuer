@@ -57,14 +57,6 @@ val OidcBirthDate: AttributeDetails by lazy {
     )
 }
 
-val OidcGender: AttributeDetails by lazy {
-    AttributeDetails(
-        name = "gender",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "PID User’s gender, using a value as defined in OpenID Connect Core 1.0."),
-    )
-}
-
 // https://openid.net/specs/openid-connect-core-1_0.html#AddressClaim
 @Serializable
 data class OidcAddressClaim(
@@ -74,7 +66,6 @@ data class OidcAddressClaim(
     @SerialName("postal_code") val postalCode: String? = null,
     @SerialName("country") val country: String? = null,
     @SerialName("formatted") val formatted: String? = null,
-    @SerialName("house_number") val houseNumber: String? = null,
 ) {
 
     companion object : IsAttribute {
@@ -129,7 +120,7 @@ data class OidcAssurancePlaceOfBirth(
         override val attribute: AttributeDetails
             get() = AttributeDetails(
                 name = NAME,
-                mandatory = false,
+                mandatory = true,
                 display = mapOf(Locale.ENGLISH to "The country, state, and city where the PID User was born."),
             )
     }
