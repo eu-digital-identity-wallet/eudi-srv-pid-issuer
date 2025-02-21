@@ -20,8 +20,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAssurancePlaceOfBirth
 import eu.europa.ec.eudi.pidissuer.port.input.Username
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.keycloak.admin.client.Keycloak
 import org.keycloak.representations.idm.UserRepresentation
 import org.slf4j.LoggerFactory
@@ -46,14 +44,10 @@ class GetPidDataFromAuthServer(
         }
     }
 
-    private val jsonSupport: Json by lazy {
-        Json { prettyPrint = true }
-    }
-
     override suspend fun invoke(username: Username): Pair<Pid, PidMetaData>? {
         log.info("Trying to get PID Data from Keycloak ...")
         val userInfo = userInfo(username).also {
-            if (log.isInfoEnabled) log.info(jsonSupport.encodeToString(it))
+            if (log.isInfoEnabled) log.info(it.toString())
         }
         return userInfo?.let { pid(it) }
     }
