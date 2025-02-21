@@ -97,8 +97,7 @@ value class PhoneNumber(val value: String) {
  * @param familyNameBirth First name(s), including middle name(s), of the PID User at the
  * time of birth.
  * @param givenNameBirth First name(s), including middle name(s), of the PID User at the time of birth.
- * @param gender The gender of the PID User as specified by ISO/IEC 5218
- * @param genderAsString Τhe gender of the PID User as a free string.
+ * @param sex The gender of the PID User as specified by ISO/IEC 5218
  * @param emailAddress Electronic mail address of the PID User to whom the person identification data relates,
  * in conformance with [RFC 5322].
  * @param mobilePhoneNumber Mobile telephone number of the User to whom the person identification data relates,
@@ -125,8 +124,7 @@ data class Pid(
     val portrait: PortraitImage? = null,
     val familyNameBirth: FamilyName? = null,
     val givenNameBirth: GivenName? = null,
-    val gender: IsoGender? = null,
-    val genderAsString: String? = null,
+    val sex: IsoGender? = null,
     val emailAddress: EmailAddress? = null,
     val mobilePhoneNumber: PhoneNumber? = null,
     val ageOver18: Boolean? = null,

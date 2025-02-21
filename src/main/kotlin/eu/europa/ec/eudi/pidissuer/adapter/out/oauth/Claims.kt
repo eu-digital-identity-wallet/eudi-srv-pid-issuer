@@ -57,30 +57,6 @@ val OidcBirthDate: AttributeDetails by lazy {
     )
 }
 
-val OidcGender: AttributeDetails by lazy {
-    AttributeDetails(
-        name = "gender",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "PID User’s gender, using a value as defined in OpenID Connect Core 1.0."),
-    )
-}
-
-val OidcEmail: AttributeDetails by lazy {
-    AttributeDetails(
-        name = "email",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "PID User’s email, using a value as defined in OpenID Connect Core 1.0."),
-    )
-}
-
-val OidcPhoneNumber: AttributeDetails by lazy {
-    AttributeDetails(
-        name = "phone_number",
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "PID User’s preferred phone number, using a value as defined in OpenID Connect Core 1.0."),
-    )
-}
-
 // https://openid.net/specs/openid-connect-core-1_0.html#AddressClaim
 @Serializable
 data class OidcAddressClaim(

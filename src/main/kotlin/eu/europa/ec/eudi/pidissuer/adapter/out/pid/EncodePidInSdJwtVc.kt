@@ -178,9 +178,9 @@ private fun selectivelyDisclosed(
         }
         pid.familyNameBirth?.let { sdClaim(OidcAssuranceBirthFamilyName.name, it.value) }
         pid.givenNameBirth?.let { sdClaim(OidcAssuranceBirthGivenName.name, it.value) }
-        pid.genderAsString?.let { sdClaim(OidcGender.name, it) }
-        pid.emailAddress?.let { sdClaim(OidcEmail.name, it) }
-        pid.mobilePhoneNumber?.let { sdClaim(OidcPhoneNumber.name, it.value) }
+        pid.sex?.let { sdClaim(SexAttribute.name, it.value.toInt()) }
+        pid.emailAddress?.let { sdClaim(EmailAddressAttribute.name, it) }
+        pid.mobilePhoneNumber?.let { sdClaim(MobilePhoneNumberAttribute.name, it.value) }
         sdObjClaim(Attributes.AgeEqualOrOver.name) {
             pid.ageOver18?.let { sdClaim(Attributes.AgeOver18.name, it) }
         }

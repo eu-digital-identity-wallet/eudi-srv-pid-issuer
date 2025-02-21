@@ -72,7 +72,7 @@ private fun MDocBuilder.addItemsToSign(pid: Pid) {
     }
     pid.familyNameBirth?.let { addItemToSign(FamilyNameBirthAttribute, it.value.toDataElement()) }
     pid.givenNameBirth?.let { addItemToSign(GivenNameBirthAttribute, it.value.toDataElement()) }
-    pid.gender?.let { addItemToSign(SexAttribute, it.value.toDataElement()) }
+    pid.sex?.let { addItemToSign(SexAttribute, it.value.toDataElement()) }
     pid.emailAddress?.let { addItemToSign(EmailAddressAttribute, it.toDataElement()) }
     pid.mobilePhoneNumber?.let { addItemToSign(MobilePhoneNumberAttribute, it.value.toDataElement()) }
     pid.ageOver18?.let { addItemToSign(AgeOver18Attribute, it.toDataElement()) }
