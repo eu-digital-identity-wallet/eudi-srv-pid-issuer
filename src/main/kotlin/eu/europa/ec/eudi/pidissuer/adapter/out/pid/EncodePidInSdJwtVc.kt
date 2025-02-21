@@ -176,7 +176,7 @@ private fun selectivelyDisclosed(
         }
         sdClaim(IssuingAuthorityAttribute.name, pidMetaData.issuingAuthority.valueAsString())
         pidMetaData.documentNumber?.let { sdClaim(DocumentNumberAttribute.name, it.value) }
-        pidMetaData.personalAdministrativeNumber?.let { sdClaim(AdministrativeNumberAttribute.name, it.value) }
+        pidMetaData.personalAdministrativeNumber?.let { sdClaim(PersonalAdministrativeNumberAttribute.name, it.value) }
         sdClaim(IssuingCountryAttribute.name, pidMetaData.issuingCountry.value)
         pidMetaData.issuingJurisdiction?.let { sdClaim(IssuingJurisdictionAttribute.name, it) }
     }

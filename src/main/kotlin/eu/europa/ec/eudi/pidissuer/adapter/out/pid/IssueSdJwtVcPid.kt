@@ -80,7 +80,7 @@ internal object Attributes {
         OidcAssuranceNationalities,
         IssuingAuthorityAttribute,
         DocumentNumberAttribute,
-        AdministrativeNumberAttribute,
+        PersonalAdministrativeNumberAttribute,
         IssuingCountryAttribute,
         IssuingJurisdictionAttribute,
     )

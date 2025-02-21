@@ -51,17 +51,11 @@ internal class DefaultEncodePidInCbor(
 }
 
 private fun MDocBuilder.addItemsToSign(pid: Pid) {
-    addItemToSign(GivenNameAttribute, pid.givenName.value.toDataElement())
     addItemToSign(FamilyNameAttribute, pid.familyName.value.toDataElement())
+    addItemToSign(GivenNameAttribute, pid.givenName.value.toDataElement())
     addItemToSign(BirthDateAttribute, pid.birthDate.toKotlinLocalDate().toDataElement())
-    pid.familyNameBirth?.let { addItemToSign(FamilyNameBirthAttribute, it.value.toDataElement()) }
-    pid.givenNameBirth?.let { addItemToSign(GivenNameBirthAttribute, it.value.toDataElement()) }
-    pid.gender?.let { addItemToSign(GenderAttribute, it.value.toDataElement()) }
-    addItemToSign(NationalityAttribute, pid.nationalities.map { it.value.toDataElement() }.toDataElement())
-    pid.ageOver18?.let { addItemToSign(AgeOver18Attribute, it.toDataElement()) }
-    pid.ageBirthYear?.let { addItemToSign(AgeBirthYearAttribute, it.value.toDataElement()) }
-    pid.ageInYears?.let { addItemToSign(AgeInYearsAttribute, it.toDataElement()) }
     addItemToSign(BirthPlaceAttribute, pid.birthPlace.toDataElement())
+    addItemToSign(NationalityAttribute, pid.nationalities.map { it.value.toDataElement() }.toDataElement())
     pid.residentAddress?.let { addItemToSign(ResidenceAddressAttribute, it.toDataElement()) }
     pid.residentCountry?.let { addItemToSign(ResidenceCountryAttribute, it.value.toDataElement()) }
     pid.residentState?.let { addItemToSign(ResidenceStateAttribute, it.value.toDataElement()) }
@@ -69,20 +63,36 @@ private fun MDocBuilder.addItemsToSign(pid: Pid) {
     pid.residentPostalCode?.let { addItemToSign(ResidencePostalCodeAttribute, it.value.toDataElement()) }
     pid.residentStreet?.let { addItemToSign(ResidenceStreetAttribute, it.value.toDataElement()) }
     pid.residentHouseNumber?.let { addItemToSign(ResidenceHouseNumberAttribute, it.toDataElement()) }
+    pid.portrait?.let {
+        val value = when (it) {
+            is PortraitImage.JPEG -> it.value
+            is PortraitImage.JPEG2000 -> it.value
+        }
+        addItemToSign(PortraitAttribute, value.toDataElement())
+    }
+    pid.familyNameBirth?.let { addItemToSign(FamilyNameBirthAttribute, it.value.toDataElement()) }
+    pid.givenNameBirth?.let { addItemToSign(GivenNameBirthAttribute, it.value.toDataElement()) }
+    pid.gender?.let { addItemToSign(SexAttribute, it.value.toDataElement()) }
+    pid.emailAddress?.let { addItemToSign(EmailAddressAttribute, it.toDataElement()) }
+    pid.mobilePhoneNumber?.let { addItemToSign(MobilePhoneNumberAttribute, it.value.toDataElement()) }
+    pid.ageOver18?.let { addItemToSign(AgeOver18Attribute, it.toDataElement()) }
+    pid.ageInYears?.let { addItemToSign(AgeInYearsAttribute, it.toDataElement()) }
+    pid.ageBirthYear?.let { addItemToSign(AgeBirthYearAttribute, it.value.toDataElement()) }
 }
 
 private fun MDocBuilder.addItemsToSign(metaData: PidMetaData) {
-    metaData.issuanceDate?.let { addItemToSign(IssuanceDateAttribute, it.toKotlinLocalDate().toDataElement()) }
+    metaData.personalAdministrativeNumber?.let { addItemToSign(PersonalAdministrativeNumberAttribute, it.value.toDataElement()) }
     addItemToSign(ExpiryDateAttribute, metaData.expiryDate.toKotlinLocalDate().toDataElement())
     when (val issuingAuthority = metaData.issuingAuthority) {
-        is IssuingAuthority.MemberState -> addItemToSign(IssuingAuthorityAttribute, issuingAuthority.code.value.toDataElement())
+        is IssuingAuthority.MemberState ->
+            addItemToSign(IssuingAuthorityAttribute, issuingAuthority.code.value.toDataElement())
         is IssuingAuthority.AdministrativeAuthority ->
             addItemToSign(IssuingAuthorityAttribute, issuingAuthority.value.toDataElement())
     }
-    metaData.documentNumber?.let { addItemToSign(DocumentNumberAttribute, it.value.toDataElement()) }
-    metaData.personalAdministrativeNumber?.let { addItemToSign(AdministrativeNumberAttribute, it.value.toDataElement()) }
     addItemToSign(IssuingCountryAttribute, metaData.issuingCountry.value.toDataElement())
+    metaData.documentNumber?.let { addItemToSign(DocumentNumberAttribute, it.value.toDataElement()) }
     metaData.issuingJurisdiction?.let { addItemToSign(IssuingJurisdictionAttribute, it.toDataElement()) }
+    metaData.issuanceDate?.let { addItemToSign(IssuanceDateAttribute, it.toKotlinLocalDate().toDataElement()) }
 }
 
 private fun MDocBuilder.addItemToSign(attr: AttributeDetails, value: DataElement) {

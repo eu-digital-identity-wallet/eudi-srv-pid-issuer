@@ -101,8 +101,8 @@ value class PhoneNumber(val value: String) {
  * @param genderAsString Τhe gender of the PID User as a free string.
  * @param emailAddress Electronic mail address of the PID User to whom the person identification data relates,
  * in conformance with [RFC 5322].
- * @param
- *
+ * @param mobilePhoneNumber Mobile telephone number of the User to whom the person identification data relates,
+ * starting with the '+' symbol as the international code prefix and the country code, followed by numbers only.
  * @param ageOver18 Attesting whether the PID User is currently an adult (true) or a
  * minor (false).
  * @param ageBirthYear The year when the PID User was born. If unknown, approximate
