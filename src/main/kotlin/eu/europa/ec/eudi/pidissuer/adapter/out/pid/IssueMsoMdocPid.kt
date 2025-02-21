@@ -113,7 +113,7 @@ val IssuingAuthorityAttribute = AttributeDetails(
 )
 val BirthPlaceAttribute = AttributeDetails(
     name = "birth_place",
-    mandatory = false,
+    mandatory = true,
     display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User was born."),
 )
 val BirthCountryAttribute = AttributeDetails(

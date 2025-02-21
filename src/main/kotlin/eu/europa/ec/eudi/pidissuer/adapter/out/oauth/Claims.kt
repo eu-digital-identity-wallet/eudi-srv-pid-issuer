@@ -120,7 +120,7 @@ data class OidcAssurancePlaceOfBirth(
         override val attribute: AttributeDetails
             get() = AttributeDetails(
                 name = NAME,
-                mandatory = false,
+                mandatory = true,
                 display = mapOf(Locale.ENGLISH to "The country, state, and city where the PID User was born."),
             )
     }
