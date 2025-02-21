@@ -134,13 +134,15 @@ class GetPidDataFromAuthServer(
     private fun genPidMetaData(): PidMetaData {
         val issuanceDate = LocalDate.now(clock)
         return PidMetaData(
-            expiryDate = issuanceDate.plusDays(100),
-            issuanceDate = issuanceDate,
-            issuingCountry = issuerCountry,
-            issuingAuthority = IssuingAuthority.AdministrativeAuthority("${issuerCountry.value} Administrative authority"),
-            documentNumber = DocumentNumber(UUID.randomUUID().toString()),
             personalAdministrativeNumber = AdministrativeNumber(UUID.randomUUID().toString()),
+            expiryDate = issuanceDate.plusDays(100),
+            issuingAuthority = IssuingAuthority.AdministrativeAuthority("${issuerCountry.value} Administrative authority"),
+            issuingCountry = issuerCountry,
+            documentNumber = DocumentNumber(UUID.randomUUID().toString()),
             issuingJurisdiction = issuingJurisdiction,
+            locationStatus = null,
+            issuanceDate = issuanceDate,
+            trustAnchor = null,
         )
     }
 
@@ -158,22 +160,25 @@ class GetPidDataFromAuthServer(
             familyName = FamilyName(userInfo.familyName),
             givenName = GivenName(userInfo.givenName),
             birthDate = birthDate,
-            ageOver18 = userInfo.ageOver18 ?: false,
-            ageBirthYear = Year.from(birthDate),
-            ageInYears = ageInYears,
-            familyNameBirth = userInfo.birthFamilyName?.let { FamilyName(it) },
-            givenNameBirth = userInfo.birthGivenName?.let { GivenName(it) },
             birthPlace = birthPlace,
+            nationalities = nonEmptyListOf(nationality),
             residentAddress = userInfo.address?.formatted,
-            residentStreet = userInfo.address?.streetAddress?.let { Street(it) },
             residentCountry = userInfo.address?.country?.let { IsoCountry(it) },
             residentState = userInfo.address?.region?.let { State(it) },
             residentCity = userInfo.address?.locality?.let { City(it) },
             residentPostalCode = userInfo.address?.postalCode?.let { PostalCode(it) },
+            residentStreet = userInfo.address?.streetAddress?.let { Street(it) },
             residentHouseNumber = userInfo.address?.houseNumber,
+            portrait = null,
+            familyNameBirth = userInfo.birthFamilyName?.let { FamilyName(it) },
+            givenNameBirth = userInfo.birthGivenName?.let { GivenName(it) },
             gender = userInfo.gender?.let { IsoGender(it) },
             genderAsString = userInfo.genderAsString,
-            nationalities = nonEmptyListOf(nationality),
+            emailAddress = userInfo.email,
+            mobilePhoneNumber = null,
+            ageOver18 = userInfo.ageOver18 ?: false,
+            ageInYears = ageInYears,
+            ageBirthYear = Year.from(birthDate),
         )
 
         val pidMetaData = genPidMetaData()
