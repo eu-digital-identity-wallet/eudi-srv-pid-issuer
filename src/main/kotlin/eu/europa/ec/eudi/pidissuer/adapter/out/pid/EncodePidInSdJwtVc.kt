@@ -43,6 +43,8 @@ import java.security.cert.X509Certificate
 import java.time.Clock
 import java.time.Instant
 import java.time.ZonedDateTime
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 private val log = LoggerFactory.getLogger(EncodePidInSdJwtVc::class.java)
 
@@ -115,6 +117,10 @@ class EncodePidInSdJwtVc(
     }
 }
 
+@OptIn(ExperimentalEncodingApi::class)
+private val base64UrlNoPadding by lazy { Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT) }
+
+@OptIn(ExperimentalEncodingApi::class)
 private fun selectivelyDisclosed(
     pid: Pid,
     pidMetaData: PidMetaData,
@@ -147,37 +153,45 @@ private fun selectivelyDisclosed(
         sdClaim(OidcFamilyName.name, pid.familyName.value)
         sdClaim(OidcGivenName.name, pid.givenName.value)
         sdClaim(OidcBirthDate.name, pid.birthDate.toString())
-        objClaim(Attributes.AgeEqualOrOver.name) {
+        sdObjClaim(OidcAssurancePlaceOfBirth.NAME) {
+            sdClaim("locality", pid.birthPlace)
+        }
+        sdArrClaim(OidcAssuranceNationalities.name) {
+            pid.nationalities.forEach { claim(it.value) }
+        }
+        pid.oidcAddressClaim()?.let { address ->
+            sdObjClaim(OidcAddressClaim.NAME) {
+                address.formatted?.let { sdClaim("formatted", it) }
+                address.streetAddress?.let { sdClaim("street_address", it) }
+                address.locality?.let { sdClaim("locality", it) }
+                address.region?.let { sdClaim("region", it) }
+                address.postalCode?.let { sdClaim("postal_code", it) }
+                address.country?.let { sdClaim("country", it) }
+            }
+        }
+        pid.portrait?.let {
+            val value = when (it) {
+                is PortraitImage.JPEG -> base64UrlNoPadding.encode(it.value)
+                is PortraitImage.JPEG2000 -> base64UrlNoPadding.encode(it.value)
+            }
+            sdClaim(PortraitAttribute.name, value)
+        }
+        pid.familyNameBirth?.let { sdClaim(OidcAssuranceBirthFamilyName.name, it.value) }
+        pid.givenNameBirth?.let { sdClaim(OidcAssuranceBirthGivenName.name, it.value) }
+        pid.genderAsString?.let { sdClaim(OidcGender.name, it) }
+        pid.emailAddress?.let { sdClaim(OidcEmail.name, it) }
+        pid.mobilePhoneNumber?.let { sdClaim(OidcPhoneNumber.name, it.value) }
+        sdObjClaim(Attributes.AgeEqualOrOver.name) {
             pid.ageOver18?.let { sdClaim(Attributes.AgeOver18.name, it) }
         }
         pid.ageInYears?.let { sdClaim(Attributes.AgeInYears.name, it.toInt()) }
         pid.ageBirthYear?.let { sdClaim(Attributes.AgeBirthYear.name, it.value.toString()) }
-        pid.familyNameBirth?.let { sdClaim(OidcAssuranceBirthFamilyName.name, it.value) }
-        pid.givenNameBirth?.let { sdClaim(OidcAssuranceBirthGivenName.name, it.value) }
 
-        objClaim(OidcAssurancePlaceOfBirth.NAME) {
-            sdClaim("locality", pid.birthPlace)
-        }
-
-        pid.oidcAddressClaim()?.let { address ->
-            objClaim(OidcAddressClaim.NAME) {
-                address.formatted?.let { sdClaim("formatted", it) }
-                address.country?.let { sdClaim("country", it) }
-                address.region?.let { sdClaim("region", it) }
-                address.locality?.let { sdClaim("locality", it) }
-                address.postalCode?.let { sdClaim("postal_code", it) }
-                address.streetAddress?.let { sdClaim("street_address", it) }
-                address.houseNumber?.let { sdClaim("house_number", it) }
-            }
-        }
-        pid.genderAsString?.let { sdClaim(OidcGender.name, it) }
-        sdArrClaim(OidcAssuranceNationalities.name) {
-            pid.nationalities.forEach { claim(it.value) }
-        }
-        sdClaim(IssuingAuthorityAttribute.name, pidMetaData.issuingAuthority.valueAsString())
-        pidMetaData.documentNumber?.let { sdClaim(DocumentNumberAttribute.name, it.value) }
         pidMetaData.personalAdministrativeNumber?.let { sdClaim(PersonalAdministrativeNumberAttribute.name, it.value) }
+        sdClaim(ExpiryDateAttribute.name, pidMetaData.expiryDate.toString())
+        sdClaim(IssuingAuthorityAttribute.name, pidMetaData.issuingAuthority.valueAsString())
         sdClaim(IssuingCountryAttribute.name, pidMetaData.issuingCountry.value)
+        pidMetaData.documentNumber?.let { sdClaim(DocumentNumberAttribute.name, it.value) }
         pidMetaData.issuingJurisdiction?.let { sdClaim(IssuingJurisdictionAttribute.name, it) }
     }
 }
@@ -194,8 +208,7 @@ private fun Pid.oidcAddressClaim(): OidcAddressClaim? =
             region = residentState?.value,
             locality = residentCity?.value,
             postalCode = residentPostalCode?.value,
-            streetAddress = residentStreet?.value,
-            houseNumber = residentHouseNumber,
+            streetAddress = listOfNotNull(residentStreet, residentHouseNumber).joinToString(", ").takeIf { it.isNotBlank() },
         )
     } else null
 

@@ -83,6 +83,8 @@ internal object Attributes {
         PersonalAdministrativeNumberAttribute,
         IssuingCountryAttribute,
         IssuingJurisdictionAttribute,
+        OidcEmail,
+        OidcPhoneNumber,
     )
 }
 

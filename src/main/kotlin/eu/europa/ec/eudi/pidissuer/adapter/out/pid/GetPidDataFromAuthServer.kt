@@ -16,14 +16,10 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.nonEmptyListOf
-import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAddressClaim
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAssurancePlaceOfBirth
 import eu.europa.ec.eudi.pidissuer.port.input.Username
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.keycloak.admin.client.Keycloak
@@ -63,7 +59,7 @@ class GetPidDataFromAuthServer(
     }
 
     private suspend fun userInfo(username: Username): UserInfo? {
-        fun UserRepresentation.address(): OidcAddressClaim? {
+        fun UserRepresentation.address(): AddressData? {
             val street = attributes["street"]?.firstOrNull()
             val houseNumber = attributes["address_house_number"]?.firstOrNull()
             val locality = attributes["locality"]?.firstOrNull()
@@ -77,7 +73,7 @@ class GetPidDataFromAuthServer(
                 postalCode != null || country != null ||
                 formatted != null
             ) {
-                OidcAddressClaim(
+                AddressData(
                     streetAddress = street,
                     houseNumber = houseNumber,
                     locality = locality,
@@ -186,20 +182,29 @@ class GetPidDataFromAuthServer(
     }
 }
 
-@Serializable
 private data class UserInfo(
-    @Required @SerialName("family_name") val familyName: String,
-    @Required @SerialName("given_name") val givenName: String,
-    @SerialName("birth_family_name") val birthFamilyName: String? = null,
-    @SerialName("birth_given_name") val birthGivenName: String? = null,
-    @Required val sub: String,
+    val familyName: String,
+    val givenName: String,
+    val birthFamilyName: String? = null,
+    val birthGivenName: String? = null,
+    val sub: String,
     val email: String? = null,
-    @SerialName(OidcAddressClaim.NAME) val address: OidcAddressClaim? = null,
-    @SerialName("birthdate") val birthDate: String? = null,
-    @SerialName("gender") val gender: UInt? = null,
-    @SerialName("gender_as_string") val genderAsString: String? = null,
-    @SerialName(OidcAssurancePlaceOfBirth.NAME) val placeOfBirth: OidcAssurancePlaceOfBirth? = null,
-    @SerialName("age_over_18") val ageOver18: Boolean? = null,
+    val address: AddressData? = null,
+    val birthDate: String? = null,
+    val gender: UInt? = null,
+    val genderAsString: String? = null,
+    val placeOfBirth: OidcAssurancePlaceOfBirth? = null,
+    val ageOver18: Boolean? = null,
     val picture: String? = null,
     val nationality: String? = null,
+)
+
+private data class AddressData(
+    val streetAddress: String? = null,
+    val locality: String? = null,
+    val region: String? = null,
+    val postalCode: String? = null,
+    val country: String? = null,
+    val formatted: String? = null,
+    val houseNumber: String? = null,
 )
