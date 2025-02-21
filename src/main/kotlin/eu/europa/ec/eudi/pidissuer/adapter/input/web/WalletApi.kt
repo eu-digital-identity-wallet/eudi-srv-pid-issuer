@@ -29,6 +29,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonElement
+import org.springframework.http.CacheControl
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.core.GrantedAuthority
@@ -39,11 +40,12 @@ import org.springframework.web.server.ServerWebInputException
 
 private val APPLICATION_JWT = MediaType.parseMediaType("application/jwt")
 
-class WalletApi(
+internal class WalletApi(
     private val issueCredential: IssueCredential,
     private val getDeferredCredential: GetDeferredCredential,
     private val getPidData: GetPidData,
     private val handleNotificationRequest: HandleNotificationRequest,
+    private val handleNonceRequest: HandleNonceRequest,
 ) {
 
     val route = coRouter {
@@ -67,6 +69,10 @@ class WalletApi(
             contentType(MediaType.APPLICATION_JSON) and accept(MediaType.ALL),
             this@WalletApi::handleNotificationRequest,
         )
+        POST(
+            NONCE_ENDPOINT,
+            contentType(MediaType.ALL) and accept(MediaType.APPLICATION_JSON),
+        ) { handleNonceRequest() }
     }
 
     private suspend fun handleIssueCredential(req: ServerRequest): ServerResponse {
@@ -76,7 +82,7 @@ class WalletApi(
             issueCredential(context, credentialRequest)
         } catch (error: ServerWebInputException) {
             IssueCredentialResponse.FailedTO(
-                type = CredentialErrorTypeTo.INVALID_REQUEST,
+                type = CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST,
                 errorDescription = "Request body could not be parsed",
             )
         }
@@ -92,40 +98,62 @@ class WalletApi(
                         is DeferredCredentialSuccessResponse.EncryptedJwtIssued ->
                             ServerResponse
                                 .ok()
+                                .cacheControl(CacheControl.noStore())
                                 .contentType(APPLICATION_JWT)
                                 .bodyValueAndAwait(deferredResponse.jwt)
 
                         is DeferredCredentialSuccessResponse.PlainTO ->
                             ServerResponse
                                 .ok()
+                                .cacheControl(CacheControl.noStore())
                                 .json()
                                 .bodyValueAndAwait(deferredResponse)
                     }
                 },
-                ifLeft = { error -> ServerResponse.badRequest().json().bodyValueAndAwait(error) },
+                ifLeft = { error ->
+                    ServerResponse.badRequest()
+                        .cacheControl(CacheControl.noStore())
+                        .json()
+                        .bodyValueAndAwait(error)
+                },
             )
     }
 
     private suspend fun handleHelloHolder(req: ServerRequest): ServerResponse = coroutineScope {
         val context = async { req.authorizationContext().getOrThrow() }
         val pid = getPidData(context.await().username)
-        if (null != pid) ServerResponse.ok().json().bodyValueAndAwait(pid)
-        else ServerResponse.notFound().buildAndAwait()
+        if (null != pid) ServerResponse.ok()
+            .cacheControl(CacheControl.noStore())
+            .json()
+            .bodyValueAndAwait(pid)
+        else ServerResponse.notFound()
+            .cacheControl(CacheControl.noStore())
+            .buildAndAwait()
     }
 
     private suspend fun handleNotificationRequest(request: ServerRequest): ServerResponse =
         when (val response = handleNotificationRequest(request.awaitBody<JsonElement>())) {
-            is NotificationResponse.Success -> ServerResponse.noContent().buildAndAwait()
+            is NotificationResponse.Success -> ServerResponse.noContent()
+                .cacheControl(CacheControl.noStore())
+                .buildAndAwait()
             is NotificationResponse.NotificationErrorResponseTO ->
                 ServerResponse.badRequest()
+                    .cacheControl(CacheControl.noStore())
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValueAndAwait(response)
         }
+
+    private suspend fun handleNonceRequest(): ServerResponse =
+        ServerResponse.ok()
+            .contentType(MediaType.APPLICATION_JSON)
+            .cacheControl(CacheControl.noStore())
+            .bodyValueAndAwait(handleNonceRequest.invoke())
 
     companion object {
         const val CREDENTIAL_ENDPOINT = "/wallet/credentialEndpoint"
         const val DEFERRED_ENDPOINT = "/wallet/deferredEndpoint"
         const val NOTIFICATION_ENDPOINT = "/wallet/notificationEndpoint"
+        const val NONCE_ENDPOINT = "/wallet/nonceEndpoint"
     }
 }
 
@@ -179,18 +207,21 @@ private suspend fun IssueCredentialResponse.toServerResponse(): ServerResponse =
         is IssueCredentialResponse.PlainTO ->
             ServerResponse
                 .status(transactionId?.let { HttpStatus.ACCEPTED } ?: HttpStatus.OK)
+                .cacheControl(CacheControl.noStore())
                 .json()
                 .bodyValueAndAwait(this)
 
         is IssueCredentialResponse.EncryptedJwtIssued ->
             ServerResponse
                 .ok()
+                .cacheControl(CacheControl.noStore())
                 .contentType(APPLICATION_JWT)
                 .bodyValueAndAwait(jwt)
 
         is IssueCredentialResponse.FailedTO ->
             ServerResponse
                 .badRequest()
+                .cacheControl(CacheControl.noStore())
                 .json()
                 .bodyValueAndAwait(this)
     }

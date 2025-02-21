@@ -16,5 +16,5 @@
 package eu.europa.ec.eudi.pidissuer.domain
 
 internal object OpenId4VciSpec {
-    const val VERSION = "draft 14"
+    const val VERSION = "draft 15"
 }

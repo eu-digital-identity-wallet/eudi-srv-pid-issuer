@@ -18,7 +18,6 @@ package eu.europa.ec.eudi.pidissuer.domain
 import arrow.core.NonEmptyList
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
-import arrow.core.raise.ensureNotNull
 import com.nimbusds.jose.JWSAlgorithm
 
 //
@@ -26,11 +25,23 @@ import com.nimbusds.jose.JWSAlgorithm
 //
 typealias MsoDocType = String
 typealias MsoNameSpace = String
-typealias MsoMdocAttributeName = String
 
 const val MSO_MDOC_FORMAT_VALUE = "mso_mdoc"
 val MSO_MDOC_FORMAT = Format(MSO_MDOC_FORMAT_VALUE)
-typealias MsoClaims = Map<MsoNameSpace, List<AttributeDetails>>
+
+fun ClaimPath.isMsoMDoc(): Boolean = 2 == size && all { it is ClaimPathElement.Claim }
+
+operator fun ClaimPath.Companion.invoke(nameSpace: MsoNameSpace, attributeName: String): ClaimPath =
+    claim(nameSpace).claim(attributeName)
+
+fun ClaimDefinition.isMsoMDoc(): Boolean = nested.isEmpty() && path.isMsoMDoc()
+
+operator fun ClaimDefinition.Companion.invoke(
+    nameSpace: MsoNameSpace,
+    attributeName: String,
+    mandatory: Boolean? = null,
+    display: Display = emptyMap(),
+): ClaimDefinition = ClaimDefinition(ClaimPath(nameSpace, attributeName), mandatory, display)
 
 data class MsoMdocPolicy(val oneTimeUse: Boolean)
 
@@ -44,10 +55,25 @@ data class MsoMdocCredentialConfiguration(
     override val credentialSigningAlgorithmsSupported: Set<JWSAlgorithm>,
     override val scope: Scope? = null,
     override val display: List<CredentialDisplay> = emptyList(),
-    val msoClaims: MsoClaims = emptyMap(),
+    val claims: List<ClaimDefinition> = emptyList(),
     override val proofTypesSupported: ProofTypesSupported = ProofTypesSupported.Empty,
     val policy: MsoMdocPolicy? = null,
-) : CredentialConfiguration
+) : CredentialConfiguration {
+    init {
+        require(claims.all { it.isMsoMDoc() }) {
+            "'claims' does not contain valid MSO MDoc ClaimDefinitions"
+        }
+    }
+}
+
+internal fun MsoMdocCredentialConfiguration.credentialRequest(
+    unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
+    credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
+): MsoMdocCredentialRequest = MsoMdocCredentialRequest(
+    unvalidatedProofs = unvalidatedProofs,
+    credentialResponseEncryption = credentialResponseEncryption,
+    docType = docType,
+)
 
 //
 // Credential Request
@@ -56,7 +82,6 @@ data class MsoMdocCredentialRequest(
     override val unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
     override val credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
     val docType: MsoDocType,
-    val claims: Map<MsoNameSpace, List<MsoMdocAttributeName>> = emptyMap(),
 ) : CredentialRequest {
     override val format: Format = MSO_MDOC_FORMAT
 }
@@ -64,17 +89,5 @@ data class MsoMdocCredentialRequest(
 internal fun Raise<String>.validate(msoMdocCredentialRequest: MsoMdocCredentialRequest, meta: MsoMdocCredentialConfiguration) {
     ensure(msoMdocCredentialRequest.docType == meta.docType) {
         "doctype is ${msoMdocCredentialRequest.docType} but was expecting ${meta.docType}"
-    }
-    if (meta.msoClaims.isEmpty()) {
-        ensure(msoMdocCredentialRequest.claims.isEmpty()) { "Requested claims should be empty. " }
-    } else {
-        val expectedAttributeNames = meta.msoClaims.mapValues { kv -> kv.value.map { it.name } }
-        msoMdocCredentialRequest.claims.forEach { (namespace, attributes) ->
-            val expectedAttributeNamesForNamespace = expectedAttributeNames[namespace]
-            ensureNotNull(expectedAttributeNamesForNamespace) { "Unexpected namespace $namespace" }
-            attributes.forEach { attr ->
-                ensure(expectedAttributeNamesForNamespace.contains(attr)) { "Unexpected attribute $attr for namespace $namespace" }
-            }
-        }
     }
 }

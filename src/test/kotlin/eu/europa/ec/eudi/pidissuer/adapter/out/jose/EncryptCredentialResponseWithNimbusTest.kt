@@ -15,6 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.JWK
@@ -33,9 +35,7 @@ import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import java.time.Clock
 import java.util.*
@@ -48,6 +48,7 @@ internal class EncryptCredentialResponseWithNimbusTest {
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.systemDefaultZone()
     private val encrypter = EncryptCredentialResponseNimbus(issuer, clock)
+    private val jacksonObjectMapper: ObjectMapper by lazy { jacksonObjectMapper() }
 
     @Test
     internal fun `encrypt response with RSA`() = runTest {
@@ -58,11 +59,9 @@ internal class EncryptCredentialResponseWithNimbusTest {
         val jwk = key.toPublicJWK()
         val parameters = RequestedResponseEncryption.Required(jwk, JWEAlgorithm.RSA_OAEP_512)
         val unencrypted = IssueCredentialResponse.PlainTO(
-            credential = JsonPrimitive("credential"),
-            credentials = null,
+            credentials = listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("credential"))),
             transactionId = null,
-            nonce = "nonce",
-            UUID.randomUUID().toString(),
+            notificationId = UUID.randomUUID().toString(),
         )
 
         encryptAndVerify(unencrypted, parameters, key)
@@ -77,11 +76,9 @@ internal class EncryptCredentialResponseWithNimbusTest {
         val jwk = key.toPublicJWK()
         val parameters = RequestedResponseEncryption.Required(jwk, JWEAlgorithm.ECDH_ES_A256KW)
         val unencrypted = IssueCredentialResponse.PlainTO(
-            credential = JsonPrimitive("credential"),
-            credentials = null,
+            credentials = listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("credential"))),
             transactionId = null,
-            nonce = "nonce",
-            UUID.randomUUID().toString(),
+            notificationId = UUID.randomUUID().toString(),
         )
 
         encryptAndVerify(unencrypted, parameters, key)
@@ -106,26 +103,28 @@ internal class EncryptCredentialResponseWithNimbusTest {
                     .issuer(issuer.externalForm)
                     .apply {
                         unencrypted.transactionId?.let { claim("transaction_id", it) }
-                        unencrypted.nonce?.let { claim("c_nonce", it) }
                         unencrypted.notificationId?.let { claim("notification_id", it) }
                     }
                     .build(),
-                setOf("iat") + (unencrypted.credential?.let { setOf("credential") } ?: emptySet()),
+                setOf("iat") + (unencrypted.credentials?.let { setOf("credentials") } ?: emptySet()),
             )
         }
 
         val claims = runCatching { processor.process(encrypted.jwt, null) }.getOrElse { fail(it.message, it) }
-        val credential = claims.getClaim("credential")
+        val credential = claims.getListClaim("credentials")
             ?.let {
-                when (it) {
-                    is String -> JsonPrimitive(it)
-                    is Map<*, *> -> runCatching {
-                        Json.decodeFromString<JsonElement>(Json.encodeToString(it))
-                    }.getOrElse { error -> fail(error.message, error) }
-
-                    else -> fail("unexpected 'credential' claim ${it::class.java}")
+                it.map { credential ->
+                    when (credential) {
+                        is Map<*, *> -> runCatching {
+                            Json.decodeFromString<IssueCredentialResponse.PlainTO.CredentialTO>(
+                                jacksonObjectMapper.writeValueAsString(credential),
+                            )
+                        }.getOrElse { error -> fail(error.message, error) }
+                        else -> fail("unexpected type in 'credentials' claim ${credential::class.java}")
+                    }
                 }
             }
-        assertEquals(unencrypted.credential, credential)
+
+        assertEquals(unencrypted.credentials, credential)
     }
 }

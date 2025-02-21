@@ -19,7 +19,6 @@ import arrow.core.Option
 import arrow.core.none
 import arrow.core.some
 import eu.europa.ec.eudi.pidissuer.domain.*
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -41,6 +40,8 @@ data class CredentialIssuerMetaDataTO(
     val deferredCredentialEndpoint: String? = null,
     @SerialName("notification_endpoint")
     val notificationEndpoint: String? = null,
+    @SerialName("nonce_endpoint")
+    val nonceEndpoint: String? = null,
     @SerialName("credential_response_encryption")
     val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
     @SerialName("batch_credential_issuance")
@@ -97,6 +98,7 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
     credentialEndpoint = credentialEndPoint.externalForm,
     deferredCredentialEndpoint = deferredCredentialEndpoint?.externalForm,
     notificationEndpoint = notificationEndpoint?.externalForm,
+    nonceEndpoint = nonceEndpoint?.externalForm,
     credentialResponseEncryption = credentialResponseEncryption.toTransferObject().getOrNull(),
     batchCredentialIssuance = when (batchCredentialIssuance) {
         BatchCredentialIssuance.NotSupported -> null
@@ -149,7 +151,6 @@ private fun CredentialConfiguration.format(): Format = when (this) {
     is SdJwtVcCredentialConfiguration -> SD_JWT_VC_FORMAT
 }
 
-@OptIn(ExperimentalSerializationApi::class)
 private fun credentialMetaDataJson(
     d: CredentialConfiguration,
     batchCredentialIssuance: BatchCredentialIssuance,
@@ -196,7 +197,6 @@ private fun ProofType.proofTypeName(): String =
         is ProofType.Jwt -> "jwt"
     }
 
-@OptIn(ExperimentalSerializationApi::class)
 private fun ProofType.toJsonObject(): JsonObject =
     buildJsonObject {
         when (this@toJsonObject) {
@@ -204,11 +204,24 @@ private fun ProofType.toJsonObject(): JsonObject =
                 putJsonArray("proof_signing_alg_values_supported") {
                     addAll(signingAlgorithmsSupported.map { it.name })
                 }
+                if (keyAttestation is KeyAttestation.Required) {
+                    putJsonObject("key_attestations_required") {
+                        keyAttestation.keyStorage?.let { keyStorage ->
+                            putJsonArray("key_storage") {
+                                addAll(keyStorage.map { it.value })
+                            }
+                        }
+                        keyAttestation.useAuthentication?.let { userAuthentication ->
+                            putJsonArray("user_authentication") {
+                                addAll(userAuthentication.map { it.value })
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
-@OptIn(ExperimentalSerializationApi::class)
 internal fun MsoMdocCredentialConfiguration.toTransferObject(
     batchCredentialIssuance: BatchCredentialIssuance,
 ): JsonObjectBuilder.() -> Unit = {
@@ -227,16 +240,13 @@ internal fun MsoMdocCredentialConfiguration.toTransferObject(
         }
     }
 
-    putJsonObject("claims") {
-        msoClaims.forEach { (nameSpace, attributes) ->
-            putJsonObject(nameSpace) {
-                attributes.forEach { attribute -> attribute.toTransferObject(this) }
-            }
+    if (claims.isNotEmpty()) {
+        putJsonArray("claims") {
+            addAll(claims.flatMap { it.toJsonObjects() })
         }
     }
 }
 
-@OptIn(ExperimentalSerializationApi::class)
 internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilder.() -> Unit = {
     if (display.isNotEmpty()) {
         putJsonArray("display") {
@@ -244,8 +254,10 @@ internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilde
         }
     }
     put("vct", type.value)
-    putJsonObject("claims") {
-        claims.forEach { attribute -> attribute.toTransferObject(this) }
+    if (claims.isNotEmpty()) {
+        putJsonArray("claims") {
+            addAll(claims.flatMap { it.toJsonObjects() })
+        }
     }
 }
 
@@ -263,22 +275,34 @@ internal fun CredentialDisplay.toTransferObject(): JsonObject = buildJsonObject 
     backgroundImage?.let { backgroundImage ->
         putJsonObject("background_image") {
             put("uri", backgroundImage.uri.toString())
-            backgroundImage.alternativeText?.let { put("alt_text", it) }
         }
     }
     textColor?.let { put("text_color", it) }
 }
 
-internal val AttributeDetails.toTransferObject: JsonObjectBuilder.() -> Unit
-    get() = {
-        putJsonObject(name) {
-            put("mandatory", mandatory)
-            valueType?.let { put("value_type", it) }
-            if (display.isNotEmpty()) {
-                put("display", display.toTransferObject())
-            }
+private fun ClaimDefinition.toJsonObjects(): List<JsonObject> {
+    fun ClaimDefinition.toJsonObject(): JsonObject = buildJsonObject {
+        put("path", Json.encodeToJsonElement(path))
+        mandatory?.let { put("mandatory", it) }
+        if (display.isNotEmpty()) {
+            put("display", display.toTransferObject())
         }
     }
+
+    fun ClaimDefinition.flatten(): List<ClaimDefinition> {
+        tailrec fun flatten(accumulator: List<ClaimDefinition>, remainder: List<ClaimDefinition>): List<ClaimDefinition> =
+            if (remainder.isEmpty()) {
+                accumulator
+            } else {
+                val head = remainder.first()
+                val tail = remainder.drop(1)
+                flatten(accumulator + head, head.nested + tail)
+            }
+        return flatten(emptyList(), listOf(this))
+    }
+
+    return flatten().map { it.toJsonObject() }
+}
 
 internal fun Display.toTransferObject(): JsonArray =
     map { (locale, value) ->

@@ -15,10 +15,10 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 
 ## Overview
 
-An implementation of a credential issuing service, according to OpenId4VCI - draft14
+An implementation of a credential issuing service, according to [OpenId4VCI - draft15](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-15.html).
 
 The service provides generic support for `mso_mdoc` and `SD-JWT-VC` formats using PID and mDL as an example
-and requires the use of a suitable OAUTH2 server.
+and requires the use of a suitable OAuth 2.0 server.
 
 | Credential/Attestation | Format    |
 |------------------------|-----------|
@@ -28,18 +28,22 @@ and requires the use of a suitable OAUTH2 server.
 
 ### OpenId4VCI coverage
 
-| Feature                                                   | Coverage                                                           |
-|-----------------------------------------------------------|--------------------------------------------------------------------|
-| Authorization Code flow                                   | ✅ Using a suitable OAUTH2 server                                   |
-| Pre-authorized code flow                                  | ❌                                                                  |
-| mso_mdoc format                                           | ✅                                                                  |
-| SD-JWT-VC format                                          | ✅ Except revocation list & meta                                    |
-| W3C VC DM                                                 | ❌                                                                  |
-| Credential Offer                                          | ✅ `authorization_code` , ❌ `pre-authorized_code`                   |
-| [Credential Endpoint](#credential-endpoint)               | Yes, including multiple proofs, encryption, repeatable invocations |
-| [Credential Issuer MetaData](#credential-issuer-metadata) | Yes, using `scopes`                                                | 
-| Deferred Endpoint                                         | ✅                                                                  |
-| Proof                                                     | ✅ JWT (`jwk`, `x5c`, `did:key`, `did:jwk`)                         |
+| Feature                                                   | Coverage                                                              |
+|-----------------------------------------------------------|-----------------------------------------------------------------------|
+| Authorization Code flow                                   | ✅ Using a suitable OAuth 2.0 server                                   |
+| Pre-authorized code flow                                  | ❌                                                                     |
+| mso_mdoc format                                           | ✅                                                                     |
+| SD-JWT-VC format                                          | ✅ Except revocation list & meta                                       |
+| W3C VC DM                                                 | ❌                                                                     |
+| Credential Offer                                          | ✅ `authorization_code` , ❌ `pre-authorized_code`                      |
+| [Credential Endpoint](#credential-endpoint)               | Yes, including multiple proofs, encryption, repeatable invocations    |
+| [Credential Issuer MetaData](#credential-issuer-metadata) | Yes, using `scopes`                                                   | 
+| Deferred Endpoint                                         | ✅                                                                     |
+| Nonce Endpoint                                            | ✅                                                                     |
+| Notification Endpoint                                     | ✅                                                                     |
+| Proof                                                     | ✅ JWT (`jwk`, `x5c`, `did:key`, `did:jwk`) - *Except Key Attestation* |
+|                                                           | ❌ Data Integrity Proof                                                |
+|                                                           | ❌ Key Attestation                                                     |
 
 ## How to use docker
 
@@ -105,11 +109,11 @@ Description: Port for the HTTP listener of the PID Issuer application
 Default value: `8080`
 
 Variable: `SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENT_ID`  
-Description: Client Id of the OAuth2 client registered in the Authorization Server  
+Description: Client Id of the OAuth 2.0 client registered in the Authorization Server  
 Default value: N/A
 
 Variable: `SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENT_SECRET`  
-Description: Client Server of the OAuth2 client registered in the Authorization Server  
+Description: Client Server of the OAuth 2.0 client registered in the Authorization Server  
 Default value: N/A
 
 Variable: `SERVER_FORWARD_HEADERS_STRATEGY`  
@@ -172,7 +176,7 @@ Default value: `P30D`
 
 Variable: `ISSUER_PID_SD_JWT_VC_NOTUSEBEFORE`  
 Description: Period after which a PID issued in *SD JWT VC* becomes valid. Used to calculate the value of the `nbf` claim.  
-Default value: `PT20`
+Default value: `PT20S`
 
 Variable: `ISSUER_PID_SD_JWT_VC_DEFERRED`  
 Description: Whether PID issuance in *SD JWT VC* format should be *deferred* or *immediate*.  
@@ -243,7 +247,7 @@ Default value: N/A
 Example: master  
 
 Variable: `ISSUER_KEYCLOAK_CLIENT_ID`  
-Description: Id of the OAuth2 client used for management of Keycloak   
+Description: Id of the OAuth 2.0 client used for management of Keycloak   
 Default value: N/A  
 Example: admin-cli  
 
@@ -289,6 +293,10 @@ Default value: `true`
 Variable: `ISSUER_CREDENTIALENDPOINT_BATCHISSUANCE_BATCHSIZE`  
 Description: Maximum length of `proofs` array supported by credential endpoint when batch issuance support is enabled          
 Default value: `10`
+
+Variable: `ISSUER_CNONCE_EXPIRATION`  
+Description: Duration after which CNonce values expire    
+Default value: `PT5M`
 
 ### Metadata configuration
 

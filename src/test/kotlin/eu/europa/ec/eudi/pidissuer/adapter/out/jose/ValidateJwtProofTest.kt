@@ -49,7 +49,7 @@ internal class ValidateJwtProofTest {
     private val credentialConfiguration = MobileDrivingLicenceV1.copy(
         proofTypesSupported = ProofTypesSupported(
             nonEmptySetOf(
-                ProofType.Jwt(checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull())),
+                ProofType.Jwt(checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()), KeyAttestation.NotRequired),
             ),
         ),
     )

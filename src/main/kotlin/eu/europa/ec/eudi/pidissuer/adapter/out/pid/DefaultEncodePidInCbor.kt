@@ -18,7 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.MsoMdocSigner
-import eu.europa.ec.eudi.pidissuer.domain.AttributeDetails
+import eu.europa.ec.eudi.pidissuer.domain.ClaimDefinition
 import id.walt.mdoc.dataelement.DataElement
 import id.walt.mdoc.dataelement.toDataElement
 import id.walt.mdoc.doc.MDocBuilder
@@ -51,50 +51,50 @@ internal class DefaultEncodePidInCbor(
 }
 
 private fun MDocBuilder.addItemsToSign(pid: Pid) {
-    addItemToSign(FamilyNameAttribute, pid.familyName.value.toDataElement())
-    addItemToSign(GivenNameAttribute, pid.givenName.value.toDataElement())
-    addItemToSign(BirthDateAttribute, pid.birthDate.toKotlinLocalDate().toDataElement())
-    addItemToSign(BirthPlaceAttribute, pid.birthPlace.toDataElement())
-    addItemToSign(NationalityAttribute, pid.nationalities.map { it.value.toDataElement() }.toDataElement())
-    pid.residentAddress?.let { addItemToSign(ResidenceAddressAttribute, it.toDataElement()) }
-    pid.residentCountry?.let { addItemToSign(ResidenceCountryAttribute, it.value.toDataElement()) }
-    pid.residentState?.let { addItemToSign(ResidenceStateAttribute, it.value.toDataElement()) }
-    pid.residentCity?.let { addItemToSign(ResidenceCityAttribute, it.value.toDataElement()) }
-    pid.residentPostalCode?.let { addItemToSign(ResidencePostalCodeAttribute, it.value.toDataElement()) }
-    pid.residentStreet?.let { addItemToSign(ResidenceStreetAttribute, it.value.toDataElement()) }
-    pid.residentHouseNumber?.let { addItemToSign(ResidenceHouseNumberAttribute, it.toDataElement()) }
+    addItemToSign(MsoMdocPidClaims.FamilyName, pid.familyName.value.toDataElement())
+    addItemToSign(MsoMdocPidClaims.GivenName, pid.givenName.value.toDataElement())
+    addItemToSign(MsoMdocPidClaims.BirthDate, pid.birthDate.toKotlinLocalDate().toDataElement())
+    addItemToSign(MsoMdocPidClaims.BirthPlace, pid.birthPlace.toDataElement())
+    addItemToSign(MsoMdocPidClaims.Nationality, pid.nationalities.map { it.value.toDataElement() }.toDataElement())
+    pid.residentAddress?.let { addItemToSign(MsoMdocPidClaims.ResidenceAddress, it.toDataElement()) }
+    pid.residentCountry?.let { addItemToSign(MsoMdocPidClaims.ResidenceCountry, it.value.toDataElement()) }
+    pid.residentState?.let { addItemToSign(MsoMdocPidClaims.ResidenceState, it.value.toDataElement()) }
+    pid.residentCity?.let { addItemToSign(MsoMdocPidClaims.ResidenceCity, it.value.toDataElement()) }
+    pid.residentPostalCode?.let { addItemToSign(MsoMdocPidClaims.ResidencePostalCode, it.value.toDataElement()) }
+    pid.residentStreet?.let { addItemToSign(MsoMdocPidClaims.ResidenceStreet, it.value.toDataElement()) }
+    pid.residentHouseNumber?.let { addItemToSign(MsoMdocPidClaims.ResidenceHouseNumber, it.toDataElement()) }
     pid.portrait?.let {
         val value = when (it) {
             is PortraitImage.JPEG -> it.value
             is PortraitImage.JPEG2000 -> it.value
         }
-        addItemToSign(PortraitAttribute, value.toDataElement())
+        addItemToSign(MsoMdocPidClaims.Portrait, value.toDataElement())
     }
-    pid.familyNameBirth?.let { addItemToSign(FamilyNameBirthAttribute, it.value.toDataElement()) }
-    pid.givenNameBirth?.let { addItemToSign(GivenNameBirthAttribute, it.value.toDataElement()) }
-    pid.sex?.let { addItemToSign(SexAttribute, it.value.toDataElement()) }
-    pid.emailAddress?.let { addItemToSign(EmailAddressAttribute, it.toDataElement()) }
-    pid.mobilePhoneNumber?.let { addItemToSign(MobilePhoneNumberAttribute, it.value.toDataElement()) }
-    pid.ageOver18?.let { addItemToSign(AgeOver18Attribute, it.toDataElement()) }
-    pid.ageInYears?.let { addItemToSign(AgeInYearsAttribute, it.toDataElement()) }
-    pid.ageBirthYear?.let { addItemToSign(AgeBirthYearAttribute, it.value.toDataElement()) }
+    pid.familyNameBirth?.let { addItemToSign(MsoMdocPidClaims.FamilyNameBirth, it.value.toDataElement()) }
+    pid.givenNameBirth?.let { addItemToSign(MsoMdocPidClaims.GivenNameBirth, it.value.toDataElement()) }
+    pid.sex?.let { addItemToSign(MsoMdocPidClaims.Sex, it.value.toDataElement()) }
+    pid.emailAddress?.let { addItemToSign(MsoMdocPidClaims.EmailAddress, it.toDataElement()) }
+    pid.mobilePhoneNumber?.let { addItemToSign(MsoMdocPidClaims.MobilePhoneNumberAttribute, it.value.toDataElement()) }
+    pid.ageOver18?.let { addItemToSign(MsoMdocPidClaims.AgeOver18, it.toDataElement()) }
+    pid.ageInYears?.let { addItemToSign(MsoMdocPidClaims.AgeInYears, it.toDataElement()) }
+    pid.ageBirthYear?.let { addItemToSign(MsoMdocPidClaims.AgeBirthYear, it.value.toDataElement()) }
 }
 
 private fun MDocBuilder.addItemsToSign(metaData: PidMetaData) {
-    metaData.personalAdministrativeNumber?.let { addItemToSign(PersonalAdministrativeNumberAttribute, it.value.toDataElement()) }
-    addItemToSign(ExpiryDateAttribute, metaData.expiryDate.toKotlinLocalDate().toDataElement())
+    metaData.personalAdministrativeNumber?.let { addItemToSign(MsoMdocPidClaims.PersonalAdministrativeNumber, it.value.toDataElement()) }
+    addItemToSign(MsoMdocPidClaims.ExpiryDate, metaData.expiryDate.toKotlinLocalDate().toDataElement())
     when (val issuingAuthority = metaData.issuingAuthority) {
         is IssuingAuthority.MemberState ->
-            addItemToSign(IssuingAuthorityAttribute, issuingAuthority.code.value.toDataElement())
+            addItemToSign(MsoMdocPidClaims.IssuingAuthority, issuingAuthority.code.value.toDataElement())
         is IssuingAuthority.AdministrativeAuthority ->
-            addItemToSign(IssuingAuthorityAttribute, issuingAuthority.value.toDataElement())
+            addItemToSign(MsoMdocPidClaims.IssuingAuthority, issuingAuthority.value.toDataElement())
     }
-    addItemToSign(IssuingCountryAttribute, metaData.issuingCountry.value.toDataElement())
-    metaData.documentNumber?.let { addItemToSign(DocumentNumberAttribute, it.value.toDataElement()) }
-    metaData.issuingJurisdiction?.let { addItemToSign(IssuingJurisdictionAttribute, it.toDataElement()) }
-    metaData.issuanceDate?.let { addItemToSign(IssuanceDateAttribute, it.toKotlinLocalDate().toDataElement()) }
+    addItemToSign(MsoMdocPidClaims.IssuingCountry, metaData.issuingCountry.value.toDataElement())
+    metaData.documentNumber?.let { addItemToSign(MsoMdocPidClaims.DocumentNumber, it.value.toDataElement()) }
+    metaData.issuingJurisdiction?.let { addItemToSign(MsoMdocPidClaims.IssuingJurisdiction, it.toDataElement()) }
+    metaData.issuanceDate?.let { addItemToSign(MsoMdocPidClaims.IssuanceDate, it.toKotlinLocalDate().toDataElement()) }
 }
 
-private fun MDocBuilder.addItemToSign(attr: AttributeDetails, value: DataElement) {
-    addItemToSign(PidMsoMdocNamespace, attr.name, value)
+private fun MDocBuilder.addItemToSign(claim: ClaimDefinition, value: DataElement) {
+    addItemToSign(PidMsoMdocNamespace, claim.name, value)
 }
