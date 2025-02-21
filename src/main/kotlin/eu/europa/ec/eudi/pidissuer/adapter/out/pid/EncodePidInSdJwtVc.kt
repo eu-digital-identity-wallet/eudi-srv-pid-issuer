@@ -155,13 +155,10 @@ private fun selectivelyDisclosed(
         pid.familyNameBirth?.let { sdClaim(OidcAssuranceBirthFamilyName.name, it.value) }
         pid.givenNameBirth?.let { sdClaim(OidcAssuranceBirthGivenName.name, it.value) }
 
-        pid.oidcAssurancePlaceOfBirth()?.let { placeOfBirth ->
-            objClaim(OidcAssurancePlaceOfBirth.NAME) {
-                placeOfBirth.locality?.let { sdClaim("locality", it) }
-                placeOfBirth.region?.let { sdClaim("region", it) }
-                placeOfBirth.country?.let { sdClaim("country", it) }
-            }
+        objClaim(OidcAssurancePlaceOfBirth.NAME) {
+            sdClaim("locality", pid.birthPlace)
         }
+
         pid.oidcAddressClaim()?.let { address ->
             objClaim(OidcAddressClaim.NAME) {
                 address.formatted?.let { sdClaim("formatted", it) }
@@ -174,30 +171,16 @@ private fun selectivelyDisclosed(
             }
         }
         pid.genderAsString?.let { sdClaim(OidcGender.name, it) }
-        pid.nationality?.let {
-            sdArrClaim(OidcAssuranceNationalities.name) {
-                claim(it.value)
-            }
+        sdArrClaim(OidcAssuranceNationalities.name) {
+            pid.nationalities.forEach { claim(it.value) }
         }
         sdClaim(IssuingAuthorityAttribute.name, pidMetaData.issuingAuthority.valueAsString())
         pidMetaData.documentNumber?.let { sdClaim(DocumentNumberAttribute.name, it.value) }
-        pidMetaData.administrativeNumber?.let { sdClaim(AdministrativeNumberAttribute.name, it.value) }
+        pidMetaData.personalAdministrativeNumber?.let { sdClaim(AdministrativeNumberAttribute.name, it.value) }
         sdClaim(IssuingCountryAttribute.name, pidMetaData.issuingCountry.value)
         pidMetaData.issuingJurisdiction?.let { sdClaim(IssuingJurisdictionAttribute.name, it) }
     }
 }
-
-private fun Pid.oidcAssurancePlaceOfBirth(): OidcAssurancePlaceOfBirth? =
-    if (birthPlace != null || birthCountry != null || birthState != null || birthCity != null) {
-        // TODO
-        //  birth_place and birth_city are both mapped to locality
-        //  https://github.com/eu-digital-identity-wallet/eudi-doc-architecture-and-reference-framework/pull/160#discussion_r1853638874
-        OidcAssurancePlaceOfBirth(
-            locality = birthPlace ?: birthCity?.value,
-            country = birthCountry?.value,
-            region = birthState?.value,
-        )
-    } else null
 
 private fun Pid.oidcAddressClaim(): OidcAddressClaim? =
     if (

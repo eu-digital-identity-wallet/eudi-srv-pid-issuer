@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
+import arrow.core.nonEmptyListOf
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -136,6 +137,8 @@ internal class BaseWalletApiTest {
                     familyName = FamilyName("Surname"),
                     givenName = GivenName("Firstname"),
                     birthDate = LocalDate.of(1989, Month.AUGUST, 22),
+                    birthPlace = "Athens, Attiki",
+                    nationalities = nonEmptyListOf(Nationality("GR")),
                     ageOver18 = true,
                 )
                 val issuingCountry = IsoCountry("GR")
@@ -144,7 +147,7 @@ internal class BaseWalletApiTest {
                     expiryDate = LocalDate.of(2030, 11, 10),
                     documentNumber = null,
                     issuingAuthority = IssuingAuthority.MemberState(issuingCountry),
-                    administrativeNumber = null,
+                    personalAdministrativeNumber = null,
                     issuingCountry = issuingCountry,
                     issuingJurisdiction = null,
                 )

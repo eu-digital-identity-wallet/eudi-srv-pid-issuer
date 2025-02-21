@@ -57,14 +57,11 @@ private fun MDocBuilder.addItemsToSign(pid: Pid) {
     pid.familyNameBirth?.let { addItemToSign(FamilyNameBirthAttribute, it.value.toDataElement()) }
     pid.givenNameBirth?.let { addItemToSign(GivenNameBirthAttribute, it.value.toDataElement()) }
     pid.gender?.let { addItemToSign(GenderAttribute, it.value.toDataElement()) }
-    pid.nationality?.let { addItemToSign(NationalityAttribute, it.value.toDataElement()) }
+    addItemToSign(NationalityAttribute, pid.nationalities.map { it.value.toDataElement() }.toDataElement())
     pid.ageOver18?.let { addItemToSign(AgeOver18Attribute, it.toDataElement()) }
     pid.ageBirthYear?.let { addItemToSign(AgeBirthYearAttribute, it.value.toDataElement()) }
     pid.ageInYears?.let { addItemToSign(AgeInYearsAttribute, it.toDataElement()) }
-    pid.birthPlace?.let { addItemToSign(BirthPlaceAttribute, it.toDataElement()) }
-    pid.birthCountry?.let { addItemToSign(BirthCountryAttribute, it.value.toDataElement()) }
-    pid.birthState?.let { addItemToSign(BirthStateAttribute, it.value.toDataElement()) }
-    pid.birthCity?.let { addItemToSign(BirthCityAttribute, it.value.toDataElement()) }
+    addItemToSign(BirthPlaceAttribute, pid.birthPlace.toDataElement())
     pid.residentAddress?.let { addItemToSign(ResidenceAddressAttribute, it.toDataElement()) }
     pid.residentCountry?.let { addItemToSign(ResidenceCountryAttribute, it.value.toDataElement()) }
     pid.residentState?.let { addItemToSign(ResidenceStateAttribute, it.value.toDataElement()) }
@@ -75,7 +72,7 @@ private fun MDocBuilder.addItemsToSign(pid: Pid) {
 }
 
 private fun MDocBuilder.addItemsToSign(metaData: PidMetaData) {
-    addItemToSign(IssuanceDateAttribute, metaData.issuanceDate.toKotlinLocalDate().toDataElement())
+    metaData.issuanceDate?.let { addItemToSign(IssuanceDateAttribute, it.toKotlinLocalDate().toDataElement()) }
     addItemToSign(ExpiryDateAttribute, metaData.expiryDate.toKotlinLocalDate().toDataElement())
     when (val issuingAuthority = metaData.issuingAuthority) {
         is IssuingAuthority.MemberState -> addItemToSign(IssuingAuthorityAttribute, issuingAuthority.code.value.toDataElement())
@@ -83,7 +80,7 @@ private fun MDocBuilder.addItemsToSign(metaData: PidMetaData) {
             addItemToSign(IssuingAuthorityAttribute, issuingAuthority.value.toDataElement())
     }
     metaData.documentNumber?.let { addItemToSign(DocumentNumberAttribute, it.value.toDataElement()) }
-    metaData.administrativeNumber?.let { addItemToSign(AdministrativeNumberAttribute, it.value.toDataElement()) }
+    metaData.personalAdministrativeNumber?.let { addItemToSign(AdministrativeNumberAttribute, it.value.toDataElement()) }
     addItemToSign(IssuingCountryAttribute, metaData.issuingCountry.value.toDataElement())
     metaData.issuingJurisdiction?.let { addItemToSign(IssuingJurisdictionAttribute, it.toDataElement()) }
 }

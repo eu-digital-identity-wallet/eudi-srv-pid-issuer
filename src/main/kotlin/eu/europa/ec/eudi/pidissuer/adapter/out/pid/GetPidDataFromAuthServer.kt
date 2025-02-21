@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
+import arrow.core.nonEmptyListOf
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAddressClaim
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAssurancePlaceOfBirth
 import eu.europa.ec.eudi.pidissuer.port.input.Username
@@ -142,7 +143,7 @@ class GetPidDataFromAuthServer(
             issuingCountry = issuerCountry,
             issuingAuthority = IssuingAuthority.AdministrativeAuthority("${issuerCountry.value} Administrative authority"),
             documentNumber = DocumentNumber(UUID.randomUUID().toString()),
-            administrativeNumber = AdministrativeNumber(UUID.randomUUID().toString()),
+            personalAdministrativeNumber = AdministrativeNumber(UUID.randomUUID().toString()),
             issuingJurisdiction = issuingJurisdiction,
         )
     }
@@ -154,6 +155,9 @@ class GetPidDataFromAuthServer(
         val ageInYears = Duration.between(birthDate.atStartOfDay(clock.zone), ZonedDateTime.now(clock))
             .takeIf { !it.isZero && !it.isNegative }
             ?.let { ceil(it.toDays().toDouble() / 365).toUInt() }
+        val birthPlace = requireNotNull(userInfo.placeOfBirth) { "missing required attribute 'birthPlace'" }
+            .let { listOfNotNull(it.locality, it.region, it.region).joinToString(separator = ", ") }
+        val nationality = IsoCountry(requireNotNull(userInfo.nationality) { "missing required attribute 'nationality'" })
         val pid = Pid(
             familyName = FamilyName(userInfo.familyName),
             givenName = GivenName(userInfo.givenName),
@@ -163,10 +167,7 @@ class GetPidDataFromAuthServer(
             ageInYears = ageInYears,
             familyNameBirth = userInfo.birthFamilyName?.let { FamilyName(it) },
             givenNameBirth = userInfo.birthGivenName?.let { GivenName(it) },
-            birthPlace = null,
-            birthCountry = userInfo.placeOfBirth?.country?.let { IsoCountry(it) },
-            birthState = userInfo.placeOfBirth?.region?.let { State(it) },
-            birthCity = userInfo.placeOfBirth?.locality?.let { City(it) },
+            birthPlace = birthPlace,
             residentAddress = userInfo.address?.formatted,
             residentStreet = userInfo.address?.streetAddress?.let { Street(it) },
             residentCountry = userInfo.address?.country?.let { IsoCountry(it) },
@@ -176,7 +177,7 @@ class GetPidDataFromAuthServer(
             residentHouseNumber = userInfo.address?.houseNumber,
             gender = userInfo.gender?.let { IsoGender(it) },
             genderAsString = userInfo.genderAsString,
-            nationality = userInfo.nationality?.let { IsoCountry(it) },
+            nationalities = nonEmptyListOf(nationality),
         )
 
         val pidMetaData = genPidMetaData()
