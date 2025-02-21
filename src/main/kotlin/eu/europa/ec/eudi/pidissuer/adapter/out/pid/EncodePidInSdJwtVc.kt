@@ -169,6 +169,7 @@ private fun selectivelyDisclosed(
                 address.country?.let { sdClaim("country", it) }
             }
         }
+        pidMetaData.personalAdministrativeNumber?.let { sdClaim(PersonalAdministrativeNumberAttribute.name, it.value) }
         pid.portrait?.let {
             val value = when (it) {
                 is PortraitImage.JPEG -> base64UrlNoPadding.encode(it.value)
@@ -187,12 +188,12 @@ private fun selectivelyDisclosed(
         pid.ageInYears?.let { sdClaim(Attributes.AgeInYears.name, it.toInt()) }
         pid.ageBirthYear?.let { sdClaim(Attributes.AgeBirthYear.name, it.value.toString()) }
 
-        pidMetaData.personalAdministrativeNumber?.let { sdClaim(PersonalAdministrativeNumberAttribute.name, it.value) }
         sdClaim(ExpiryDateAttribute.name, pidMetaData.expiryDate.toString())
         sdClaim(IssuingAuthorityAttribute.name, pidMetaData.issuingAuthority.valueAsString())
         sdClaim(IssuingCountryAttribute.name, pidMetaData.issuingCountry.value)
         pidMetaData.documentNumber?.let { sdClaim(DocumentNumberAttribute.name, it.value) }
         pidMetaData.issuingJurisdiction?.let { sdClaim(IssuingJurisdictionAttribute.name, it) }
+        pidMetaData.issuanceDate?.let { sdClaim(IssuanceDateAttribute.name, it.toString()) }
     }
 }
 
