@@ -153,8 +153,11 @@ class GetPidDataFromAuthServer(
         val ageInYears = Duration.between(birthDate.atStartOfDay(clock.zone), ZonedDateTime.now(clock))
             .takeIf { !it.isZero && !it.isNegative }
             ?.let { ceil(it.toDays().toDouble() / 365).toUInt() }
-        val birthPlace = requireNotNull(userInfo.placeOfBirth) { "missing required attribute 'birthPlace'" }
-            .let { listOfNotNull(it.locality, it.region, it.region).joinToString(separator = ", ") }
+        val birthPlace = userInfo.placeOfBirth?.let { placeOfBirth ->
+            listOfNotNull(placeOfBirth.locality, placeOfBirth.region, placeOfBirth.region)
+                .joinToString(separator = ", ")
+                .takeIf { it.isNotBlank() }
+        } ?: "Not known"
         val nationality = IsoCountry(requireNotNull(userInfo.nationality) { "missing required attribute 'nationality'" })
         val pid = Pid(
             familyName = FamilyName(userInfo.familyName),
