@@ -39,6 +39,7 @@ val OidcSub: AttributeDetails by lazy {
 val OidcFamilyName: AttributeDetails by lazy {
     AttributeDetails(
         name = "family_name",
+        mandatory = true,
         display = mapOf(Locale.ENGLISH to "Current last name(s) or surname(s) of the PID User."),
     )
 }
@@ -46,6 +47,7 @@ val OidcFamilyName: AttributeDetails by lazy {
 val OidcGivenName: AttributeDetails by lazy {
     AttributeDetails(
         name = "given_name",
+        mandatory = true,
         display = mapOf(Locale.ENGLISH to "Current first name(s), including middle name(s), of the PID User."),
     )
 }
@@ -53,6 +55,7 @@ val OidcGivenName: AttributeDetails by lazy {
 val OidcBirthDate: AttributeDetails by lazy {
     AttributeDetails(
         name = "birthdate",
+        mandatory = true,
         display = mapOf(Locale.ENGLISH to "Day, month, and year on which the PID User was born."),
     )
 }
@@ -89,7 +92,7 @@ data class OidcAddressClaim(
 val OidcAssuranceNationalities: AttributeDetails by lazy {
     AttributeDetails(
         name = "nationalities",
-        mandatory = false,
+        mandatory = true,
         display = mapOf(Locale.ENGLISH to "Alpha-2 country code as specified in ISO 3166-1, representing the nationality of the PID User."),
     )
 }

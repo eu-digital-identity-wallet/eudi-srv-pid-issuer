@@ -53,15 +53,18 @@ internal object Attributes {
     )
     val AgeEqualOrOver = AttributeDetails(
         name = "age_equal_or_over",
+        mandatory = false,
         display = mapOf(Locale.ENGLISH to "Attesting attributes for the age of the PID User."),
     )
     val AgeOver18 = AttributeDetails(
         name = "18",
+        mandatory = false,
         display = mapOf(Locale.ENGLISH to "Attesting whether the PID User is currently an adult (true) or a minor (false)."),
     )
 
     val AgeInYears = AttributeDetails(
         name = "age_in_years",
+        mandatory = false,
         display = mapOf(Locale.ENGLISH to "The current age of the PID User in years."),
     )
 
@@ -69,22 +72,25 @@ internal object Attributes {
         OidcFamilyName,
         OidcGivenName,
         OidcBirthDate,
+        OidcAssurancePlaceOfBirth.attribute,
+        OidcAssuranceNationalities,
+        OidcAddressClaim.attribute,
+        PersonalAdministrativeNumberAttribute,
+        PortraitAttribute,
+        OidcAssuranceBirthFamilyName,
+        OidcAssuranceBirthGivenName,
+        SexAttribute,
+        EmailAddressAttribute,
+        MobilePhoneNumberAttribute,
+        ExpiryDateAttribute,
+        IssuingAuthorityAttribute,
+        IssuingCountryAttribute,
+        DocumentNumberAttribute,
+        IssuingJurisdictionAttribute,
+        IssuanceDateAttribute,
         AgeEqualOrOver,
         AgeInYears,
         AgeBirthYear,
-        OidcAssuranceBirthFamilyName,
-        OidcAssuranceBirthGivenName,
-        OidcAssurancePlaceOfBirth.attribute,
-        OidcAddressClaim.attribute,
-        SexAttribute,
-        OidcAssuranceNationalities,
-        IssuingAuthorityAttribute,
-        DocumentNumberAttribute,
-        PersonalAdministrativeNumberAttribute,
-        IssuingCountryAttribute,
-        IssuingJurisdictionAttribute,
-        EmailAddressAttribute,
-        MobilePhoneNumberAttribute,
     )
 }
 
