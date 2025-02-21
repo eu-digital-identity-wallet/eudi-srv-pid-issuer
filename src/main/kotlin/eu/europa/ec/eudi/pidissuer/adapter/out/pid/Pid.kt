@@ -188,8 +188,6 @@ typealias IsoCountrySubdivision = String
  * @param documentNumber A number for the PID, assigned by the PID Provider
  * @param issuingJurisdiction Country subdivision code of the jurisdiction that issued the PID, as defined
  * in ISO 3166-2:2020, Clause 8. The first part of the code SHALL be the same as the value for issuing_country.
- * @param locationStatus The location of validity status information on the person identification data where
- * the providers of person identification data revoke person identification data.
  * @param issuanceDate Date (and possibly time) when the PID was issued.
  * @param trustAnchor This attribute indicates at least the URL at which a machine-readable version of the trust
  * anchor to be used for verifying the PID can be found or looked up
@@ -201,7 +199,6 @@ data class PidMetaData(
     val issuingCountry: IsoCountry,
     val documentNumber: DocumentNumber? = null,
     val issuingJurisdiction: IsoCountrySubdivision? = null,
-    val locationStatus: URI? = null,
     val issuanceDate: LocalDate? = null,
     val trustAnchor: URI? = null,
 ) {

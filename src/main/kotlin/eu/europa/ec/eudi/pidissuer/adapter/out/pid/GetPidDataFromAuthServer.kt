@@ -140,7 +140,6 @@ class GetPidDataFromAuthServer(
             issuingCountry = issuerCountry,
             documentNumber = DocumentNumber(UUID.randomUUID().toString()),
             issuingJurisdiction = issuingJurisdiction,
-            locationStatus = null,
             issuanceDate = issuanceDate,
             trustAnchor = null,
         )
