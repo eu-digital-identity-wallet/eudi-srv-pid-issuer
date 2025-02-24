@@ -45,163 +45,155 @@ val PidMsoMdocNamespace: MsoNameSpace = pidNameSpace(1)
 val GivenNameAttribute = AttributeDetails(
     name = "given_name",
     mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Current first name(s), including middle name(s), of the PID User."),
+    display = mapOf(Locale.ENGLISH to "Given Name(s)"),
 )
 val FamilyNameAttribute = AttributeDetails(
     name = "family_name",
     mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Current last name(s) or surname(s) of the PID User."),
+    display = mapOf(Locale.ENGLISH to "Family Name(s)"),
 )
 val BirthDateAttribute = AttributeDetails(
     name = "birth_date",
     mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Day, month, and year on which the PID User was born."),
+    display = mapOf(Locale.ENGLISH to "Birth Date"),
 )
 val FamilyNameBirthAttribute = AttributeDetails(
     name = "family_name_birth",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Last name(s) or surname(s) of the PID User at the time of birth."),
+    display = mapOf(Locale.ENGLISH to "Birth Family Name(s)"),
 )
 val GivenNameBirthAttribute = AttributeDetails(
     name = "given_name_birth",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "First name(s), including middle name(s), of the PID User at the time of birth."),
+    display = mapOf(Locale.ENGLISH to "Birth Given Name(s)"),
 )
 val SexAttribute = AttributeDetails(
     name = "sex",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "PID User's sex, using a value as defined in ISO/IEC 5218."),
+    display = mapOf(Locale.ENGLISH to "Sex"),
 )
 val AgeOver18Attribute = AttributeDetails(
     name = "age_over_18",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Attesting whether the PID User is currently an adult (true) or a minor (false)."),
+    display = mapOf(Locale.ENGLISH to "Age Over 18"),
 )
 val AgeBirthYearAttribute = AttributeDetails(
     name = "age_birth_year",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The year when the PID User was born."),
+    display = mapOf(Locale.ENGLISH to "Age Year of Birth"),
 )
 val AgeInYearsAttribute = AttributeDetails(
     name = "age_in_years",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The current age of the PID User in years."),
+    display = mapOf(Locale.ENGLISH to "Age in Years"),
 )
 val NationalityAttribute = AttributeDetails(
     name = "nationality",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Alpha-2 country code as specified in ISO 3166-1, representing the nationality of the PID User."),
+    display = mapOf(Locale.ENGLISH to "Nationality"),
 )
 val IssuanceDateAttribute = AttributeDetails(
     name = "issuance_date",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Date (and possibly time) when the PID was issued."),
+    display = mapOf(Locale.ENGLISH to "Issuance Date"),
 )
 val ExpiryDateAttribute = AttributeDetails(
     name = "expiry_date",
     mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Date (and possibly time) when the PID will expire."),
+    display = mapOf(Locale.ENGLISH to "Expiry Date"),
 )
 val IssuingAuthorityAttribute = AttributeDetails(
     name = "issuing_authority",
     mandatory = true,
     display = mapOf(
-        Locale.ENGLISH to "Name of the administrative authority that has issued this PID instance, " +
-            "or the ISO 3166 Alpha-2 country code of the respective Member State if there is " +
-            "no separate authority authorized to issue PIDs.",
+        Locale.ENGLISH to "Issuance Authority",
     ),
 )
 val BirthPlaceAttribute = AttributeDetails(
     name = "birth_place",
     mandatory = true,
-    display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User was born."),
+    display = mapOf(Locale.ENGLISH to "Birth Place"),
 )
 val ResidenceAddressAttribute = AttributeDetails(
     name = "resident_address",
     mandatory = false,
     display = mapOf(
-        Locale.ENGLISH to "The full address of the place where the PID User currently resides and/or " +
-            "can be contacted (street name, house number, city etc.).",
+        Locale.ENGLISH to "Resident Address",
     ),
 )
 val ResidenceCountryAttribute = AttributeDetails(
     name = "resident_country",
     mandatory = false,
     display = mapOf(
-        Locale.ENGLISH to "The country where the PID User currently resides, as an Alpha-2 country code as specified in ISO 3166-1.",
+        Locale.ENGLISH to "Resident Country",
     ),
 )
 val ResidenceStateAttribute = AttributeDetails(
     name = "resident_state",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The state, province, district, or local area where the PID User currently resides."),
+    display = mapOf(Locale.ENGLISH to "Resident State"),
 )
 val ResidenceCityAttribute = AttributeDetails(
     name = "resident_city",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The municipality, city, town, or village where the PID User currently resides."),
+    display = mapOf(Locale.ENGLISH to "Resident City"),
 )
 val ResidencePostalCodeAttribute = AttributeDetails(
     name = "resident_postal_code",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "Postal code of the place where the PID User currently resides."),
+    display = mapOf(Locale.ENGLISH to "Resident Postal Code"),
 )
 val ResidenceStreetAttribute = AttributeDetails(
     name = "resident_street",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The name of the street where the PID User currently resides."),
+    display = mapOf(Locale.ENGLISH to "Resident Street"),
 )
 val ResidenceHouseNumberAttribute = AttributeDetails(
     name = "resident_house_number",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "The house number where the PID User currently resides, including any affix or suffix."),
+    display = mapOf(Locale.ENGLISH to "Resident House Number"),
 )
 val DocumentNumberAttribute = AttributeDetails(
     name = "document_number",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "A number for the PID, assigned by the PID Provider."),
+    display = mapOf(Locale.ENGLISH to "Document Number"),
 )
 val PersonalAdministrativeNumberAttribute = AttributeDetails(
     name = "personal_administrative_number",
     mandatory = false,
-    display = mapOf(Locale.ENGLISH to "A number assigned by the PID Provider for audit control or other purposes."),
+    display = mapOf(Locale.ENGLISH to "Personal Administrative Number"),
 )
 val IssuingCountryAttribute = AttributeDetails(
     name = "issuing_country",
     mandatory = true,
-    display = mapOf(Locale.ENGLISH to "Alpha-2 country code, as defined in ISO 3166-1, of the PID Provider's country or territory."),
+    display = mapOf(Locale.ENGLISH to "Issuing Country"),
 )
 val IssuingJurisdictionAttribute = AttributeDetails(
     name = "issuing_jurisdiction",
     mandatory = false,
     display = mapOf(
-        Locale.ENGLISH to "Country subdivision code of the jurisdiction that issued the PID, " +
-            "as defined in ISO 3166-2:2020, Clause 8. The first part of the code SHALL be the same " +
-            "as the value for issuing_country.",
+        Locale.ENGLISH to "Issuing Jurisdiction",
     ),
 )
 val PortraitAttribute = AttributeDetails(
     name = "portrait",
     mandatory = false,
     display = mapOf(
-        Locale.ENGLISH to "Facial image of the PID user compliant with ISO 19794-5 or ISO 39794 specifications.",
+        Locale.ENGLISH to "Portrait Image",
     ),
 )
 val EmailAddressAttribute = AttributeDetails(
     name = "email_address",
     mandatory = false,
     display = mapOf(
-        Locale.ENGLISH to "Electronic mail address of the PID User to whom the person identification data relates, " +
-            "* in conformance with [RFC 5322].",
+        Locale.ENGLISH to "Email Address",
     ),
 )
 val MobilePhoneNumberAttribute = AttributeDetails(
     name = "mobile_phone_number",
     mandatory = false,
     display = mapOf(
-        Locale.ENGLISH to "Mobile telephone number of the User to whom the person identification data relates, " +
-            "starting with the '+' symbol as the international code prefix and the country code, followed " +
-            "by numbers only.",
+        Locale.ENGLISH to "Mobile Phone Number",
     ),
 )
 
