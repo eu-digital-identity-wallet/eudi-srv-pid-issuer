@@ -40,7 +40,7 @@ val OidcFamilyName: AttributeDetails by lazy {
     AttributeDetails(
         name = "family_name",
         mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Current last name(s) or surname(s) of the PID User."),
+        display = mapOf(Locale.ENGLISH to "Family Name(s)"),
     )
 }
 
@@ -48,7 +48,7 @@ val OidcGivenName: AttributeDetails by lazy {
     AttributeDetails(
         name = "given_name",
         mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Current first name(s), including middle name(s), of the PID User."),
+        display = mapOf(Locale.ENGLISH to "Given Name(s)"),
     )
 }
 
@@ -56,7 +56,7 @@ val OidcBirthDate: AttributeDetails by lazy {
     AttributeDetails(
         name = "birthdate",
         mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Day, month, and year on which the PID User was born."),
+        display = mapOf(Locale.ENGLISH to "Birth Date"),
     )
 }
 
@@ -78,8 +78,7 @@ data class OidcAddressClaim(
                 name = NAME,
                 mandatory = false,
                 display = mapOf(
-                    Locale.ENGLISH to "The full address of the place where the PID User currently resides and/or " +
-                        "can be contacted (street name, house number, city etc.).",
+                    Locale.ENGLISH to "Address",
                 ),
             )
     }
@@ -93,7 +92,7 @@ val OidcAssuranceNationalities: AttributeDetails by lazy {
     AttributeDetails(
         name = "nationalities",
         mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Alpha-2 country code as specified in ISO 3166-1, representing the nationality of the PID User."),
+        display = mapOf(Locale.ENGLISH to "Nationality"),
     )
 }
 
@@ -101,14 +100,14 @@ val OidcAssuranceBirthFamilyName: AttributeDetails by lazy {
     AttributeDetails(
         name = "birth_family_name",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Last name(s) or surname(s) of the PID User at the time of birth."),
+        display = mapOf(Locale.ENGLISH to "Birth Family Name(s)"),
     )
 }
 val OidcAssuranceBirthGivenName: AttributeDetails by lazy {
     AttributeDetails(
         name = "birth_given_name",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "First name(s), including middle name(s), of the PID User at the time of birth."),
+        display = mapOf(Locale.ENGLISH to "Birth Given Name(s)"),
     )
 }
 
@@ -124,7 +123,7 @@ data class OidcAssurancePlaceOfBirth(
             get() = AttributeDetails(
                 name = NAME,
                 mandatory = true,
-                display = mapOf(Locale.ENGLISH to "The country, state, and city where the PID User was born."),
+                display = mapOf(Locale.ENGLISH to "Birth Place"),
             )
     }
 }

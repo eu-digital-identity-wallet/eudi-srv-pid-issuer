@@ -49,23 +49,23 @@ internal object Attributes {
     val AgeBirthYear = AttributeDetails(
         name = "age_birth_year",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "The year when the PID User was born."),
+        display = mapOf(Locale.ENGLISH to "Age Year of Birth"),
     )
     val AgeEqualOrOver = AttributeDetails(
         name = "age_equal_or_over",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Attesting attributes for the age of the PID User."),
+        display = mapOf(Locale.ENGLISH to "Age Equal or Over"),
     )
     val AgeOver18 = AttributeDetails(
         name = "18",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Attesting whether the PID User is currently an adult (true) or a minor (false)."),
+        display = mapOf(Locale.ENGLISH to "Age Over 18"),
     )
 
     val AgeInYears = AttributeDetails(
         name = "age_in_years",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "The current age of the PID User in years."),
+        display = mapOf(Locale.ENGLISH to "Age in Years"),
     )
 
     val pidAttributes: List<AttributeDetails> = listOf(
