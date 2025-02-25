@@ -345,6 +345,13 @@ fun beans(clock: Clock) = beans {
 
         DefaultResolveCredentialRequestByCredentialIdentifier(resolvers)
     }
+    bean {
+        GenerateSignedMetadataWithNimbus(
+            clock = ref(),
+            credentialIssuerId = ref<CredentialIssuerMetaData>().id,
+            signingKey = ref(),
+        )
+    }
 
     //
     // Encryption of credential response
