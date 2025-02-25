@@ -46,8 +46,6 @@ data class CredentialIssuerMetaDataTO(
     val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
     @SerialName("batch_credential_issuance")
     val batchCredentialIssuance: BatchCredentialIssuanceTO? = null,
-    @SerialName("credential_identifiers_supported")
-    val credentialIdentifiersSupported: Boolean? = null,
     @SerialName("signed_metadata")
     val signedMetadata: String? = null,
     @SerialName("display")
@@ -104,7 +102,6 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
         BatchCredentialIssuance.NotSupported -> null
         is BatchCredentialIssuance.Supported -> CredentialIssuerMetaDataTO.BatchCredentialIssuanceTO(batchCredentialIssuance.batchSize)
     },
-    credentialIdentifiersSupported = true,
     signedMetadata = null,
     display = display.map { it.toTransferObject() }.takeIf { it.isNotEmpty() },
     credentialConfigurationsSupported = JsonObject(
