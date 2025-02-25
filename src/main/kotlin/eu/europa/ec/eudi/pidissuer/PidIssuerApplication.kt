@@ -234,6 +234,26 @@ fun beans(clock: Clock) = beans {
     }
 
     //
+    // Signed metadata signing key
+    //
+    bean(name = "metadata-signing-key") {
+        when (env.getProperty<KeyOption>("issuer.metadata.signing-key")) {
+            null, KeyOption.GenerateRandom -> {
+                log.info("Generating random signing key for metadata")
+                ECKeyGenerator(Curve.P_256)
+                    .keyID("issuer-kid-1")
+                    .keyUse(KeyUse.SIGNATURE)
+                    .generate()
+            }
+
+            KeyOption.LoadFromKeystore -> {
+                log.info("Loading signing key and certificate for metadata from keystore")
+                loadJwkFromKeystore(env, "issuer.metadata.signing-key")
+            }
+        }
+    }
+
+    //
     // Adapters (out ports)
     //
     bean { clock }
@@ -349,7 +369,7 @@ fun beans(clock: Clock) = beans {
         GenerateSignedMetadataWithNimbus(
             clock = ref(),
             credentialIssuerId = ref<CredentialIssuerMetaData>().id,
-            signingKey = ref(),
+            signingKey = ref(name = "metadata-signing-key"),
         )
     }
 

@@ -212,28 +212,53 @@ Description: URI to use when generating Credential Offers.
 Default value: `openid-credential-offer://`
 
 Variable: `ISSUER_SIGNING_KEY`  
-Description: Whether to generate a new, or use an existing key-pair for signing.    
+Description: Whether to generate a new, or use an existing key-pair for signing verifiable credentials.    
 Possible values: `GenerateRandom`, `LoadFromKeystore`  
 Default value: `GenerateRandom`
 
 Variable: `ISSUER_SIGNING_KEY_KEYSTORE`  
-Description: Location of the keystore from which to load the key-pair for signing. Uses Spring Resource URL syntax.       
+Description: Location of the keystore from which to load the key-pair for signing verifiable credentials. Uses Spring Resource URL syntax.       
 Default value: N/A
 
 Variable: `ISSUER_SIGNING_KEY_KEYSTORE_TYPE`  
-Description: Type of the keystore from which to load the key-pair for signing.       
+Description: Type of the keystore from which to load the key-pair for signing verifiable credentials.       
 Default value: N/A
 
 Variable: `ISSUER_SIGNING_KEY_KEYSTORE_PASSWORD`  
-Description: Password of the keystore from which to load the key-pair for signing.       
+Description: Password of the keystore from which to load the key-pair for signing verifiable credentials.       
 Default value: N/A
 
 Variable: `ISSUER_SIGNING_KEY_ALIAS`  
-Description: Alias of the key-pair for signing.       
+Description: Alias of the key-pair for signing verifiable credentials.       
 Default value: N/A
 
 Variable: `ISSUER_SIGNING_KEY_PASSWORD`  
-Description: Password of the key-pair for signing.       
+Description: Password of the key-pair for signing verifiable credentials.       
+Default value: N/A
+
+Variable: `ISSUER_METADATA_SIGNING_KEY`  
+Description: Whether to generate a new, or use an existing key-pair for signing metadata.    
+Possible values: `GenerateRandom`, `LoadFromKeystore`  
+Default value: `GenerateRandom`
+
+Variable: `ISSUER_METADATA_SIGNING_KEY_KEYSTORE`  
+Description: Location of the keystore from which to load the key-pair for signing metadata. Uses Spring Resource URL syntax.       
+Default value: N/A
+
+Variable: `ISSUER_METADATA_SIGNING_KEY_KEYSTORE_TYPE`  
+Description: Type of the keystore from which to load the key-pair for signing metadata.       
+Default value: N/A
+
+Variable: `ISSUER_METADATA_SIGNING_KEY_KEYSTORE_PASSWORD`  
+Description: Password of the keystore from which to load the key-pair for signing metadata.       
+Default value: N/A
+
+Variable: `ISSUER_METADATA_SIGNING_KEY_ALIAS`  
+Description: Alias of the key-pair for signing metadata.       
+Default value: N/A
+
+Variable: `ISSUER_METADATA_SIGNING_KEY_PASSWORD`  
+Description: Password of the key-pair for signing metadata.       
 Default value: N/A
 
 Variable: `ISSUER_KEYCLOAK_SERVER_URL`  
