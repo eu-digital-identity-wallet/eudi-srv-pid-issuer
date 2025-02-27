@@ -60,9 +60,14 @@ data class MetadataSigningKey(
 
     val jwsHeader: JWSHeader
         get() = JWSHeader.Builder(signingAlgorithm)
-            .jwk(key.toPublicJWK())
-            .keyID(key.keyID)
-            .x509CertChain(key.x509CertChain)
+            .apply {
+                val publicJwk = key.toPublicJWK()
+                if (null != publicJwk.x509CertChain) {
+                    x509CertChain(publicJwk.x509CertChain)
+                } else {
+                    jwk(publicJwk)
+                }
+            }
             .build()
 
     val jwsSigner: JWSSigner
