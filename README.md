@@ -37,7 +37,7 @@ and requires the use of a suitable OAuth 2.0 server.
 | W3C VC DM                                                 | ❌                                                                     |
 | Credential Offer                                          | ✅ `authorization_code` , ❌ `pre-authorized_code`                      |
 | [Credential Endpoint](#credential-endpoint)               | Yes, including multiple proofs, encryption, repeatable invocations    |
-| [Credential Issuer MetaData](#credential-issuer-metadata) | Yes, using `scopes`                                                   | 
+| [Credential Issuer MetaData](#credential-issuer-metadata) | Yes, using `scopes`, and `signed_metadata`                            | 
 | Deferred Endpoint                                         | ✅                                                                     |
 | Nonce Endpoint                                            | ✅                                                                     |
 | Notification Endpoint                                     | ✅                                                                     |
