@@ -19,13 +19,25 @@ import arrow.core.Option
 import arrow.core.none
 import arrow.core.some
 import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.port.out.jose.GenerateSignedMetadata
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 
-class GetCredentialIssuerMetaData(private val credentialIssuerMetaData: CredentialIssuerMetaData) {
-    operator fun invoke(): CredentialIssuerMetaDataTO = credentialIssuerMetaData.toTransferObject()
+class GetCredentialIssuerMetaData(
+    private val credentialIssuerMetaData: CredentialIssuerMetaData,
+    private val generateSignedMetadata: GenerateSignedMetadata?,
+) {
+    operator fun invoke(): CredentialIssuerMetaDataTO {
+        val withoutSignedMetadata = credentialIssuerMetaData.toTransferObject()
+        return if (null != generateSignedMetadata) {
+            val signedMetadata = generateSignedMetadata.invoke(Json.encodeToJsonElement(withoutSignedMetadata).jsonObject)
+            withoutSignedMetadata.copy(signedMetadata = signedMetadata)
+        } else {
+            withoutSignedMetadata
+        }
+    }
 }
 
 @Serializable

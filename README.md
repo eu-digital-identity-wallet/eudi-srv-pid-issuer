@@ -37,7 +37,7 @@ and requires the use of a suitable OAuth 2.0 server.
 | W3C VC DM                                                 | ❌                                                                     |
 | Credential Offer                                          | ✅ `authorization_code` , ❌ `pre-authorized_code`                      |
 | [Credential Endpoint](#credential-endpoint)               | Yes, including multiple proofs, encryption, repeatable invocations    |
-| [Credential Issuer MetaData](#credential-issuer-metadata) | Yes, using `scopes`                                                   | 
+| [Credential Issuer MetaData](#credential-issuer-metadata) | Yes, using `scopes`, and `signed_metadata`                            | 
 | Deferred Endpoint                                         | ✅                                                                     |
 | Nonce Endpoint                                            | ✅                                                                     |
 | Notification Endpoint                                     | ✅                                                                     |
@@ -124,7 +124,7 @@ Default value: `FRAMEWORK`
 
 Variable: `ISSUER_PUBLICURL`  
 Description: URL the PID Issuer application is accessible from  
-Default value: `http://localhost:${SERVER_PORT}${SPRING_WEBFLUX_BASE_PATH}`
+Default value: `http://localhost:8080`
 
 Variable: `ISSUER_AUTHORIZATIONSERVER_PUBLICURL`  
 Description: URL of the Authorization Server advertised via the issuer metadata    
@@ -212,28 +212,61 @@ Description: URI to use when generating Credential Offers.
 Default value: `openid-credential-offer://`
 
 Variable: `ISSUER_SIGNING_KEY`  
-Description: Whether to generate a new, or use an existing key-pair for signing.    
+Description: Whether to generate a new, or use an existing key-pair for signing verifiable credentials.    
 Possible values: `GenerateRandom`, `LoadFromKeystore`  
 Default value: `GenerateRandom`
 
 Variable: `ISSUER_SIGNING_KEY_KEYSTORE`  
-Description: Location of the keystore from which to load the key-pair for signing. Uses Spring Resource URL syntax.       
+Description: Location of the keystore from which to load the key-pair for signing verifiable credentials. Uses Spring Resource URL syntax.       
 Default value: N/A
 
 Variable: `ISSUER_SIGNING_KEY_KEYSTORE_TYPE`  
-Description: Type of the keystore from which to load the key-pair for signing.       
+Description: Type of the keystore from which to load the key-pair for signing verifiable credentials.       
 Default value: N/A
 
 Variable: `ISSUER_SIGNING_KEY_KEYSTORE_PASSWORD`  
-Description: Password of the keystore from which to load the key-pair for signing.       
+Description: Password of the keystore from which to load the key-pair for signing verifiable credentials.       
 Default value: N/A
 
 Variable: `ISSUER_SIGNING_KEY_ALIAS`  
-Description: Alias of the key-pair for signing.       
+Description: Alias of the key-pair for signing verifiable credentials.       
 Default value: N/A
 
 Variable: `ISSUER_SIGNING_KEY_PASSWORD`  
-Description: Password of the key-pair for signing.       
+Description: Password of the key-pair for signing verifiable credentials.       
+Default value: N/A
+
+Variable: `ISSUER_METADATA_SIGNED_METADATA_ENABLED`  
+Description: Whether to enable support for signed metadata or not.  
+Default value: `true`  
+
+Variable: `ISSUER_METADATA_SIGNED_METADATA_ISSUER`  
+Description: Value of the `iss` claim of the signed metadata.  
+Default value: Value of `ISSUER_PUBLICURL`
+
+Variable: `ISSUER_METADATA_SIGNED_METADATA_SIGNING_KEY`  
+Description: Whether to generate a new, or use an existing key-pair for signing metadata.    
+Possible values: `GenerateRandom`, `LoadFromKeystore`  
+Default value: `GenerateRandom`
+
+Variable: `ISSUER_METADATA_SIGNED_METADATA_SIGNING_KEY_KEYSTORE`  
+Description: Location of the keystore from which to load the key-pair for signing metadata. Uses Spring Resource URL syntax.       
+Default value: N/A
+
+Variable: `ISSUER_METADATA_SIGNED_METADATA_SIGNING_KEY_KEYSTORE_TYPE`  
+Description: Type of the keystore from which to load the key-pair for signing metadata.       
+Default value: N/A
+
+Variable: `ISSUER_METADATA_SIGNED_METADATA_SIGNING_KEY_KEYSTORE_PASSWORD`  
+Description: Password of the keystore from which to load the key-pair for signing metadata.       
+Default value: N/A
+
+Variable: `ISSUER_METADATA_SIGNED_METADATA_SIGNING_KEY_ALIAS`  
+Description: Alias of the key-pair for signing metadata.       
+Default value: N/A
+
+Variable: `ISSUER_METADATA_SIGNED_METADATA_SIGNING_KEY_PASSWORD`  
+Description: Password of the key-pair for signing metadata.       
 Default value: N/A
 
 Variable: `ISSUER_KEYCLOAK_SERVER_URL`  
