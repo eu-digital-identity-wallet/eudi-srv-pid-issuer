@@ -29,22 +29,68 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.time.Clock
 
 /**
+ * Key used to sign metadata.
+ */
+data class MetadataSigningKey(
+    val key: JWK,
+    val issuer: String,
+) {
+    init {
+        require(key is AsymmetricJWK) { "only asymmetric keys are supported" }
+        require(key.isPrivate) { "a private key is required for signing metadata" }
+        require(issuer.isNotBlank()) { "issuer cannot be blank" }
+    }
+
+    val signingAlgorithm: JWSAlgorithm
+        get() = when (key) {
+            is ECKey -> when (val curve = key.curve) {
+                Curve.P_256 -> JWSAlgorithm.ES256
+                Curve.P_256K, Curve.SECP256K1 -> JWSAlgorithm.ES256K
+                Curve.P_384 -> JWSAlgorithm.ES384
+                Curve.P_521 -> JWSAlgorithm.ES512
+                else -> error("unsupported curve '$curve' for ECKey")
+            }
+            is RSAKey -> JWSAlgorithm.RS256
+            is OctetKeyPair -> when (val curve = key.curve) {
+                Curve.Ed25519 -> JWSAlgorithm.Ed25519
+                else -> error("unsupported curve '$curve' for OctetKeyPair")
+            }
+            else -> error("unsupported key type '$javaClass'")
+        }
+
+    val jwsHeader: JWSHeader
+        get() = JWSHeader.Builder(signingAlgorithm)
+            .jwk(key.toPublicJWK())
+            .keyID(key.keyID)
+            .x509CertChain(key.x509CertChain)
+            .build()
+
+    val jwsSigner: JWSSigner
+        get() = when (key) {
+            is ECKey -> ECDSASigner(key)
+                .apply {
+                    if (Curve.P_256K == key.curve || Curve.SECP256K1 == key.curve) {
+                        jcaContext.provider = BouncyCastleProvider()
+                    }
+                }
+            is RSAKey -> RSASSASigner(key)
+            is OctetKeyPair -> Ed25519Signer(key)
+            else -> error("unsupported key type '$javaClass'")
+        }
+}
+
+/**
  * Nimbus implementation of [GenerateSignedMetadata].
  */
 internal class GenerateSignedMetadataWithNimbus(
     private val clock: Clock,
     private val credentialIssuerId: CredentialIssuerId,
-    private val signingKey: JWK,
+    private val signingKey: MetadataSigningKey,
 ) : GenerateSignedMetadata {
-    init {
-        require(signingKey is AsymmetricJWK) { "only asymmetric keys are supported" }
-        require(signingKey.isPrivate) { "a private key is required for signing metadata" }
-    }
-
     override fun invoke(metadata: JsonObject): String {
         val payload = (metadata - "signed_metadata").buildUpon {
             put("iat", clock.instant().epochSecond)
-            put("iss", credentialIssuerId.externalForm)
+            put("iss", signingKey.issuer)
             put("sub", credentialIssuerId.externalForm)
         }.toPayload()
 
@@ -62,40 +108,3 @@ private fun Map<String, JsonElement>.buildUpon(builder: JsonObjectBuilder.() -> 
     }
 
 private fun JsonObject.toPayload(): Payload = Payload(JSONObjectUtils.parse(Json.encodeToString(this)))
-
-private val JWK.signingAlgorithm: JWSAlgorithm
-    get() = when (this) {
-        is ECKey -> when (curve) {
-            Curve.P_256 -> JWSAlgorithm.ES256
-            Curve.P_256K, Curve.SECP256K1 -> JWSAlgorithm.ES256K
-            Curve.P_384 -> JWSAlgorithm.ES384
-            Curve.P_521 -> JWSAlgorithm.ES512
-            else -> error("unsupported curve '$curve' for ECKey")
-        }
-        is RSAKey -> JWSAlgorithm.RS256
-        is OctetKeyPair -> when (curve) {
-            Curve.Ed25519 -> JWSAlgorithm.Ed25519
-            else -> error("unsupported curve '$curve' for OctetKeyPair")
-        }
-        else -> error("unsupported key type '$javaClass'")
-    }
-
-private val JWK.jwsHeader: JWSHeader
-    get() = JWSHeader.Builder(signingAlgorithm)
-        .jwk(toPublicJWK())
-        .keyID(keyID)
-        .x509CertChain(x509CertChain)
-        .build()
-
-private val JWK.jwsSigner: JWSSigner
-    get() = when (this) {
-        is ECKey -> ECDSASigner(this)
-            .apply {
-                if (Curve.P_256K == curve || Curve.SECP256K1 == curve) {
-                    jcaContext.provider = BouncyCastleProvider()
-                }
-            }
-        is RSAKey -> RSASSASigner(this)
-        is OctetKeyPair -> Ed25519Signer(this)
-        else -> error("unsupported key type '$javaClass'")
-    }
