@@ -50,6 +50,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
+import eu.europa.ec.eudi.pidissuer.port.out.jose.GenerateSignedMetadata
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
@@ -236,7 +237,7 @@ fun beans(clock: Clock) = beans {
     //
     // Signed metadata signing key
     //
-    bean {
+    bean(isLazyInit = true) {
         val key = when (env.getProperty<KeyOption>("issuer.metadata.signed-metadata.signing-key")) {
             null, KeyOption.GenerateRandom -> {
                 log.info("Generating random signing key for metadata")
@@ -372,7 +373,7 @@ fun beans(clock: Clock) = beans {
 
         DefaultResolveCredentialRequestByCredentialIdentifier(resolvers)
     }
-    bean {
+    bean(isLazyInit = true) {
         GenerateSignedMetadataWithNimbus(
             clock = ref(),
             credentialIssuerId = ref<CredentialIssuerMetaData>().id,
@@ -511,7 +512,11 @@ fun beans(clock: Clock) = beans {
     //
     // In Ports (use cases)
     //
-    bean(::GetCredentialIssuerMetaData)
+    bean {
+        val enableSignedMetadata = env.getProperty<Boolean>("issuer.metadata.signed-metadata.enabled") ?: true
+        val generateSignedMetadata = if (enableSignedMetadata) ref<GenerateSignedMetadata>() else null
+        GetCredentialIssuerMetaData(ref(), generateSignedMetadata)
+    }
     bean {
         IssueCredential(
             credentialIssuerMetadata = ref(),

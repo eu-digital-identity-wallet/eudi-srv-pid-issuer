@@ -27,12 +27,16 @@ import kotlinx.serialization.json.*
 
 class GetCredentialIssuerMetaData(
     private val credentialIssuerMetaData: CredentialIssuerMetaData,
-    private val generateSignedMetadata: GenerateSignedMetadata,
+    private val generateSignedMetadata: GenerateSignedMetadata?,
 ) {
     operator fun invoke(): CredentialIssuerMetaDataTO {
         val withoutSignedMetadata = credentialIssuerMetaData.toTransferObject()
-        val signedMetadata = generateSignedMetadata(Json.encodeToJsonElement(withoutSignedMetadata).jsonObject)
-        return withoutSignedMetadata.copy(signedMetadata = signedMetadata)
+        return if (null != generateSignedMetadata) {
+            val signedMetadata = generateSignedMetadata.invoke(Json.encodeToJsonElement(withoutSignedMetadata).jsonObject)
+            withoutSignedMetadata.copy(signedMetadata = signedMetadata)
+        } else {
+            withoutSignedMetadata
+        }
     }
 }
 
