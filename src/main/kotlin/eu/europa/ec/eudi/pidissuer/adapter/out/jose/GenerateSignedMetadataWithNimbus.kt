@@ -25,7 +25,6 @@ import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.port.out.jose.GenerateSignedMetadata
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.time.Clock
 
 /**
@@ -45,7 +44,6 @@ data class MetadataSigningKey(
         get() = when (key) {
             is ECKey -> when (val curve = key.curve) {
                 Curve.P_256 -> JWSAlgorithm.ES256
-                Curve.P_256K, Curve.SECP256K1 -> JWSAlgorithm.ES256K
                 Curve.P_384 -> JWSAlgorithm.ES384
                 Curve.P_521 -> JWSAlgorithm.ES512
                 else -> error("unsupported curve '$curve' for ECKey")
@@ -73,11 +71,6 @@ data class MetadataSigningKey(
     val jwsSigner: JWSSigner
         get() = when (key) {
             is ECKey -> ECDSASigner(key)
-                .apply {
-                    if (Curve.P_256K == key.curve || Curve.SECP256K1 == key.curve) {
-                        jcaContext.provider = BouncyCastleProvider()
-                    }
-                }
             is RSAKey -> RSASSASigner(key)
             is OctetKeyPair -> Ed25519Signer(key)
             else -> error("unsupported key type '$javaClass'")
