@@ -138,6 +138,13 @@ internal object SdJwtVcPidClaims {
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "Issuance Date"),
     )
+    val TrustAnchor = ClaimDefinition(
+        path = ClaimPath.claim("trust_anchor"),
+        mandatory = false,
+        display = mapOf(
+            Locale.ENGLISH to "Trust Anchor",
+        ),
+    )
 
     fun all(): List<ClaimDefinition> = listOf(
         FamilyName,
@@ -162,6 +169,7 @@ internal object SdJwtVcPidClaims {
         AgeEqualOrOver.attribute,
         AgeInYears,
         AgeBirthYear,
+        TrustAnchor,
     )
 }
 

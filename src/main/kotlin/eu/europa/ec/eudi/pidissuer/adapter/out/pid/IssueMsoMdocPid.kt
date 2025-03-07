@@ -212,6 +212,14 @@ internal object MsoMdocPidClaims {
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "Mobile Phone Number"),
     )
+    val TrustAnchor = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "trust_anchor",
+        mandatory = false,
+        display = mapOf(
+            Locale.ENGLISH to "Trust Anchor",
+        ),
+    )
 
     fun all(): List<ClaimDefinition> = listOf(
         FamilyName,
@@ -242,6 +250,7 @@ internal object MsoMdocPidClaims {
         AgeOver18,
         AgeInYears,
         AgeBirthYear,
+        TrustAnchor,
     )
 }
 
