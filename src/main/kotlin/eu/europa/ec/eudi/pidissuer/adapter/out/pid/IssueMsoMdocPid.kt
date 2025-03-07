@@ -196,6 +196,13 @@ val MobilePhoneNumberAttribute = AttributeDetails(
         Locale.ENGLISH to "Mobile Phone Number",
     ),
 )
+val TrustAnchorAttribute = AttributeDetails(
+    name = "trust_anchor",
+    mandatory = false,
+    display = mapOf(
+        Locale.ENGLISH to "Trust Anchor",
+    ),
+)
 
 private val pidAttributes = PidMsoMdocNamespace to listOf(
     FamilyNameAttribute,
@@ -226,6 +233,7 @@ private val pidAttributes = PidMsoMdocNamespace to listOf(
     AgeOver18Attribute,
     AgeInYearsAttribute,
     AgeBirthYearAttribute,
+    TrustAnchorAttribute,
 )
 
 private const val PID_DOCTYPE = "eu.europa.ec.eudi.pid"

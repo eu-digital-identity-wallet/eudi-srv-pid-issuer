@@ -68,6 +68,12 @@ internal object Attributes {
         display = mapOf(Locale.ENGLISH to "Age in Years"),
     )
 
+    val LocationStatus = AttributeDetails(
+        name = "location_status",
+        mandatory = false,
+        display = mapOf(Locale.ENGLISH to "Location Status"),
+    )
+
     val pidAttributes: List<AttributeDetails> = listOf(
         OidcFamilyName,
         OidcGivenName,
@@ -91,6 +97,8 @@ internal object Attributes {
         AgeEqualOrOver,
         AgeInYears,
         AgeBirthYear,
+        TrustAnchorAttribute,
+        LocationStatus,
     )
 }
 
