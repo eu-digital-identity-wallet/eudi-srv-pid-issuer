@@ -91,6 +91,7 @@ internal object Attributes {
         AgeEqualOrOver,
         AgeInYears,
         AgeBirthYear,
+        TrustAnchorAttribute,
     )
 }
 
