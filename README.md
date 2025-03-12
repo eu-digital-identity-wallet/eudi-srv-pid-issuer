@@ -331,6 +331,16 @@ Variable: `ISSUER_CNONCE_EXPIRATION`
 Description: Duration after which CNonce values expire    
 Default value: `PT5M`
 
+Variable: `ISSUER_STATUSLIST_ENABLED`  
+Description: Whether to enable support for Status List Tokens      
+Default value: `false`
+
+Variable: `ISSUER_STATUSLIST_SERVICE_URI`  
+Description: URI of the service used to generate Status List Tokens  
+
+Variable: `ISSUER_STATUSLIST_SERVICE_APIKEY`  
+Description: API Key of the service used to generate Status List Tokens  
+
 ### Metadata configuration
 
 You can configure the display objects of the Credential Issuer Metadata of PID Issuer, using the following 

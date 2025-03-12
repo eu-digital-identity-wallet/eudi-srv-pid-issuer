@@ -138,3 +138,10 @@ data class IssuedCredentials(
  */
 @JvmInline
 value class CredentialIdentifier(val value: String)
+
+/**
+ * A Status List Token per Token Status List.
+ *
+ * @see <a href="https://datatracker.ietf.org/doc/draft-ietf-oauth-status-list/">https://datatracker.ietf.org/doc/draft-ietf-oauth-status-list/</a>
+ */
+data class StatusListToken(val statusList: URI, val index: UInt)
