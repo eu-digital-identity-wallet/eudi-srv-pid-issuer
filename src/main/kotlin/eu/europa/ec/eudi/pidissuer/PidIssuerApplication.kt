@@ -385,10 +385,11 @@ fun beans(clock: Clock) = beans {
     }
     if (enableStatusList) {
         bean<GenerateStatusListToken> {
-            log.info("Token Status List support enabled")
+            val serviceUrl = URL(env.getRequiredProperty("issuer.statusList.service.uri"))
+            log.info("Token Status List support enabled. Service URL: ${serviceUrl.toExternalForm()}")
             GenerateStatusListTokenWithExternalService(
                 webClient = ref(),
-                serviceUrl = URL(env.getRequiredProperty("issuer.statusList.service.uri")),
+                serviceUrl = serviceUrl,
                 apiKey = env.getRequiredProperty("issuer.statusList.service.apiKey"),
             )
         }
