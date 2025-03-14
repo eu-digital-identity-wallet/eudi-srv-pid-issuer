@@ -47,12 +47,14 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryIssuedCredent
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
+import eu.europa.ec.eudi.pidissuer.adapter.out.status.GenerateStatusListTokenWithExternalService
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
 import eu.europa.ec.eudi.pidissuer.port.out.jose.GenerateSignedMetadata
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
+import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import io.netty.handler.ssl.SslContextBuilder
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
@@ -186,6 +188,7 @@ fun beans(clock: Clock) = beans {
     val enableMsoMdocPid = env.getProperty<Boolean>("issuer.pid.mso_mdoc.enabled") ?: true
     val enableSdJwtVcPid = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.enabled") ?: true
     val credentialsOfferUri = env.getRequiredProperty("issuer.credentialOffer.uri")
+    val enableStatusList = env.getProperty<Boolean>("issuer.statusList.enabled") ?: false
 
     //
     // Signing key
@@ -380,6 +383,17 @@ fun beans(clock: Clock) = beans {
             signingKey = ref(),
         )
     }
+    if (enableStatusList) {
+        bean<GenerateStatusListToken> {
+            val serviceUrl = URL(env.getRequiredProperty("issuer.statusList.service.uri"))
+            log.info("Token Status List support enabled. Service URL: ${serviceUrl.toExternalForm()}")
+            GenerateStatusListTokenWithExternalService(
+                webClient = ref(),
+                serviceUrl = serviceUrl,
+                apiKey = env.getRequiredProperty("issuer.statusList.service.apiKey"),
+            )
+        }
+    }
 
     //
     // Encryption of credential response
@@ -467,6 +481,7 @@ fun beans(clock: Clock) = beans {
                         generateNotificationId = ref(),
                         storeIssuedCredentials = ref(),
                         validateProofs = ref(),
+                        generateStatusListToken = provider<GenerateStatusListToken>().ifAvailable,
                     )
 
                     val deferred = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.deferred") ?: false

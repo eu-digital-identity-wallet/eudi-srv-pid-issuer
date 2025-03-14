@@ -32,6 +32,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
+import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -216,6 +217,7 @@ internal class IssueSdJwtVcPid(
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredentials: StoreIssuedCredentials,
+    private val generateStatusListToken: GenerateStatusListToken?,
 ) : IssueSpecificCredential {
 
     override val supportedCredential: SdJwtVcCredentialConfiguration = pidSdJwtVcV1(issuerSigningKey.signingAlgorithm)
@@ -230,6 +232,7 @@ internal class IssueSdJwtVcPid(
         calculateExpiresAt,
         calculateNotUseBefore,
         supportedCredential.type,
+        generateStatusListToken,
     )
 
     override suspend fun invoke(

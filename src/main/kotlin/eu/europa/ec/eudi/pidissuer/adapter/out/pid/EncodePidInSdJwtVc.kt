@@ -25,12 +25,14 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.certificate
-import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAddressClaim
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType
+import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
+import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.vc.sanOfDNSName
 import eu.europa.ec.eudi.sdjwt.vc.sanOfUniformResourceIdentifier
@@ -55,6 +57,7 @@ class EncodePidInSdJwtVc(
     private val calculateExpiresAt: TimeDependant<Instant>,
     private val calculateNotUseBefore: TimeDependant<Instant>?,
     private val vct: SdJwtVcType,
+    private val generateStatusListToken: GenerateStatusListToken?,
 ) {
 
     /**
@@ -91,16 +94,24 @@ class EncodePidInSdJwtVc(
         pidMetaData: PidMetaData,
         holderKey: JWK,
     ): Either<IssueCredentialError, String> = either {
-        val at = clock.instant().atZone(clock.zone)
+        val issuedAt = clock.instant().atZone(clock.zone)
+        val expiresAt = calculateExpiresAt(issuedAt)
+        val statusListToken = generateStatusListToken?.let {
+            it(vct.value, expiresAt.atZone(clock.zone))
+                .getOrElse { error ->
+                    raise(Unexpected("Unable to generate Status List Token", error))
+                }
+        }
         val sdJwtSpec = selectivelyDisclosed(
             pid = pid,
             pidMetaData = pidMetaData,
             vct = vct,
             credentialIssuerId = credentialIssuerId,
             holderPubKey = holderKey,
-            iat = at,
-            exp = calculateExpiresAt(at),
-            nbf = calculateNotUseBefore?.let { calculate -> calculate(at) },
+            iat = issuedAt,
+            exp = expiresAt,
+            nbf = calculateNotUseBefore?.let { calculate -> calculate(issuedAt) },
+            statusListToken = statusListToken,
         )
         val issuedSdJwt: SdJwt<SignedJWT> = issuer.issue(sdJwtSpec).getOrElse {
             raise(Unexpected("Error while creating SD-JWT", it))
@@ -126,6 +137,7 @@ private fun selectivelyDisclosed(
     iat: ZonedDateTime,
     exp: Instant,
     nbf: Instant?,
+    statusListToken: StatusListToken?,
 ): DisclosableObject {
     require(exp.epochSecond > iat.toInstant().epochSecond) { "exp should be after iat" }
     nbf?.let {
@@ -142,6 +154,14 @@ private fun selectivelyDisclosed(
         claim(RFC7519.EXPIRATION_TIME, exp.epochSecond)
         cnf(holderPubKey)
         claim(SdJwtVcSpec.VCT, vct.value)
+        statusListToken?.let {
+            objClaim("status") {
+                objClaim("status_list") {
+                    claim("idx", it.index.toInt())
+                    claim("uri", it.statusList.toString())
+                }
+            }
+        }
 
         //
         // Selectively Disclosed claims
