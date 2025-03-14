@@ -70,14 +70,7 @@ internal class GenerateStatusListTokenWithExternalService(
 
 @Serializable
 private data class StatusTokensTO(
-    @Required @SerialName("identifier_list") val identifierListToken: IdentifierListTokenTO,
     @Required @SerialName("status_list") val statusListToken: StatusListTokenTO,
-)
-
-@Serializable
-private data class IdentifierListTokenTO(
-    @Required val id: String,
-    @Required @SerialName("uri") val identifierList: String,
 )
 
 @Serializable
