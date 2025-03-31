@@ -119,8 +119,8 @@ internal object SdJwtVcPidClaims {
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "Email Address"),
     )
-    val MobilePhoneNumber = ClaimDefinition(
-        path = ClaimPath.claim("mobile_phone_number"),
+    val PhoneNumber = ClaimDefinition(
+        path = ClaimPath.claim("phone_number"),
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "Mobile Phone Number"),
     )
@@ -160,7 +160,7 @@ internal object SdJwtVcPidClaims {
         BirthGivenName,
         Sex,
         Email,
-        MobilePhoneNumber,
+        PhoneNumber,
         ExpiryDate,
         IssuingAuthority,
         IssuingCountry,

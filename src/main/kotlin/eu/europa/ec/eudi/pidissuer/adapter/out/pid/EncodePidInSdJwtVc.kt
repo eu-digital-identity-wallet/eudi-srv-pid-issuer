@@ -214,7 +214,7 @@ private fun selectivelyDisclosed(
         pid.givenNameBirth?.let { sdClaim(SdJwtVcPidClaims.BirthGivenName.name, it.value) }
         pid.sex?.let { sdClaim(SdJwtVcPidClaims.Sex.name, it.value.toInt()) }
         pid.emailAddress?.let { sdClaim(SdJwtVcPidClaims.Email.name, it) }
-        pid.mobilePhoneNumber?.let { sdClaim(SdJwtVcPidClaims.MobilePhoneNumber.name, it.value) }
+        pid.mobilePhoneNumber?.let { sdClaim(SdJwtVcPidClaims.PhoneNumber.name, it.value) }
         sdObjClaim(SdJwtVcPidClaims.AgeEqualOrOver.attribute.name) {
             pid.ageOver18?.let { sdClaim(SdJwtVcPidClaims.AgeEqualOrOver.Over18.name, it) }
         }
