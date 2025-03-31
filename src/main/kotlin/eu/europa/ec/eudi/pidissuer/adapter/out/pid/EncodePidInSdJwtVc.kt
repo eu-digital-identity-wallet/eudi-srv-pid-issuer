@@ -137,8 +137,6 @@ class EncodePidInSdJwtVc(
     }
 }
 
-private val base64UrlNoPadding by lazy { Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT) }
-
 private fun selectivelyDisclosed(
     pid: Pid,
     pidMetaData: PidMetaData,
@@ -204,11 +202,12 @@ private fun selectivelyDisclosed(
         }
         pidMetaData.personalAdministrativeNumber?.let { sdClaim(SdJwtVcPidClaims.PersonalAdministrativeNumber.name, it.value) }
         pid.portrait?.let {
-            val value = when (it) {
-                is PortraitImage.JPEG -> base64UrlNoPadding.encode(it.value)
-                is PortraitImage.JPEG2000 -> base64UrlNoPadding.encode(it.value)
+            val encodedBytes = when (it) {
+                is PortraitImage.JPEG -> Base64.Default.encode(it.value)
+                is PortraitImage.JPEG2000 -> Base64.Default.encode(it.value)
             }
-            sdClaim(SdJwtVcPidClaims.Portrait.name, value)
+            val url = "data:image/jpeg;base64,$encodedBytes"
+            sdClaim(SdJwtVcPidClaims.Picture.name, url)
         }
         pid.familyNameBirth?.let { sdClaim(SdJwtVcPidClaims.BirthFamilyName.name, it.value) }
         pid.givenNameBirth?.let { sdClaim(SdJwtVcPidClaims.BirthGivenName.name, it.value) }
