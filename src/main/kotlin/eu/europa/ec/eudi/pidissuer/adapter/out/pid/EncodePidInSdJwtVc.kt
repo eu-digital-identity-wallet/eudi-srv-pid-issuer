@@ -225,7 +225,7 @@ private fun selectivelyDisclosed(
         sdClaim(SdJwtVcPidClaims.IssuingCountry.name, pidMetaData.issuingCountry.value)
         pidMetaData.documentNumber?.let { sdClaim(SdJwtVcPidClaims.DocumentNumber.name, it.value) }
         pidMetaData.issuingJurisdiction?.let { sdClaim(SdJwtVcPidClaims.IssuingJurisdiction.name, it) }
-        pidMetaData.issuanceDate?.let { sdClaim(SdJwtVcPidClaims.IssuanceDate.name, it.toString()) }
+        pidMetaData.issuanceDate?.let { sdClaim(SdJwtVcPidClaims.DateOfIssuance.name, it.toString()) }
     }
 }
 
