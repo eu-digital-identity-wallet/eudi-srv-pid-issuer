@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.Either
 import arrow.core.raise.either
+import arrow.core.raise.ensure
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
@@ -96,12 +97,22 @@ class EncodePidInSdJwtVc(
     ): Either<IssueCredentialError, String> = either {
         val issuedAt = clock.instant().atZone(clock.zone)
         val expiresAt = calculateExpiresAt(issuedAt)
+        val notBefore = calculateNotUseBefore?.let { calculate -> calculate(issuedAt) }
         val statusListToken = generateStatusListToken?.let {
             it(vct.value, expiresAt.atZone(clock.zone))
                 .getOrElse { error ->
                     raise(Unexpected("Unable to generate Status List Token", error))
                 }
         }
+
+        ensure(
+            null == pidMetaData.issuanceDate ||
+                null == notBefore ||
+                pidMetaData.issuanceDate.atStartOfDay(clock.zone).toInstant() <= notBefore,
+        ) {
+            Unexpected("date_of_issuance must not be after nbf")
+        }
+
         val sdJwtSpec = selectivelyDisclosed(
             pid = pid,
             pidMetaData = pidMetaData,
@@ -110,7 +121,7 @@ class EncodePidInSdJwtVc(
             holderPubKey = holderKey,
             iat = issuedAt,
             exp = expiresAt,
-            nbf = calculateNotUseBefore?.let { calculate -> calculate(issuedAt) },
+            nbf = notBefore,
             statusListToken = statusListToken,
         )
         val issuedSdJwt: SdJwt<SignedJWT> = issuer.issue(sdJwtSpec).getOrElse {
