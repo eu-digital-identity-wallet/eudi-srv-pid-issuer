@@ -184,7 +184,7 @@ private fun selectivelyDisclosed(
             sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Locality.name, pid.birthPlace)
         }
         sdArrClaim(SdJwtVcPidClaims.Nationalities.name) {
-            pid.nationalities.forEach { claim(it.value) }
+            pid.nationalities.forEach { sdClaim(it.value) }
         }
         pid.oidcAddressClaim()?.let { address ->
             sdObjClaim(SdJwtVcPidClaims.Address.attribute.name) {
