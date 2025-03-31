@@ -180,9 +180,14 @@ private fun selectivelyDisclosed(
         sdClaim(SdJwtVcPidClaims.FamilyName.name, pid.familyName.value)
         sdClaim(SdJwtVcPidClaims.GivenName.name, pid.givenName.value)
         sdClaim(SdJwtVcPidClaims.BirthDate.name, pid.birthDate.toString())
-        sdObjClaim(SdJwtVcPidClaims.PlaceOfBirth.attribute.name) {
-            sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Locality.name, pid.birthPlace)
+        pid.birthPlace?.let { birthPlace ->
+            sdObjClaim(SdJwtVcPidClaims.PlaceOfBirth.attribute.name) {
+                birthPlace.country?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Country.name, it.value) }
+                birthPlace.region?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Region.name, it.value) }
+                birthPlace.locality?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Locality.name, it.value) }
+            }
         }
+
         sdArrClaim(SdJwtVcPidClaims.Nationalities.name) {
             pid.nationalities.forEach { sdClaim(it.value) }
         }
