@@ -114,8 +114,8 @@ internal object SdJwtVcPidClaims {
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "Issuing Jurisdiction"),
     )
-    val EmailAddress = ClaimDefinition(
-        path = ClaimPath.claim("email_address"),
+    val Email = ClaimDefinition(
+        path = ClaimPath.claim("email"),
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "Email Address"),
     )
@@ -159,7 +159,7 @@ internal object SdJwtVcPidClaims {
         BirthFamilyName,
         BirthGivenName,
         Sex,
-        EmailAddress,
+        Email,
         MobilePhoneNumber,
         ExpiryDate,
         IssuingAuthority,
