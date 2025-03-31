@@ -124,8 +124,8 @@ internal object SdJwtVcPidClaims {
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "Mobile Phone Number"),
     )
-    val Portrait = ClaimDefinition(
-        path = ClaimPath.claim("portrait"),
+    val Picture = ClaimDefinition(
+        path = ClaimPath.claim("picture"),
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "Portrait Image"),
     )
@@ -155,7 +155,7 @@ internal object SdJwtVcPidClaims {
         Nationalities,
         Address.attribute,
         PersonalAdministrativeNumber,
-        Portrait,
+        Picture,
         BirthFamilyName,
         BirthGivenName,
         Sex,
