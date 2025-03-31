@@ -105,6 +105,14 @@ class EncodePidInSdJwtVc(
                 }
         }
 
+        ensure(expiresAt.epochSecond > issuedAt.toInstant().epochSecond) {
+            Unexpected("exp should be after iat")
+        }
+        notBefore?.let {
+            ensure(it.epochSecond > issuedAt.toInstant().epochSecond) {
+                Unexpected("nbf should be after iat")
+            }
+        }
         ensure(
             null == pidMetaData.issuanceDate ||
                 null == notBefore ||
@@ -147,13 +155,8 @@ private fun selectivelyDisclosed(
     exp: Instant,
     nbf: Instant?,
     statusListToken: StatusListToken?,
-): DisclosableObject {
-    require(exp.epochSecond > iat.toInstant().epochSecond) { "exp should be after iat" }
-    nbf?.let {
-        require(nbf.epochSecond > iat.toInstant().epochSecond) { "nbe should be after iat" }
-    }
-
-    return sdJwt {
+): DisclosableObject =
+    sdJwt {
         //
         // Always disclosed claims
         //
@@ -227,7 +230,6 @@ private fun selectivelyDisclosed(
         pidMetaData.issuingJurisdiction?.let { sdClaim(SdJwtVcPidClaims.IssuingJurisdiction.name, it) }
         pidMetaData.issuanceDate?.let { sdClaim(SdJwtVcPidClaims.DateOfIssuance.name, it.toString()) }
     }
-}
 
 private fun Pid.oidcAddressClaim(): OidcAddressClaim? =
     if (
