@@ -129,8 +129,8 @@ internal object SdJwtVcPidClaims {
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "Portrait Image"),
     )
-    val ExpiryDate = ClaimDefinition(
-        path = ClaimPath.claim("expiry_date"),
+    val DateOfExpiry = ClaimDefinition(
+        path = ClaimPath.claim("date_of_expiry"),
         mandatory = true,
         display = mapOf(Locale.ENGLISH to "Expiry Date"),
     )
@@ -161,7 +161,7 @@ internal object SdJwtVcPidClaims {
         Sex,
         Email,
         PhoneNumber,
-        ExpiryDate,
+        DateOfExpiry,
         IssuingAuthority,
         IssuingCountry,
         DocumentNumber,
