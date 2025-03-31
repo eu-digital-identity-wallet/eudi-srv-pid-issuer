@@ -194,6 +194,7 @@ private fun selectivelyDisclosed(
         pid.oidcAddressClaim()?.let { address ->
             sdObjClaim(SdJwtVcPidClaims.Address.attribute.name) {
                 address.formatted?.let { sdClaim(SdJwtVcPidClaims.Address.Formatted.name, it) }
+                address.houseNumber?.let { sdClaim(SdJwtVcPidClaims.Address.HouseNumber.name, it) }
                 address.streetAddress?.let { sdClaim(SdJwtVcPidClaims.Address.Street.name, it) }
                 address.locality?.let { sdClaim(SdJwtVcPidClaims.Address.Locality.name, it) }
                 address.region?.let { sdClaim(SdJwtVcPidClaims.Address.Region.name, it) }
@@ -231,9 +232,9 @@ private fun selectivelyDisclosed(
 
 private fun Pid.oidcAddressClaim(): OidcAddressClaim? =
     if (
-        residentAddress != null || residentCountry != null || residentState != null ||
-        residentCity != null || residentPostalCode != null ||
-        residentStreet != null || residentHouseNumber != null
+        residentHouseNumber != null || residentStreet != null || residentPostalCode != null ||
+        residentCity != null || residentState != null || residentCountry != null ||
+        residentAddress != null
     ) {
         OidcAddressClaim(
             formatted = residentAddress,
@@ -241,7 +242,8 @@ private fun Pid.oidcAddressClaim(): OidcAddressClaim? =
             region = residentState?.value,
             locality = residentCity?.value,
             postalCode = residentPostalCode?.value,
-            streetAddress = listOfNotNull(residentStreet, residentHouseNumber).joinToString(", ").takeIf { it.isNotBlank() },
+            streetAddress = residentStreet?.value,
+            houseNumber = residentHouseNumber,
         )
     } else null
 
