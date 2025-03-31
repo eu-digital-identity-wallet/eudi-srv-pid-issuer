@@ -134,8 +134,8 @@ internal object SdJwtVcPidClaims {
         mandatory = true,
         display = mapOf(Locale.ENGLISH to "Expiry Date"),
     )
-    val IssuanceDate = ClaimDefinition(
-        path = ClaimPath.claim("issuance_date"),
+    val DateOfIssuance = ClaimDefinition(
+        path = ClaimPath.claim("date_of_issuance"),
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "Issuance Date"),
     )
@@ -166,7 +166,7 @@ internal object SdJwtVcPidClaims {
         IssuingCountry,
         DocumentNumber,
         IssuingJurisdiction,
-        IssuanceDate,
+        DateOfIssuance,
         AgeEqualOrOver.attribute,
         AgeInYears,
         AgeBirthYear,
