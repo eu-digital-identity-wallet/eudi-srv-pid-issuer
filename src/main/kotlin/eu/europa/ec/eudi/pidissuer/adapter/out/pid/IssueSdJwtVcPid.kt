@@ -174,7 +174,7 @@ internal object SdJwtVcPidClaims {
     )
 }
 
-private fun pidDocType(version: Int): String = "urn:eu.europa.ec.eudi:pid:$version"
+private fun pidDocType(version: Int): String = "urn:eudi:pid:$version"
 
 fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(
