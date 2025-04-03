@@ -6,7 +6,7 @@ networks:
 
 services:
   keycloak:
-    image: quay.io/keycloak/keycloak:26.0.5-0
+    image: quay.io/keycloak/keycloak:26.1.4-0
     container_name: keycloak
     command:
       - start-dev
