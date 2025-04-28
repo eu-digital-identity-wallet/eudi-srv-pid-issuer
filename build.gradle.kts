@@ -11,8 +11,7 @@ plugins {
     alias(libs.plugins.kotlin.plugin.serialization)
     alias(libs.plugins.spotless)
     alias(libs.plugins.dependency.check)
-    alias(libs.plugins.sonarqube)
-    jacoco
+    alias(libs.plugins.kover)
 }
 
 repositories {
@@ -115,30 +114,12 @@ kotlin {
     }
 }
 
-tasks.test {
-    finalizedBy(tasks.jacocoTestReport)
-}
-
-tasks.jacocoTestReport {
-    dependsOn(tasks.test)
-
-    reports {
-        xml.required = true
-        csv.required = true
-        html.required = true
-    }
-}
-
 testing {
     suites {
         val test by getting(JvmTestSuite::class) {
             useJUnitJupiter()
         }
     }
-}
-
-jacoco {
-    toolVersion = libs.versions.jacoco.get()
 }
 
 springBoot {

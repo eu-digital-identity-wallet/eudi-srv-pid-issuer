@@ -13,9 +13,7 @@ nimbusOAuth2 = "11.23.1"
 eudiSdJwt = "0.10.0"
 bouncyCastle = "1.80"
 dependencyCheck = "12.1.0"
-sonarqube = "6.0.1.5171"
 bootstrap = "5.3.3"
-jacoco = "0.8.11"
 multiformat = "1.1.0"
 resultMonad = "1.4.0"
 keycloak = "26.0.4"
@@ -23,6 +21,8 @@ waltid = "0.11.0"
 uri-kmp = "0.0.19"
 zxing = "3.5.3"
 tink = "1.17.0"
+kover = "0.9.1"
+
 
 [libraries]
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
@@ -51,4 +51,5 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-plugin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 dependency-check = { id = "org.owasp.dependencycheck", version.ref = "dependencyCheck" }
-sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+
