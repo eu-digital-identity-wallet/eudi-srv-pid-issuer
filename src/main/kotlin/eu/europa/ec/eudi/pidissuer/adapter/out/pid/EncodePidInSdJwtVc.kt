@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.Either
 import arrow.core.raise.either
-import arrow.core.raise.ensure
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
@@ -97,30 +96,12 @@ class EncodePidInSdJwtVc(
     ): Either<IssueCredentialError, String> = either {
         val issuedAt = clock.instant().atZone(clock.zone)
         val expiresAt = calculateExpiresAt(issuedAt)
-        val notBefore = calculateNotUseBefore?.let { calculate -> calculate(issuedAt) }
         val statusListToken = generateStatusListToken?.let {
             it(vct.value, expiresAt.atZone(clock.zone))
                 .getOrElse { error ->
                     raise(Unexpected("Unable to generate Status List Token", error))
                 }
         }
-
-        ensure(expiresAt.epochSecond > issuedAt.toInstant().epochSecond) {
-            Unexpected("exp should be after iat")
-        }
-        notBefore?.let {
-            ensure(it.epochSecond > issuedAt.toInstant().epochSecond) {
-                Unexpected("nbf should be after iat")
-            }
-        }
-        ensure(
-            null == pidMetaData.issuanceDate ||
-                null == notBefore ||
-                pidMetaData.issuanceDate.atStartOfDay(clock.zone).toInstant() <= notBefore,
-        ) {
-            Unexpected("date_of_issuance must not be after nbf")
-        }
-
         val sdJwtSpec = selectivelyDisclosed(
             pid = pid,
             pidMetaData = pidMetaData,
@@ -129,7 +110,7 @@ class EncodePidInSdJwtVc(
             holderPubKey = holderKey,
             iat = issuedAt,
             exp = expiresAt,
-            nbf = notBefore,
+            nbf = calculateNotUseBefore?.let { calculate -> calculate(issuedAt) },
             statusListToken = statusListToken,
         )
         val issuedSdJwt: SdJwt<SignedJWT> = issuer.issue(sdJwtSpec).getOrElse {
@@ -145,6 +126,8 @@ class EncodePidInSdJwtVc(
     }
 }
 
+private val base64UrlNoPadding by lazy { Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT) }
+
 private fun selectivelyDisclosed(
     pid: Pid,
     pidMetaData: PidMetaData,
@@ -155,8 +138,13 @@ private fun selectivelyDisclosed(
     exp: Instant,
     nbf: Instant?,
     statusListToken: StatusListToken?,
-): DisclosableObject =
-    sdJwt {
+): DisclosableObject {
+    require(exp.epochSecond > iat.toInstant().epochSecond) { "exp should be after iat" }
+    nbf?.let {
+        require(nbf.epochSecond > iat.toInstant().epochSecond) { "nbe should be after iat" }
+    }
+
+    return sdJwt {
         //
         // Always disclosed claims
         //
@@ -181,21 +169,15 @@ private fun selectivelyDisclosed(
         sdClaim(SdJwtVcPidClaims.FamilyName.name, pid.familyName.value)
         sdClaim(SdJwtVcPidClaims.GivenName.name, pid.givenName.value)
         sdClaim(SdJwtVcPidClaims.BirthDate.name, pid.birthDate.toString())
-        pid.birthPlace?.let { birthPlace ->
-            sdObjClaim(SdJwtVcPidClaims.PlaceOfBirth.attribute.name) {
-                birthPlace.country?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Country.name, it.value) }
-                birthPlace.region?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Region.name, it.value) }
-                birthPlace.locality?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Locality.name, it.value) }
-            }
+        sdObjClaim(SdJwtVcPidClaims.PlaceOfBirth.attribute.name) {
+            sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Locality.name, pid.birthPlace)
         }
-
         sdArrClaim(SdJwtVcPidClaims.Nationalities.name) {
-            pid.nationalities.forEach { sdClaim(it.value) }
+            pid.nationalities.forEach { claim(it.value) }
         }
         pid.oidcAddressClaim()?.let { address ->
             sdObjClaim(SdJwtVcPidClaims.Address.attribute.name) {
                 address.formatted?.let { sdClaim(SdJwtVcPidClaims.Address.Formatted.name, it) }
-                address.houseNumber?.let { sdClaim(SdJwtVcPidClaims.Address.HouseNumber.name, it) }
                 address.streetAddress?.let { sdClaim(SdJwtVcPidClaims.Address.Street.name, it) }
                 address.locality?.let { sdClaim(SdJwtVcPidClaims.Address.Locality.name, it) }
                 address.region?.let { sdClaim(SdJwtVcPidClaims.Address.Region.name, it) }
@@ -205,37 +187,37 @@ private fun selectivelyDisclosed(
         }
         pidMetaData.personalAdministrativeNumber?.let { sdClaim(SdJwtVcPidClaims.PersonalAdministrativeNumber.name, it.value) }
         pid.portrait?.let {
-            val encodedBytes = when (it) {
-                is PortraitImage.JPEG -> Base64.Default.encode(it.value)
-                is PortraitImage.JPEG2000 -> Base64.Default.encode(it.value)
+            val value = when (it) {
+                is PortraitImage.JPEG -> base64UrlNoPadding.encode(it.value)
+                is PortraitImage.JPEG2000 -> base64UrlNoPadding.encode(it.value)
             }
-            val url = "data:image/jpeg;base64,$encodedBytes"
-            sdClaim(SdJwtVcPidClaims.Picture.name, url)
+            sdClaim(SdJwtVcPidClaims.Portrait.name, value)
         }
         pid.familyNameBirth?.let { sdClaim(SdJwtVcPidClaims.BirthFamilyName.name, it.value) }
         pid.givenNameBirth?.let { sdClaim(SdJwtVcPidClaims.BirthGivenName.name, it.value) }
         pid.sex?.let { sdClaim(SdJwtVcPidClaims.Sex.name, it.value.toInt()) }
-        pid.emailAddress?.let { sdClaim(SdJwtVcPidClaims.Email.name, it) }
-        pid.mobilePhoneNumber?.let { sdClaim(SdJwtVcPidClaims.PhoneNumber.name, it.value) }
+        pid.emailAddress?.let { sdClaim(SdJwtVcPidClaims.EmailAddress.name, it) }
+        pid.mobilePhoneNumber?.let { sdClaim(SdJwtVcPidClaims.MobilePhoneNumber.name, it.value) }
         sdObjClaim(SdJwtVcPidClaims.AgeEqualOrOver.attribute.name) {
             pid.ageOver18?.let { sdClaim(SdJwtVcPidClaims.AgeEqualOrOver.Over18.name, it) }
         }
         pid.ageInYears?.let { sdClaim(SdJwtVcPidClaims.AgeInYears.name, it.toInt()) }
         pid.ageBirthYear?.let { sdClaim(SdJwtVcPidClaims.AgeBirthYear.name, it.value.toString()) }
 
-        sdClaim(SdJwtVcPidClaims.DateOfExpiry.name, pidMetaData.expiryDate.toString())
+        sdClaim(SdJwtVcPidClaims.ExpiryDate.name, pidMetaData.expiryDate.toString())
         sdClaim(SdJwtVcPidClaims.IssuingAuthority.name, pidMetaData.issuingAuthority.valueAsString())
         sdClaim(SdJwtVcPidClaims.IssuingCountry.name, pidMetaData.issuingCountry.value)
         pidMetaData.documentNumber?.let { sdClaim(SdJwtVcPidClaims.DocumentNumber.name, it.value) }
         pidMetaData.issuingJurisdiction?.let { sdClaim(SdJwtVcPidClaims.IssuingJurisdiction.name, it) }
-        pidMetaData.issuanceDate?.let { sdClaim(SdJwtVcPidClaims.DateOfIssuance.name, it.toString()) }
+        pidMetaData.issuanceDate?.let { sdClaim(SdJwtVcPidClaims.IssuanceDate.name, it.toString()) }
     }
+}
 
 private fun Pid.oidcAddressClaim(): OidcAddressClaim? =
     if (
-        residentHouseNumber != null || residentStreet != null || residentPostalCode != null ||
-        residentCity != null || residentState != null || residentCountry != null ||
-        residentAddress != null
+        residentAddress != null || residentCountry != null || residentState != null ||
+        residentCity != null || residentPostalCode != null ||
+        residentStreet != null || residentHouseNumber != null
     ) {
         OidcAddressClaim(
             formatted = residentAddress,
@@ -243,8 +225,7 @@ private fun Pid.oidcAddressClaim(): OidcAddressClaim? =
             region = residentState?.value,
             locality = residentCity?.value,
             postalCode = residentPostalCode?.value,
-            streetAddress = residentStreet?.value,
-            houseNumber = residentHouseNumber,
+            streetAddress = listOfNotNull(residentStreet, residentHouseNumber).joinToString(", ").takeIf { it.isNotBlank() },
         )
     } else null
 

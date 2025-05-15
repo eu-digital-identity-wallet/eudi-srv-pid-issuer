@@ -114,28 +114,28 @@ internal object SdJwtVcPidClaims {
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "Issuing Jurisdiction"),
     )
-    val Email = ClaimDefinition(
-        path = ClaimPath.claim("email"),
+    val EmailAddress = ClaimDefinition(
+        path = ClaimPath.claim("email_address"),
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "Email Address"),
     )
-    val PhoneNumber = ClaimDefinition(
-        path = ClaimPath.claim("phone_number"),
+    val MobilePhoneNumber = ClaimDefinition(
+        path = ClaimPath.claim("mobile_phone_number"),
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "Mobile Phone Number"),
     )
-    val Picture = ClaimDefinition(
-        path = ClaimPath.claim("picture"),
+    val Portrait = ClaimDefinition(
+        path = ClaimPath.claim("portrait"),
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "Portrait Image"),
     )
-    val DateOfExpiry = ClaimDefinition(
-        path = ClaimPath.claim("date_of_expiry"),
+    val ExpiryDate = ClaimDefinition(
+        path = ClaimPath.claim("expiry_date"),
         mandatory = true,
         display = mapOf(Locale.ENGLISH to "Expiry Date"),
     )
-    val DateOfIssuance = ClaimDefinition(
-        path = ClaimPath.claim("date_of_issuance"),
+    val IssuanceDate = ClaimDefinition(
+        path = ClaimPath.claim("issuance_date"),
         mandatory = false,
         display = mapOf(Locale.ENGLISH to "Issuance Date"),
     )
@@ -155,18 +155,18 @@ internal object SdJwtVcPidClaims {
         Nationalities,
         Address.attribute,
         PersonalAdministrativeNumber,
-        Picture,
+        Portrait,
         BirthFamilyName,
         BirthGivenName,
         Sex,
-        Email,
-        PhoneNumber,
-        DateOfExpiry,
+        EmailAddress,
+        MobilePhoneNumber,
+        ExpiryDate,
         IssuingAuthority,
         IssuingCountry,
         DocumentNumber,
         IssuingJurisdiction,
-        DateOfIssuance,
+        IssuanceDate,
         AgeEqualOrOver.attribute,
         AgeInYears,
         AgeBirthYear,
@@ -174,7 +174,7 @@ internal object SdJwtVcPidClaims {
     )
 }
 
-private fun pidDocType(version: Int): String = "urn:eudi:pid:$version"
+private fun pidDocType(version: Int): String = "urn:eu.europa.ec.eudi:pid:$version"
 
 fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(

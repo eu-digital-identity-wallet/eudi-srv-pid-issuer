@@ -71,12 +71,6 @@ value class PhoneNumber(val value: String) {
     }
 }
 
-data class PlaceOfBirth(
-    val country: IsoCountry? = null,
-    val region: State? = null,
-    val locality: City? = null,
-)
-
 /**
  * @param familyName Current last name(s) or surname(s) of the PID User.
  * @param givenName Current first name(s), including middle name(s), of the PID User.
@@ -118,7 +112,7 @@ data class Pid(
     val familyName: FamilyName,
     val givenName: GivenName,
     val birthDate: LocalDate,
-    val birthPlace: PlaceOfBirth? = null,
+    val birthPlace: String,
     val nationalities: NonEmptyList<Nationality>,
     val residentAddress: Address? = null,
     val residentCountry: IsoCountry? = null,

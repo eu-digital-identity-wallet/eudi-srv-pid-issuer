@@ -72,7 +72,6 @@ val OidcGender: ClaimDefinition by lazy {
 // https://openid.net/specs/openid-connect-core-1_0.html#AddressClaim
 @Serializable
 data class OidcAddressClaim(
-    @SerialName("house_number") val houseNumber: String? = null,
     @SerialName("street_address") val streetAddress: String? = null,
     @SerialName("locality") val locality: String? = null,
     @SerialName("region") val region: String? = null,
@@ -89,14 +88,9 @@ data class OidcAddressClaim(
                 path = ClaimPath.claim(NAME),
                 mandatory = false,
                 display = mapOf(Locale.ENGLISH to "Address"),
-                nested = listOf(HouseNumber, Street, Locality, Region, PostalCode, Country, Formatted),
+                nested = listOf(Street, Locality, Region, PostalCode, Country, Formatted),
             )
 
-        val HouseNumber = ClaimDefinition(
-            path = ClaimPath.claim(NAME).claim("house_number"),
-            mandatory = false,
-            display = mapOf(Locale.ENGLISH to "House Number"),
-        )
         val Street = ClaimDefinition(
             path = ClaimPath.claim(NAME).claim("street_address"),
             mandatory = false,
