@@ -54,12 +54,7 @@ private fun MDocBuilder.addItemsToSign(pid: Pid) {
     addItemToSign(MsoMdocPidClaims.FamilyName, pid.familyName.value.toDataElement())
     addItemToSign(MsoMdocPidClaims.GivenName, pid.givenName.value.toDataElement())
     addItemToSign(MsoMdocPidClaims.BirthDate, pid.birthDate.toKotlinLocalDate().toDataElement())
-    val birthPlace = pid.birthPlace?.let { birthPlace ->
-        listOfNotNull(birthPlace.locality?.value, birthPlace.region?.value, birthPlace.country?.value)
-            .joinToString(separator = ", ")
-            .takeIf { it.isNotBlank() }
-    } ?: "Not known"
-    addItemToSign(MsoMdocPidClaims.BirthPlace, birthPlace.toDataElement())
+    addItemToSign(MsoMdocPidClaims.BirthPlace, pid.birthPlace.toDataElement())
     addItemToSign(MsoMdocPidClaims.Nationality, pid.nationalities.map { it.value.toDataElement() }.toDataElement())
     pid.residentAddress?.let { addItemToSign(MsoMdocPidClaims.ResidenceAddress, it.toDataElement()) }
     pid.residentCountry?.let { addItemToSign(MsoMdocPidClaims.ResidenceCountry, it.value.toDataElement()) }
