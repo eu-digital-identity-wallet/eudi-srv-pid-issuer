@@ -21,9 +21,12 @@ import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
+import org.springframework.web.reactive.function.server.ServerRequest
 import org.springframework.web.reactive.function.server.ServerResponse
 import org.springframework.web.reactive.function.server.bodyValueAndAwait
+import org.springframework.web.reactive.function.server.buildAndAwait
 import org.springframework.web.reactive.function.server.coRouter
 import org.springframework.web.reactive.function.server.json
 
@@ -42,6 +45,7 @@ class MetaDataApi(
         GET(PUBLIC_KEYS, accept(MediaType.APPLICATION_JSON)) {
             handleGetJwtVcIssuerJwks()
         }
+        GET(SD_JWT_VC_METADATA, accept(MediaType.APPLICATION_JSON), ::handleGetSdJwtVcTypeMetadata)
     }
 
     private suspend fun handleGetClientIssuerMetaData(): ServerResponse =
@@ -62,10 +66,17 @@ class MetaDataApi(
             .json()
             .bodyValueAndAwait(credentialIssuerMetaData.jwtVcIssuerJwks.toString(true))
 
+    private suspend fun handleGetSdJwtVcTypeMetadata(request: ServerRequest): ServerResponse {
+        val queryParam = request.queryParam("vct") ?: ServerResponse.badRequest().bodyValueAndAwait("No vct value provided")
+
+        return ServerResponse.status(HttpStatus.I_AM_A_TEAPOT).buildAndAwait()
+    }
+
     companion object {
         const val WELL_KNOWN_OPENID_CREDENTIAL_ISSUER = "/.well-known/openid-credential-issuer"
         const val WELL_KNOWN_JWT_VC_ISSUER = "/.well-known/jwt-vc-issuer"
         const val PUBLIC_KEYS = "/public_keys.jwks"
+        const val SD_JWT_VC_METADATA = "/type-metadata/sd-jwt-vc"
     }
 }
 
