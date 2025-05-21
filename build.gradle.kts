@@ -1,11 +1,11 @@
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.owasp.dependencycheck.gradle.extension.DependencyCheckExtension
+import org.springframework.boot.gradle.plugin.SpringBootPlugin
 import org.springframework.boot.gradle.tasks.bundling.BootBuildImage
 
 plugins {
     base
     alias(libs.plugins.spring.boot)
-    alias(libs.plugins.spring.dependency.management)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.plugin.spring)
     alias(libs.plugins.kotlin.plugin.serialization)
@@ -24,6 +24,9 @@ repositories {
 }
 
 dependencies {
+    implementation(platform(SpringBootPlugin.BOM_COORDINATES))
+    implementation(platform("org.jetbrains.kotlinx:kotlinx-serialization-bom:${libs.versions.kotlinxSerialization.get()}"))
+
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server") {
         because("PID Issuer acts like a OAUTH2 resource server")
     }
