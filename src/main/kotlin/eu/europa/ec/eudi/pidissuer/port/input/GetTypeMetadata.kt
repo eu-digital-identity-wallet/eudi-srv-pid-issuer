@@ -24,7 +24,6 @@ import eu.europa.ec.eudi.sdjwt.vc.Vct
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.springframework.core.io.ClassPathResource
-import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 
 // Sealed interface may be not needed here and subject to removal
