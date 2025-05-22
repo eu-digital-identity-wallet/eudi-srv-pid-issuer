@@ -362,6 +362,14 @@ Description: URI where the Wallet can obtain the logo of the Credential Issuer
 Variable: `ISSUER_METADATA_DISPLAY_XX_LOGO_ALTERNATIVETEXT` (e.g. `ISSUER_METADATA_DISPLAY_0_LOGO_ALTERNATIVETEXT`)  
 Description: Alternative text for the logo image  
 
+Variable: `ISSUER_SD_JWT_VC_TYPE_METADATA_XX_VCT` (e.g. `ISSUER_SD_JWT_VC_TYPE_METADATA_0_VCT`)  
+Description: The VCT of the type metadata property  
+Example: `urn:eudi:pid:1`  
+
+Variable: `ISSUER_SD_JWT_VC_TYPE_METADATA_XX_RESOURCE` (e.g. `ISSUER_SD_JWT_VC_TYPE_METADATA_0_RESOURCE`)  
+Description: The resource path of the type metadata ARF v1.8 JSON
+Example: `classpath:/vct/pid_arf18.json` or `file:///vct/pid_arf18.json`
+
 ### Signing Key
 
 When either PID issuance in SD-JWT is enabled, or the internal MSO MDoc encoder is used, an EC Key is required 
@@ -422,6 +430,12 @@ Generate sample offer
 
 ```bash
 curl http://localhost:8080/issuer/credentialsOffer | jq .
+```
+
+### Retrieve Type MetaData
+
+```bash
+curl http://localhost:8080/type-metadata?vct=urn:eudi:pid:1
 ```
 
 ## How to contribute
