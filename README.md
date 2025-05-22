@@ -373,7 +373,7 @@ Description: The VCT of the type metadata property
 Example: `urn:eudi:pid:1`  
 
 Variable: `ISSUER_SD_JWT_VC_TYPE_METADATA_XX_RESOURCE` (e.g. `ISSUER_SD_JWT_VC_TYPE_METADATA_0_RESOURCE`)  
-Description: Resource of the type metadata, using spring boot class path notation 
+Description: Resource of the type metadata, using spring framework resource notation 
 Example: `classpath:/vct/pid_arf18.json` or `file:///vct/pid_arf18.json`
 
 ### Signing Key
