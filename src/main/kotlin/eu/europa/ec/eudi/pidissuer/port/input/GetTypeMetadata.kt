@@ -21,9 +21,8 @@ import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
 import eu.europa.ec.eudi.sdjwt.vc.Vct
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import java.nio.charset.StandardCharsets
-
-typealias Path = String
+import kotlinx.serialization.json.decodeFromStream
+import org.springframework.core.io.Resource
 
 @Serializable
 data class GetTypeMetadataError(val error: String) {
@@ -34,13 +33,13 @@ data class GetTypeMetadataError(val error: String) {
 }
 
 class GetTypeMetadata(
-    private val knownVct: Map<Vct, Path>,
+    private val knownVct: Map<Vct, Resource>,
 ) {
     operator fun invoke(vct: String): Either<GetTypeMetadataError, SdJwtVcTypeMetadata> = either {
         val vct = runCatching { Vct(vct) }.getOrElse { raise(GetTypeMetadataError.InvalidVct) }
-        val typeMetadataPath = knownVct.getOrElse(vct) { raise(GetTypeMetadataError.UnknownVct) }
-
-        val typeMetadata = this::class.java.getResource(typeMetadataPath)!!.readText(StandardCharsets.UTF_8)
-        Json.decodeFromString<SdJwtVcTypeMetadata>(typeMetadata)
+        val typeMetadataResource = knownVct.getOrElse(vct) { raise(GetTypeMetadataError.UnknownVct) }
+        typeMetadataResource.inputStream.use {
+            Json.decodeFromStream<SdJwtVcTypeMetadata>(it)
+        }
     }
 }

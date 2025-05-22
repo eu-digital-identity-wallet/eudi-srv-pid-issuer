@@ -548,9 +548,11 @@ fun beans(clock: Clock) = beans {
     }
 
     bean {
-        val loadPid = env.getProperty<String>("issuer.typemetadata.available")
-        val knownVct = Json.decodeFromString<Map<Vct, String>>(loadPid!!)
-        GetTypeMetadata(knownVct)
+        val typeMetadata = ref<SdJwtVcProperties>().typeMetadata
+            .associateBy { Vct(it.vct) }
+            .mapValues { it.value.resource }
+
+        GetTypeMetadata(typeMetadata)
     }
 
     //
@@ -959,11 +961,31 @@ private data class IssuerMetadataProperties(
     )
 }
 
+@ConfigurationProperties("issuer.sd-jwt-vc")
+private data class SdJwtVcProperties(
+    val typeMetadata: List<TypeMetadataProperties>,
+) {
+    init {
+        val vcts = typeMetadata.map { it.vct }
+        require(vcts.size == vcts.distinct().size)
+    }
+
+    data class TypeMetadataProperties(
+        val vct: String,
+        val resource: Resource,
+    ) {
+        init {
+            require(vct.isNotBlank()) { "'vct' cannot be blank" }
+            require(resource.exists()) { "'resource' must exist" }
+        }
+    }
+}
+
 fun BeanDefinitionDsl.initializer(): ApplicationContextInitializer<GenericApplicationContext> =
     ApplicationContextInitializer<GenericApplicationContext> { initialize(it) }
 
 @SpringBootApplication
-@EnableConfigurationProperties(IssuerMetadataProperties::class)
+@EnableConfigurationProperties(IssuerMetadataProperties::class, SdJwtVcProperties::class)
 @EnableScheduling
 class PidIssuerApplication
 
