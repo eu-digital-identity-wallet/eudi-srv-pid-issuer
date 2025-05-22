@@ -546,11 +546,10 @@ fun beans(clock: Clock) = beans {
     bean {
         CreateCredentialsOffer(ref(), credentialsOfferUri)
     }
-    bean {
-        val pidVct = Vct("urn:eudi:pid:1")
-        val pidTypeMetadataPath = "/vct/pid_arf18.json"
-        val knownVct = mapOf(pidVct to pidTypeMetadataPath)
 
+    bean {
+        val loadPid = env.getProperty<String>("issuer.typemetadata.available")
+        val knownVct = Json.decodeFromString<Map<Vct, String>>(loadPid!!)
         GetTypeMetadata(knownVct)
     }
 
