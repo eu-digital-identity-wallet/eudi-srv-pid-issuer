@@ -18,6 +18,8 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 import com.nimbusds.jose.jwk.JWKSet
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
+import eu.europa.ec.eudi.pidissuer.port.input.GetTypeMetadata
+import eu.europa.ec.eudi.pidissuer.port.input.GetTypeMetadataError
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -29,10 +31,12 @@ import org.springframework.web.reactive.function.server.bodyValueAndAwait
 import org.springframework.web.reactive.function.server.buildAndAwait
 import org.springframework.web.reactive.function.server.coRouter
 import org.springframework.web.reactive.function.server.json
+import kotlin.jvm.optionals.getOrNull
 
 class MetaDataApi(
     private val getCredentialIssuerMetaData: GetCredentialIssuerMetaData,
     private val credentialIssuerMetaData: CredentialIssuerMetaData,
+    private val getTypeMetadata: GetTypeMetadata,
 ) {
 
     val route = coRouter {
@@ -67,9 +71,23 @@ class MetaDataApi(
             .bodyValueAndAwait(credentialIssuerMetaData.jwtVcIssuerJwks.toString(true))
 
     private suspend fun handleGetSdJwtVcTypeMetadata(request: ServerRequest): ServerResponse {
-        val queryParam = request.queryParam("vct") ?: ServerResponse.badRequest().bodyValueAndAwait("No vct value provided")
-
-        return ServerResponse.status(HttpStatus.I_AM_A_TEAPOT).buildAndAwait()
+        val queryParam = request.queryParam("vct")
+            .getOrNull<String>() ?: return ServerResponse.badRequest().bodyValueAndAwait("No vct value provided")
+        return getTypeMetadata(queryParam).fold(
+            ifRight = {
+                ServerResponse.ok().json().bodyValueAndAwait(it)
+            },
+            ifLeft = {
+                return when (it) {
+                    GetTypeMetadataError.InvalidVct -> ServerResponse.badRequest().bodyValueAndAwait(it)
+                    GetTypeMetadataError.UnrecognisedVct -> ServerResponse.badRequest().bodyValueAndAwait(it)
+                    GetTypeMetadataError.MetadataIncorrectFormat -> ServerResponse.status(
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                    ).bodyValueAndAwait(it)
+                    else -> ServerResponse.badRequest().buildAndAwait()
+                }
+            },
+        )
     }
 
     companion object {

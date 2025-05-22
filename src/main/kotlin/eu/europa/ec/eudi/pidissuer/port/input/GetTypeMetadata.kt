@@ -25,6 +25,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.springframework.core.io.ClassPathResource
 import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets
 
 // Sealed interface may be not needed here and subject to removal
 sealed interface MetadataSuccessResponse {
@@ -61,8 +62,8 @@ class GetTypeMetadata(
 
     fun Raise<GetTypeMetadataError>.convertMetadataToSdJwtVcTypeMetadata(knownClassPath: ClassPathResource): SdJwtVcTypeMetadata =
         catch({
-            val metadata = knownClassPath.getContentAsString(Charset.defaultCharset())
-            Json.decodeFromString(SdJwtVcTypeMetadata.serializer(), metadata)
+            val metadata = knownClassPath.getContentAsString(StandardCharsets.UTF_8).trimIndent()
+            return Json.decodeFromString<SdJwtVcTypeMetadata>(metadata)
         }) {
             raise(GetTypeMetadataError.MetadataIncorrectFormat)
         }
