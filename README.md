@@ -362,7 +362,7 @@ Description: URI where the Wallet can obtain the logo of the Credential Issuer
 Variable: `ISSUER_METADATA_DISPLAY_XX_LOGO_ALTERNATIVETEXT` (e.g. `ISSUER_METADATA_DISPLAY_0_LOGO_ALTERNATIVETEXT`)  
 Description: Alternative text for the logo image  
 
-### SD-JWT-VC Metadata configuration
+### SD-JWT VC Type Metadata configuration
 
 You can configure the Type Metadata of PID Issuer, using the following
 environment variables.  
