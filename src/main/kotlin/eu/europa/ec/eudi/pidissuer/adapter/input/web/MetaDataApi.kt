@@ -18,23 +18,22 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 import com.nimbusds.jose.jwk.JWKSet
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
-import eu.europa.ec.eudi.pidissuer.port.input.GetTypeMetadata
-import eu.europa.ec.eudi.pidissuer.port.input.GetTypeMetadataError
+import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
+import eu.europa.ec.eudi.sdjwt.vc.Vct
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.decodeFromStream
+import org.springframework.core.io.Resource
 import org.springframework.http.MediaType
-import org.springframework.web.reactive.function.server.ServerRequest
-import org.springframework.web.reactive.function.server.ServerResponse
-import org.springframework.web.reactive.function.server.bodyValueAndAwait
-import org.springframework.web.reactive.function.server.buildAndAwait
-import org.springframework.web.reactive.function.server.coRouter
-import org.springframework.web.reactive.function.server.json
+import org.springframework.web.reactive.function.server.*
 
 class MetaDataApi(
     private val getCredentialIssuerMetaData: GetCredentialIssuerMetaData,
     private val credentialIssuerMetaData: CredentialIssuerMetaData,
-    private val getTypeMetadata: GetTypeMetadata,
+    private val typeMetadata: Map<Vct, Resource>,
 ) {
 
     val route = coRouter {
@@ -69,30 +68,28 @@ class MetaDataApi(
             .bodyValueAndAwait(credentialIssuerMetaData.jwtVcIssuerJwks.toString(true))
 
     private suspend fun handleGetSdJwtVcTypeMetadata(request: ServerRequest): ServerResponse {
-        val vct = request.queryParam("vct")
-        if (vct.isEmpty) return ServerResponse.badRequest().bodyValueAndAwait("no vct value provided")
-
-        return getTypeMetadata(vct.get()).fold(
-            ifRight = {
-                ServerResponse.ok().json().bodyValueAndAwait(it)
-            },
-            ifLeft = {
-                return when (it) {
-                    GetTypeMetadataError.InvalidVct -> ServerResponse.badRequest().buildAndAwait()
-                    GetTypeMetadataError.UnknownVct -> ServerResponse.notFound().buildAndAwait()
-                    else -> ServerResponse.badRequest().buildAndAwait()
+        suspend fun Resource.asSdJwtVcTypeMetadata(): SdJwtVcTypeMetadata =
+            withContext(Dispatchers.IO) {
+                inputStream.use {
+                    Json.decodeFromStream(it)
                 }
-            },
-        )
+            }
+
+        return typeMetadata[request.vct]
+            ?.let { ServerResponse.ok().json().bodyValueAndAwait(it.asSdJwtVcTypeMetadata()) }
+            ?: ServerResponse.notFound().buildAndAwait()
     }
 
     companion object {
         const val WELL_KNOWN_OPENID_CREDENTIAL_ISSUER = "/.well-known/openid-credential-issuer"
         const val WELL_KNOWN_JWT_VC_ISSUER = "/.well-known/jwt-vc-issuer"
         const val PUBLIC_KEYS = "/public_keys.jwks"
-        const val TYPE_METADATA = "/type-metadata"
+        const val TYPE_METADATA = "/type-metadata/{vct}"
     }
 }
 
 private val CredentialIssuerMetaData.jwtVcIssuerJwks: JWKSet
     get() = JWKSet(specificCredentialIssuers.mapNotNull { it.publicKey })
+
+private val ServerRequest.vct: Vct
+    get() = Vct(pathVariable("vct"))

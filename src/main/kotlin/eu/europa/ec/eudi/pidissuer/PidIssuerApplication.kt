@@ -547,19 +547,14 @@ fun beans(clock: Clock) = beans {
         CreateCredentialsOffer(ref(), credentialsOfferUri)
     }
 
-    bean {
-        val typeMetadata = ref<SdJwtVcProperties>().typeMetadata
-            .associateBy { Vct(it.vct) }
-            .mapValues { it.value.resource }
-
-        GetTypeMetadata(typeMetadata)
-    }
-
     //
     // Routes
     //
     bean {
-        val metaDataApi = MetaDataApi(ref(), ref(), ref())
+        val typeMetadata = ref<SdJwtVcProperties>().typeMetadata
+            .associateBy { Vct(it.vct) }
+            .mapValues { it.value.resource }
+        val metaDataApi = MetaDataApi(ref(), ref(), typeMetadata)
         val walletApi = WalletApi(ref(), ref(), ref(), ref(), ref())
         val issuerUi = IssuerUi(credentialsOfferUri, ref(), ref(), ref())
         val issuerApi = IssuerApi(ref())
