@@ -362,12 +362,18 @@ Description: URI where the Wallet can obtain the logo of the Credential Issuer
 Variable: `ISSUER_METADATA_DISPLAY_XX_LOGO_ALTERNATIVETEXT` (e.g. `ISSUER_METADATA_DISPLAY_0_LOGO_ALTERNATIVETEXT`)  
 Description: Alternative text for the logo image  
 
+### SD-JWT-VC Metadata configuration
+
+You can configure the Type Metadata of PID Issuer, using the following
+environment variables.  
+Each VCT should be configured once.
+
 Variable: `ISSUER_SD_JWT_VC_TYPE_METADATA_XX_VCT` (e.g. `ISSUER_SD_JWT_VC_TYPE_METADATA_0_VCT`)  
-Description: The VCT of the type metadata property  
+Description: The VCT of the type metadata property 
 Example: `urn:eudi:pid:1`  
 
 Variable: `ISSUER_SD_JWT_VC_TYPE_METADATA_XX_RESOURCE` (e.g. `ISSUER_SD_JWT_VC_TYPE_METADATA_0_RESOURCE`)  
-Description: The resource path of the type metadata ARF v1.8 JSON
+Description: Resource of the type metadata, using spring boot class path notation 
 Example: `classpath:/vct/pid_arf18.json` or `file:///vct/pid_arf18.json`
 
 ### Signing Key
