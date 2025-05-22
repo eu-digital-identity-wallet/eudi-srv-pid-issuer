@@ -23,7 +23,6 @@ import eu.europa.ec.eudi.pidissuer.port.input.GetTypeMetadataError
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.server.ServerRequest
 import org.springframework.web.reactive.function.server.ServerResponse
@@ -31,7 +30,6 @@ import org.springframework.web.reactive.function.server.bodyValueAndAwait
 import org.springframework.web.reactive.function.server.buildAndAwait
 import org.springframework.web.reactive.function.server.coRouter
 import org.springframework.web.reactive.function.server.json
-import kotlin.jvm.optionals.getOrNull
 
 class MetaDataApi(
     private val getCredentialIssuerMetaData: GetCredentialIssuerMetaData,
@@ -49,7 +47,7 @@ class MetaDataApi(
         GET(PUBLIC_KEYS, accept(MediaType.APPLICATION_JSON)) {
             handleGetJwtVcIssuerJwks()
         }
-        GET(SD_JWT_VC_METADATA, accept(MediaType.APPLICATION_JSON), ::handleGetSdJwtVcTypeMetadata)
+        GET(TYPE_METADATA, accept(MediaType.APPLICATION_JSON), ::handleGetSdJwtVcTypeMetadata)
     }
 
     private suspend fun handleGetClientIssuerMetaData(): ServerResponse =
@@ -71,19 +69,17 @@ class MetaDataApi(
             .bodyValueAndAwait(credentialIssuerMetaData.jwtVcIssuerJwks.toString(true))
 
     private suspend fun handleGetSdJwtVcTypeMetadata(request: ServerRequest): ServerResponse {
-        val queryParam = request.queryParam("vct")
-            .getOrNull<String>() ?: return ServerResponse.badRequest().bodyValueAndAwait("No vct value provided")
-        return getTypeMetadata(queryParam).fold(
+        val vct = request.queryParam("vct")
+        if (vct.isEmpty) return ServerResponse.badRequest().bodyValueAndAwait("no vct value provided")
+
+        return getTypeMetadata(vct.get()).fold(
             ifRight = {
                 ServerResponse.ok().json().bodyValueAndAwait(it)
             },
             ifLeft = {
                 return when (it) {
-                    GetTypeMetadataError.InvalidVct -> ServerResponse.badRequest().bodyValueAndAwait(it)
-                    GetTypeMetadataError.UnrecognisedVct -> ServerResponse.badRequest().bodyValueAndAwait(it)
-                    GetTypeMetadataError.MetadataIncorrectFormat -> ServerResponse.status(
-                        HttpStatus.INTERNAL_SERVER_ERROR,
-                    ).bodyValueAndAwait(it)
+                    GetTypeMetadataError.InvalidVct -> ServerResponse.badRequest().buildAndAwait()
+                    GetTypeMetadataError.UnknownVct -> ServerResponse.notFound().buildAndAwait()
                     else -> ServerResponse.badRequest().buildAndAwait()
                 }
             },
@@ -94,7 +90,7 @@ class MetaDataApi(
         const val WELL_KNOWN_OPENID_CREDENTIAL_ISSUER = "/.well-known/openid-credential-issuer"
         const val WELL_KNOWN_JWT_VC_ISSUER = "/.well-known/jwt-vc-issuer"
         const val PUBLIC_KEYS = "/public_keys.jwks"
-        const val SD_JWT_VC_METADATA = "/type-metadata/sd-jwt-vc"
+        const val TYPE_METADATA = "/type-metadata"
     }
 }
 

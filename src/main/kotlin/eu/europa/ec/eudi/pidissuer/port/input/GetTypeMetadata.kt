@@ -16,54 +16,31 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.Either
-import arrow.core.raise.Raise
-import arrow.core.raise.catch
 import arrow.core.raise.either
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
 import eu.europa.ec.eudi.sdjwt.vc.Vct
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.springframework.core.io.ClassPathResource
 import java.nio.charset.StandardCharsets
 
-// Sealed interface may be not needed here and subject to removal
-sealed interface MetadataSuccessResponse {
-    @Serializable
-    data class Metadata(
-        val metadata: SdJwtVcTypeMetadata,
-    ) : MetadataSuccessResponse
-}
+typealias Path = String
 
 @Serializable
 data class GetTypeMetadataError(val error: String) {
     companion object {
-        val InvalidVct = GetTypeMetadataError("Provided string could not be converted to VCT")
-        val UnrecognisedVct = GetTypeMetadataError("Domain does not recognise VCT")
-        val MetadataIncorrectFormat = GetTypeMetadataError("Metadata incorrect format")
+        val InvalidVct = GetTypeMetadataError("vct is not valid")
+        val UnknownVct = GetTypeMetadataError("unknown Vct")
     }
 }
 
 class GetTypeMetadata(
-    private val knownVct: Map<Vct, ClassPathResource>,
+    private val knownVct: Map<Vct, Path>,
 ) {
-    operator fun invoke(vct: String): Either<GetTypeMetadataError, MetadataSuccessResponse> = either {
-        val vct = convertToVct(vct)
-        val knownClassPath = knownVct.getOrElse(vct) { raise(GetTypeMetadataError.UnrecognisedVct) }
-        val convertedMetadata: SdJwtVcTypeMetadata = convertMetadataToSdJwtVcTypeMetadata(knownClassPath)
+    operator fun invoke(vct: String): Either<GetTypeMetadataError, SdJwtVcTypeMetadata> = either {
+        val vct = runCatching { Vct(vct) }.getOrElse { raise(GetTypeMetadataError.InvalidVct) }
+        val typeMetadataPath = knownVct.getOrElse(vct) { raise(GetTypeMetadataError.UnknownVct) }
 
-        MetadataSuccessResponse.Metadata(convertedMetadata)
+        val typeMetadata = this::class.java.getResource(typeMetadataPath)!!.readText(StandardCharsets.UTF_8)
+        Json.decodeFromString<SdJwtVcTypeMetadata>(typeMetadata)
     }
-
-    fun Raise<GetTypeMetadataError>.convertToVct(vct: String): Vct =
-        catch({ Vct(vct) }) {
-            raise(GetTypeMetadataError.InvalidVct)
-        }
-
-    fun Raise<GetTypeMetadataError>.convertMetadataToSdJwtVcTypeMetadata(knownClassPath: ClassPathResource): SdJwtVcTypeMetadata =
-        catch({
-            val metadata = knownClassPath.getContentAsString(StandardCharsets.UTF_8).trimIndent()
-            return Json.decodeFromString<SdJwtVcTypeMetadata>(metadata)
-        }) {
-            raise(GetTypeMetadataError.MetadataIncorrectFormat)
-        }
 }

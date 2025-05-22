@@ -82,7 +82,6 @@ import org.springframework.context.support.beans
 import org.springframework.core.env.Environment
 import org.springframework.core.env.getProperty
 import org.springframework.core.env.getRequiredProperty
-import org.springframework.core.io.ClassPathResource
 import org.springframework.core.io.DefaultResourceLoader
 import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.Resource
@@ -548,14 +547,10 @@ fun beans(clock: Clock) = beans {
         CreateCredentialsOffer(ref(), credentialsOfferUri)
     }
     bean {
-        val knownVct = runCatching {
-            val vctEudi = Vct("urn:eudi:pid:1")
-            val classPathEudi = ClassPathResource("vct/pid_arf18.json")
-            mapOf<Vct, ClassPathResource>(vctEudi to classPathEudi)
-        }.getOrElse {
-            log.info("Metadata JSON could not be found returning empty map.")
-            emptyMap()
-        }
+        val pidVct = Vct("urn:eudi:pid:1")
+        val pidTypeMetadataPath = "/vct/pid_arf18.json"
+        val knownVct = mapOf(pidVct to pidTypeMetadataPath)
+
         GetTypeMetadata(knownVct)
     }
 
@@ -644,7 +639,7 @@ fun beans(clock: Clock) = beans {
                 authorize(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, permitAll)
                 authorize(MetaDataApi.WELL_KNOWN_JWT_VC_ISSUER, permitAll)
                 authorize(MetaDataApi.PUBLIC_KEYS, permitAll)
-                authorize(MetaDataApi.SD_JWT_VC_METADATA, permitAll)
+                authorize(MetaDataApi.TYPE_METADATA, permitAll)
                 authorize(IssuerUi.GENERATE_CREDENTIALS_OFFER, permitAll)
                 authorize(IssuerApi.CREATE_CREDENTIALS_OFFER, permitAll)
                 authorize("", permitAll)
