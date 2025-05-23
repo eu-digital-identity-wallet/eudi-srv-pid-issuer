@@ -441,7 +441,7 @@ curl http://localhost:8080/issuer/credentialsOffer | jq .
 ### Retrieve Type MetaData
 
 ```bash
-curl http://localhost:8080/type-metadata?vct=urn:eudi:pid:1
+curl http://localhost:8080/type-metadata/urn:eudi:pid:1
 ```
 
 ## How to contribute
