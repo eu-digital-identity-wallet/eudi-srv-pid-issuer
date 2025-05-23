@@ -56,6 +56,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
+import eu.europa.ec.eudi.sdjwt.vc.Vct
 import io.netty.handler.ssl.SslContextBuilder
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import jakarta.ws.rs.client.Client
@@ -550,7 +551,10 @@ fun beans(clock: Clock) = beans {
     // Routes
     //
     bean {
-        val metaDataApi = MetaDataApi(ref(), ref())
+        val typeMetadata = ref<SdJwtVcProperties>().typeMetadata
+            .associateBy { Vct(it.vct) }
+            .mapValues { it.value.resource }
+        val metaDataApi = MetaDataApi(ref(), ref(), typeMetadata)
         val walletApi = WalletApi(ref(), ref(), ref(), ref(), ref())
         val issuerUi = IssuerUi(credentialsOfferUri, ref(), ref(), ref())
         val issuerApi = IssuerApi(ref())
@@ -631,6 +635,7 @@ fun beans(clock: Clock) = beans {
                 authorize(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, permitAll)
                 authorize(MetaDataApi.WELL_KNOWN_JWT_VC_ISSUER, permitAll)
                 authorize(MetaDataApi.PUBLIC_KEYS, permitAll)
+                authorize(MetaDataApi.TYPE_METADATA, permitAll)
                 authorize(IssuerUi.GENERATE_CREDENTIALS_OFFER, permitAll)
                 authorize(IssuerApi.CREATE_CREDENTIALS_OFFER, permitAll)
                 authorize("", permitAll)
@@ -951,11 +956,31 @@ private data class IssuerMetadataProperties(
     )
 }
 
+@ConfigurationProperties("issuer.sd-jwt-vc")
+private data class SdJwtVcProperties(
+    val typeMetadata: List<TypeMetadataProperties>,
+) {
+    init {
+        val vcts = typeMetadata.map { it.vct }
+        require(vcts.size == vcts.distinct().size)
+    }
+
+    data class TypeMetadataProperties(
+        val vct: String,
+        val resource: Resource,
+    ) {
+        init {
+            require(vct.isNotBlank()) { "'vct' cannot be blank" }
+            require(resource.exists()) { "'resource' must exist" }
+        }
+    }
+}
+
 fun BeanDefinitionDsl.initializer(): ApplicationContextInitializer<GenericApplicationContext> =
     ApplicationContextInitializer<GenericApplicationContext> { initialize(it) }
 
 @SpringBootApplication
-@EnableConfigurationProperties(IssuerMetadataProperties::class)
+@EnableConfigurationProperties(IssuerMetadataProperties::class, SdJwtVcProperties::class)
 @EnableScheduling
 class PidIssuerApplication
 
