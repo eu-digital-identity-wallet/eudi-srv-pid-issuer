@@ -202,27 +202,35 @@ internal object RestEasyClients {
     /**
      * A [Client].
      */
-    val Default: Client by lazy {
-        ResteasyClientClassicProvider().newRestEasyClient(
+    fun default(proxy: HttpProxy?): Client {
+        val client: Client = ResteasyClientClassicProvider().newRestEasyClient(
             null,
             null,
             false,
-        ) // .property("org.jboss.resteasy.jaxrs.client.proxy.host", "example.com").property("org.jboss.resteasy.jaxrs.client.proxy.port", 8080)
+        )
+        return proxy?.let {
+            client.property("org.jboss.resteasy.jaxrs.client.proxy.host", proxy.url)
+                .property("org.jboss.resteasy.jaxrs.client.proxy.port", proxy.url.port)
+        } ?: client
     }
 
     /**
      * A [Client] that trusts *all* certificates.
      */
-    val Insecure: Client by lazy {
+    fun insecure(proxy: HttpProxy?): Client {
         log.warn("Using insecure RestEasy Client trusting all certificates")
         val sslContext = SSLContextBuilder.create()
             .loadTrustMaterial(TrustAllStrategy())
             .build()
-        ResteasyClientClassicProvider().newRestEasyClient(
+        val client: Client = ResteasyClientClassicProvider().newRestEasyClient(
             null,
             sslContext,
             true,
-        ) // .property("org.jboss.resteasy.jaxrs.client.proxy.host", "example.com").property("org.jboss.resteasy.jaxrs.client.proxy.port", 8080)
+        )
+        return proxy?.let {
+            client.property("org.jboss.resteasy.jaxrs.client.proxy.host", proxy.url)
+                .property("org.jboss.resteasy.jaxrs.client.proxy.port", proxy.url.port)
+        } ?: client
     }
 }
 
@@ -314,18 +322,25 @@ fun beans(clock: Clock) = beans {
     // Adapters (out ports)
     //
     bean { clock }
-    bean {
-        val proxy = env.getProperty("pid.http.proxy.url")?.let {
-            val url = Url(it)
-            val username = env.getProperty("pid.http.proxy.username")
-            val password = env.getProperty("pid.http.proxy.password")
-            HttpProxy(url, username, password)
-        }
 
+    val proxy = env.getProperty("pid.http.proxy.url")?.let {
+        val url = Url(it)
+        val username = env.getProperty("pid.http.proxy.username")
+        val password = env.getProperty("pid.http.proxy.password")
+        HttpProxy(url, username, password)
+    }
+    bean {
         if ("insecure" in env.activeProfiles) {
             WebClients.insecure(proxy = proxy)
         } else {
             WebClients.default(proxy = proxy)
+        }
+    }
+    bean {
+        if ("insecure" in env.activeProfiles) {
+            RestEasyClients.insecure(proxy)
+        } else {
+            RestEasyClients.default(proxy)
         }
     }
     bean {
