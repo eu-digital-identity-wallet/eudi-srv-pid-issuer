@@ -107,6 +107,7 @@ import org.springframework.util.unit.DataSize
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
+import reactor.netty.transport.ProxyProvider
 import java.net.URI
 import java.net.URL
 import java.security.KeyStore
@@ -130,10 +131,13 @@ internal object WebClients {
     /**
      * A [WebClient] with [Json] serialization enabled.
      */
-    val Default: WebClient by lazy {
+    fun default(proxy: HttpProxy?): WebClient {
         val json = Json { ignoreUnknownKeys = true }
-        WebClient
+        val httpClient = httpClient(proxy)
+        val connector = ReactorClientHttpConnector(httpClient)
+        return WebClient
             .builder()
+            .clientConnector(connector)
             .codecs {
                 it.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
                 it.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
@@ -145,15 +149,80 @@ internal object WebClients {
     /**
      * A [WebClient] with [Json] serialization enabled that trusts *all* certificates.
      */
-    val Insecure: WebClient by lazy {
+    fun insecure(proxy: HttpProxy?): WebClient {
+        val httpClient = httpClient(proxy)
+
         log.warn("Using insecure WebClient trusting all certificates")
         val sslContext = SslContextBuilder.forClient()
             .trustManager(InsecureTrustManagerFactory.INSTANCE)
             .build()
-        val httpClient = HttpClient.create().secure { it.sslContext(sslContext) }
-        Default.mutate()
-            .clientConnector(ReactorClientHttpConnector(httpClient))
+        val insecureHttpClient = httpClient.secure { it.sslContext(sslContext) }
+        val connector = ReactorClientHttpConnector(insecureHttpClient)
+        return default(proxy).mutate()
+            .clientConnector(connector)
             .build()
+    }
+
+    private fun httpClient(proxy: HttpProxy?): HttpClient {
+        if (proxy == null) {
+            return HttpClient.create()
+        }
+        return HttpClient.create().proxy { proxyProvider ->
+            log.warn("Using WebClient with proxy settings")
+            proxy.username?.let { username ->
+                proxyProvider.type(ProxyProvider.Proxy.HTTP)
+                    .host(proxy.url.host)
+                    .port(proxy.url.port)
+                    .username(username)
+                    .password { proxy.password ?: "" }
+            } ?: proxyProvider.type(ProxyProvider.Proxy.HTTP)
+                .host(proxy.url.host)
+                .port(proxy.url.port)
+        }
+    }
+}
+
+data class HttpProxy(
+    val url: Url,
+    val username: String? = null,
+    val password: String? = null,
+) {
+    init {
+        require(password == null || username != null) {
+            "Password cannot be set if username is null"
+        }
+    }
+}
+
+/**
+ * [Client] instances for usage within the application.
+ */
+internal object RestEasyClients {
+
+    /**
+     * A [Client].
+     */
+    val Default: Client by lazy {
+        ResteasyClientClassicProvider().newRestEasyClient(
+            null,
+            null,
+            false,
+        ) // .property("org.jboss.resteasy.jaxrs.client.proxy.host", "example.com").property("org.jboss.resteasy.jaxrs.client.proxy.port", 8080)
+    }
+
+    /**
+     * A [Client] that trusts *all* certificates.
+     */
+    val Insecure: Client by lazy {
+        log.warn("Using insecure RestEasy Client trusting all certificates")
+        val sslContext = SSLContextBuilder.create()
+            .loadTrustMaterial(TrustAllStrategy())
+            .build()
+        ResteasyClientClassicProvider().newRestEasyClient(
+            null,
+            sslContext,
+            true,
+        ) // .property("org.jboss.resteasy.jaxrs.client.proxy.host", "example.com").property("org.jboss.resteasy.jaxrs.client.proxy.port", 8080)
     }
 }
 
@@ -246,10 +315,17 @@ fun beans(clock: Clock) = beans {
     //
     bean { clock }
     bean {
+        val proxy = env.getProperty("pid.http.proxy.url")?.let {
+            val url = Url(it)
+            val username = env.getProperty("pid.http.proxy.username")
+            val password = env.getProperty("pid.http.proxy.password")
+            HttpProxy(url, username, password)
+        }
+
         if ("insecure" in env.activeProfiles) {
-            WebClients.Insecure
+            WebClients.insecure(proxy = proxy)
         } else {
-            WebClients.Default
+            WebClients.default(proxy = proxy)
         }
     }
     bean {
