@@ -325,10 +325,10 @@ fun beans(clock: Clock) = beans {
     //
     bean { clock }
 
-    val proxy = env.getProperty("pid.http.proxy.url")?.let {
+    val proxy = env.getProperty("issuer.http.proxy.url")?.let {
         val url = Url(it)
-        val username = env.getProperty("pid.http.proxy.username")
-        val password = env.getProperty("pid.http.proxy.password")
+        val username = env.getProperty("issuer.http.proxy.username")
+        val password = env.getProperty("issuer.http.proxy.password")
         HttpProxy(url, username, password)
     }
     bean {

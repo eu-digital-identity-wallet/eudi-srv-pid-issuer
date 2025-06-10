@@ -416,15 +416,15 @@ Example: `classpath:/vct/pid_arf18.json` or `file:///vct/pid_arf18.json`
 
 ### Proxy configuration
 
-Variable: `PID_HTTP_PROXY_URL`  
+Variable: `ISSUER_HTTP_PROXY_URL`  
 Description: Set verifier proxy URL to use  
 Example: `http://exmaple.com`
 
-Variable: `PID_HTTP_PROXY_USERNAME`  
+Variable: `ISSUER_HTTP_PROXY_USERNAME`  
 Description: Set proxy username for proxy to use  
 Example: `username`
 
-Variable: `PID_HTTP_PROXY_PASSWORD`  
+Variable: `ISSUER_HTTP_PROXY_PASSWORD`  
 Description: Set proxy password for proxy to use  
 Example: `passwd`
 
