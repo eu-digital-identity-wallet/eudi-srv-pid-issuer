@@ -166,7 +166,7 @@ internal object WebClients {
             .build()
     }
 
-    private fun httpClient(proxy: HttpProxy?): HttpClient {
+    private fun httpClient(proxy: HttpProxy? = null): HttpClient {
         if (proxy == null) {
             return HttpClient.create()
         }
@@ -201,6 +201,8 @@ data class HttpProxy(
  * [Client] instances for usage within the application.
  */
 internal object RestEasyClients {
+    private const val PROXY_HOST_PROP = "org.jboss.resteasy.jaxrs.client.proxy.host"
+    private const val PROXY_PORT_PROP = "org.jboss.resteasy.jaxrs.client.proxy.port"
 
     /**
      * A [Client].
@@ -212,8 +214,8 @@ internal object RestEasyClients {
             false,
         )
         return proxy?.let {
-            client.property("org.jboss.resteasy.jaxrs.client.proxy.host", proxy.url)
-                .property("org.jboss.resteasy.jaxrs.client.proxy.port", proxy.url.port)
+            client.property(PROXY_HOST_PROP, proxy.url)
+                .property(PROXY_PORT_PROP, proxy.url.port)
         } ?: client
     }
 
