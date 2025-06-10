@@ -171,16 +171,16 @@ internal object WebClients {
             return HttpClient.create()
         }
         return HttpClient.create().proxy { proxyProvider ->
-            log.warn("Using WebClient with proxy settings")
-            proxy.username?.let { username ->
-                proxyProvider.type(ProxyProvider.Proxy.HTTP)
-                    .host(proxy.url.host)
-                    .port(proxy.url.port)
-                    .username(username)
-                    .password { proxy.password ?: "" }
-            } ?: proxyProvider.type(ProxyProvider.Proxy.HTTP)
+            log.info("Using WebClient with proxy settings")
+            proxyProvider.type(ProxyProvider.Proxy.HTTP)
                 .host(proxy.url.host)
                 .port(proxy.url.port)
+                .apply {
+                    proxy.username?.let {
+                        username(it)
+                        password { proxy.password ?: "" }
+                    }
+                }
         }
     }
 }
@@ -193,6 +193,12 @@ data class HttpProxy(
     init {
         require(password == null || username != null) {
             "Password cannot be set if username is null"
+        }
+        require(url.protocol == URLProtocol.HTTP) {
+            "Url should be Http"
+        }
+        require(url.encodedPathAndQuery.isBlank()) {
+            "No path or query params should be present in the Url"
         }
     }
 }
@@ -213,10 +219,11 @@ internal object RestEasyClients {
             null,
             false,
         )
-        return proxy?.let {
+        if (null != proxy) {
             client.property(PROXY_HOST_PROP, proxy.url)
                 .property(PROXY_PORT_PROP, proxy.url.port)
-        } ?: client
+        }
+        return client
     }
 
     /**
@@ -232,10 +239,11 @@ internal object RestEasyClients {
             sslContext,
             true,
         )
-        return proxy?.let {
-            client.property("org.jboss.resteasy.jaxrs.client.proxy.host", proxy.url)
-                .property("org.jboss.resteasy.jaxrs.client.proxy.port", proxy.url.port)
-        } ?: client
+        if (null != proxy) {
+            client.property(PROXY_HOST_PROP, proxy.url)
+                .property(PROXY_PORT_PROP, proxy.url.port)
+        }
+        return client
     }
 }
 
