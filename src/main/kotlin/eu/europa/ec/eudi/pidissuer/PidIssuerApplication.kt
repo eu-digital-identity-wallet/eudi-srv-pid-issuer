@@ -197,6 +197,9 @@ data class HttpProxy(
         require(url.encodedPathAndQuery.isBlank()) {
             "No path or query params should be present in the Url"
         }
+        require(url.fragment.isEmpty()) {
+            "No fragment should be present in the Url"
+        }
     }
 }
 
