@@ -35,9 +35,10 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
 import eu.europa.ec.eudi.sdjwt.*
+import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObject
+import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.sanOfDNSName
 import eu.europa.ec.eudi.sdjwt.vc.sanOfUniformResourceIdentifier
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import org.slf4j.LoggerFactory
@@ -155,7 +156,7 @@ private fun selectivelyDisclosed(
     exp: Instant,
     nbf: Instant?,
     statusListToken: StatusListToken?,
-): DisclosableObject =
+): SdJwtObject =
     sdJwt {
         //
         // Always disclosed claims
