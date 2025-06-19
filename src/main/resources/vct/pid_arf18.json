@@ -11,6 +11,54 @@
   "claims": [
     {
       "path": [
+        "iss"
+      ],
+      "sd": "never"
+    },
+    {
+      "path": [
+        "nbf"
+      ],
+      "sd": "never"
+    },
+    {
+      "path": [
+        "exp"
+      ],
+      "sd": "never"
+    },
+    {
+      "path": [
+        "cnf"
+      ],
+      "sd": "never"
+    },
+    {
+      "path": [
+        "vct"
+      ],
+      "sd": "never"
+    },
+    {
+      "path": [
+        "status"
+      ],
+      "sd": "never"
+    },
+    {
+      "path": [
+        "sub"
+      ],
+      "sd": "never"
+    },
+    {
+      "path": [
+        "iat"
+      ],
+      "sd": "never"
+    },
+    {
+      "path": [
         "family_name"
       ],
       "display": [
