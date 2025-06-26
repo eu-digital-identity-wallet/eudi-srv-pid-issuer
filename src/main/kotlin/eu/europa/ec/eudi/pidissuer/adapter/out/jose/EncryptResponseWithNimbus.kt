@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
+import arrow.core.Either
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWEHeader
 import com.nimbusds.jose.crypto.ECDHEncrypter
@@ -25,6 +26,7 @@ import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
+import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.port.input.DeferredCredentialSuccessResponse
@@ -50,7 +52,7 @@ class EncryptDeferredResponseNimbus(
     override fun invoke(
         response: DeferredCredentialSuccessResponse.PlainTO,
         parameters: RequestedResponseEncryption.Required,
-    ): Result<DeferredCredentialSuccessResponse.EncryptedJwtIssued> = runCatching {
+    ): Either<Throwable, DeferredCredentialSuccessResponse.EncryptedJwtIssued> = Either.catch {
         fun JWTClaimsSet.Builder.toJwtClaims(plain: DeferredCredentialSuccessResponse.PlainTO) {
             with(plain) {
                 credentials(plain.credentials)
@@ -86,7 +88,7 @@ class EncryptCredentialResponseNimbus(
     override fun invoke(
         response: IssueCredentialResponse.PlainTO,
         parameters: RequestedResponseEncryption.Required,
-    ): Result<IssueCredentialResponse.EncryptedJwtIssued> = kotlin.runCatching {
+    ): Either<Throwable, IssueCredentialResponse.EncryptedJwtIssued> = Either.catch {
         fun JWTClaimsSet.Builder.toJwtClaims(plain: IssueCredentialResponse.PlainTO) {
             with(plain) {
                 plain.credentials?.let { credentials(it) }
@@ -118,7 +120,7 @@ private class EncryptResponse(
     operator fun invoke(
         parameters: RequestedResponseEncryption.Required,
         responseAsJwtClaims: JWTClaimsSet.Builder.() -> Unit,
-    ): Result<String> = runCatching {
+    ): Either<Throwable, String> = Either.catch {
         val jweHeader = parameters.asHeader()
         val jwtClaimSet = asJwtClaimSet(clock.instant(), responseAsJwtClaims)
 
