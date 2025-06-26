@@ -36,6 +36,7 @@ import kotlinx.serialization.json.*
 import java.security.MessageDigest
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.util.*
 import kotlin.io.encoding.Base64
 
@@ -65,6 +66,10 @@ internal class EncodeEuropeanHealthInsuranceCardInSdJwtVc(
             keyID(issuerSigningKey.key.keyID)
             x509CertChain(issuerSigningKey.key.x509CertChain)
         }
+    }
+
+    private val formatter: DateTimeFormatter by lazy {
+        DateTimeFormatter.ISO_LOCAL_DATE
     }
 
     suspend operator fun invoke(
@@ -99,17 +104,20 @@ internal class EncodeEuropeanHealthInsuranceCardInSdJwtVc(
                 claim(EuropeanHealthInsuranceCardClaims.IssuingAuthority.Name.name, ehic.issuingAuthority.name.value)
             }
             claim(EuropeanHealthInsuranceCardClaims.IssuingCountry.name, ehic.issuingCountry.value)
-            claim(EuropeanHealthInsuranceCardClaims.DateOfExpiry.name, dateOfExpiry.withZoneSameInstant(ZoneOffset.UTC).toString())
-            claim(EuropeanHealthInsuranceCardClaims.DateOfIssuance.name, dateOfIssuance.withZoneSameInstant(ZoneOffset.UTC).toString())
+            claim(EuropeanHealthInsuranceCardClaims.DateOfExpiry.name, formatter.format(dateOfExpiry.withZoneSameInstant(ZoneOffset.UTC)))
+            claim(
+                EuropeanHealthInsuranceCardClaims.DateOfIssuance.name,
+                formatter.format(dateOfIssuance.withZoneSameInstant(ZoneOffset.UTC)),
+            )
             objClaim(EuropeanHealthInsuranceCardClaims.AuthenticSource.attribute.name) {
                 claim(EuropeanHealthInsuranceCardClaims.AuthenticSource.Id.name, ehic.authenticSource.id.value)
                 claim(EuropeanHealthInsuranceCardClaims.AuthenticSource.Name.name, ehic.authenticSource.name.value)
             }
             ehic.endingDate?.let {
-                claim(EuropeanHealthInsuranceCardClaims.EndingDate.name, it.withZoneSameInstant(ZoneOffset.UTC).toString())
+                claim(EuropeanHealthInsuranceCardClaims.EndingDate.name, formatter.format(it.withZoneSameInstant(ZoneOffset.UTC)))
             }
             ehic.startingDate?.let {
-                claim(EuropeanHealthInsuranceCardClaims.StartingDate.name, it.withZoneSameInstant(ZoneOffset.UTC).toString())
+                claim(EuropeanHealthInsuranceCardClaims.StartingDate.name, formatter.format(it.withZoneSameInstant(ZoneOffset.UTC)))
             }
             sdClaim(EuropeanHealthInsuranceCardClaims.DocumentNumber.name, ehic.documentNumber.value)
         }
