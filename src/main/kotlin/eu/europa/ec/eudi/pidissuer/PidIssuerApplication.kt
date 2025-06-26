@@ -127,6 +127,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.days
 import kotlin.time.toJavaDuration
 import kotlin.time.toKotlinDuration
+import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IssuingCountry as EhicIssuingCountry
 
 private val log = LoggerFactory.getLogger(PidIssuerApplication::class.java)
 
@@ -527,6 +528,7 @@ fun beans(clock: Clock) = beans {
                         Json.decodeFromStream<SdJwtVcTypeMetadata>(it)
                     }
                     val ehicNotificationsEnabled = env.getProperty<Boolean>("issuer.ehic.notifications.enabled") ?: true
+                    val issuingCountry = EhicIssuingCountry(env.getProperty("issuer.ehic.issuingCountry", "GR"))
                     val ehicIssuer = IssueEuropeanHealthInsuranceCard(
                         issuerSigningKey = ref<IssuerSigningKey>(),
                         digestsHashAlgorithm = digestHashAlgorithm,
@@ -536,7 +538,10 @@ fun beans(clock: Clock) = beans {
                         credentialIssuerId = issuerPublicUrl,
                         typeMetadata = typeMetadata,
                         validateProofs = ref(),
-                        getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(ref()),
+                        getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(
+                            ref(),
+                            issuingCountry,
+                        ),
                         notificationsEnabled = ehicNotificationsEnabled,
                         generateNotificationId = ref(),
                         storeIssuedCredentials = ref(),

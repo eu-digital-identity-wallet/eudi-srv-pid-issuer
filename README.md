@@ -237,6 +237,10 @@ Variable: `ISSUER_EHIC_NOTIFICATIONS_ENABLED`
 Description: Whether to enabled Notifications Endpoint support for European Health Insurance Cards issued in *SD-JWT VC* format.    
 Default value: `true`
 
+Variable: `ISSUER_EHIC_ISSUINGCOUNTRY`      
+Description: Issuing Country used for European Health Insurance Cards issued in *SD-JWT VC* format. 2-letter ISO Country Code.      
+Default value: `GR`  
+
 Variable: `ISSUER_CREDENTIALOFFER_URI`    
 Description: URI to use when generating Credential Offers.    
 Default value: `openid-credential-offer://`

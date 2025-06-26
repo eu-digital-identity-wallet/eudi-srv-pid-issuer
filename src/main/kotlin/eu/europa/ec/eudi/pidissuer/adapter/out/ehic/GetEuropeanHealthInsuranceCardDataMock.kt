@@ -23,6 +23,7 @@ import kotlin.time.toJavaDuration
 
 class GetEuropeanHealthInsuranceCardDataMock(
     private val clock: Clock,
+    private val issuingCountry: IssuingCountry,
 ) : GetEuropeanHealthInsuranceCardData {
 
     override suspend fun invoke(): EuropeanHealthInsuranceCard {
@@ -36,7 +37,7 @@ class GetEuropeanHealthInsuranceCardDataMock(
                 id = IssuingAuthority.Id("Uber-GR"),
                 name = Name("Uber Health Insurance"),
             ),
-            issuingCountry = IssuingCountry("GR"),
+            issuingCountry = issuingCountry,
             authenticSource = AuthenticSource(
                 id = AuthenticSource.Id("Uber-GR"),
                 name = Name("Uber Health Insurance"),
