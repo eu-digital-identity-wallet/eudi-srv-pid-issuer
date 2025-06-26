@@ -469,10 +469,13 @@ fun beans(clock: Clock) = beans {
                 if (enableSdJwtVcPid) {
                     val expiresIn = env.duration("issuer.pid.sd_jwt_vc.duration") ?: Duration.ofDays(30L)
                     val notUseBefore = env.duration("issuer.pid.sd_jwt_vc.notUseBefore")
+                    val digestsHashAlgorithm = env.getProperty<HashAlgorithm>(
+                        "issuer.pid.sd_jwt_vc.digests.hashAlgorithm",
+                    ) ?: HashAlgorithm.SHA_256
 
                     val issuerSigningKey = ref<IssuerSigningKey>()
                     val issueSdJwtVcPid = IssueSdJwtVcPid(
-                        hashAlgorithm = HashAlgorithm.SHA3_256,
+                        hashAlgorithm = digestsHashAlgorithm,
                         issuerSigningKey = issuerSigningKey,
                         getPidData = ref(),
                         clock = clock,
