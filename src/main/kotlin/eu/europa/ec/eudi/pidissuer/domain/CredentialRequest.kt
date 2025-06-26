@@ -18,8 +18,8 @@ package eu.europa.ec.eudi.pidissuer.domain
 import arrow.core.Either
 import arrow.core.NonEmptyList
 import arrow.core.raise.Raise
+import arrow.core.raise.either
 import arrow.core.raise.ensure
-import arrow.core.raise.result
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.AsymmetricJWK
@@ -73,7 +73,7 @@ sealed interface CredentialKey {
             /**
              * Resolves the provided DID url. Currently, it supports 'key' and 'jwk' methods.
              */
-            operator fun invoke(value: String): Result<DIDUrl> = result {
+            operator fun invoke(value: String): Either<Throwable, DIDUrl> = either {
                 val url = URI.create(value)
                 val jwk = resolveDidUrl(url).bind()
                 DIDUrl(url, jwk)

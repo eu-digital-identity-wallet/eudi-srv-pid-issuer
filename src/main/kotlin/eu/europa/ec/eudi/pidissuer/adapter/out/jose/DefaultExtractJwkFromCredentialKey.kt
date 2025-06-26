@@ -15,17 +15,17 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.raise.result
+import arrow.core.Either
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
 
+// TODO: Why this return result and is this correct?
 object DefaultExtractJwkFromCredentialKey : ExtractJwkFromCredentialKey {
-    override suspend fun invoke(key: CredentialKey): Result<JWK> =
-        result {
-            when (key) {
-                is CredentialKey.Jwk -> key.value
-                is CredentialKey.X5c -> JWK.parse(key.certificate)
-                is CredentialKey.DIDUrl -> key.jwk
-            }
+    override suspend fun invoke(key: CredentialKey): Either<Throwable, JWK> = Either.catch {
+        when (key) {
+            is CredentialKey.Jwk -> key.value
+            is CredentialKey.X5c -> JWK.parse(key.certificate)
+            is CredentialKey.DIDUrl -> key.jwk
         }
+    }
 }
