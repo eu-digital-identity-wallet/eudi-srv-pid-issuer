@@ -515,10 +515,10 @@ fun beans(clock: Clock) = beans {
                 if (enableEhic) {
                     val digestHashAlgorithm = env.getProperty<HashAlgorithm>(
                         "issuer.ehic.encoder.digests.hashAlgorithm",
-                    ) ?: HashAlgorithm.SHA_384
+                    ) ?: HashAlgorithm.SHA_256
                     val integrityHashAlgorithm = env.getProperty<IntegrityHashAlgorithm>(
                         "issuer.ehic.encoder.integrity.hashAlgorithm",
-                    ) ?: IntegrityHashAlgorithm.SHA_384
+                    ) ?: IntegrityHashAlgorithm.SHA_256
                     val validity = Duration.parse(env.getProperty("issuer.ehic.validity", "P30D"))
                     val typeMetadata = ClassPathResource("/vct/ehic.json").inputStream.use {
                         Json.decodeFromStream<SdJwtVcTypeMetadata>(it)
