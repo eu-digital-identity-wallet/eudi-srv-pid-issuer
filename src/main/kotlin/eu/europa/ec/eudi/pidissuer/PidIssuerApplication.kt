@@ -40,6 +40,9 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CredentialRequestFacto
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DecryptCNonceWithNimbusAndVerify
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultResolveCredentialRequestByCredentialIdentifier
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.GenerateCNonceAndEncryptWithNimbus
+import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.GetEuropeanHealthInsuranceCardDataMock
+import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IntegrityHashAlgorithm
+import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IssueEuropeanHealthInsuranceCard
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
@@ -56,6 +59,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
+import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
 import eu.europa.ec.eudi.sdjwt.vc.Vct
 import io.netty.handler.ssl.SslContextBuilder
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
@@ -63,6 +67,7 @@ import jakarta.ws.rs.client.Client
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
 import org.apache.http.conn.ssl.TrustAllStrategy
 import org.apache.http.ssl.SSLContextBuilder
 import org.keycloak.OAuth2Constants
@@ -82,6 +87,7 @@ import org.springframework.context.support.beans
 import org.springframework.core.env.Environment
 import org.springframework.core.env.getProperty
 import org.springframework.core.env.getRequiredProperty
+import org.springframework.core.io.ClassPathResource
 import org.springframework.core.io.DefaultResourceLoader
 import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.Resource
@@ -190,6 +196,7 @@ fun beans(clock: Clock) = beans {
     val enableSdJwtVcPid = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.enabled") ?: true
     val credentialsOfferUri = env.getRequiredProperty("issuer.credentialOffer.uri")
     val enableStatusList = env.getProperty<Boolean>("issuer.statusList.enabled") ?: false
+    val enableEhic = env.getProperty<Boolean>("issuer.ehic.enabled") ?: true
 
     //
     // Signing key
@@ -503,6 +510,35 @@ fun beans(clock: Clock) = beans {
                         validateProofs = ref(),
                     )
                     add(mdlIssuer)
+                }
+
+                if (enableEhic) {
+                    val digestHashAlgorithm = env.getProperty<HashAlgorithm>(
+                        "issuer.ehic.encoder.digests.hashAlgorithm",
+                    ) ?: HashAlgorithm.SHA_384
+                    val integrityHashAlgorithm = env.getProperty<IntegrityHashAlgorithm>(
+                        "issuer.ehic.encoder.integrity.hashAlgorithm",
+                    ) ?: IntegrityHashAlgorithm.SHA_384
+                    val validity = Duration.parse(env.getProperty("issuer.ehic.validity", "P30D"))
+                    val typeMetadata = ClassPathResource("/vct/ehic.json").inputStream.use {
+                        Json.decodeFromStream<SdJwtVcTypeMetadata>(it)
+                    }
+                    val ehicNotificationsEnabled = env.getProperty<Boolean>("issuer.ehic.notifications.enabled") ?: true
+                    val ehicIssuer = IssueEuropeanHealthInsuranceCard(
+                        issuerSigningKey = ref<IssuerSigningKey>(),
+                        digestsHashAlgorithm = digestHashAlgorithm,
+                        integrityHashAlgorithm = integrityHashAlgorithm,
+                        clock = ref(),
+                        validity = validity,
+                        credentialIssuerId = issuerPublicUrl,
+                        typeMetadata = typeMetadata,
+                        validateProofs = ref(),
+                        getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(ref()),
+                        notificationsEnabled = ehicNotificationsEnabled,
+                        generateNotificationId = ref(),
+                        storeIssuedCredentials = ref(),
+                    )
+                    add(ehicIssuer)
                 }
             },
             batchCredentialIssuance = run {

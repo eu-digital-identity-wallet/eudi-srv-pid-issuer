@@ -1,0 +1,168 @@
+{
+  "vct": "urn:eudi:ehic:1",
+  "name": "EHIC",
+  "description": "This is a European Health Insurance Card verifiable credential",
+  "display": [
+    {
+      "lang": "en-US",
+      "name": "EHIC",
+      "rendering": {
+        "simple": {
+          "background_color": "#1b263b",
+          "text_color": "#FFFFFF"
+        },
+        "svg_templates": [
+          {
+            "uri": "https://demo-issuer.wwwallet.org/images/template-ehic.svg"
+          }
+        ]
+      }
+    }
+  ],
+  "claims": [
+    {
+      "path": [
+        "personal_administrative_number"
+      ],
+      "svg_id": "personal_administrative_number",
+      "display": [
+        {
+          "lang": "en-US",
+          "label": "Social Security PIN",
+          "description": "Unique personal identifier used by social security services."
+        }
+      ]
+    },
+    {
+      "path": [
+        "issuing_country"
+      ],
+      "svg_id": "issuer_country",
+      "display": [
+        {
+          "lang": "en-US",
+          "label": "Issuing country",
+          "description": "The issuer country of the EHIC holder"
+        }
+      ]
+    },
+    {
+      "path": [
+        "issuing_authority",
+        "id"
+      ],
+      "display": [
+        {
+          "lang": "en-US",
+          "label": "Issuing authority id",
+          "description": "EHIC issuing authority unique identifier in EESSI."
+        }
+      ]
+    },
+    {
+      "path": [
+        "issuing_authority",
+        "name"
+      ],
+      "display": [
+        {
+          "lang": "en-US",
+          "label": "Issuing authority name",
+          "description": "EHIC issuing authority name in EESSI."
+        }
+      ]
+    },
+    {
+      "path": [
+        "date_of_expiry"
+      ],
+      "svg_id": "date_of_expiry",
+      "display": [
+        {
+          "lang": "en-US",
+          "label": "Expiry date",
+          "description": "EHIC expiration date."
+        }
+      ]
+    },
+    {
+      "path": [
+        "date_of_issuance"
+      ],
+      "display": [
+        {
+          "lang": "en-US",
+          "label": "Issue date",
+          "description": "EHIC validity start date."
+        }
+      ]
+    },
+    {
+      "path": [
+        "authentic_source",
+        "id"
+      ],
+      "sd": "never",
+      "svg_id": "authentic_source_id",
+      "display": [
+        {
+          "lang": "en-US",
+          "label": "Competent institution id",
+          "description": "Identifier of the competent insitution as registered in the EESSI Institution Repository."
+        }
+      ]
+    },
+    {
+      "path": [
+        "authentic_source",
+        "name"
+      ],
+      "sd": "never",
+      "svg_id": "authentic_source_name",
+      "display": [
+        {
+          "lang": "en-US",
+          "label": "Competent institution name",
+          "description": "Name of the competent insitution as registered in the EESSI Institution Repository."
+        }
+      ]
+    },
+    {
+      "path": [
+        "ending_date"
+      ],
+      "display": [
+        {
+          "lang": "en-US",
+          "label": "Ending date",
+          "description": "End date of the insurance coverage."
+        }
+      ]
+    },
+    {
+      "path": [
+        "starting_date"
+      ],
+      "display": [
+        {
+          "lang": "en-US",
+          "label": "Starting date",
+          "description": "Start date of the insurance coverage."
+        }
+      ]
+    },
+    {
+      "path": [
+        "document_number"
+      ],
+      "svg_id": "document_number",
+      "display": [
+        {
+          "lang": "en-US",
+          "label": "Document number",
+          "description": "EHIC unique document identifier."
+        }
+      ]
+    }
+  ]
+}

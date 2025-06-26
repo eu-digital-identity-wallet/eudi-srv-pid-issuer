@@ -28,6 +28,7 @@ services:
       timeout: 10s
       retries: 12
       start_interval: 30s
+      start_period: 30s
     volumes:
       - ./keycloak/extra/health-check.sh:/opt/keycloak/health-check.sh
       - ./keycloak/realms/:/opt/keycloak/data/import
