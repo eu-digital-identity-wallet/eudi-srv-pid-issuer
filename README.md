@@ -17,14 +17,15 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 
 An implementation of a credential issuing service, according to [OpenId4VCI - draft15](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-15.html).
 
-The service provides generic support for `mso_mdoc` and `SD-JWT-VC` formats using PID and mDL as an example
+The service provides generic support for `mso_mdoc` and `SD-JWT-VC` formats using PID, mDL, and European Health Insurance Card as an example
 and requires the use of a suitable OAuth 2.0 server.
 
-| Credential/Attestation | Format    |
-|------------------------|-----------|
-| PID                    | mso_mdoc  |
-| PID                    | SD-JWT-VC |
-| mDL                    | mso_mdoc  | 
+| Credential/Attestation         | Format    |
+|--------------------------------|-----------|
+| PID                            | mso_mdoc  |
+| PID                            | SD-JWT VC |
+| mDL                            | mso_mdoc  | 
+| European Health Insurance Card | SD-JWT VC |
 
 ### OpenId4VCI coverage
 
@@ -57,18 +58,20 @@ The Realm *pid-issuer-realm*:
 
 - has user self-registration active with a custom registration page accessible
   via https://localhost/idp/realms/pid-issuer-realm/account/#/
-- defines *eu.europa.ec.eudi.pid_vc_sd_jwt* scope for requesting PID issuance in SD JWT VC format
+- defines *eu.europa.ec.eudi.pid_vc_sd_jwt* scope for requesting PID issuance in SD-JWT VC format
 - defines *eu.europa.ec.eudi.pid_mso_mdoc* scope for requesting PID issuance in MSO MDOC format
+- defines *org.iso.18013.5.1.mDL* scope for requesting mDL issuance in MSO MDOC format
+- defines *urn:eudi:ehic:1:dc+sd-jwt* scope for requesting European Health Insurance Card issuance in SD-JWT VC format
 - defines *wallet-dev* and *pid-issuer-srv* clients
 - contains sample user with credentials: tneal / password
 
 The Administration console is accessible via https://localhost/idp/admin/ using the credential admin / password
 
-### PID mDL Issuer
+### Issuer
 
-A PID mDL Issuer instance accessible via https://localhost/pid-issuer/
+An Issuer instance accessible via https://localhost/pid-issuer/
 
-It uses the configured Keycloak instance as an Authorization Server, and supports issuing of PID and mDL.
+It uses the configured Keycloak instance as an Authorization Server, and supports issuing of PID, mDL, and European Health Insurance Card.
 Additionally, *deferred issuance* is enabled for PID in *SD JWT VC* format.
 
 The issuing country is set to GR (Greece).
@@ -186,6 +189,11 @@ Variable: `ISSUER_PID_SD_JWT_VC_NOTIFICATIONS_ENABLED`
 Description: Whether to enabled Notifications Endpoint support for PIDs issued in *SD JWT VC*.  
 Default value: `true`
 
+Variable: `ISSUER_PID_SD_JWT_VC_DIGESTS_HASHALGORITHM`  
+Description: Hash algorithm used to calculate the disclosure digests of PIDs issued in *SD JWT VC*.   
+Allowed values: `sha-256`, `sha-384`, `sha-512`, `sha3-256`, `sha3-384`, `sha3-512`   
+Default value: `sha-256`
+
 Variable: `ISSUER_PID_ISSUINGCOUNTRY`  
 Description: Code of the Country issuing the PID  
 Default value: `GR`
@@ -206,6 +214,32 @@ Default value: `P5D`
 Variable: `ISSUER_MDL_NOTIFICATIONS_ENABLED`    
 Description: Whether to enabled Notifications Endpoint support for mDLs.    
 Default value: `true`
+
+Variable: `ISSUER_EHIC_ENABLED`    
+Description: Whether to enabled support for issuing European Health Insurance Cards in *SD-JWT VC* format.    
+Default value: `true`
+
+Variable: `ISSUER_EHIC_VALIDITY`    
+Description: Validity of European Health Insurance Cards issued in *SD-JWT VC* format. Uses Period syntax.      
+Default value: `P30D`
+
+Variable: `ISSUER_EHIC_ENCODER_DIGESTS_HASHALGORITHM`  
+Description: Hash algorithm used to calculate the disclosure digests of European Health Insurance Cards issued in *SD-JWT VC* format.    
+Allowed values: `sha-256`, `sha-384`, `sha-512`, `sha3-256`, `sha3-384`, `sha3-512`   
+Default value: `sha-256`
+
+Variable: `ISSUER_EHIC_ENCODER_INTEGRITY_HASHALGORITHM`  
+Description: Hash algorithm used to calculate Sub-Resource Integrity for the `vctm` of European Health Insurance Cards issued in *SD-JWT VC* format.     
+Allowed values: `sha-256`, `sha-384`, `sha-512`  
+Default value: `sha-256`
+
+Variable: `ISSUER_EHIC_NOTIFICATIONS_ENABLED`    
+Description: Whether to enabled Notifications Endpoint support for European Health Insurance Cards issued in *SD-JWT VC* format.    
+Default value: `true`
+
+Variable: `ISSUER_EHIC_ISSUINGCOUNTRY`      
+Description: Issuing Country used for European Health Insurance Cards issued in *SD-JWT VC* format. 2-letter ISO Country Code.      
+Default value: `GR`  
 
 Variable: `ISSUER_CREDENTIALOFFER_URI`    
 Description: URI to use when generating Credential Offers.    
