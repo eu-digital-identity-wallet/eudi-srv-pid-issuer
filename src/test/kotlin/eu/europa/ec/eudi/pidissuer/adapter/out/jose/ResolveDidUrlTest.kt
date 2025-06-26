@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import com.nimbusds.jose.jwk.JWK
+import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import org.junit.jupiter.api.assertDoesNotThrow
 import java.net.URI
 import kotlin.test.Test
