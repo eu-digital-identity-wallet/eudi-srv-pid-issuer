@@ -20,6 +20,7 @@ import arrow.core.raise.Raise
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
+import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential

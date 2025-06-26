@@ -13,16 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.out.jose
+package eu.europa.ec.eudi.pidissuer.adapter.out.util
 
 import arrow.core.Either
-import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
+import arrow.core.getOrElse
 
-fun interface EncryptCredentialResponse {
+internal fun <T> Either<Throwable, T>.getOrThrow(): T = getOrElse { throw it }
 
-    operator fun invoke(
-        response: IssueCredentialResponse.PlainTO,
-        parameters: RequestedResponseEncryption.Required,
-    ): Either<Throwable, IssueCredentialResponse.EncryptedJwtIssued>
-}
+internal fun <T, E : Exception> Either<Throwable, T>.getOrThrow(convert: (Throwable) -> E): T =
+    fold(
+        ifLeft = { throw convert(it) },
+        ifRight = { it },
+    )
+
+internal fun <T> Either<Throwable, T>.toResult(): Result<T> =
+    fold(
+        ifLeft = { Result.failure(it) },
+        ifRight = { Result.success(it) },
+    )

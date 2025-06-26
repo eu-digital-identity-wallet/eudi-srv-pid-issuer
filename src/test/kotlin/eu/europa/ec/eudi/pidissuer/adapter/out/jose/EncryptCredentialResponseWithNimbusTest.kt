@@ -15,6 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
+import arrow.core.Either
+import arrow.core.getOrElse
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.nimbusds.jose.JWEAlgorithm
@@ -110,12 +112,12 @@ internal class EncryptCredentialResponseWithNimbusTest {
             )
         }
 
-        val claims = runCatching { processor.process(encrypted.jwt, null) }.getOrElse { fail(it.message, it) }
+        val claims = Either.catch { processor.process(encrypted.jwt, null) }.getOrElse { fail(it.message, it) }
         val credential = claims.getListClaim("credentials")
             ?.let {
                 it.map { credential ->
                     when (credential) {
-                        is Map<*, *> -> runCatching {
+                        is Map<*, *> -> Either.catch {
                             Json.decodeFromString<IssueCredentialResponse.PlainTO.CredentialTO>(
                                 jacksonObjectMapper.writeValueAsString(credential),
                             )
