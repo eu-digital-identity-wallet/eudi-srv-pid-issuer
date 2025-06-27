@@ -59,6 +59,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
 import eu.europa.ec.eudi.sdjwt.vc.Vct
+import io.ktor.http.*
 import io.netty.handler.ssl.SslContextBuilder
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import jakarta.ws.rs.client.Client
@@ -114,6 +115,7 @@ import org.springframework.security.web.server.authorization.ServerWebExchangeDe
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
+import reactor.netty.transport.ProxyProvider
 import java.net.URI
 import java.net.URL
 import java.security.KeyStore
@@ -137,10 +139,13 @@ internal object WebClients {
     /**
      * A [WebClient] with [Json] serialization enabled.
      */
-    val Default: WebClient by lazy {
+    fun default(proxy: HttpProxy?): WebClient {
         val json = Json { ignoreUnknownKeys = true }
-        WebClient
+        val httpClient = httpClient(proxy)
+        val connector = ReactorClientHttpConnector(httpClient)
+        return WebClient
             .builder()
+            .clientConnector(connector)
             .codecs {
                 it.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
                 it.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
@@ -152,15 +157,57 @@ internal object WebClients {
     /**
      * A [WebClient] with [Json] serialization enabled that trusts *all* certificates.
      */
-    val Insecure: WebClient by lazy {
+    fun insecure(proxy: HttpProxy?): WebClient {
+        val httpClient = httpClient(proxy)
+
         log.warn("Using insecure WebClient trusting all certificates")
         val sslContext = SslContextBuilder.forClient()
             .trustManager(InsecureTrustManagerFactory.INSTANCE)
             .build()
-        val httpClient = HttpClient.create().secure { it.sslContext(sslContext) }
-        Default.mutate()
-            .clientConnector(ReactorClientHttpConnector(httpClient))
+        val insecureHttpClient = httpClient.secure { it.sslContext(sslContext) }
+        val connector = ReactorClientHttpConnector(insecureHttpClient)
+        return default(proxy).mutate()
+            .clientConnector(connector)
             .build()
+    }
+
+    private fun httpClient(proxy: HttpProxy? = null): HttpClient {
+        if (proxy == null) {
+            return HttpClient.create()
+        }
+        return HttpClient.create().proxy { proxyProvider ->
+            log.info("Using WebClient with proxy settings")
+            proxyProvider.type(ProxyProvider.Proxy.HTTP)
+                .host(proxy.url.host)
+                .port(proxy.url.port)
+                .apply {
+                    proxy.username?.let {
+                        username(it)
+                        password { proxy.password ?: "" }
+                    }
+                }
+        }
+    }
+}
+
+data class HttpProxy(
+    val url: Url,
+    val username: String? = null,
+    val password: String? = null,
+) {
+    init {
+        require(password == null || username != null) {
+            "Password cannot be set if username is null"
+        }
+        require(url.protocol == URLProtocol.HTTP) {
+            "Url should be Http"
+        }
+        require(url.encodedPathAndQuery.isBlank()) {
+            "No path or query params should be present in the Url"
+        }
+        require(url.fragment.isEmpty()) {
+            "No fragment should be present in the Url"
+        }
     }
 }
 
@@ -168,23 +215,43 @@ internal object WebClients {
  * [Client] instances for usage within the application.
  */
 internal object RestEasyClients {
+    private const val PROXY_HOST_PROP = "org.jboss.resteasy.jaxrs.client.proxy.host"
+    private const val PROXY_PORT_PROP = "org.jboss.resteasy.jaxrs.client.proxy.port"
 
     /**
      * A [Client].
      */
-    val Default: Client by lazy {
-        ResteasyClientClassicProvider().newRestEasyClient(null, null, false)
+    fun default(proxy: HttpProxy?): Client {
+        val client: Client = ResteasyClientClassicProvider().newRestEasyClient(
+            null,
+            null,
+            false,
+        )
+        if (null != proxy) {
+            client.property(PROXY_HOST_PROP, proxy.url)
+                .property(PROXY_PORT_PROP, proxy.url.port)
+        }
+        return client
     }
 
     /**
      * A [Client] that trusts *all* certificates.
      */
-    val Insecure: Client by lazy {
+    fun insecure(proxy: HttpProxy?): Client {
         log.warn("Using insecure RestEasy Client trusting all certificates")
         val sslContext = SSLContextBuilder.create()
             .loadTrustMaterial(TrustAllStrategy())
             .build()
-        ResteasyClientClassicProvider().newRestEasyClient(null, sslContext, true)
+        val client: Client = ResteasyClientClassicProvider().newRestEasyClient(
+            null,
+            sslContext,
+            true,
+        )
+        if (null != proxy) {
+            client.property(PROXY_HOST_PROP, proxy.url)
+                .property(PROXY_PORT_PROP, proxy.url.port)
+        }
+        return client
     }
 }
 
@@ -276,18 +343,25 @@ fun beans(clock: Clock) = beans {
     // Adapters (out ports)
     //
     bean { clock }
+
+    val proxy = env.getProperty("issuer.http.proxy.url")?.let {
+        val url = Url(it)
+        val username = env.getProperty("issuer.http.proxy.username")
+        val password = env.getProperty("issuer.http.proxy.password")
+        HttpProxy(url, username, password)
+    }
     bean {
         if ("insecure" in env.activeProfiles) {
-            WebClients.Insecure
+            WebClients.insecure(proxy = proxy)
         } else {
-            WebClients.Default
+            WebClients.default(proxy = proxy)
         }
     }
     bean {
         if ("insecure" in env.activeProfiles) {
-            RestEasyClients.Insecure
+            RestEasyClients.insecure(proxy)
         } else {
-            RestEasyClients.Default
+            RestEasyClients.default(proxy)
         }
     }
     bean {
