@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.status
 
+import arrow.core.Either
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
 import kotlinx.serialization.Required
@@ -40,7 +41,7 @@ internal class GenerateStatusListTokenWithExternalService(
     override suspend fun invoke(
         type: String,
         expiration: ZonedDateTime,
-    ): Result<StatusListToken> = runCatching {
+    ): Either<Throwable, StatusListToken> = Either.catch {
         require(type.isNotBlank()) { "type cannot be blank" }
 
         val statusTokens = webClient.post()

@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.port.input
 import arrow.core.Either
 import arrow.core.raise.Raise
 import arrow.core.raise.either
+import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.domain.TransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptDeferredResponse

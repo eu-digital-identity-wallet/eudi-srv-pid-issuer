@@ -15,15 +15,17 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
+import arrow.core.Either
 import arrow.core.NonEmptySet
+import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
-import arrow.core.raise.result
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
+import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import kotlinx.coroutines.async
@@ -157,9 +159,10 @@ internal class WalletApi(
     }
 }
 
-private suspend fun ServerRequest.authorizationContext(): Result<AuthorizationContext> =
-    result {
+private suspend fun ServerRequest.authorizationContext(): Either<Throwable, AuthorizationContext> =
+    either {
         val authentication = awaitPrincipal()
+
         ensureNotNull(authentication) { IllegalArgumentException("Authentication is expected") }
 
         fun fromSpring(authority: GrantedAuthority): Scope? =
