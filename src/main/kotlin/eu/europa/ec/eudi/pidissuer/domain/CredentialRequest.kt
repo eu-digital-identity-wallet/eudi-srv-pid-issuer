@@ -172,3 +172,12 @@ fun Raise<String>.assertIsSupported(credentialRequest: CredentialRequest, meta: 
         }
     }
 }
+
+/**
+ * A resolved Credential Request
+ */
+data class ResolvedCredentialRequest(
+    val credentialConfigurationId: CredentialConfigurationId,
+    val credentialRequest: CredentialRequest,
+    val credentialIdentifier: CredentialIdentifier?,
+)

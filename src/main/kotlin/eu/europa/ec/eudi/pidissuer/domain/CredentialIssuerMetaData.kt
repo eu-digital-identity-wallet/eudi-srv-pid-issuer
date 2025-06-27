@@ -130,6 +130,11 @@ data class CredentialIssuerMetaData(
         require(displayLocales.size == displayLocales.distinct().size) {
             "only one display object can be configured per locale"
         }
+
+        val credentialConfigurationIds = specificCredentialIssuers.map { it.supportedCredential.id }
+        require(credentialConfigurationIds.size == credentialConfigurationIds.distinct().size) {
+            "credential configuration ids must be unique"
+        }
     }
 
     val credentialConfigurationsSupported: List<CredentialConfiguration>

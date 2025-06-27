@@ -176,10 +176,14 @@ internal object SdJwtVcPidClaims {
 
 private fun pidDocType(version: Int): String = "urn:eudi:pid:$version"
 
+internal val SdJwtVcPidVct: SdJwtVcType = SdJwtVcType(pidDocType(1))
+
+internal val SdJwtVcPidCredentialConfigurationId: CredentialConfigurationId = CredentialConfigurationId(PidSdJwtVcScope.value)
+
 fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(
-        id = CredentialConfigurationId(PidSdJwtVcScope.value),
-        type = SdJwtVcType(pidDocType(1)),
+        id = SdJwtVcPidCredentialConfigurationId,
+        type = SdJwtVcPidVct,
         display = pidDisplay,
         claims = SdJwtVcPidClaims.all(),
         cryptographicBindingMethodsSupported = nonEmptySetOf(CryptographicBindingMethod.Jwk),

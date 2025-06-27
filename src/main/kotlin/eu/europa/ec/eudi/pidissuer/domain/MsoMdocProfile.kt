@@ -53,7 +53,7 @@ data class MsoMdocCredentialConfiguration(
     val docType: MsoDocType,
     override val cryptographicBindingMethodsSupported: Set<CryptographicBindingMethod>,
     override val credentialSigningAlgorithmsSupported: Set<JWSAlgorithm>,
-    override val scope: Scope? = null,
+    override val scope: Scope,
     override val display: List<CredentialDisplay> = emptyList(),
     val claims: List<ClaimDefinition> = emptyList(),
     override val proofTypesSupported: ProofTypesSupported = ProofTypesSupported.Empty,

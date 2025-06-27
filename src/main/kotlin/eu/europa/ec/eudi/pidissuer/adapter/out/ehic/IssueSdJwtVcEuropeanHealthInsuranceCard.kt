@@ -24,24 +24,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.IsAttribute
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
-import eu.europa.ec.eudi.pidissuer.domain.ClaimDefinition
-import eu.europa.ec.eudi.pidissuer.domain.ClaimPath
-import eu.europa.ec.eudi.pidissuer.domain.CredentialConfigurationId
-import eu.europa.ec.eudi.pidissuer.domain.CredentialDisplay
-import eu.europa.ec.eudi.pidissuer.domain.CredentialIdentifier
-import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
-import eu.europa.ec.eudi.pidissuer.domain.CredentialRequest
-import eu.europa.ec.eudi.pidissuer.domain.CredentialResponse
-import eu.europa.ec.eudi.pidissuer.domain.CryptographicBindingMethod
-import eu.europa.ec.eudi.pidissuer.domain.DisplayName
-import eu.europa.ec.eudi.pidissuer.domain.IssuedCredentials
-import eu.europa.ec.eudi.pidissuer.domain.KeyAttestation
-import eu.europa.ec.eudi.pidissuer.domain.ProofType
-import eu.europa.ec.eudi.pidissuer.domain.ProofTypesSupported
-import eu.europa.ec.eudi.pidissuer.domain.SD_JWT_VC_FORMAT
-import eu.europa.ec.eudi.pidissuer.domain.Scope
-import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcCredentialConfiguration
-import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType
+import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
@@ -53,7 +36,7 @@ import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.time.Duration
 import java.time.ZonedDateTime
-import java.util.Locale
+import java.util.*
 
 private val EuropeanHealthInsuranceCardScope: Scope = Scope("urn:eudi:ehic:1:dc+sd-jwt")
 
@@ -179,11 +162,15 @@ internal object EuropeanHealthInsuranceCardClaims {
 
 private val EuropeanHealthInsuranceCardVct: SdJwtVcType = SdJwtVcType("urn:eudi:ehic:1")
 
-private fun europeanHealthInsuranceCardCredentialConfiguration(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration =
+private fun europeanHealthInsuranceCardCredentialConfiguration(
+    signingAlgorithm: JWSAlgorithm,
+    credentialConfigurationId: CredentialConfigurationId,
+    scope: Scope,
+): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(
-        id = CredentialConfigurationId(EuropeanHealthInsuranceCardScope.value),
+        id = credentialConfigurationId,
         type = EuropeanHealthInsuranceCardVct,
-        scope = EuropeanHealthInsuranceCardScope,
+        scope = scope,
         cryptographicBindingMethodsSupported = nonEmptySetOf(CryptographicBindingMethod.Jwk),
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
         display = listOf(
@@ -210,16 +197,14 @@ private fun europeanHealthInsuranceCardCredentialConfiguration(signingAlgorithm:
 
     )
 
-private val log = LoggerFactory.getLogger(IssueEuropeanHealthInsuranceCard::class.java)
+private val log = LoggerFactory.getLogger(IssueSdJwtVcEuropeanHealthInsuranceCard::class.java)
 
-internal class IssueEuropeanHealthInsuranceCard(
-    issuerSigningKey: IssuerSigningKey,
-    digestsHashAlgorithm: HashAlgorithm,
-    integrityHashAlgorithm: IntegrityHashAlgorithm,
+internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
+    override val supportedCredential: SdJwtVcCredentialConfiguration,
+    override val publicKey: JWK,
+    private val encode: EncodeEuropeanHealthInsuranceCardInSdJwtVc,
     private val clock: Clock,
     private val validity: Duration,
-    credentialIssuerId: CredentialIssuerId,
-    typeMetadata: SdJwtVcTypeMetadata,
     private val validateProofs: ValidateProofs,
     private val getEuropeanHealthInsuranceCardData: GetEuropeanHealthInsuranceCardData,
     private val notificationsEnabled: Boolean,
@@ -228,24 +213,7 @@ internal class IssueEuropeanHealthInsuranceCard(
 
 ) : IssueSpecificCredential {
     init {
-        require(EuropeanHealthInsuranceCardVct.value == typeMetadata.vct.value)
         require(!validity.isNegative && !validity.isZero)
-    }
-
-    override val supportedCredential: SdJwtVcCredentialConfiguration =
-        europeanHealthInsuranceCardCredentialConfiguration(issuerSigningKey.signingAlgorithm)
-    override val publicKey: JWK =
-        issuerSigningKey.key.toPublicJWK()
-
-    private val encode: EncodeEuropeanHealthInsuranceCardInSdJwtVc by lazy {
-        EncodeEuropeanHealthInsuranceCardInSdJwtVc(
-            digestsHashAlgorithm,
-            issuerSigningKey,
-            integrityHashAlgorithm,
-            EuropeanHealthInsuranceCardVct,
-            credentialIssuerId,
-            typeMetadata,
-        )
     }
 
     override suspend fun invoke(
@@ -279,5 +247,83 @@ internal class IssueEuropeanHealthInsuranceCard(
                 log.info("Successfully issued EHIC")
                 log.debug("Issued EHIC data {}", it)
             }
+    }
+
+    companion object {
+        fun jwsJsonFlattened(
+            issuerSigningKey: IssuerSigningKey,
+            digestsHashAlgorithm: HashAlgorithm,
+            integrityHashAlgorithm: IntegrityHashAlgorithm,
+            credentialIssuerId: CredentialIssuerId,
+            typeMetadata: SdJwtVcTypeMetadata,
+            clock: Clock,
+            validity: Duration,
+            validateProofs: ValidateProofs,
+            getEuropeanHealthInsuranceCardData: GetEuropeanHealthInsuranceCardData,
+            notificationsEnabled: Boolean,
+            generateNotificationId: GenerateNotificationId,
+            storeIssuedCredentials: StoreIssuedCredentials,
+        ): IssueSdJwtVcEuropeanHealthInsuranceCard =
+            IssueSdJwtVcEuropeanHealthInsuranceCard(
+                europeanHealthInsuranceCardCredentialConfiguration(
+                    issuerSigningKey.signingAlgorithm,
+                    CredentialConfigurationId("urn:eudi:ehic:1:dc+sd-jwt-jws-json"),
+                    EuropeanHealthInsuranceCardScope,
+                ),
+                issuerSigningKey.key.toPublicJWK(),
+                EncodeEuropeanHealthInsuranceCardInSdJwtVc.jwsJsonFlattened(
+                    digestsHashAlgorithm,
+                    issuerSigningKey,
+                    integrityHashAlgorithm,
+                    EuropeanHealthInsuranceCardVct,
+                    credentialIssuerId,
+                    typeMetadata,
+                ),
+                clock,
+                validity,
+                validateProofs,
+                getEuropeanHealthInsuranceCardData,
+                notificationsEnabled,
+                generateNotificationId,
+                storeIssuedCredentials,
+            )
+
+        fun compact(
+            issuerSigningKey: IssuerSigningKey,
+            digestsHashAlgorithm: HashAlgorithm,
+            integrityHashAlgorithm: IntegrityHashAlgorithm,
+            credentialIssuerId: CredentialIssuerId,
+            typeMetadata: SdJwtVcTypeMetadata,
+            clock: Clock,
+            validity: Duration,
+            validateProofs: ValidateProofs,
+            getEuropeanHealthInsuranceCardData: GetEuropeanHealthInsuranceCardData,
+            notificationsEnabled: Boolean,
+            generateNotificationId: GenerateNotificationId,
+            storeIssuedCredentials: StoreIssuedCredentials,
+        ): IssueSdJwtVcEuropeanHealthInsuranceCard =
+            IssueSdJwtVcEuropeanHealthInsuranceCard(
+                europeanHealthInsuranceCardCredentialConfiguration(
+                    issuerSigningKey.signingAlgorithm,
+                    CredentialConfigurationId("urn:eudi:ehic:1:dc+sd-jwt-compact"),
+                    EuropeanHealthInsuranceCardScope,
+                ),
+                issuerSigningKey.key.toPublicJWK(),
+                EncodeEuropeanHealthInsuranceCardInSdJwtVc.compact(
+                    digestsHashAlgorithm,
+                    issuerSigningKey,
+                    integrityHashAlgorithm,
+                    EuropeanHealthInsuranceCardVct,
+                    credentialIssuerId,
+                    typeMetadata,
+                ),
+                clock,
+                validity,
+                validateProofs,
+                getEuropeanHealthInsuranceCardData,
+                notificationsEnabled,
+                generateNotificationId,
+                storeIssuedCredentials,
+            )
     }
 }
