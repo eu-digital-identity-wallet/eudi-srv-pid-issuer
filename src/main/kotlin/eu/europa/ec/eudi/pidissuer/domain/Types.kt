@@ -145,3 +145,9 @@ value class CredentialIdentifier(val value: String)
  * @see <a href="https://datatracker.ietf.org/doc/draft-ietf-oauth-status-list/">https://datatracker.ietf.org/doc/draft-ietf-oauth-status-list/</a>
  */
 data class StatusListToken(val statusList: URI, val index: UInt)
+
+enum class IntegrityHashAlgorithm(val id: String) {
+    SHA_256("sha256"),
+    SHA_384("sha384"),
+    SHA_512("sha512"),
+}

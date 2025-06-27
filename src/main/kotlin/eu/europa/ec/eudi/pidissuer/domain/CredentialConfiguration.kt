@@ -90,7 +90,7 @@ value class ProofTypesSupported private constructor(val values: Set<ProofType>) 
  */
 sealed interface CredentialConfiguration {
     val id: CredentialConfigurationId
-    val scope: Scope?
+    val scope: Scope
     val display: List<CredentialDisplay>
     val cryptographicBindingMethodsSupported: Set<CryptographicBindingMethod>
     val credentialSigningAlgorithmsSupported: Set<JWSAlgorithm>

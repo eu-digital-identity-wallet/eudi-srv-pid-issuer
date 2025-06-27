@@ -41,8 +41,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DecryptCNonceWithNimbu
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultResolveCredentialRequestByCredentialIdentifier
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.GenerateCNonceAndEncryptWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.GetEuropeanHealthInsuranceCardDataMock
-import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IntegrityHashAlgorithm
-import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IssueEuropeanHealthInsuranceCard
+import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IssueSdJwtVcEuropeanHealthInsuranceCard
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
@@ -529,14 +528,15 @@ fun beans(clock: Clock) = beans {
                     }
                     val ehicNotificationsEnabled = env.getProperty<Boolean>("issuer.ehic.notifications.enabled") ?: true
                     val issuingCountry = EhicIssuingCountry(env.getProperty("issuer.ehic.issuingCountry", "GR"))
-                    val ehicIssuer = IssueEuropeanHealthInsuranceCard(
+
+                    val ehicJwsJsonFlattenedIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.jwsJsonFlattened(
                         issuerSigningKey = ref<IssuerSigningKey>(),
                         digestsHashAlgorithm = digestHashAlgorithm,
                         integrityHashAlgorithm = integrityHashAlgorithm,
-                        clock = ref(),
-                        validity = validity,
                         credentialIssuerId = issuerPublicUrl,
                         typeMetadata = typeMetadata,
+                        clock = ref(),
+                        validity = validity,
                         validateProofs = ref(),
                         getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(
                             ref(),
@@ -546,7 +546,26 @@ fun beans(clock: Clock) = beans {
                         generateNotificationId = ref(),
                         storeIssuedCredentials = ref(),
                     )
-                    add(ehicIssuer)
+                    add(ehicJwsJsonFlattenedIssuer)
+
+                    val ehicCompactIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.compact(
+                        issuerSigningKey = ref<IssuerSigningKey>(),
+                        digestsHashAlgorithm = digestHashAlgorithm,
+                        integrityHashAlgorithm = integrityHashAlgorithm,
+                        credentialIssuerId = issuerPublicUrl,
+                        typeMetadata = typeMetadata,
+                        clock = ref(),
+                        validity = validity,
+                        validateProofs = ref(),
+                        getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(
+                            ref(),
+                            issuingCountry,
+                        ),
+                        notificationsEnabled = ehicNotificationsEnabled,
+                        generateNotificationId = ref(),
+                        storeIssuedCredentials = ref(),
+                    )
+                    add(ehicCompactIssuer)
                 }
             },
             batchCredentialIssuance = run {

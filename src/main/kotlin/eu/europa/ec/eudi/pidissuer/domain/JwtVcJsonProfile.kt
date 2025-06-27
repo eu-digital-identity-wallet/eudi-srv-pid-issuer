@@ -30,7 +30,7 @@ val JWT_VS_JSON_FORMAT = Format(JWT_VS_JSON_FORMAT_VALUE)
  */
 data class JwtVcJsonCredentialConfiguration(
     override val id: CredentialConfigurationId,
-    override val scope: Scope? = null,
+    override val scope: Scope,
     override val cryptographicBindingMethodsSupported: Set<CryptographicBindingMethod>,
     override val credentialSigningAlgorithmsSupported: Set<JWSAlgorithm>,
     override val display: List<CredentialDisplay>,

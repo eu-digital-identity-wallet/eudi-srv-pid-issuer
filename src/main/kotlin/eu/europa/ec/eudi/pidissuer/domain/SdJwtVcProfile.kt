@@ -34,7 +34,7 @@ value class SdJwtVcType(val value: String)
 data class SdJwtVcCredentialConfiguration(
     override val id: CredentialConfigurationId,
     val type: SdJwtVcType,
-    override val scope: Scope? = null,
+    override val scope: Scope,
     override val cryptographicBindingMethodsSupported: NonEmptySet<CryptographicBindingMethod>,
     override val credentialSigningAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
     override val display: List<CredentialDisplay>,
