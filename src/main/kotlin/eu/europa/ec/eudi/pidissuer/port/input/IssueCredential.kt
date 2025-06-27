@@ -130,7 +130,7 @@ sealed interface IssueCredentialError {
      */
     data class InvalidEncryptionParameters(val error: Throwable) : IssueCredentialError
 
-    data class WrongScope(val expected: List<Scope>) : IssueCredentialError
+    data class WrongScope(val expected: Scope) : IssueCredentialError
 
     data class Unexpected(val msg: String, val cause: Throwable? = null) : IssueCredentialError
 }
@@ -316,16 +316,13 @@ private class Services(
             val request =
                 when (unresolvedRequest) {
                     is UnresolvedCredentialRequest.ByCredentialConfigurationId ->
-                        ResolvedCredentialRequest.ByCredentialConfigurationId(
+                        ResolvedCredentialRequest(
                             unresolvedRequest.credentialConfigurationId,
                             unresolvedRequest.credentialRequest,
+                            null,
                         )
 
-                    is UnresolvedCredentialRequest.ByCredentialIdentifier ->
-                        ResolvedCredentialRequest.ByCredentialIdentifier(
-                            unresolvedRequest.credentialIdentifier,
-                            resolve(unresolvedRequest),
-                        )
+                    is UnresolvedCredentialRequest.ByCredentialIdentifier -> resolve(unresolvedRequest)
                 }
             val issued = issue(authorizationContext, request)
             request.credentialRequest to issued
@@ -333,7 +330,7 @@ private class Services(
 
         private suspend fun resolve(
             unresolvedRequest: UnresolvedCredentialRequest.ByCredentialIdentifier,
-        ): CredentialRequest =
+        ): ResolvedCredentialRequest =
             either {
                 val resolvedRequest = resolveCredentialRequestByCredentialIdentifier(
                     unresolvedRequest.credentialIdentifier,
@@ -352,7 +349,7 @@ private class Services(
             return issueSpecificCredential(
                 authorizationContext,
                 resolvedCredentialRequest.credentialRequest,
-                resolvedCredentialRequest.credentialIdentifierOrNull,
+                resolvedCredentialRequest.credentialIdentifier,
             ).bind()
         }
 
@@ -375,27 +372,14 @@ private class Services(
                 UnsupportedCredentialType(credentialRequest.format, types)
             }
 
-            val expectedScopes = specificIssuers.map { issuer -> issuer.supportedCredential.scope }
-            ensure(expectedScopes.any { it in authorizationContext.scopes }) {
-                WrongScope(expectedScopes)
-            }
-
-            val specificIssuer = when (resolvedCredentialRequest) {
-                is ResolvedCredentialRequest.ByCredentialConfigurationId -> {
-                    specificIssuers.find { issuer ->
-                        issuer.supportedCredential.scope in authorizationContext.scopes &&
-                            issuer.supportedCredential.id == resolvedCredentialRequest.credentialConfigurationId
-                    }
-                }
-
-                is ResolvedCredentialRequest.ByCredentialIdentifier -> {
-                    specificIssuers.find { issuer ->
-                        issuer.supportedCredential.scope in authorizationContext.scopes
-                    }
-                }
+            val specificIssuer = specificIssuers.find { issuer ->
+                issuer.supportedCredential.id == resolvedCredentialRequest.credentialConfigurationId
             }
             ensureNotNull(specificIssuer) {
-                Unexpected("The Credential Request does not contain enough information to determine the Credential to issue")
+                UnsupportedCredentialConfigurationId(resolvedCredentialRequest.credentialConfigurationId)
+            }
+            ensure(specificIssuer.supportedCredential.scope in authorizationContext.scopes) {
+                WrongScope(specificIssuer.supportedCredential.scope)
             }
 
             return specificIssuer
@@ -427,36 +411,6 @@ private sealed interface UnresolvedCredentialRequest {
         val credentialResponseEncryption: RequestedResponseEncryption,
     ) : UnresolvedCredentialRequest
 }
-
-/**
- * A resolved Credential Request.
- */
-private sealed interface ResolvedCredentialRequest {
-
-    val credentialRequest: CredentialRequest
-
-    /**
-     * A Credential Request placed by Credential Configuration Id.
-     */
-    data class ByCredentialConfigurationId(
-        val credentialConfigurationId: CredentialConfigurationId,
-        override val credentialRequest: CredentialRequest,
-    ) : ResolvedCredentialRequest
-
-    /**
-     * A Credential Request placed by Credential Identifier.
-     */
-    data class ByCredentialIdentifier(
-        val credentialIdentifier: CredentialIdentifier,
-        override val credentialRequest: CredentialRequest,
-    ) : ResolvedCredentialRequest
-}
-
-private val ResolvedCredentialRequest.credentialIdentifierOrNull: CredentialIdentifier?
-    get() = when (this) {
-        is ResolvedCredentialRequest.ByCredentialConfigurationId -> null
-        is ResolvedCredentialRequest.ByCredentialIdentifier -> credentialIdentifier
-    }
 
 private val BatchCredentialIssuance.maxProofsSupported: Int
     get() = when (this) {
@@ -673,8 +627,7 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
             CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS to "Invalid Credential Response Encryption Parameters"
 
         is WrongScope ->
-            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
-                "Wrong scope. Expecting one of ${expected.joinToString(separator = ", ", transform = { it.value })}"
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Wrong scope. Expected ${expected.value}"
 
         is Unexpected ->
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "$msg${cause?.message?.let { " : $it" } ?: ""}"

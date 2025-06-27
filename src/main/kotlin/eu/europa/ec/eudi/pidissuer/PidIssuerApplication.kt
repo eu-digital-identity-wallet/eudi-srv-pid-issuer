@@ -48,7 +48,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCrede
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryIssuedCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
-import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.adapter.out.status.GenerateStatusListTokenWithExternalService
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.*
@@ -236,6 +235,7 @@ fun beans(clock: Clock) = beans {
                 log.info("Generating random encryption key for CNonce")
                 RSAKeyGenerator(4096, false).generate()
             }
+
             KeyOption.LoadFromKeystore -> {
                 log.info("Loading CNonce encryption key from keystore")
                 loadJwkFromKeystore(env, "issuer.cnonce.encryption-key")
@@ -347,38 +347,47 @@ fun beans(clock: Clock) = beans {
         val resolvers = buildMap<CredentialIdentifier, CredentialRequestFactory> {
             if (enableMobileDrivingLicence) {
                 this[CredentialIdentifier(MobileDrivingLicenceV1Scope.value)] =
-                    { unvalidatedProofs, requestedResponseEncryption ->
-                        MsoMdocCredentialRequest(
-                            unvalidatedProofs = unvalidatedProofs,
-                            credentialResponseEncryption = requestedResponseEncryption,
-                            docType = MobileDrivingLicenceV1.docType,
+                    { identifier, unvalidatedProofs, requestedResponseEncryption ->
+                        ResolvedCredentialRequest(
+                            MobileDrivingLicenceV1.id,
+                            MsoMdocCredentialRequest(
+                                unvalidatedProofs = unvalidatedProofs,
+                                credentialResponseEncryption = requestedResponseEncryption,
+                                docType = MobileDrivingLicenceV1.docType,
+                            ),
+                            identifier,
                         )
                     }
             }
 
             if (enableMsoMdocPid) {
                 this[CredentialIdentifier(PidMsoMdocScope.value)] =
-                    { unvalidatedProofs, requestedResponseEncryption ->
-                        MsoMdocCredentialRequest(
-                            unvalidatedProofs = unvalidatedProofs,
-                            credentialResponseEncryption = requestedResponseEncryption,
-                            docType = PidMsoMdocV1.docType,
+                    { identifier, unvalidatedProofs, requestedResponseEncryption ->
+                        ResolvedCredentialRequest(
+                            PidMsoMdocV1.id,
+                            MsoMdocCredentialRequest(
+                                unvalidatedProofs = unvalidatedProofs,
+                                credentialResponseEncryption = requestedResponseEncryption,
+                                docType = PidMsoMdocV1.docType,
+                            ),
+                            identifier,
                         )
                     }
             }
 
             if (enableSdJwtVcPid) {
-                val signingAlgorithm = ref<IssuerSigningKey>().signingAlgorithm
-                pidSdJwtVcV1(signingAlgorithm).let { sdJwtVcPid ->
-                    this[CredentialIdentifier(PidSdJwtVcScope.value)] =
-                        { unvalidatedProofs, requestedResponseEncryption ->
+                this[CredentialIdentifier(PidSdJwtVcScope.value)] =
+                    { identifier, unvalidatedProofs, requestedResponseEncryption ->
+                        ResolvedCredentialRequest(
+                            SdJwtVcPidCredentialConfigurationId,
                             SdJwtVcCredentialRequest(
                                 unvalidatedProofs = unvalidatedProofs,
                                 credentialResponseEncryption = requestedResponseEncryption,
-                                type = sdJwtVcPid.type,
-                            )
-                        }
-                }
+                                type = SdJwtVcPidVct,
+                            ),
+                            identifier,
+                        )
+                    }
             }
         }
 

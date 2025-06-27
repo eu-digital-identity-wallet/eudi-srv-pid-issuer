@@ -271,7 +271,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
         val error = assertIs<IssueCredentialResponse.FailedTO>(response)
         assertEquals(CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST, error.type)
-        assertEquals("Wrong scope. Expecting one of ${PidMsoMdocScope.value}", error.errorDescription)
+        assertEquals("Wrong scope. Expected ${PidMsoMdocScope.value}", error.errorDescription)
     }
 
     /**
