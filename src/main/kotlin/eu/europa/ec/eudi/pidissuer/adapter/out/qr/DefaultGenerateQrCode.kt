@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.qr
 
-import arrow.core.raise.result
+import arrow.core.Either
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.client.j2se.MatrixToImageConfig
@@ -33,8 +33,8 @@ import java.net.URI
  */
 class DefaultGenerateQrCode : GenerateQqCode {
 
-    override fun invoke(content: URI, format: Format, dimensions: Dimensions): Result<ByteArray> =
-        result {
+    override fun invoke(content: URI, format: Format, dimensions: Dimensions): Either<Throwable, ByteArray> =
+        Either.catch {
             val writer = QRCodeWriter()
             val matrix = writer.encode(
                 content.toString(),

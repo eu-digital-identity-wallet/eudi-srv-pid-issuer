@@ -15,15 +15,14 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
+import arrow.core.Either
 import arrow.core.NonEmptySet
-import arrow.core.raise.ensure
-import arrow.core.raise.ensureNotNull
-import arrow.core.raise.result
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
+import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import kotlinx.coroutines.async
@@ -157,10 +156,11 @@ internal class WalletApi(
     }
 }
 
-private suspend fun ServerRequest.authorizationContext(): Result<AuthorizationContext> =
-    result {
+private suspend fun ServerRequest.authorizationContext(): Either<Throwable, AuthorizationContext> =
+    Either.catch {
         val authentication = awaitPrincipal()
-        ensureNotNull(authentication) { IllegalArgumentException("Authentication is expected") }
+
+        requireNotNull(authentication) { "Authentication is expected" }
 
         fun fromSpring(authority: GrantedAuthority): Scope? =
             authority.authority
@@ -195,9 +195,9 @@ private suspend fun ServerRequest.authorizationContext(): Result<AuthorizationCo
             else -> error("Unexpected Authentication type '${authentication::class.java}'")
         }
 
-        ensureNotNull(scopes) { IllegalArgumentException("OAuth2 scopes are expected") }
-        ensure(clientId is String) { IllegalArgumentException("Unexpected client_id claim type '${clientId?.let { it::class.java }}'") }
-        ensure(username is String) { IllegalArgumentException("Unexpected username claim type '${username?.let { it::class.java }}'") }
+        requireNotNull(scopes) { "OAuth2 scopes are expected" }
+        require(clientId is String) { "Unexpected client_id claim type '${clientId?.let { it::class.java }}'" }
+        require(username is String) { "Unexpected username claim type '${username?.let { it::class.java }}'" }
 
         AuthorizationContext(username, accessToken, scopes, clientId)
     }

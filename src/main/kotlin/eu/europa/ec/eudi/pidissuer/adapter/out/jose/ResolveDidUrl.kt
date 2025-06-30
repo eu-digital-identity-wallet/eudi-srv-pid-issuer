@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.raise.result
+import arrow.core.Either
 import com.nimbusds.jose.crypto.bc.BouncyCastleProviderSingleton
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.util.Base64URL
@@ -44,7 +44,7 @@ import org.bouncycastle.asn1.pkcs.RSAPublicKey as ANS1RSAPublicKey
  *
  * methods are supported.
  */
-fun resolveDidUrl(uri: URI): Result<JWK> = result {
+fun resolveDidUrl(uri: URI): Either<Throwable, JWK> = Either.catch {
     val (scheme, methodName, _) = uri.toString().split(":")
     require("did" == scheme) { "Unexpected scheme $scheme" }
     when (methodName) {

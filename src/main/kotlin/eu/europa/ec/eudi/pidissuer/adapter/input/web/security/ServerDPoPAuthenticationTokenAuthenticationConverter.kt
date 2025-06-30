@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
+import arrow.core.NonFatal
 import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.oauth2.sdk.token.AccessTokenType
 import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
@@ -50,13 +51,15 @@ class ServerDPoPAuthenticationTokenAuthenticationConverter : ServerAuthenticatio
             } catch (exception: OAuth2AuthenticationException) {
                 throw exception
             } catch (exception: Exception) {
-                throw OAuth2AuthenticationException(
-                    DPoPTokenError.serverError(
-                        "Unable to process DPoP request",
+                if (NonFatal(exception))
+                    throw OAuth2AuthenticationException(
+                        DPoPTokenError.serverError(
+                            "Unable to process DPoP request",
+                            exception,
+                        ),
                         exception,
-                    ),
-                    exception,
-                )
+                    )
+                else throw exception
             }
         }
 }
@@ -83,9 +86,11 @@ private fun ServerHttpRequest.dPoP(): SignedJWT? =
             try {
                 SignedJWT.parse(it)
             } catch (error: Exception) {
-                throw OAuth2AuthenticationException(
-                    DPoPTokenError.invalidRequest("'${AccessTokenType.DPOP.value}' header is not a valid signed JWT"),
-                )
+                if (NonFatal(error))
+                    throw OAuth2AuthenticationException(
+                        DPoPTokenError.invalidRequest("'${AccessTokenType.DPOP.value}' header is not a valid signed JWT"),
+                    )
+                else throw error
             }
         }
 
@@ -99,9 +104,11 @@ private fun ServerHttpRequest.authorization(): DPoPAccessToken? =
             try {
                 DPoPAccessToken.parse(it)
             } catch (error: Exception) {
-                throw OAuth2AuthenticationException(
-                    DPoPTokenError.invalidRequest("'${HttpHeaders.AUTHORIZATION}' header is not a valid DPoP access token"),
-                )
+                if (NonFatal(error))
+                    throw OAuth2AuthenticationException(
+                        DPoPTokenError.invalidRequest("'${HttpHeaders.AUTHORIZATION}' header is not a valid DPoP access token"),
+                    )
+                else throw error
             }
         }
 

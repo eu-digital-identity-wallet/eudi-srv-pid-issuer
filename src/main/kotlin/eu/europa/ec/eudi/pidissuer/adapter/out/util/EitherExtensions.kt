@@ -13,18 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.jose
+package eu.europa.ec.eudi.pidissuer.adapter.out.util
 
 import arrow.core.Either
-import com.nimbusds.jose.jwk.JWK
-import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
+import arrow.core.getOrElse
 
-object DefaultExtractJwkFromCredentialKey : ExtractJwkFromCredentialKey {
-    override suspend fun invoke(key: CredentialKey): Either<Throwable, JWK> = Either.catch {
-        when (key) {
-            is CredentialKey.Jwk -> key.value
-            is CredentialKey.X5c -> JWK.parse(key.certificate)
-            is CredentialKey.DIDUrl -> key.jwk
-        }
-    }
-}
+internal fun <T> Either<Throwable, T>.getOrThrow(): T = getOrElse { throw it }
+
+internal fun <T, E : Exception> Either<Throwable, T>.getOrThrow(convert: (Throwable) -> E): T =
+    fold(
+        ifLeft = { throw convert(it) },
+        ifRight = { it },
+    )
+
+internal fun <T> Either<Throwable, T>.toResult(): Result<T> =
+    fold(
+        ifLeft = { Result.failure(it) },
+        ifRight = { Result.success(it) },
+    )

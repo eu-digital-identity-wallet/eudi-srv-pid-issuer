@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.Either
 import arrow.core.NonEmptySet
+import arrow.core.getOrElse
 import arrow.core.raise.Raise
 import arrow.core.raise.either
 import arrow.core.raise.ensure
@@ -131,7 +132,7 @@ class CreateCredentialsOffer(
             authorizationCodeGrantOffer(metadata, credentialConfigurationIds)
         }
 
-        runCatching {
+        Either.catch {
             Uri.parse(customCredentialsOfferUri ?: credentialsOfferUri)
                 .buildUpon()
                 .appendQueryParameter("credential_offer", Json.encodeToString(offer))

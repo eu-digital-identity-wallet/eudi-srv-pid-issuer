@@ -15,7 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer
 
+import arrow.core.Either
 import arrow.core.NonEmptySet
+import arrow.core.getOrElse
 import arrow.core.recover
 import arrow.core.some
 import arrow.core.toNonEmptySetOrNull
@@ -658,7 +660,7 @@ fun beans(clock: Clock) = beans {
     // Security
     //
     bean {
-        val algorithms = runCatching {
+        val algorithms = Either.catch {
             runBlocking {
                 val client = ref<WebClient>()
                 val metadata = client.get()

@@ -15,15 +15,14 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.raise.ensureNotNull
-import arrow.core.raise.result
+import arrow.core.Either
 import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.X509CertChainUtils
 import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
 
-fun CredentialKey.X5c.Companion.parseDer(der: List<Base64>): Result<CredentialKey.X5c> = result {
+fun CredentialKey.X5c.Companion.parseDer(der: List<Base64>): Either<Throwable, CredentialKey.X5c> = Either.catch {
     val chain = X509CertChainUtils.parse(der).toNonEmptyListOrNull()
-    ensureNotNull(chain) { IllegalArgumentException("der must contain no certificates") }
+    requireNotNull(chain) { "der must contain no certificates" }
     CredentialKey.X5c(chain)
 }
