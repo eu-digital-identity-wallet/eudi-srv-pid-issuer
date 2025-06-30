@@ -19,7 +19,6 @@ import arrow.core.Either
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
 
-// TODO: Why this return result and is this correct?
 object DefaultExtractJwkFromCredentialKey : ExtractJwkFromCredentialKey {
     override suspend fun invoke(key: CredentialKey): Either<Throwable, JWK> = Either.catch {
         when (key) {

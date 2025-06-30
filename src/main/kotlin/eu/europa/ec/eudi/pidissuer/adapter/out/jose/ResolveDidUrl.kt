@@ -46,7 +46,7 @@ import org.bouncycastle.asn1.pkcs.RSAPublicKey as ANS1RSAPublicKey
  */
 fun resolveDidUrl(uri: URI): Either<Throwable, JWK> = Either.catch {
     val (scheme, methodName, _) = uri.toString().split(":")
-    require("did" == scheme) { "Unexpected scheme $scheme" } // TODO: Should this be converted to either{ensure(bluhbluh)}
+    require("did" == scheme) { "Unexpected scheme $scheme" }
     when (methodName) {
         "key" -> resolveDidKey(uri)
         "jwk" -> resolveDidJwk(uri)
