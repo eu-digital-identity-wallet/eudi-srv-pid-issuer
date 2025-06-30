@@ -23,6 +23,6 @@ import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
 
 fun CredentialKey.X5c.Companion.parseDer(der: List<Base64>): Either<Throwable, CredentialKey.X5c> = Either.catch {
     val chain = X509CertChainUtils.parse(der).toNonEmptyListOrNull()
-    requireNotNull(chain) { IllegalArgumentException("der must contain no certificates") }
+    requireNotNull(chain) { "der must contain no certificates" }
     CredentialKey.X5c(chain)
 }
