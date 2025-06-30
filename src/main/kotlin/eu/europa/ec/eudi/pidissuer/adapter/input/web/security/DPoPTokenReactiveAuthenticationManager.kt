@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
 import arrow.core.NonFatal
-import arrow.fx.coroutines.executor
 import com.nimbusds.oauth2.sdk.dpop.JWKThumbprintConfirmation
 import com.nimbusds.oauth2.sdk.dpop.verifiers.AccessTokenValidationException
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPIssuer
