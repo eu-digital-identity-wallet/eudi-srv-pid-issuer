@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
 import arrow.core.NonFatal
+import arrow.fx.coroutines.executor
 import com.nimbusds.oauth2.sdk.dpop.JWKThumbprintConfirmation
 import com.nimbusds.oauth2.sdk.dpop.verifiers.AccessTokenValidationException
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPIssuer
@@ -111,10 +112,12 @@ class DPoPTokenReactiveAuthenticationManager(
                 exception,
             )
         } catch (exception: Exception) {
-            throw OAuth2AuthenticationException(
-                DPoPTokenError.serverError("Unable to verify DPoP proof '${exception.message}'", exception),
-                exception,
-            )
+            if (NonFatal(exception))
+                throw OAuth2AuthenticationException(
+                    DPoPTokenError.serverError("Unable to verify DPoP proof '${exception.message}'", exception),
+                    exception,
+                )
+            else throw exception
         }
     }
 }
@@ -142,6 +145,8 @@ private fun OAuth2AuthenticatedPrincipal.jwkThumbprint(): JWKThumbprintConfirmat
     return try {
         JWKThumbprintConfirmation.parse(JSONObject(cnf))
     } catch (exception: Exception) {
-        throw OAuth2AuthenticationException(DPoPTokenError.serverError("Unable to extract DPoP confirmation", exception))
+        if (NonFatal(exception))
+            throw OAuth2AuthenticationException(DPoPTokenError.serverError("Unable to extract DPoP confirmation", exception))
+        else throw exception
     }
 }
