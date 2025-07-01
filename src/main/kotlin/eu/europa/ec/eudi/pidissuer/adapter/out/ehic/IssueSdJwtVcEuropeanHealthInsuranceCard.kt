@@ -104,7 +104,7 @@ internal object EuropeanHealthInsuranceCardClaims {
     )
     val IssuingAuthority = IssuingAuthorityClaim
     val IssuingCountry = ClaimDefinition(
-        path = ClaimPath.claim("country"),
+        path = ClaimPath.claim("issuing_country"),
         mandatory = true,
         display = mapOf(
             Locale.ENGLISH to "Issuing country",

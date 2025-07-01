@@ -15,16 +15,12 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
-import eu.europa.ec.eudi.pidissuer.domain.*
-import java.net.URI
+import eu.europa.ec.eudi.pidissuer.domain.CredentialDisplay
+import eu.europa.ec.eudi.pidissuer.domain.DisplayName
 import java.util.Locale.ENGLISH
 
 val pidDisplay = listOf(
     CredentialDisplay(
         name = DisplayName("PID", ENGLISH),
-        logo = ImageUri(
-            uri = URI.create("https://examplestate.com/public/mdl.png"),
-            alternativeText = "A square figure of a PID",
-        ),
     ),
 )
