@@ -25,6 +25,18 @@
   "claims": [
     {
       "path": [
+        "jti"
+      ],
+      "sd": "never",
+      "display": [
+        {
+          "lang": "en-US",
+          "label": "JWT ID"
+        }
+      ]
+    },
+    {
+      "path": [
         "personal_administrative_number"
       ],
       "sd": "always",
