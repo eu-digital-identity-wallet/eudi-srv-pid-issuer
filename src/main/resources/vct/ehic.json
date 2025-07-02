@@ -31,7 +31,31 @@
       "display": [
         {
           "lang": "en-US",
-          "label": "JWT ID"
+          "label": "SD-JWT VC ID"
+        }
+      ]
+    },
+    {
+      "path": [
+        "sub"
+      ],
+      "sd": "never",
+      "display": [
+        {
+          "lang": "en-US",
+          "label": "Subject of the SD-JWT VC"
+        }
+      ]
+    },
+    {
+      "path": [
+        "iat"
+      ],
+      "sd": "never",
+      "display": [
+        {
+          "lang": "en-US",
+          "label": "Time at which the SD-JWT VC was issued"
         }
       ]
     },
