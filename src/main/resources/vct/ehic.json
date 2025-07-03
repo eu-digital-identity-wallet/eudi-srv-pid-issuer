@@ -1,22 +1,19 @@
 {
   "vct": "urn:eudi:ehic:1",
-  "name": "DC4EU EHIC SD-JWT VCTM",
-  "description": "DC4EU European Health Insurance Card (EHIC) SD-JWT Verifiable Credential Type Metadata, based on ietf-oauth-sd-jwt-vc (draft 09), using a single language tag (en-US).",
+  "name": "EHIC",
+  "description": "This is a European Health Insurance Card verifiable credential",
   "display": [
     {
       "lang": "en-US",
-      "name": "EHIC SD-JWT VC",
-      "description": "European Health Insurance Card (EHIC) SD-JWT VC",
+      "name": "EHIC",
       "rendering": {
+        "simple": {
+          "background_color": "#1b263b",
+          "text_color": "#FFFFFF"
+        },
         "svg_templates": [
           {
-            "uri": "https://demo-issuer.wwwallet.org/public/creds/ehic/european-health-insurance-card-svg-dc4eu-01.svg",
-            "uri#integrity": "sha256-GwKqaDcprF+QV3HPDQmbS/foYIErctFzieEicgvyRk4=",
-            "properties": {
-              "orientation": "landscape",
-              "color_scheme": "light",
-              "contrast": "normal"
-            }
+            "uri": "https://qa-issuer.wwwallet.org/images/template-ehic.svg"
           }
         ]
       }
@@ -31,7 +28,8 @@
       "display": [
         {
           "lang": "en-US",
-          "label": "SD-JWT VC ID"
+          "label": "SD-JWT VC ID",
+          "description": "Verifiable Credential unique identifier to prevent replay attacks."
         }
       ]
     },
@@ -43,7 +41,8 @@
       "display": [
         {
           "lang": "en-US",
-          "label": "Subject of the SD-JWT VC"
+          "label": "Subject of the SD-JWT VC",
+          "description": "Subject identifier for the SD-JWT VC, representing the principal that is the subject of the SD-JWT VC."
         }
       ]
     },
@@ -55,7 +54,8 @@
       "display": [
         {
           "lang": "en-US",
-          "label": "Time at which the SD-JWT VC was issued"
+          "label": "Time at which the SD-JWT VC was issued",
+          "description": "Issued at time indicating when the SD-JWT VC was issued."
         }
       ]
     },
@@ -64,12 +64,26 @@
         "personal_administrative_number"
       ],
       "sd": "always",
-      "svg_id": "personal_administrative_number_6",
+      "svg_id": "personal_administrative_number",
       "display": [
         {
           "lang": "en-US",
           "label": "Social Security PIN",
           "description": "Unique personal identifier used by social security services."
+        }
+      ]
+    },
+    {
+      "path": [
+        "issuing_country"
+      ],
+      "sd": "never",
+      "svg_id": "issuer_country",
+      "display": [
+        {
+          "lang": "en-US",
+          "label": "Issuer country",
+          "description": "The issuer country of the EHIC holder"
         }
       ]
     },
@@ -81,7 +95,8 @@
       "display": [
         {
           "lang": "en-US",
-          "label": "Issuing authority"
+          "label": "Issuing authority",
+          "description": "EHIC issuing authority in EESSI."
         }
       ]
     },
@@ -95,7 +110,7 @@
         {
           "lang": "en-US",
           "label": "Issuing authority id",
-          "description": "EHIC issuing authority unique identifier."
+          "description": "EHIC issuing authority unique identifier in EESSI."
         }
       ]
     },
@@ -109,21 +124,7 @@
         {
           "lang": "en-US",
           "label": "Issuing authority name",
-          "description": "EHIC issuing authority name."
-        }
-      ]
-    },
-    {
-      "path": [
-        "issuing_country"
-      ],
-      "sd": "never",
-      "svg_id": "issuing_country_2",
-      "display": [
-        {
-          "lang": "en-US",
-          "label": "Issuing country",
-          "description": "EHIC issuing country."
+          "description": "EHIC issuing authority name in EESSI."
         }
       ]
     },
@@ -132,7 +133,7 @@
         "date_of_expiry"
       ],
       "sd": "never",
-      "svg_id": "date_of_expiry_9",
+      "svg_id": "date_of_expiry",
       "display": [
         {
           "lang": "en-US",
@@ -159,10 +160,12 @@
         "authentic_source"
       ],
       "sd": "never",
+      "svg_id": "authentic_source_id",
       "display": [
         {
           "lang": "en-US",
-          "label": "Competent institution"
+          "label": "Competent institution",
+          "description": "Competent insitution as registered in the EESSI Institution Repository."
         }
       ]
     },
@@ -172,7 +175,7 @@
         "id"
       ],
       "sd": "never",
-      "svg_id": "authentic_source_id_7a",
+      "svg_id": "authentic_source_id",
       "display": [
         {
           "lang": "en-US",
@@ -187,7 +190,7 @@
         "name"
       ],
       "sd": "never",
-      "svg_id": "authentic_source_name_7b",
+      "svg_id": "authentic_source_name",
       "display": [
         {
           "lang": "en-US",
@@ -227,7 +230,7 @@
         "document_number"
       ],
       "sd": "always",
-      "svg_id": "document_number_8",
+      "svg_id": "document_number",
       "display": [
         {
           "lang": "en-US",
@@ -237,6 +240,6 @@
       ]
     }
   ],
-  "schema_uri": "https://demo-issuer.wwwallet.org/public/creds/ehic/european-health-insurance-card-schema-dc4eu-01.json",
-  "schema_uri#integrity": "sha256-lNMpT2YzCPU1AuIpSIjryv6KUgBUBUVs3eNbZQoMJNA="
+  "schema_uri": "https://qa-issuer.wwwallet.org/ehic-schema",
+  "schema_uri#integrity": "sha256-cNS2ajPr6pfZztE0K5YK4h7EiS73PCj1/v/3Vf1zd1E="
 }

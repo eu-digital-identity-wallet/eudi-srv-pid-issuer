@@ -251,11 +251,11 @@ private fun sdJwt(
         claim(RFC7519.EXPIRATION_TIME, dateOfExpiry.toEpochSecond())
         claim(RFC7519.NOT_BEFORE, dateOfIssuance.toEpochSecond())
         sdClaim(EuropeanHealthInsuranceCardClaims.PersonalAdministrativeNumber.name, ehic.personalAdministrativeNumber.value)
+        claim(EuropeanHealthInsuranceCardClaims.IssuingCountry.name, ehic.issuingCountry.value)
         objClaim(EuropeanHealthInsuranceCardClaims.IssuingAuthority.attribute.name) {
             claim(EuropeanHealthInsuranceCardClaims.IssuingAuthority.Id.name, ehic.issuingAuthority.id.value)
             claim(EuropeanHealthInsuranceCardClaims.IssuingAuthority.Name.name, ehic.issuingAuthority.name.value)
         }
-        claim(EuropeanHealthInsuranceCardClaims.IssuingCountry.name, ehic.issuingCountry.value)
         claim(EuropeanHealthInsuranceCardClaims.DateOfExpiry.name, formatter.format(dateOfExpiry.withZoneSameInstant(ZoneOffset.UTC)))
         claim(
             EuropeanHealthInsuranceCardClaims.DateOfIssuance.name,

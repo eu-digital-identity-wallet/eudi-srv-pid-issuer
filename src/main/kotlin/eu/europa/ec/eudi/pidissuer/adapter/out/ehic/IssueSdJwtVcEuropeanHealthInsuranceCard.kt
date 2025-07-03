@@ -102,7 +102,6 @@ internal object EuropeanHealthInsuranceCardClaims {
             Locale.ENGLISH to "Social Security PIN",
         ),
     )
-    val IssuingAuthority = IssuingAuthorityClaim
     val IssuingCountry = ClaimDefinition(
         path = ClaimPath.claim("issuing_country"),
         mandatory = true,
@@ -110,6 +109,7 @@ internal object EuropeanHealthInsuranceCardClaims {
             Locale.ENGLISH to "Issuing country",
         ),
     )
+    val IssuingAuthority = IssuingAuthorityClaim
     val DateOfExpiry = ClaimDefinition(
         path = ClaimPath.claim("date_of_expiry"),
         mandatory = false,
@@ -149,8 +149,8 @@ internal object EuropeanHealthInsuranceCardClaims {
 
     fun all(): List<ClaimDefinition> = listOf(
         PersonalAdministrativeNumber,
-        IssuingAuthority.attribute,
         IssuingCountry,
+        IssuingAuthority.attribute,
         DateOfExpiry,
         DateOfIssuance,
         AuthenticSource.attribute,
