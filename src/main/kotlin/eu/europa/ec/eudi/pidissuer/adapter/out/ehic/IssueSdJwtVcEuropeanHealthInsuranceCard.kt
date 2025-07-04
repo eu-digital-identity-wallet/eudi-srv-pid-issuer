@@ -18,6 +18,9 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.ehic
 import arrow.core.Either
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
+import arrow.core.raise.ensureNotNull
+import arrow.core.toNonEmptyListOrNull
+import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
@@ -32,6 +35,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
+import kotlinx.coroutines.Dispatchers
 import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.time.Duration
@@ -224,9 +228,14 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
         val ehic = getEuropeanHealthInsuranceCardData()
         val dateOfIssuance = ZonedDateTime.now(clock)
         val dateOfExpiry = dateOfIssuance + validity
-        val issuedCredentials = holderPublicKeys.map {
+
+        val issuedCredentials = holderPublicKeys.parMap(Dispatchers.Default, 4) {
             encode(ehic, authorizationContext.username, it, dateOfIssuance = dateOfIssuance, dateOfExpiry = dateOfExpiry).bind()
+        }.toNonEmptyListOrNull()
+        ensureNotNull(issuedCredentials) {
+            IssueCredentialError.Unexpected("Unable to issue DC4EU EHIC")
         }
+
         val notificationId = if (notificationsEnabled) generateNotificationId() else null
         storeIssuedCredentials(
             IssuedCredentials(
