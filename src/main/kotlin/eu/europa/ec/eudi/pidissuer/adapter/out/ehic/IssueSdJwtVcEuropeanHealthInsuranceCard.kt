@@ -218,7 +218,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
     ): Either<IssueCredentialError, CredentialResponse> = either {
-        log.info("Issuing EHIC")
+        log.info("Issuing DC4EU EHIC")
 
         val holderPublicKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.instant()).bind()
         val ehic = getEuropeanHealthInsuranceCardData()
@@ -241,8 +241,8 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
 
         CredentialResponse.Issued(issuedCredentials, notificationId)
             .also {
-                log.info("Successfully issued EHIC")
-                log.debug("Issued EHIC data {}", it)
+                log.info("Successfully issued DC4EU EHIC")
+                log.debug("Issued DC4EU EHIC data {}", it)
             }
     }
 
@@ -267,7 +267,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     CredentialConfigurationId("urn:eudi:ehic:1:dc+sd-jwt-jws-json"),
                     EuropeanHealthInsuranceCardScope,
                     CredentialDisplay(
-                        name = DisplayName("European Health Insurance Card (SD-JWT VC JWS JSON)", Locale.ENGLISH),
+                        name = DisplayName("DC4EU European Health Insurance Card (SD-JWT VC JWS JSON)", Locale.ENGLISH),
                     ),
                 ),
                 issuerSigningKey.key.toPublicJWK(),
@@ -308,7 +308,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     CredentialConfigurationId("urn:eudi:ehic:1:dc+sd-jwt-compact"),
                     EuropeanHealthInsuranceCardScope,
                     CredentialDisplay(
-                        name = DisplayName("European Health Insurance Card (SD-JWT VC Compact)", Locale.ENGLISH),
+                        name = DisplayName("DC4EU European Health Insurance Card (SD-JWT VC Compact)", Locale.ENGLISH),
                     ),
                 ),
                 issuerSigningKey.key.toPublicJWK(),
