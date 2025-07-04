@@ -22,6 +22,7 @@ import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
+import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
@@ -37,13 +38,13 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
 import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
+import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.time.Instant
 import java.time.ZonedDateTime
 import java.util.*
-import java.util.Locale.ENGLISH
 
 val PidSdJwtVcScope: Scope = Scope("eu.europa.ec.eudi.pid_vc_sd_jwt")
 
@@ -188,7 +189,7 @@ fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration
         type = SdJwtVcPidVct,
         display = listOf(
             CredentialDisplay(
-                name = DisplayName("PID (SD-JWT VC Compact)", ENGLISH),
+                name = DisplayName("PID (SD-JWT VC Compact)", Locale.ENGLISH),
             ),
         ),
         claims = SdJwtVcPidClaims.all(),
@@ -271,7 +272,7 @@ internal class IssueSdJwtVcPid(
             Unexpected("date_of_issuance must not be after nbf")
         }
 
-        val issuedCredentials = holderPubKeys.map { holderPubKey ->
+        val issuedCredentials = holderPubKeys.parMap(Dispatchers.Default, 4) { holderPubKey ->
             val statusListToken = generateStatusListToken?.let {
                 it(supportedCredential.type.value, expiresAt.atZone(clock.zone))
                     .getOrElse { error ->
