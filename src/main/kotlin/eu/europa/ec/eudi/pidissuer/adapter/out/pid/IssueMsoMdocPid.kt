@@ -20,6 +20,7 @@ import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
+import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
@@ -31,6 +32,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
+import kotlinx.coroutines.Dispatchers
 import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
@@ -326,11 +328,11 @@ internal class IssueMsoMdocPid(
         val issuedAt = clock.instant().toKotlinInstant()
         val expiresAt = issuedAt + validityDuration
 
-        val issuedCredentials = holderPubKeys.map { holderKey ->
-            val cbor = encodePidInCbor(pid, pidMetaData, holderKey, issuedAt = issuedAt, expiresAt = expiresAt).also {
-                log.info("Issued $it")
-            }
-            cbor to holderKey.toPublicJWK()
+        val issuedCredentials = holderPubKeys.parMap(Dispatchers.Default, 4) { holderKey ->
+            encodePidInCbor(pid, pidMetaData, holderKey, issuedAt = issuedAt, expiresAt = expiresAt)
+                .also {
+                    log.info("Issued $it")
+                }
         }.toNonEmptyListOrNull()
         ensureNotNull(issuedCredentials) {
             IssueCredentialError.Unexpected("Unable to issue PID")
@@ -347,13 +349,13 @@ internal class IssueMsoMdocPid(
                 holder = with(pid) {
                     "${familyName.value} ${givenName.value}"
                 },
-                holderPublicKeys = issuedCredentials.map { it.second },
+                holderPublicKeys = holderPubKeys,
                 issuedAt = clock.instant(),
                 notificationId = notificationId,
             ),
         )
 
-        CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it.first) }, notificationId)
+        CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
             .also {
                 log.info("Successfully issued PIDs")
                 log.debug("Issued PIDs data {}", it)
