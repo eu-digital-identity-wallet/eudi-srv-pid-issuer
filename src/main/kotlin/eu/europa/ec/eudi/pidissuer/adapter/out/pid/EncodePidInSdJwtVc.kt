@@ -16,9 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.Either
-import arrow.core.getOrElse
 import arrow.core.raise.either
-import arrow.core.raise.ensure
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
@@ -34,7 +32,6 @@ import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
-import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObject
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
@@ -45,22 +42,16 @@ import kotlinx.serialization.json.JsonElement
 import org.slf4j.LoggerFactory
 import java.net.URL
 import java.security.cert.X509Certificate
-import java.time.Clock
 import java.time.Instant
-import java.time.ZonedDateTime
 import kotlin.io.encoding.Base64
 
 private val log = LoggerFactory.getLogger(EncodePidInSdJwtVc::class.java)
 
 class EncodePidInSdJwtVc(
     private val credentialIssuerId: CredentialIssuerId,
-    private val clock: Clock,
     private val hashAlgorithm: HashAlgorithm,
     private val issuerSigningKey: IssuerSigningKey,
-    private val calculateExpiresAt: TimeDependant<Instant>,
-    private val calculateNotUseBefore: TimeDependant<Instant>?,
     private val vct: SdJwtVcType,
-    private val generateStatusListToken: GenerateStatusListToken?,
 ) {
 
     /**
@@ -92,37 +83,15 @@ class EncodePidInSdJwtVc(
         }
     }
 
-    suspend fun invoke(
+    suspend operator fun invoke(
         pid: Pid,
         pidMetaData: PidMetaData,
         holderKey: JWK,
+        issuedAt: Instant,
+        expiresAt: Instant,
+        notBefore: Instant?,
+        statusListToken: StatusListToken?,
     ): Either<IssueCredentialError, String> = either {
-        val issuedAt = clock.instant().atZone(clock.zone)
-        val expiresAt = calculateExpiresAt(issuedAt)
-        val notBefore = calculateNotUseBefore?.let { calculate -> calculate(issuedAt) }
-        val statusListToken = generateStatusListToken?.let {
-            it(vct.value, expiresAt.atZone(clock.zone))
-                .getOrElse { error ->
-                    raise(Unexpected("Unable to generate Status List Token", error))
-                }
-        }
-
-        ensure(expiresAt.epochSecond > issuedAt.toInstant().epochSecond) {
-            Unexpected("exp should be after iat")
-        }
-        notBefore?.let {
-            ensure(it.epochSecond > issuedAt.toInstant().epochSecond) {
-                Unexpected("nbf should be after iat")
-            }
-        }
-        ensure(
-            null == pidMetaData.issuanceDate ||
-                null == notBefore ||
-                pidMetaData.issuanceDate.atStartOfDay(clock.zone).toInstant() <= notBefore,
-        ) {
-            Unexpected("date_of_issuance must not be after nbf")
-        }
-
         val sdJwtSpec = selectivelyDisclosed(
             pid = pid,
             pidMetaData = pidMetaData,
@@ -153,7 +122,7 @@ private fun selectivelyDisclosed(
     credentialIssuerId: CredentialIssuerId,
     vct: SdJwtVcType,
     holderPubKey: JWK,
-    iat: ZonedDateTime,
+    iat: Instant,
     exp: Instant,
     nbf: Instant?,
     statusListToken: StatusListToken?,
@@ -163,7 +132,7 @@ private fun selectivelyDisclosed(
         // Always disclosed claims
         //
         claim(RFC7519.ISSUER, credentialIssuerId.externalForm)
-        claim(RFC7519.ISSUED_AT, iat.toInstant().epochSecond)
+        claim(RFC7519.ISSUED_AT, iat.epochSecond)
         nbf?.let { claim(RFC7519.NOT_BEFORE, it.epochSecond) }
         claim(RFC7519.EXPIRATION_TIME, exp.epochSecond)
         cnf(holderPubKey)

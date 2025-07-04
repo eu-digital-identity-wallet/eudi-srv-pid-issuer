@@ -16,8 +16,10 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.Either
+import arrow.core.getOrElse
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
+import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JWSAlgorithm
@@ -29,13 +31,12 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
 import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.time.Clock
@@ -221,8 +222,8 @@ internal class IssueSdJwtVcPid(
     hashAlgorithm: HashAlgorithm,
     private val issuerSigningKey: IssuerSigningKey,
     private val getPidData: GetPidData,
-    calculateExpiresAt: TimeDependant<Instant>,
-    calculateNotUseBefore: TimeDependant<Instant>?,
+    private val calculateExpiresAt: TimeDependant<Instant>,
+    private val calculateNotUseBefore: TimeDependant<Instant>?,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredentials: StoreIssuedCredentials,
@@ -235,54 +236,83 @@ internal class IssueSdJwtVcPid(
 
     private val encodePidInSdJwt = EncodePidInSdJwtVc(
         credentialIssuerId,
-        clock,
         hashAlgorithm,
         issuerSigningKey,
-        calculateExpiresAt,
-        calculateNotUseBefore,
         supportedCredential.type,
-        generateStatusListToken,
     )
 
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): Either<IssueCredentialError, CredentialResponse> = coroutineScope {
+    ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Handling issuance request ...")
-        either {
-            val holderPubKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.instant()).bind()
-            val pidData = async { getPidData(authorizationContext) }
-            val (pid, pidMetaData) = pidData.await().bind()
-            val notificationId =
-                if (notificationsEnabled) generateNotificationId()
-                else null
-            val issuedCredentials = holderPubKeys.map { holderPubKey ->
-                val sdJwt = encodePidInSdJwt.invoke(pid, pidMetaData, holderPubKey).bind()
-                sdJwt to holderPubKey.toPublicJWK()
-            }.toNonEmptyListOrNull()
-            ensureNotNull(issuedCredentials) {
-                IssueCredentialError.Unexpected("Unable to issue PID")
-            }
 
-            storeIssuedCredentials(
-                IssuedCredentials(
-                    format = SD_JWT_VC_FORMAT,
-                    type = supportedCredential.type.value,
-                    holder = with(pid) {
-                        "${familyName.value} ${givenName.value}"
-                    },
-                    holderPublicKeys = issuedCredentials.map { it.second },
-                    issuedAt = clock.instant(),
-                    notificationId = notificationId,
-                ),
-            )
+        val holderPubKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.instant()).bind()
+        val (pid, pidMetaData) = getPidData(authorizationContext).bind()
 
-            CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it.first) }, notificationId)
-                .also {
-                    log.info("Successfully issued PIDs")
-                    log.debug("Issued PIDs data {}", it)
-                }
+        val issuedAt = ZonedDateTime.now(clock)
+        val expiresAt = calculateExpiresAt(issuedAt)
+        val notBefore = calculateNotUseBefore?.invoke(issuedAt)
+
+        ensure(expiresAt > issuedAt.toInstant()) {
+            Unexpected("exp should be after iat")
         }
+        notBefore?.let {
+            ensure(it > issuedAt.toInstant()) {
+                Unexpected("nbf should be after iat")
+            }
+        }
+        ensure(
+            null == pidMetaData.issuanceDate ||
+                null == notBefore ||
+                pidMetaData.issuanceDate.atStartOfDay(clock.zone).toInstant() <= notBefore,
+        ) {
+            Unexpected("date_of_issuance must not be after nbf")
+        }
+
+        val issuedCredentials = holderPubKeys.map { holderPubKey ->
+            val statusListToken = generateStatusListToken?.let {
+                it(supportedCredential.type.value, expiresAt.atZone(clock.zone))
+                    .getOrElse { error ->
+                        raise(Unexpected("Unable to generate Status List Token", error))
+                    }
+            }
+            encodePidInSdJwt(
+                pid,
+                pidMetaData,
+                holderPubKey,
+                issuedAt = issuedAt.toInstant(),
+                expiresAt = expiresAt,
+                notBefore = notBefore,
+                statusListToken,
+            ).bind()
+        }.toNonEmptyListOrNull()
+        ensureNotNull(issuedCredentials) {
+            Unexpected("Unable to issue PID")
+        }
+
+        val notificationId =
+            if (notificationsEnabled) generateNotificationId()
+            else null
+
+        storeIssuedCredentials(
+            IssuedCredentials(
+                format = SD_JWT_VC_FORMAT,
+                type = supportedCredential.type.value,
+                holder = with(pid) {
+                    "${familyName.value} ${givenName.value}"
+                },
+                holderPublicKeys = holderPubKeys,
+                issuedAt = clock.instant(),
+                notificationId = notificationId,
+            ),
+        )
+
+        CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
+            .also {
+                log.info("Successfully issued PIDs")
+                log.debug("Issued PIDs data {}", it)
+            }
     }
 }
