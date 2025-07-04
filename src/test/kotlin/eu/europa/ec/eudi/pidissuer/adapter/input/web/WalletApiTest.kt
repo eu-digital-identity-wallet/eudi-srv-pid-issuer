@@ -161,7 +161,7 @@ internal class BaseWalletApiTest {
 
         @Bean
         @Primary
-        fun encodePidInCbor(): EncodePidInCbor = EncodePidInCbor { _, _, _ -> "PID" }
+        fun encodePidInCbor(): EncodePidInCbor = EncodePidInCbor { _, _, _, _, _ -> "PID" }
     }
 }
 

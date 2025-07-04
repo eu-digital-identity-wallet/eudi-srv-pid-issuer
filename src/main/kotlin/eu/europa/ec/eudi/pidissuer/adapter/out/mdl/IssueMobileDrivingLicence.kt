@@ -33,10 +33,12 @@ import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
 import kotlinx.coroutines.Dispatchers
+import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.util.*
+import kotlin.time.Duration
 
 val MobileDrivingLicenceV1Scope: Scope = Scope(mdlDocType(1u))
 
@@ -324,6 +326,7 @@ internal class IssueMobileDrivingLicence(
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val clock: Clock,
+    private val validityDuration: Duration,
     private val storeIssuedCredentials: StoreIssuedCredentials,
 ) : IssueSpecificCredential {
 
@@ -348,16 +351,19 @@ internal class IssueMobileDrivingLicence(
             IssueCredentialError.Unexpected("Unable to fetch mDL data")
         }
 
-        val notificationId =
-            if (notificationsEnabled) generateNotificationId()
-            else null
+        val issuedAt = clock.instant().toKotlinInstant()
+        val expiresAt = issuedAt + validityDuration
 
         val issuedCredentials = holderKeys.parMap(Dispatchers.Default, 4) { holderKey ->
-            encodeMobileDrivingLicenceInCbor(licence, holderKey).bind()
+            encodeMobileDrivingLicenceInCbor(licence, holderKey, issuedAt = issuedAt, expiresAt = expiresAt).bind()
         }.toNonEmptyListOrNull()
         ensureNotNull(issuedCredentials) {
             IssueCredentialError.Unexpected("Unable to issue mDL")
         }
+
+        val notificationId =
+            if (notificationsEnabled) generateNotificationId()
+            else null
 
         storeIssuedCredentials(
             IssuedCredentials(

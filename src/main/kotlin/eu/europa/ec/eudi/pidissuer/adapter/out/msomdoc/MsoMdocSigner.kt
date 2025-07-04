@@ -26,40 +26,31 @@ import id.walt.mdoc.dataelement.MapElement
 import id.walt.mdoc.doc.MDocBuilder
 import id.walt.mdoc.mso.DeviceKeyInfo
 import id.walt.mdoc.mso.ValidityInfo
-import kotlinx.datetime.toKotlinInstant
-import java.time.Clock
+import kotlinx.datetime.Instant
 import kotlin.io.encoding.Base64
-import kotlin.time.Duration
 
 internal class MsoMdocSigner<in Credential>(
-    private val clock: Clock,
     private val issuerSigningKey: IssuerSigningKey,
-    private val validityDuration: Duration,
     private val docType: MsoDocType,
     private val usage: MDocBuilder.(Credential) -> Unit,
 ) {
-
-    init {
-        require(validityDuration.isPositive()) { "Validity duration must be positive" }
-    }
-
     private val issuerCryptoProvider: SimpleCOSECryptoProvider by lazy {
         issuerSigningKey.cryptoProvider()
     }
 
-    fun sign(credential: Credential, deviceKey: ECKey): String {
-        val validityInfo = validityInfo()
+    fun sign(
+        credential: Credential,
+        deviceKey: ECKey,
+        issuedAt: Instant,
+        expiresAt: Instant,
+    ): String {
+        require(expiresAt >= issuedAt) { "expiresAt must greater or equal to issuedAt" }
+        val validityInfo = ValidityInfo(signed = issuedAt, validFrom = issuedAt, validUntil = expiresAt, expectedUpdate = null)
         val deviceKeyInfo = deviceKeyInfo(deviceKey)
         val mdoc = MDocBuilder(docType)
             .apply { usage(credential) }
             .sign(validityInfo, deviceKeyInfo, issuerCryptoProvider, issuerSigningKey.key.keyID)
         return Base64.UrlSafe.encode(mdoc.issuerSigned.toMapElement().toCBOR())
-    }
-
-    private fun validityInfo(): ValidityInfo {
-        val signedAt = clock.instant().toKotlinInstant()
-        val validTo = signedAt + validityDuration
-        return ValidityInfo(signed = signedAt, validFrom = signedAt, validUntil = validTo, expectedUpdate = null)
     }
 }
 

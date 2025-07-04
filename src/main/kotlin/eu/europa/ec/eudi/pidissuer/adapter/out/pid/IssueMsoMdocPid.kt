@@ -31,13 +31,13 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
+import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.util.*
 import java.util.Locale.ENGLISH
+import kotlin.time.Duration
 
 val PidMsoMdocScope: Scope = Scope("eu.europa.ec.eudi.pid_mso_mdoc")
 
@@ -298,6 +298,7 @@ internal class IssueMsoMdocPid(
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val clock: Clock,
+    private val validityDuration: Duration,
     private val storeIssuedCredentials: StoreIssuedCredentials,
 ) : IssueSpecificCredential {
 
@@ -311,49 +312,51 @@ internal class IssueMsoMdocPid(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): Either<IssueCredentialError, CredentialResponse> = coroutineScope {
-        either {
-            log.info("Handling issuance request ...")
-            val holderPubKeys = with(jwkExtensions()) {
-                validateProofs(request.unvalidatedProofs, supportedCredential, clock.instant())
-                    .bind()
-                    .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
-            }
-
-            val pidData = async { getPidData(authorizationContext) }
-            val notificationId =
-                if (notificationsEnabled) generateNotificationId()
-                else null
-
-            val (pid, pidMetaData) = pidData.await().bind()
-            val issuedCredentials = holderPubKeys.map { holderKey ->
-                val cbor = encodePidInCbor(pid, pidMetaData, holderKey).also {
-                    log.info("Issued $it")
-                }
-                cbor to holderKey.toPublicJWK()
-            }.toNonEmptyListOrNull()
-            ensureNotNull(issuedCredentials) {
-                IssueCredentialError.Unexpected("Unable to issue PID")
-            }
-
-            storeIssuedCredentials(
-                IssuedCredentials(
-                    format = MSO_MDOC_FORMAT,
-                    type = supportedCredential.docType,
-                    holder = with(pid) {
-                        "${familyName.value} ${givenName.value}"
-                    },
-                    holderPublicKeys = issuedCredentials.map { it.second },
-                    issuedAt = clock.instant(),
-                    notificationId = notificationId,
-                ),
-            )
-
-            CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it.first) }, notificationId)
-                .also {
-                    log.info("Successfully issued PIDs")
-                    log.debug("Issued PIDs data {}", it)
-                }
+    ): Either<IssueCredentialError, CredentialResponse> = either {
+        log.info("Handling issuance request ...")
+        val holderPubKeys = with(jwkExtensions()) {
+            validateProofs(request.unvalidatedProofs, supportedCredential, clock.instant())
+                .bind()
+                .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
         }
+
+        val pidData = getPidData(authorizationContext)
+        val (pid, pidMetaData) = pidData.bind()
+
+        val issuedAt = clock.instant().toKotlinInstant()
+        val expiresAt = issuedAt + validityDuration
+
+        val issuedCredentials = holderPubKeys.map { holderKey ->
+            val cbor = encodePidInCbor(pid, pidMetaData, holderKey, issuedAt = issuedAt, expiresAt = expiresAt).also {
+                log.info("Issued $it")
+            }
+            cbor to holderKey.toPublicJWK()
+        }.toNonEmptyListOrNull()
+        ensureNotNull(issuedCredentials) {
+            IssueCredentialError.Unexpected("Unable to issue PID")
+        }
+
+        val notificationId =
+            if (notificationsEnabled) generateNotificationId()
+            else null
+
+        storeIssuedCredentials(
+            IssuedCredentials(
+                format = MSO_MDOC_FORMAT,
+                type = supportedCredential.docType,
+                holder = with(pid) {
+                    "${familyName.value} ${givenName.value}"
+                },
+                holderPublicKeys = issuedCredentials.map { it.second },
+                issuedAt = clock.instant(),
+                notificationId = notificationId,
+            ),
+        )
+
+        CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it.first) }, notificationId)
+            .also {
+                log.info("Successfully issued PIDs")
+                log.debug("Issued PIDs data {}", it)
+            }
     }
 }
