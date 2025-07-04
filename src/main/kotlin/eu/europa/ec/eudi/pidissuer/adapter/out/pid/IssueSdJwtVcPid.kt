@@ -42,6 +42,7 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZonedDateTime
 import java.util.*
+import java.util.Locale.ENGLISH
 
 val PidSdJwtVcScope: Scope = Scope("eu.europa.ec.eudi.pid_vc_sd_jwt")
 
@@ -184,7 +185,11 @@ fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration
     SdJwtVcCredentialConfiguration(
         id = SdJwtVcPidCredentialConfigurationId,
         type = SdJwtVcPidVct,
-        display = pidDisplay,
+        display = listOf(
+            CredentialDisplay(
+                name = DisplayName("PID (SD-JWT VC Compact)", ENGLISH),
+            ),
+        ),
         claims = SdJwtVcPidClaims.all(),
         cryptographicBindingMethodsSupported = nonEmptySetOf(CryptographicBindingMethod.Jwk),
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),

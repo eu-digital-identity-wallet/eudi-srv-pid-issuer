@@ -288,17 +288,15 @@ internal object MsoMdocMdlV1Claims {
     )
 }
 
-val MobileDrivingLicenceDisplay: List<CredentialDisplay> = listOf(
-    CredentialDisplay(
-        name = DisplayName("Mobile Driving Licence", Locale.ENGLISH),
-    ),
-)
-
 val MobileDrivingLicenceV1: MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
         id = CredentialConfigurationId(MobileDrivingLicenceV1Scope.value),
         docType = mdlDocType(1u),
-        display = MobileDrivingLicenceDisplay,
+        display = listOf(
+            CredentialDisplay(
+                name = DisplayName("Mobile Driving Licence (MSO MDoc)", Locale.ENGLISH),
+            ),
+        ),
         claims = MsoMdocMdlV1Claims.all(),
         cryptographicBindingMethodsSupported = emptySet(),
         credentialSigningAlgorithmsSupported = emptySet(),

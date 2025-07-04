@@ -166,6 +166,7 @@ private fun europeanHealthInsuranceCardCredentialConfiguration(
     signingAlgorithm: JWSAlgorithm,
     credentialConfigurationId: CredentialConfigurationId,
     scope: Scope,
+    credentialDisplay: CredentialDisplay,
 ): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(
         id = credentialConfigurationId,
@@ -173,11 +174,7 @@ private fun europeanHealthInsuranceCardCredentialConfiguration(
         scope = scope,
         cryptographicBindingMethodsSupported = nonEmptySetOf(CryptographicBindingMethod.Jwk),
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
-        display = listOf(
-            CredentialDisplay(
-                name = DisplayName("European Health Insurance Card", Locale.ENGLISH),
-            ),
-        ),
+        display = listOf(credentialDisplay),
         claims = EuropeanHealthInsuranceCardClaims.all(),
         proofTypesSupported = ProofTypesSupported(
             values = nonEmptySetOf(
@@ -269,6 +266,9 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     issuerSigningKey.signingAlgorithm,
                     CredentialConfigurationId("urn:eudi:ehic:1:dc+sd-jwt-jws-json"),
                     EuropeanHealthInsuranceCardScope,
+                    CredentialDisplay(
+                        name = DisplayName("European Health Insurance Card (SD-JWT VC JWS JSON)", Locale.ENGLISH),
+                    ),
                 ),
                 issuerSigningKey.key.toPublicJWK(),
                 EncodeEuropeanHealthInsuranceCardInSdJwtVc.jwsJsonFlattened(
@@ -307,6 +307,9 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     issuerSigningKey.signingAlgorithm,
                     CredentialConfigurationId("urn:eudi:ehic:1:dc+sd-jwt-compact"),
                     EuropeanHealthInsuranceCardScope,
+                    CredentialDisplay(
+                        name = DisplayName("European Health Insurance Card (SD-JWT VC Compact)", Locale.ENGLISH),
+                    ),
                 ),
                 issuerSigningKey.key.toPublicJWK(),
                 EncodeEuropeanHealthInsuranceCardInSdJwtVc.compact(
