@@ -15,12 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer
 
-import arrow.core.Either
-import arrow.core.NonEmptySet
-import arrow.core.getOrElse
-import arrow.core.recover
-import arrow.core.some
-import arrow.core.toNonEmptySetOrNull
+import arrow.core.*
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.*
@@ -113,6 +108,7 @@ import org.springframework.security.web.server.authentication.HttpStatusServerEn
 import org.springframework.security.web.server.authentication.ServerAuthenticationEntryPointFailureHandler
 import org.springframework.security.web.server.authorization.HttpStatusServerAccessDeniedHandler
 import org.springframework.security.web.server.authorization.ServerWebExchangeDelegatingServerAccessDeniedHandler
+import org.springframework.util.unit.DataSize
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
@@ -842,6 +838,9 @@ fun beans(clock: Clock) = beans {
             it.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
             it.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
             it.defaultCodecs().enableLoggingRequestDetails(true)
+
+            val maxInMemorySize = DataSize.parse(env.getProperty("spring.webflux.codecs.max-in-memory-size", "1MB"))
+            it.defaultCodecs().maxInMemorySize(maxInMemorySize.toBytes().toInt())
         }
     }
 }
