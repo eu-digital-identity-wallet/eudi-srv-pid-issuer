@@ -16,7 +16,14 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import com.nimbusds.jose.jwk.ECKey
+import kotlinx.datetime.Instant
 
 fun interface EncodePidInCbor {
-    suspend operator fun invoke(pid: Pid, pidMetaData: PidMetaData, holderKey: ECKey): String
+    suspend operator fun invoke(
+        pid: Pid,
+        pidMetaData: PidMetaData,
+        holderKey: ECKey,
+        issuedAt: Instant,
+        expiresAt: Instant,
+    ): String
 }

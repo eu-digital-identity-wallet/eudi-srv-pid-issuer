@@ -319,20 +319,16 @@ fun beans(clock: Clock) = beans {
         )
     }
     bean<EncodePidInCbor>(isLazyInit = true) {
-        log.info("Using internal encoder to encode PID in CBOR")
         val issuerSigningKey = ref<IssuerSigningKey>()
-        val duration = env.duration("issuer.pid.mso_mdoc.encoder.duration")?.toKotlinDuration() ?: 30.days
-        DefaultEncodePidInCbor(clock, issuerSigningKey, duration)
+        DefaultEncodePidInCbor(issuerSigningKey)
     }
 
     bean {
         GetMobileDrivingLicenceDataMock()
     }
     bean<EncodeMobileDrivingLicenceInCbor>(isLazyInit = true) {
-        log.info("Using internal encoder to encode mDL in CBOR")
         val issuerSigningKey = ref<IssuerSigningKey>()
-        val duration = env.duration("issuer.mdl.mso_mdoc.encoder.duration")?.toKotlinDuration() ?: 5.days
-        DefaultEncodeMobileDrivingLicenceInCbor(clock, issuerSigningKey, duration)
+        DefaultEncodeMobileDrivingLicenceInCbor(issuerSigningKey)
     }
 
     bean(::DefaultGenerateQrCode)
@@ -460,6 +456,7 @@ fun beans(clock: Clock) = beans {
             credentialResponseEncryption = env.credentialResponseEncryption(),
             specificCredentialIssuers = buildList {
                 if (enableMsoMdocPid) {
+                    val duration = env.duration("issuer.pid.mso_mdoc.encoder.duration")?.toKotlinDuration() ?: 30.days
                     val issueMsoMdocPid = IssueMsoMdocPid(
                         getPidData = ref(),
                         encodePidInCbor = ref(),
@@ -467,6 +464,7 @@ fun beans(clock: Clock) = beans {
                             ?: true,
                         generateNotificationId = ref(),
                         clock = clock,
+                        validityDuration = duration,
                         storeIssuedCredentials = ref(),
                         validateProofs = ref(),
                     )
@@ -510,12 +508,14 @@ fun beans(clock: Clock) = beans {
                 }
 
                 if (enableMobileDrivingLicence) {
+                    val duration = env.duration("issuer.mdl.mso_mdoc.encoder.duration")?.toKotlinDuration() ?: 5.days
                     val mdlIssuer = IssueMobileDrivingLicence(
                         getMobileDrivingLicenceData = ref(),
                         encodeMobileDrivingLicenceInCbor = ref(),
                         notificationsEnabled = env.getProperty<Boolean>("issuer.mdl.notifications.enabled") ?: true,
                         generateNotificationId = ref(),
                         clock = clock,
+                        validityDuration = duration,
                         storeIssuedCredentials = ref(),
                         validateProofs = ref(),
                     )
