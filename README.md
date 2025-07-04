@@ -125,6 +125,10 @@ set this to `FRAMEWORK`.
 Possible values: `FRAMEWORK`, `NONE`  
 Default value: `FRAMEWORK`  
 
+Variable: `SPRING_WEBFLUX_CODECS_MAX_IN_MEMORY_SIZE`  
+Description: Configure a limit on the number of bytes that can be buffered whenever the input stream needs to be aggregated. Uses Spring Framework's DataSize notation.         
+Default value: `1MB`
+
 Variable: `ISSUER_PUBLICURL`  
 Description: URL the PID Issuer application is accessible from  
 Default value: `http://localhost:8080`

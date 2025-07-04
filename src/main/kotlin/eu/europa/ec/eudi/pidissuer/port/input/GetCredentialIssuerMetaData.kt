@@ -165,7 +165,7 @@ private fun credentialMetaDataJson(
     batchCredentialIssuance: BatchCredentialIssuance,
 ): JsonObject = buildJsonObject {
     put("format", d.format().value)
-    d.scope?.value?.let { put("scope", it) }
+    put("scope", d.scope.value)
     d.cryptographicBindingMethodsSupported.takeIf { it.isNotEmpty() }
         ?.let { cryptographicBindingMethodsSupported ->
             putJsonArray("cryptographic_binding_methods_supported") {
