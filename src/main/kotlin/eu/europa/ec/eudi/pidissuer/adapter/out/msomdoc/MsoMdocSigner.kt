@@ -26,8 +26,6 @@ import id.walt.mdoc.dataelement.MapElement
 import id.walt.mdoc.doc.MDocBuilder
 import id.walt.mdoc.mso.DeviceKeyInfo
 import id.walt.mdoc.mso.ValidityInfo
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.datetime.toKotlinInstant
 import java.time.Clock
 import kotlin.io.encoding.Base64
@@ -49,15 +47,14 @@ internal class MsoMdocSigner<in Credential>(
         issuerSigningKey.cryptoProvider()
     }
 
-    suspend fun sign(credential: Credential, deviceKey: ECKey): String =
-        withContext(Dispatchers.IO) {
-            val validityInfo = validityInfo()
-            val deviceKeyInfo = deviceKeyInfo(deviceKey)
-            val mdoc = MDocBuilder(docType)
-                .apply { usage(credential) }
-                .sign(validityInfo, deviceKeyInfo, issuerCryptoProvider, issuerSigningKey.key.keyID)
-            Base64.UrlSafe.encode(mdoc.issuerSigned.toMapElement().toCBOR())
-        }
+    fun sign(credential: Credential, deviceKey: ECKey): String {
+        val validityInfo = validityInfo()
+        val deviceKeyInfo = deviceKeyInfo(deviceKey)
+        val mdoc = MDocBuilder(docType)
+            .apply { usage(credential) }
+            .sign(validityInfo, deviceKeyInfo, issuerCryptoProvider, issuerSigningKey.key.keyID)
+        return Base64.UrlSafe.encode(mdoc.issuerSigned.toMapElement().toCBOR())
+    }
 
     private fun validityInfo(): ValidityInfo {
         val signedAt = clock.instant().toKotlinInstant()
