@@ -37,6 +37,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.util.*
+import java.util.Locale.ENGLISH
 
 val PidMsoMdocScope: Scope = Scope("eu.europa.ec.eudi.pid_mso_mdoc")
 
@@ -270,7 +271,11 @@ val PidMsoMdocV1: MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
         id = CredentialConfigurationId(PidMsoMdocScope.value),
         docType = pidDocType(1),
-        display = pidDisplay,
+        display = listOf(
+            CredentialDisplay(
+                name = DisplayName("PID (MSO MDoc)", ENGLISH),
+            ),
+        ),
         claims = MsoMdocPidClaims.all(),
         cryptographicBindingMethodsSupported = emptySet(),
         credentialSigningAlgorithmsSupported = emptySet(),
