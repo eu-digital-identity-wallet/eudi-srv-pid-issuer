@@ -15,12 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer
 
-import arrow.core.Either
-import arrow.core.NonEmptySet
-import arrow.core.getOrElse
-import arrow.core.recover
-import arrow.core.some
-import arrow.core.toNonEmptySetOrNull
+import arrow.core.*
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.*
@@ -113,6 +108,7 @@ import org.springframework.security.web.server.authentication.HttpStatusServerEn
 import org.springframework.security.web.server.authentication.ServerAuthenticationEntryPointFailureHandler
 import org.springframework.security.web.server.authorization.HttpStatusServerAccessDeniedHandler
 import org.springframework.security.web.server.authorization.ServerWebExchangeDelegatingServerAccessDeniedHandler
+import org.springframework.util.unit.DataSize
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
@@ -323,20 +319,16 @@ fun beans(clock: Clock) = beans {
         )
     }
     bean<EncodePidInCbor>(isLazyInit = true) {
-        log.info("Using internal encoder to encode PID in CBOR")
         val issuerSigningKey = ref<IssuerSigningKey>()
-        val duration = env.duration("issuer.pid.mso_mdoc.encoder.duration")?.toKotlinDuration() ?: 30.days
-        DefaultEncodePidInCbor(clock, issuerSigningKey, duration)
+        DefaultEncodePidInCbor(issuerSigningKey)
     }
 
     bean {
         GetMobileDrivingLicenceDataMock()
     }
     bean<EncodeMobileDrivingLicenceInCbor>(isLazyInit = true) {
-        log.info("Using internal encoder to encode mDL in CBOR")
         val issuerSigningKey = ref<IssuerSigningKey>()
-        val duration = env.duration("issuer.mdl.mso_mdoc.encoder.duration")?.toKotlinDuration() ?: 5.days
-        DefaultEncodeMobileDrivingLicenceInCbor(clock, issuerSigningKey, duration)
+        DefaultEncodeMobileDrivingLicenceInCbor(issuerSigningKey)
     }
 
     bean(::DefaultGenerateQrCode)
@@ -464,6 +456,7 @@ fun beans(clock: Clock) = beans {
             credentialResponseEncryption = env.credentialResponseEncryption(),
             specificCredentialIssuers = buildList {
                 if (enableMsoMdocPid) {
+                    val duration = env.duration("issuer.pid.mso_mdoc.encoder.duration")?.toKotlinDuration() ?: 30.days
                     val issueMsoMdocPid = IssueMsoMdocPid(
                         getPidData = ref(),
                         encodePidInCbor = ref(),
@@ -471,6 +464,7 @@ fun beans(clock: Clock) = beans {
                             ?: true,
                         generateNotificationId = ref(),
                         clock = clock,
+                        validityDuration = duration,
                         storeIssuedCredentials = ref(),
                         validateProofs = ref(),
                     )
@@ -514,12 +508,14 @@ fun beans(clock: Clock) = beans {
                 }
 
                 if (enableMobileDrivingLicence) {
+                    val duration = env.duration("issuer.mdl.mso_mdoc.encoder.duration")?.toKotlinDuration() ?: 5.days
                     val mdlIssuer = IssueMobileDrivingLicence(
                         getMobileDrivingLicenceData = ref(),
                         encodeMobileDrivingLicenceInCbor = ref(),
                         notificationsEnabled = env.getProperty<Boolean>("issuer.mdl.notifications.enabled") ?: true,
                         generateNotificationId = ref(),
                         clock = clock,
+                        validityDuration = duration,
                         storeIssuedCredentials = ref(),
                         validateProofs = ref(),
                     )
@@ -697,7 +693,7 @@ fun beans(clock: Clock) = beans {
         fun Scope.springConvention() = "SCOPE_$value"
         val metaData = ref<CredentialIssuerMetaData>()
         val scopes = metaData.credentialConfigurationsSupported
-            .mapNotNull { it.scope?.springConvention() }
+            .map { it.scope.springConvention() }
             .distinct()
         val http = ref<ServerHttpSecurity>()
         http {
@@ -842,6 +838,9 @@ fun beans(clock: Clock) = beans {
             it.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
             it.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
             it.defaultCodecs().enableLoggingRequestDetails(true)
+
+            val maxInMemorySize = DataSize.parse(env.getProperty("spring.webflux.codecs.max-in-memory-size", "1MB"))
+            it.defaultCodecs().maxInMemorySize(maxInMemorySize.toBytes().toInt())
         }
     }
 }
