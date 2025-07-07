@@ -24,40 +24,19 @@
       "path": [
         "jti"
       ],
-      "sd": "never",
-      "display": [
-        {
-          "lang": "en-US",
-          "label": "SD-JWT VC ID",
-          "description": "Verifiable Credential unique identifier to prevent replay attacks."
-        }
-      ]
+      "sd": "never"
     },
     {
       "path": [
         "sub"
       ],
-      "sd": "never",
-      "display": [
-        {
-          "lang": "en-US",
-          "label": "Subject of the SD-JWT VC",
-          "description": "Subject identifier for the SD-JWT VC, representing the principal that is the subject of the SD-JWT VC."
-        }
-      ]
+      "sd": "never"
     },
     {
       "path": [
         "iat"
       ],
-      "sd": "never",
-      "display": [
-        {
-          "lang": "en-US",
-          "label": "Time at which the SD-JWT VC was issued",
-          "description": "Issued at time indicating when the SD-JWT VC was issued."
-        }
-      ]
+      "sd": "never"
     },
     {
       "path": [
