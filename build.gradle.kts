@@ -68,9 +68,6 @@ dependencies {
     implementation(libs.nimbus.oauth2) {
         because("To support DPoP")
     }
-    implementation(libs.keycloak.admin.client) {
-        because("To be able to fetch user attributes")
-    }
     implementation(libs.waltid.mdoc.credentials) {
         because("To sign CBOR credentials")
     }

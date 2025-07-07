@@ -25,7 +25,7 @@ import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import eu.europa.ec.eudi.pidissuer.port.out.qr.Dimensions
 import eu.europa.ec.eudi.pidissuer.port.out.qr.Format
 import eu.europa.ec.eudi.pidissuer.port.out.qr.GenerateQqCode
-import org.apache.commons.io.output.ByteArrayOutputStream
+import java.io.ByteArrayOutputStream
 import java.net.URI
 
 /**
