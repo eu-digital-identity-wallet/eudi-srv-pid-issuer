@@ -16,25 +16,56 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.nonEmptyListOf
+import com.nimbusds.oauth2.sdk.token.AccessToken
+import com.nimbusds.oauth2.sdk.util.JSONObjectUtils
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAssurancePlaceOfBirth
 import eu.europa.ec.eudi.pidissuer.port.input.Username
+import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.keycloak.admin.client.Keycloak
-import org.keycloak.representations.idm.UserRepresentation
+import kotlinx.serialization.Required
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonIgnoreUnknownKeys
 import org.slf4j.LoggerFactory
+import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
+import org.springframework.util.LinkedMultiValueMap
+import org.springframework.web.reactive.function.BodyInserters
+import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.reactive.function.client.awaitBody
 import java.time.*
 import java.util.*
 import kotlin.math.ceil
 
-private val log = LoggerFactory.getLogger(GetPidDataFromAuthServer::class.java)
+private val log = LoggerFactory.getLogger(GetPidDataFromKeyCloak::class.java)
 
-class GetPidDataFromAuthServer(
+data class Credentials(val username: String, val password: String?) {
+    init {
+        require(username.isNotBlank()) { "username cannot be blank" }
+    }
+}
+
+@JvmInline
+value class Realm(val value: String) {
+    init {
+        require(value.isNotBlank()) { "realm cannot be blank" }
+    }
+}
+
+data class AdministrationClient(
+    val realm: Realm,
+    val client: Credentials,
+    val admin: Credentials,
+)
+
+class GetPidDataFromKeyCloak(
     private val issuerCountry: IsoCountry,
     private val issuingJurisdiction: IsoCountrySubdivision?,
     private val clock: Clock,
-    private val keycloak: Keycloak,
-    private val userRealm: String,
+    private val webClient: WebClient,
+    private val keyCloak: Url,
+    private val administrationClient: AdministrationClient,
+    private val users: Realm,
 ) : GetPidData {
     init {
         issuingJurisdiction?.let {
@@ -96,15 +127,8 @@ class GetPidDataFromAuthServer(
             } else null
         }
 
-        return withContext(Dispatchers.IO) {
-            val users = keycloak.realm(userRealm)
-                .users()
-                .search(username)
-
-            if (users.size != 1) {
-                null
-            } else {
-                val user = users[0]
+        return getUserByUsername(username)
+            ?.let { user ->
                 UserInfo(
                     familyName = user.lastName,
                     givenName = user.firstName,
@@ -122,6 +146,68 @@ class GetPidDataFromAuthServer(
                     nationality = user.attributes["nationality"]?.firstOrNull(),
                 )
             }
+    }
+
+    /**
+     * Fetches the details of a user.
+     *
+     * @param username The username of the user the details of whose to fetch
+     */
+    private suspend fun getUserByUsername(username: String): UserRepresentation? {
+        val accessToken = getAdminAccessToken()
+        val url = URLBuilder()
+            .takeFrom(keyCloak)
+            .appendPathSegments("admin", "realms", users.value, "users")
+            .apply {
+                parameters.append("username", username)
+            }
+            .build()
+
+        val users = webClient.get()
+            .uri(url.toURI())
+            .accept(MediaType.APPLICATION_JSON)
+            .headers {
+                it[HttpHeaders.AUTHORIZATION] = accessToken.toAuthorizationHeader()
+            }
+            .retrieve()
+            .awaitBody<List<UserRepresentation>>()
+
+        return if (users.size != 1) {
+            null
+        } else {
+            users.first()
+        }
+    }
+
+    /**
+     * Gets an Access Token for the Admin user, using OAuth2.0 Password Grant.
+     */
+    private suspend fun getAdminAccessToken(): AccessToken {
+        val tokenEndpoint = URLBuilder()
+            .takeFrom(keyCloak)
+            .appendPathSegments("realms", administrationClient.realm.value, "protocol", "openid-connect", "token")
+            .build()
+        val response = webClient.post()
+            .uri(tokenEndpoint.toURI())
+            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+            .accept(MediaType.APPLICATION_JSON)
+            .body(
+                BodyInserters.fromFormData(
+                    LinkedMultiValueMap<String, String>()
+                        .apply {
+                            add("grant_type", "password")
+                            add("client_id", administrationClient.client.username)
+                            administrationClient.client.password?.let { add("client_secret", it) }
+                            add("username", administrationClient.admin.username)
+                            administrationClient.admin.password?.let { add("password", it) }
+                        },
+                ),
+            )
+            .retrieve()
+            .awaitBody<String>()
+
+        return withContext(Dispatchers.Default) {
+            AccessToken.parse(JSONObjectUtils.parse(response))
         }
     }
 
@@ -185,6 +271,16 @@ class GetPidDataFromAuthServer(
         return pid to pidMetaData
     }
 }
+
+@Serializable
+@JsonIgnoreUnknownKeys
+data class UserRepresentation(
+    @Required val username: String,
+    @Required val lastName: String,
+    @Required val firstName: String,
+    val attributes: Map<String, List<String>> = emptyMap(),
+    @Required val email: String,
+)
 
 private data class UserInfo(
     val familyName: String,

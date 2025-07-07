@@ -15,7 +15,6 @@ dependencyCheck = "12.1.1"
 bootstrap = "5.3.3"
 multiformat = "1.1.0"
 resultMonad = "1.4.0"
-keycloak = "26.0.4"
 waltid = "0.11.0"
 uri-kmp = "0.0.19"
 zxing = "3.5.3"
@@ -34,10 +33,8 @@ eudi-sdjwt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-sdjwt-kt", version.ref =
 bouncy-castle = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncyCastle" }
 bootstrap = { module = "org.webjars:bootstrap", version.ref = "bootstrap" }
 tink = { module = "com.google.crypto.tink:tink", version.ref = "tink" }
-
 multiformat = { module = "org.erwinkok.multiformat:multiformat", version.ref = "multiformat" }
 result-monad = { module = "org.erwinkok.result:result-monad", version.ref = "resultMonad" }
-keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version.ref = "keycloak" }
 waltid-mdoc-credentials = { module = "id.walt.mdoc-credentials:waltid-mdoc-credentials-jvm", version.ref = "waltid" }
 uri-kmp = { module = "com.eygraber:uri-kmp", version.ref = "uri-kmp" }
 zxing = { module = "com.google.zxing:javase", version.ref = "zxing" }

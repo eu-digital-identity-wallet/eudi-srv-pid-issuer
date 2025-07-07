@@ -56,18 +56,13 @@ import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
 import eu.europa.ec.eudi.sdjwt.vc.Vct
+import io.ktor.http.*
 import io.netty.handler.ssl.SslContextBuilder
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
-import jakarta.ws.rs.client.Client
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
-import org.apache.http.conn.ssl.TrustAllStrategy
-import org.apache.http.ssl.SSLContextBuilder
-import org.keycloak.OAuth2Constants
-import org.keycloak.admin.client.KeycloakBuilder
-import org.keycloak.admin.client.spi.ResteasyClientClassicProvider
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties
@@ -159,30 +154,6 @@ internal object WebClients {
         Default.mutate()
             .clientConnector(ReactorClientHttpConnector(httpClient))
             .build()
-    }
-}
-
-/**
- * [Client] instances for usage within the application.
- */
-internal object RestEasyClients {
-
-    /**
-     * A [Client].
-     */
-    val Default: Client by lazy {
-        ResteasyClientClassicProvider().newRestEasyClient(null, null, false)
-    }
-
-    /**
-     * A [Client] that trusts *all* certificates.
-     */
-    val Insecure: Client by lazy {
-        log.warn("Using insecure RestEasy Client trusting all certificates")
-        val sslContext = SSLContextBuilder.create()
-            .loadTrustMaterial(TrustAllStrategy())
-            .build()
-        ResteasyClientClassicProvider().newRestEasyClient(null, sslContext, true)
     }
 }
 
@@ -282,13 +253,6 @@ fun beans(clock: Clock) = beans {
         }
     }
     bean {
-        if ("insecure" in env.activeProfiles) {
-            RestEasyClients.Insecure
-        } else {
-            RestEasyClients.Default
-        }
-    }
-    bean {
         KeycloakConfigurationProperties(
             env.getRequiredProperty("issuer.keycloak.server-url", URL::class.java),
             env.getRequiredProperty("issuer.keycloak.authentication-realm"),
@@ -300,22 +264,18 @@ fun beans(clock: Clock) = beans {
     }
     bean {
         val keycloakProperties = ref<KeycloakConfigurationProperties>()
-        val keycloak = KeycloakBuilder.builder()
-            .serverUrl(keycloakProperties.serverUrl.toExternalForm())
-            .realm(keycloakProperties.authenticationRealm)
-            .clientId(keycloakProperties.clientId)
-            .grantType(OAuth2Constants.PASSWORD)
-            .username(keycloakProperties.username)
-            .password(keycloakProperties.password)
-            .resteasyClient(ref())
-            .build()
-
-        GetPidDataFromAuthServer(
+        GetPidDataFromKeyCloak(
             issuerCountry = env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
             issuingJurisdiction = env.getProperty("issuer.pid.issuingJurisdiction"),
             clock = clock,
-            keycloak = keycloak,
-            userRealm = keycloakProperties.userRealm,
+            webClient = ref(),
+            keyCloak = Url(keycloakProperties.serverUrl.toExternalForm()),
+            administrationClient = AdministrationClient(
+                realm = Realm(keycloakProperties.authenticationRealm),
+                client = Credentials(username = keycloakProperties.clientId, password = null),
+                admin = Credentials(username = keycloakProperties.username, password = keycloakProperties.password),
+            ),
+            users = Realm(keycloakProperties.userRealm),
         )
     }
     bean<EncodePidInCbor>(isLazyInit = true) {
