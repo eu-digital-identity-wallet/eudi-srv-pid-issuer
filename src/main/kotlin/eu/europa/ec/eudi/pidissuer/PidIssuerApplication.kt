@@ -27,7 +27,6 @@ import com.nimbusds.oauth2.sdk.dpop.verifiers.DefaultDPoPSingleUseChecker
 import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.util.X509CertificateUtils
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
-import eu.europa.ec.eudi.pidissuer.WebClients.httpClient
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerUi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
@@ -138,7 +137,7 @@ internal object WebClients {
         return WebClient
             .builder()
             .clientConnector(connector)
-            .configureCodec()
+            .configureCodecs()
             .build()
     }
 
@@ -146,17 +145,15 @@ internal object WebClients {
      * A [WebClient] with [Json] serialization enabled that trusts *all* certificates.
      */
     fun insecure(proxy: HttpProxy?): WebClient {
-        val httpClient = httpClient(proxy)
-
         log.warn("Using insecure WebClient trusting all certificates")
         val sslContext = SslContextBuilder.forClient()
             .trustManager(InsecureTrustManagerFactory.INSTANCE)
             .build()
-        val insecureHttpClient = httpClient.secure { it.sslContext(sslContext) }
-        val connector = ReactorClientHttpConnector(insecureHttpClient)
+        val httpClient = httpClient(proxy).secure { it.sslContext(sslContext) }
+        val connector = ReactorClientHttpConnector(httpClient)
         return WebClient.builder()
             .clientConnector(connector)
-            .configureCodec()
+            .configureCodecs()
             .build()
     }
 
@@ -175,6 +172,15 @@ internal object WebClients {
                         password { proxy.password ?: "" }
                     }
                 }
+        }
+    }
+    private fun WebClient.Builder.configureCodecs(): WebClient.Builder {
+        val json = Json { ignoreUnknownKeys = true }
+
+        return codecs {
+            it.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
+            it.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
+            it.defaultCodecs().enableLoggingRequestDetails(true)
         }
     }
 }
@@ -1056,16 +1062,6 @@ private data class SdJwtVcProperties(
             require(vct.isNotBlank()) { "'vct' cannot be blank" }
             require(resource.exists()) { "'resource' must exist" }
         }
-    }
-}
-
-private fun WebClient.Builder.configureCodec(): WebClient.Builder {
-    val json = Json { ignoreUnknownKeys = true }
-
-    return this.codecs {
-        it.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
-        it.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
-        it.defaultCodecs().enableLoggingRequestDetails(true)
     }
 }
 
