@@ -203,50 +203,6 @@ data class HttpProxy(
     }
 }
 
-/**
- * [Client] instances for usage within the application.
- */
-internal object RestEasyClients {
-    private const val PROXY_HOST_PROP = "org.jboss.resteasy.jaxrs.client.proxy.host"
-    private const val PROXY_PORT_PROP = "org.jboss.resteasy.jaxrs.client.proxy.port"
-
-    /**
-     * A [Client].
-     */
-    fun default(proxy: HttpProxy?): Client {
-        val client: Client = ResteasyClientClassicProvider().newRestEasyClient(
-            null,
-            null,
-            false,
-        )
-        if (null != proxy) {
-            client.property(PROXY_HOST_PROP, proxy.url)
-                .property(PROXY_PORT_PROP, proxy.url.port)
-        }
-        return client
-    }
-
-    /**
-     * A [Client] that trusts *all* certificates.
-     */
-    fun insecure(proxy: HttpProxy?): Client {
-        log.warn("Using insecure RestEasy Client trusting all certificates")
-        val sslContext = SSLContextBuilder.create()
-            .loadTrustMaterial(TrustAllStrategy())
-            .build()
-        val client: Client = ResteasyClientClassicProvider().newRestEasyClient(
-            null,
-            sslContext,
-            true,
-        )
-        if (null != proxy) {
-            client.property(PROXY_HOST_PROP, proxy.url)
-                .property(PROXY_PORT_PROP, proxy.url.port)
-        }
-        return client
-    }
-}
-
 fun beans(clock: Clock) = beans {
     val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl", removeTrailingSlash = true)
     val enableMobileDrivingLicence = env.getProperty("issuer.mdl.enabled", true)
@@ -347,13 +303,6 @@ fun beans(clock: Clock) = beans {
             WebClients.insecure(proxy = proxy)
         } else {
             WebClients.default(proxy = proxy)
-        }
-    }
-    bean {
-        if ("insecure" in env.activeProfiles) {
-            RestEasyClients.insecure(proxy)
-        } else {
-            RestEasyClients.default(proxy)
         }
     }
     bean {
