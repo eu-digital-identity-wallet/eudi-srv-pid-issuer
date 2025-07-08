@@ -107,6 +107,7 @@ import org.springframework.util.unit.DataSize
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
+import reactor.netty.transport.ProxyProvider
 import java.net.URI
 import java.net.URL
 import java.security.KeyStore
@@ -130,30 +131,78 @@ internal object WebClients {
     /**
      * A [WebClient] with [Json] serialization enabled.
      */
-    val Default: WebClient by lazy {
-        val json = Json { ignoreUnknownKeys = true }
-        WebClient
+    fun default(proxy: HttpProxy?): WebClient {
+        val httpClient = httpClient(proxy)
+        val connector = ReactorClientHttpConnector(httpClient)
+        return WebClient
             .builder()
-            .codecs {
-                it.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
-                it.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
-                it.defaultCodecs().enableLoggingRequestDetails(true)
-            }
+            .clientConnector(connector)
+            .configureCodecs()
             .build()
     }
 
     /**
      * A [WebClient] with [Json] serialization enabled that trusts *all* certificates.
      */
-    val Insecure: WebClient by lazy {
+    fun insecure(proxy: HttpProxy?): WebClient {
         log.warn("Using insecure WebClient trusting all certificates")
         val sslContext = SslContextBuilder.forClient()
             .trustManager(InsecureTrustManagerFactory.INSTANCE)
             .build()
-        val httpClient = HttpClient.create().secure { it.sslContext(sslContext) }
-        Default.mutate()
-            .clientConnector(ReactorClientHttpConnector(httpClient))
+        val httpClient = httpClient(proxy).secure { it.sslContext(sslContext) }
+        val connector = ReactorClientHttpConnector(httpClient)
+        return WebClient.builder()
+            .clientConnector(connector)
+            .configureCodecs()
             .build()
+    }
+
+    private fun httpClient(proxy: HttpProxy? = null): HttpClient {
+        if (proxy == null) {
+            return HttpClient.create()
+        }
+        return HttpClient.create().proxy { proxyProvider ->
+            log.info("Using WebClient with proxy settings")
+            proxyProvider.type(ProxyProvider.Proxy.HTTP)
+                .host(proxy.url.host)
+                .port(proxy.url.port)
+                .apply {
+                    proxy.username?.let {
+                        username(it)
+                        password { proxy.password ?: "" }
+                    }
+                }
+        }
+    }
+    private fun WebClient.Builder.configureCodecs(): WebClient.Builder {
+        val json = Json { ignoreUnknownKeys = true }
+
+        return codecs {
+            it.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
+            it.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
+            it.defaultCodecs().enableLoggingRequestDetails(true)
+        }
+    }
+}
+
+data class HttpProxy(
+    val url: Url,
+    val username: String? = null,
+    val password: String? = null,
+) {
+    init {
+        require(password == null || username != null) {
+            "Password cannot be set if username is null"
+        }
+        require(url.protocol == URLProtocol.HTTP) {
+            "Url should be Http"
+        }
+        require(url.encodedPathAndQuery.isBlank()) {
+            "No path or query params should be present in the Url"
+        }
+        require(url.fragment.isEmpty()) {
+            "No fragment should be present in the Url"
+        }
     }
 }
 
@@ -245,11 +294,18 @@ fun beans(clock: Clock) = beans {
     // Adapters (out ports)
     //
     bean { clock }
+
+    val proxy = env.getProperty("issuer.http.proxy.url")?.let {
+        val url = Url(it)
+        val username = env.getProperty("issuer.http.proxy.username")
+        val password = env.getProperty("issuer.http.proxy.password")
+        HttpProxy(url, username, password)
+    }
     bean {
         if ("insecure" in env.activeProfiles) {
-            WebClients.Insecure
+            WebClients.insecure(proxy = proxy)
         } else {
-            WebClients.Default
+            WebClients.default(proxy = proxy)
         }
     }
     bean {

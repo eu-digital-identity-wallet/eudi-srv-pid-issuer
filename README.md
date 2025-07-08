@@ -414,6 +414,20 @@ Variable: `ISSUER_SD_JWT_VC_TYPE_METADATA_XX_RESOURCE` (e.g. `ISSUER_SD_JWT_VC_T
 Description: Resource of the type metadata, using spring framework resource notation 
 Example: `classpath:/vct/pid_arf18.json` or `file:///vct/pid_arf18.json`
 
+### Proxy configuration
+
+Variable: `ISSUER_HTTP_PROXY_URL`  
+Description: Set verifier proxy URL to use  
+Example: `http://exmaple.com`
+
+Variable: `ISSUER_HTTP_PROXY_USERNAME`  
+Description: Set proxy username for proxy to use  
+Example: `username`
+
+Variable: `ISSUER_HTTP_PROXY_PASSWORD`  
+Description: Set proxy password for proxy to use  
+Example: `passwd`
+
 ### Signing Key
 
 When either PID issuance in SD-JWT is enabled, or the internal MSO MDoc encoder is used, an EC Key is required 
