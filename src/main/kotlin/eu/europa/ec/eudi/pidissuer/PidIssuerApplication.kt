@@ -27,6 +27,7 @@ import com.nimbusds.oauth2.sdk.dpop.verifiers.DefaultDPoPSingleUseChecker
 import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.util.X509CertificateUtils
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
+import eu.europa.ec.eudi.pidissuer.WebClients.httpClient
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerUi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
@@ -132,17 +133,12 @@ internal object WebClients {
      * A [WebClient] with [Json] serialization enabled.
      */
     fun default(proxy: HttpProxy?): WebClient {
-        val json = Json { ignoreUnknownKeys = true }
         val httpClient = httpClient(proxy)
         val connector = ReactorClientHttpConnector(httpClient)
         return WebClient
             .builder()
             .clientConnector(connector)
-            .codecs {
-                it.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
-                it.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
-                it.defaultCodecs().enableLoggingRequestDetails(true)
-            }
+            .configureCodec()
             .build()
     }
 
@@ -158,8 +154,9 @@ internal object WebClients {
             .build()
         val insecureHttpClient = httpClient.secure { it.sslContext(sslContext) }
         val connector = ReactorClientHttpConnector(insecureHttpClient)
-        return default(proxy).mutate()
+        return WebClient.builder()
             .clientConnector(connector)
+            .configureCodec()
             .build()
     }
 
@@ -1059,6 +1056,16 @@ private data class SdJwtVcProperties(
             require(vct.isNotBlank()) { "'vct' cannot be blank" }
             require(resource.exists()) { "'resource' must exist" }
         }
+    }
+}
+
+private fun WebClient.Builder.configureCodec(): WebClient.Builder {
+    val json = Json { ignoreUnknownKeys = true }
+
+    return this.codecs {
+        it.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
+        it.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
+        it.defaultCodecs().enableLoggingRequestDetails(true)
     }
 }
 
