@@ -91,13 +91,18 @@ private fun algorithmAndCredentialKey(
     val kid = header.keyID
     val jwk = header.jwk
     val x5c = header.x509CertChain
+    val keyAttestation = header.getCustomParam("key_attestation") as? String
 
     val key = when {
-        kid != null && jwk == null && x5c.isNullOrEmpty() -> CredentialKey.DIDUrl(kid).getOrThrow()
-        kid == null && jwk != null && x5c.isNullOrEmpty() -> CredentialKey.Jwk(jwk)
-        kid == null && jwk == null && !x5c.isNullOrEmpty() -> CredentialKey.X5c.parseDer(x5c).getOrThrow()
+        kid != null && jwk == null && keyAttestation == null && x5c.isNullOrEmpty() -> CredentialKey.DIDUrl(kid).getOrThrow()
+        kid == null && jwk != null && keyAttestation == null && x5c.isNullOrEmpty() -> CredentialKey.Jwk(jwk)
+        kid == null && jwk == null && keyAttestation == null && !x5c.isNullOrEmpty() -> CredentialKey.X5c.parseDer(x5c).getOrThrow()
+        kid != null && jwk == null && keyAttestation != null && x5c.isNullOrEmpty() -> CredentialKey.KeyAttestation(
+            kid,
+            keyAttestation,
+        ).getOrThrow()
 
-        else -> error("a public key must be provided in one of 'kid', 'jwk', or 'x5c'")
+        else -> error("public key(s) must be provided in one of 'kid', 'jwk', 'x5c' or 'key_attestation'")
     }.apply { ensureCompatibleWith(algorithm) }
 
     return (algorithm to key)
@@ -120,6 +125,7 @@ private fun CredentialKey.ensureCompatibleWith(algorithm: JWSAlgorithm) {
     when (this) {
         is CredentialKey.DIDUrl -> jwk.ensureCompatibleWith(algorithm)
         is CredentialKey.Jwk -> value.ensureCompatibleWith(algorithm)
+        is CredentialKey.KeyAttestation -> attestedKeys[keyIndex].ensureCompatibleWith(algorithm)
 
         is CredentialKey.X5c -> {
             val supportedAlgorithms =
@@ -147,6 +153,7 @@ private fun keySelector(
         }
 
     return when (credentialKey) {
+        is CredentialKey.KeyAttestation -> credentialKey.attestedKeys[credentialKey.keyIndex].keySelector(algorithm)
         is CredentialKey.DIDUrl -> credentialKey.jwk.keySelector(algorithm)
         is CredentialKey.Jwk -> credentialKey.value.keySelector(algorithm)
         is CredentialKey.X5c -> SingleKeyJWSKeySelector(algorithm, credentialKey.certificate.publicKey)

@@ -20,11 +20,12 @@ import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
 
 object DefaultExtractJwkFromCredentialKey : ExtractJwkFromCredentialKey {
-    override suspend fun invoke(key: CredentialKey): Either<Throwable, JWK> = Either.catch {
+    override suspend fun invoke(key: CredentialKey): Either<Throwable, List<JWK>> = Either.catch {
         when (key) {
-            is CredentialKey.Jwk -> key.value
-            is CredentialKey.X5c -> JWK.parse(key.certificate)
-            is CredentialKey.DIDUrl -> key.jwk
+            is CredentialKey.Jwk -> listOf(key.value)
+            is CredentialKey.X5c -> listOf(JWK.parse(key.certificate))
+            is CredentialKey.DIDUrl -> listOf(key.jwk)
+            is CredentialKey.KeyAttestation -> key.attestedKeys
         }
     }
 }

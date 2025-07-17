@@ -20,5 +20,5 @@ import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
 
 fun interface ExtractJwkFromCredentialKey {
-    suspend operator fun invoke(key: CredentialKey): Either<Throwable, JWK>
+    suspend operator fun invoke(key: CredentialKey): Either<Throwable, List<JWK>>
 }

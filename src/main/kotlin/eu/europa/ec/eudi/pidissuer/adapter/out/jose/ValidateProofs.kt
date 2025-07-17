@@ -64,7 +64,10 @@ internal class ValidateProofs(
                 extractJwkFromCredentialKey(it.first).getOrElse { error ->
                     raise(InvalidProof("Unable to extract JWK from CredentialKey", error))
                 }
-            }.toNonEmptyListOrNull()
+            }.flatten()
+                .distinct()
+                .toNonEmptyListOrNull()
+
             checkNotNull(jwks)
         }
     }
