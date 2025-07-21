@@ -167,6 +167,27 @@ internal object EuropeanHealthInsuranceCardClaims {
 
 private val EuropeanHealthInsuranceCardVct: SdJwtVcType = SdJwtVcType("urn:eudi:ehic:1")
 
+private fun ehicProofTypesSupported(
+    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    keyAttestationRequirement: KeyAttestation,
+) = buildSet {
+    add(
+        ProofType.Jwt(
+            signingAlgorithmsSupported = jwtProofsSupportedSigningAlgorithms,
+            keyAttestationRequirement = keyAttestationRequirement,
+        ),
+    )
+    // Attestation proof is available only when key attestations for this credential are enabled in configuration
+    if (keyAttestationRequirement is KeyAttestation.Required) {
+        add(
+            ProofType.Attestation(
+                signingAlgorithmsSupported = jwtProofsSupportedSigningAlgorithms,
+                keyAttestationRequirement = keyAttestationRequirement,
+            ),
+        )
+    }
+}
+
 private fun europeanHealthInsuranceCardCredentialConfiguration(
     signingAlgorithm: JWSAlgorithm,
     credentialConfigurationId: CredentialConfigurationId,
@@ -184,12 +205,7 @@ private fun europeanHealthInsuranceCardCredentialConfiguration(
         display = listOf(credentialDisplay),
         claims = EuropeanHealthInsuranceCardClaims.all(),
         proofTypesSupported = ProofTypesSupported(
-            values = nonEmptySetOf(
-                ProofType.Jwt(
-                    signingAlgorithmsSupported = jwtProofsSupportedSigningAlgorithms,
-                    keyAttestationRequirement = keyAttestationRequirement,
-                ),
-            ),
+            ehicProofTypesSupported(jwtProofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
 
     )

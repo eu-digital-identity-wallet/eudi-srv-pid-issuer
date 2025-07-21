@@ -96,31 +96,13 @@ sealed interface CredentialKey {
         companion object
     }
 
-    class KeyAttestation private constructor(val kid: String, val jwt: KeyAttestationJWT) : CredentialKey {
-
-        val attestedKeys: List<JWK> get() = jwt.attestedKeys
-
-        val keyIndex: Int
-        val keyStorage: List<AttackPotentialResistance>?
-        val userAuthentication: List<AttackPotentialResistance>?
-
+    @JvmInline
+    value class AttestedKeys(val keys: List<JWK>) : CredentialKey {
         init {
-            require(kid.toInt() >= 0) {
-                "kid must be a number greater or equal to 0"
-            }
-            // TODO: verify signature of Key Attestation JWT
-
-            keyIndex = kid.toInt()
-            keyStorage = jwt.keyStorage?.map { AttackPotentialResistance(it) }
-            userAuthentication = jwt.userAuthentication?.map { AttackPotentialResistance(it) }
+            require(keys.isNotEmpty()) { "List of attested keys must not be empty" }
         }
 
-        companion object {
-            operator fun invoke(kid: String, value: String): Either<Throwable, KeyAttestation> = Either.catch {
-                val keyAttestationJWT = KeyAttestationJWT(value)
-                KeyAttestation(kid, keyAttestationJWT)
-            }
-        }
+        companion object
     }
 }
 

@@ -25,7 +25,7 @@ object DefaultExtractJwkFromCredentialKey : ExtractJwkFromCredentialKey {
             is CredentialKey.Jwk -> listOf(key.value)
             is CredentialKey.X5c -> listOf(JWK.parse(key.certificate))
             is CredentialKey.DIDUrl -> listOf(key.jwk)
-            is CredentialKey.KeyAttestation -> key.attestedKeys
+            is CredentialKey.AttestedKeys -> key.keys
         }
     }
 }

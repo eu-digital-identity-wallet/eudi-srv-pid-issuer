@@ -15,19 +15,25 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.JWSObject
+import com.nimbusds.jose.crypto.ECDSAVerifier
+import com.nimbusds.jose.crypto.MACSigner
+import com.nimbusds.jose.crypto.RSASSAVerifier
+import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jwt.SignedJWT
 import java.text.ParseException
 
-data class KeyAttestationJWT(val value: String) {
+data class KeyAttestationJWT private constructor(val jwt: SignedJWT) {
 
     val attestedKeys: List<JWK>
-    val keyStorage: List<String>?
-    val userAuthentication: List<String>?
+    val keyStorage: List<AttackPotentialResistance>?
+    val userAuthentication: List<AttackPotentialResistance>?
 
     init {
-        val jwt = SignedJWT.parse(value)
-//        jwt.ensureSignedNotMAC()
+        jwt.ensureSignedNotMAC()
         require(jwt.header.type != null && jwt.header.type.type.equals(KEY_ATTESTATION_JWT_TYPE)) {
             "Invalid Key Attestation JWT. Type must be set to `$KEY_ATTESTATION_JWT_TYPE`"
         }
@@ -62,18 +68,76 @@ data class KeyAttestationJWT(val value: String) {
             require(it is String) {
                 "Invalid Key Attestation JWT. 'key_storage' items must be strings"
             }
-            it
+            AttackPotentialResistance(it)
         }
 
         userAuthentication = jwt.jwtClaimsSet.getListClaim("user_authentication")?.map {
             require(it is String) {
                 "Invalid Key Attestation JWT. 'user_authentication' items must be strings"
             }
-            it
+            AttackPotentialResistance(it)
         }
     }
 
+    private fun SignedJWT.ensureSignedNotMAC() {
+        check(state == JWSObject.State.SIGNED || state == JWSObject.State.VERIFIED) {
+            "Provided JWT is not signed"
+        }
+        val alg = requireNotNull(header.algorithm) { "Invalid JWT misses header alg" }
+        requireIsNotMAC(alg)
+    }
+
+    private fun requireIsNotMAC(alg: JWSAlgorithm) =
+        require(!alg.isMACSigning()) { "MAC signing algorithm not allowed" }
+
+    private fun JWSAlgorithm.isMACSigning(): Boolean = this in MACSigner.SUPPORTED_ALGORITHMS
+
     companion object {
         const val KEY_ATTESTATION_JWT_TYPE = "keyattestation+jwt"
+
+        operator fun invoke(value: String): KeyAttestationJWT = KeyAttestationJWT(SignedJWT.parse(value))
+        operator fun invoke(signedJWT: SignedJWT): KeyAttestationJWT = KeyAttestationJWT(signedJWT)
+    }
+}
+
+fun KeyAttestationJWT.ensureValidKeyAttestation(keyAttestationRequirement: KeyAttestation) {
+    require(keyAttestationRequirement is KeyAttestation.Required) {
+        "No key attestation expected but the provided JWT Proof contains one"
+    }
+    // if key storage constraints are expected, the passed key attestation must meet these constraints
+    keyAttestationRequirement.keyStorage?.let {
+        requireNotNull(keyStorage) {
+            "Key Attestation expected to contain information about the key storage's attack resistance but does not."
+        }
+        require(keyStorage.containsAll(keyAttestationRequirement.keyStorage)) {
+            "The provided key storage's attack resistance does not match the expected one."
+        }
+    }
+    // if user authentication constraints are expected, the passed key attestation must meet these constraints
+    keyAttestationRequirement.userAuthentication?.let {
+        requireNotNull(userAuthentication) {
+            "Key Attestation expected to contain information about the user authentication's attack resistance but does not."
+        }
+        require(userAuthentication.containsAll(keyAttestationRequirement.userAuthentication)) {
+            "The provided user authentication's attack resistance does not match the expected one."
+        }
+    }
+}
+
+fun List<JWK>.signingKeyOf(jwtProof: SignedJWT): JWK? {
+    require(jwtProof.header.getCustomParam("key_attestation") != null) {
+        "Missing 'key_attestation' in JWT header"
+    }
+    return this.firstOrNull { jwk: JWK ->
+        try {
+            val verifier = when (jwk) {
+                is RSAKey -> RSASSAVerifier(jwk)
+                is ECKey -> ECDSAVerifier(jwk)
+                else -> null
+            }
+            verifier != null && jwtProof.verify(verifier)
+        } catch (_: Exception) {
+            false
+        }
     }
 }

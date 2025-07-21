@@ -33,6 +33,7 @@ class ValidateProofTest {
     private val clock = Clock.systemDefaultZone()
     private val validateProofs = ValidateProofs(
         validateJwtProof = ValidateJwtProof(issuer),
+        validateAttestationProof = ValidateAttestationProof(),
         verifyCNonce = { _, _ ->
             fail("VerifyCNonce should not have been invoked")
         },

@@ -461,7 +461,7 @@ fun beans(clock: Clock) = beans {
     //
     bean { ValidateJwtProof(issuerPublicUrl) }
     bean { DefaultExtractJwkFromCredentialKey }
-    bean { ValidateProofs(ref(), ref(), ref()) }
+    bean { ValidateProofs(ref(), ValidateAttestationProof(), ref(), ref()) }
     bean {
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
@@ -545,7 +545,7 @@ fun beans(clock: Clock) = beans {
                         "issuer.mdl.jwtProofs.supportedSigningAlgorithms",
                         JWSAlgorithm::parse,
                     )
-                    val jwtProofsKeyAttestationRequirement = jwtProofsKeyAttestationRequirement("issuer.mdl.mso_mdoc")
+                    val jwtProofsKeyAttestationRequirement = jwtProofsKeyAttestationRequirement("issuer.mdl")
                     val mdlIssuer = IssueMobileDrivingLicence(
                         getMobileDrivingLicenceData = ref(),
                         encodeMobileDrivingLicenceInCbor = ref(),

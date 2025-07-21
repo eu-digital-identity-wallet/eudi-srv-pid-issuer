@@ -59,13 +59,20 @@ sealed interface ProofType {
         val signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
         val keyAttestationRequirement: KeyAttestation,
     ) : ProofType
+
+    data class Attestation(
+        val signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
+        val keyAttestationRequirement: KeyAttestation.Required,
+    ) : ProofType
 }
 
 fun ProofType.type(): ProofTypeEnum = when (this) {
     is ProofType.Jwt -> ProofTypeEnum.JWT
+    is ProofType.Attestation -> ProofTypeEnum.ATTESTATION
 }
+
 enum class ProofTypeEnum {
-    JWT,
+    JWT, ATTESTATION
 }
 
 @JvmInline

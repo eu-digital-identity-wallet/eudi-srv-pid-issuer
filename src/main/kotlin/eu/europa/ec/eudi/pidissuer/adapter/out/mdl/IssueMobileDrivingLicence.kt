@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
 import arrow.core.Either
 import arrow.core.NonEmptySet
-import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
@@ -298,6 +297,27 @@ val MobileDrivingLicenceV1CredentialConfigurationId: CredentialConfigurationId =
 
 val MobileDrivingLicenceV1DocType: MsoDocType = mdlDocType(1u)
 
+internal fun mdlProofTypesSupported(
+    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    keyAttestationRequirement: KeyAttestation,
+) = buildSet {
+    add(
+        ProofType.Jwt(
+            jwtProofsSupportedSigningAlgorithms,
+            keyAttestationRequirement,
+        ),
+    )
+    // Attestation proof is available only when key attestations for this credential are enabled in configuration
+    if (keyAttestationRequirement is KeyAttestation.Required) {
+        add(
+            ProofType.Attestation(
+                jwtProofsSupportedSigningAlgorithms,
+                keyAttestationRequirement,
+            ),
+        )
+    }
+}
+
 internal fun mobileDrivingLicenceV1(
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     keyAttestationRequirement: KeyAttestation,
@@ -315,12 +335,7 @@ internal fun mobileDrivingLicenceV1(
         credentialSigningAlgorithmsSupported = emptySet(),
         scope = MobileDrivingLicenceV1Scope,
         proofTypesSupported = ProofTypesSupported(
-            nonEmptySetOf(
-                ProofType.Jwt(
-                    signingAlgorithmsSupported = jwtProofsSupportedSigningAlgorithms,
-                    keyAttestationRequirement = KeyAttestation.NotRequired,
-                ),
-            ),
+            mdlProofTypesSupported(jwtProofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
         policy = MsoMdocPolicy(oneTimeUse = false),
     )

@@ -20,7 +20,6 @@ import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.crypto.Ed25519Signer
 import com.nimbusds.jose.crypto.RSASSASigner
@@ -36,6 +35,8 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import com.nimbusds.jwt.proc.JWTProcessor
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationJWT
+import eu.europa.ec.eudi.pidissuer.domain.ensureValidKeyAttestation
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import java.security.interfaces.ECPublicKey
 import java.security.interfaces.EdECPublicKey
@@ -66,11 +67,8 @@ internal class ValidateJwtProof(
         proofType: ProofType.Jwt,
     ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey, String?>> = Either.catch {
         val signedJwt = SignedJWT.parse(unvalidatedProof.jwt)
-        val (algorithm, credentialKey) = algorithmAndCredentialKey(
-            signedJwt.header,
-            proofType,
-        )
-        val keySelector = keySelector(credentialKey, algorithm)
+        val (algorithm, credentialKey) = algorithmAndCredentialKey(signedJwt, proofType)
+        val keySelector = keySelector(signedJwt, credentialKey, algorithm)
         val processor = processor(credentialIssuerId, keySelector)
         val claimSet = processor.process(signedJwt, null)
 
@@ -79,10 +77,11 @@ internal class ValidateJwtProof(
 }
 
 private fun algorithmAndCredentialKey(
-    header: JWSHeader,
+    signedJwt: SignedJWT,
     proofType: ProofType.Jwt,
 ): Pair<JWSAlgorithm, CredentialKey> {
     val supported = proofType.signingAlgorithmsSupported
+    val header = signedJwt.header
     val algorithm = header.algorithm
         .takeIf(JWSAlgorithm.Family.SIGNATURE::contains)
         ?.takeIf(supported::contains)
@@ -97,23 +96,22 @@ private fun algorithmAndCredentialKey(
         kid != null && jwk == null && keyAttestation == null && x5c.isNullOrEmpty() -> CredentialKey.DIDUrl(kid).getOrThrow()
         kid == null && jwk != null && keyAttestation == null && x5c.isNullOrEmpty() -> CredentialKey.Jwk(jwk)
         kid == null && jwk == null && keyAttestation == null && !x5c.isNullOrEmpty() -> CredentialKey.X5c.parseDer(x5c).getOrThrow()
-        kid != null && jwk == null && keyAttestation != null && x5c.isNullOrEmpty() -> CredentialKey.KeyAttestation(
-            kid,
-            keyAttestation,
-        ).getOrThrow()
+        kid != null && jwk == null && keyAttestation != null && x5c.isNullOrEmpty() -> {
+            val keyAttestationJWT = KeyAttestationJWT(keyAttestation).also {
+                it.ensureValidKeyAttestation(proofType.keyAttestationRequirement)
+            }
+            CredentialKey.AttestedKeys(keyAttestationJWT.attestedKeys)
+        }
 
         else -> error("public key(s) must be provided in one of 'kid', 'jwk', 'x5c' or 'key_attestation'")
     }.apply {
-        ensureCompatibleWith(algorithm)
-        if (this is CredentialKey.KeyAttestation) {
-            ensureValidKeyAttestation(proofType.keyAttestationRequirement)
-        }
+        ensureCompatibleWithAlgorithm(algorithm, signedJwt)
     }
 
     return (algorithm to key)
 }
 
-private fun CredentialKey.ensureCompatibleWith(algorithm: JWSAlgorithm) {
+private fun CredentialKey.ensureCompatibleWithAlgorithm(algorithm: JWSAlgorithm, signedJwt: SignedJWT) {
     fun JWK.ensureCompatibleWith(algorithm: JWSAlgorithm) {
         val supportedAlgorithms =
             when (this) {
@@ -130,7 +128,12 @@ private fun CredentialKey.ensureCompatibleWith(algorithm: JWSAlgorithm) {
     when (this) {
         is CredentialKey.DIDUrl -> jwk.ensureCompatibleWith(algorithm)
         is CredentialKey.Jwk -> value.ensureCompatibleWith(algorithm)
-        is CredentialKey.KeyAttestation -> attestedKeys[keyIndex].ensureCompatibleWith(algorithm)
+
+        is CredentialKey.AttestedKeys -> {
+            val signingJWK = keys.signingKeyOf(signedJwt)
+            requireNotNull(signingJWK) { "Key attestation does not contain a key that verifies the jwt proof signature" }
+            signingJWK.ensureCompatibleWith(algorithm)
+        }
 
         is CredentialKey.X5c -> {
             val supportedAlgorithms =
@@ -147,31 +150,8 @@ private fun CredentialKey.ensureCompatibleWith(algorithm: JWSAlgorithm) {
     }
 }
 
-private fun CredentialKey.KeyAttestation.ensureValidKeyAttestation(keyAttestationRequirement: KeyAttestation) {
-    require(keyAttestationRequirement is KeyAttestation.Required) {
-        "No key attestation expected but the provided JWT Proof contains one"
-    }
-    // if key storage constraints are expected, the passed key attestation must meet these constraints
-    keyAttestationRequirement.keyStorage?.let {
-        requireNotNull(keyStorage) {
-            "Key Attestation expected to contain information about the key storage's attack resistance but does not."
-        }
-        require(keyStorage.containsAll(keyAttestationRequirement.keyStorage)) {
-            "The provided key storage's attack resistance does not match the expected one."
-        }
-    }
-    // if user authentication constraints are expected, the passed key attestation must meet these constraints
-    keyAttestationRequirement.userAuthentication?.let {
-        requireNotNull(userAuthentication) {
-            "Key Attestation expected to contain information about the user authentication's attack resistance but does not."
-        }
-        require(userAuthentication.containsAll(keyAttestationRequirement.userAuthentication)) {
-            "The provided user authentication's attack resistance does not match the expected one."
-        }
-    }
-}
-
 private fun keySelector(
+    signedJwt: SignedJWT,
     credentialKey: CredentialKey,
     algorithm: JWSAlgorithm,
 ): JWSKeySelector<SecurityContext> {
@@ -182,7 +162,11 @@ private fun keySelector(
         }
 
     return when (credentialKey) {
-        is CredentialKey.KeyAttestation -> credentialKey.attestedKeys[credentialKey.keyIndex].keySelector(algorithm)
+        is CredentialKey.AttestedKeys -> {
+            val signingJWK = credentialKey.keys.signingKeyOf(signedJwt)
+            requireNotNull(signingJWK) { "Key attestation does not contain a key that verifies the jwt proof signature" }
+            signingJWK.keySelector(algorithm)
+        }
         is CredentialKey.DIDUrl -> credentialKey.jwk.keySelector(algorithm)
         is CredentialKey.Jwk -> credentialKey.value.keySelector(algorithm)
         is CredentialKey.X5c -> SingleKeyJWSKeySelector(algorithm, credentialKey.certificate.publicKey)

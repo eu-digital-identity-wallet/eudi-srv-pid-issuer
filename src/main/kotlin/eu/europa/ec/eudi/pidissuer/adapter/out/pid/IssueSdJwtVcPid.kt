@@ -184,6 +184,27 @@ internal val SdJwtVcPidVct: SdJwtVcType = SdJwtVcType(pidDocType(1))
 
 internal val SdJwtVcPidCredentialConfigurationId: CredentialConfigurationId = CredentialConfigurationId(PidSdJwtVcScope.value)
 
+internal fun pidSdJwtVcProofTypesSupported(
+    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    keyAttestationRequirement: KeyAttestation,
+) = buildSet {
+    add(
+        ProofType.Jwt(
+            jwtProofsSupportedSigningAlgorithms,
+            keyAttestationRequirement,
+        ),
+    )
+    // Attestation proof is available only when key attestations for this credential are enabled in configuration
+    if (keyAttestationRequirement is KeyAttestation.Required) {
+        add(
+            ProofType.Attestation(
+                jwtProofsSupportedSigningAlgorithms,
+                keyAttestationRequirement,
+            ),
+        )
+    }
+}
+
 fun pidSdJwtVcV1(
     signingAlgorithm: JWSAlgorithm,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
@@ -202,12 +223,7 @@ fun pidSdJwtVcV1(
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
         scope = PidSdJwtVcScope,
         proofTypesSupported = ProofTypesSupported(
-            nonEmptySetOf(
-                ProofType.Jwt(
-                    jwtProofsSupportedSigningAlgorithms,
-                    keyAttestationRequirement,
-                ),
-            ),
+            pidSdJwtVcProofTypesSupported(jwtProofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
     )
 

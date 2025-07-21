@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.Either
 import arrow.core.NonEmptySet
-import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
@@ -274,6 +273,27 @@ val PidMsoMdocV1CredentialConfigurationId: CredentialConfigurationId = Credentia
 
 val PidMsoMdocV1DocType: MsoDocType = pidDocType(1)
 
+internal fun pidMsoMdocProofTypesSupported(
+    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    keyAttestationRequirement: KeyAttestation,
+) = buildSet {
+    add(
+        ProofType.Jwt(
+            jwtProofsSupportedSigningAlgorithms,
+            keyAttestationRequirement,
+        ),
+    )
+    // Attestation proof is available only when key attestations for this credential are enabled in configuration
+    if (keyAttestationRequirement is KeyAttestation.Required) {
+        add(
+            ProofType.Attestation(
+                jwtProofsSupportedSigningAlgorithms,
+                keyAttestationRequirement,
+            ),
+        )
+    }
+}
+
 internal fun pidMsoMdocV1(
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     keyAttestationRequirement: KeyAttestation,
@@ -291,12 +311,7 @@ internal fun pidMsoMdocV1(
         credentialSigningAlgorithmsSupported = emptySet(),
         scope = PidMsoMdocScope,
         proofTypesSupported = ProofTypesSupported(
-            nonEmptySetOf(
-                ProofType.Jwt(
-                    jwtProofsSupportedSigningAlgorithms,
-                    keyAttestationRequirement,
-                ),
-            ),
+            pidMsoMdocProofTypesSupported(jwtProofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
         policy = MsoMdocPolicy(oneTimeUse = true),
     )
