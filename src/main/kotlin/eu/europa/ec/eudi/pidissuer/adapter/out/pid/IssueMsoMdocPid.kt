@@ -274,7 +274,10 @@ val PidMsoMdocV1CredentialConfigurationId: CredentialConfigurationId = Credentia
 
 val PidMsoMdocV1DocType: MsoDocType = pidDocType(1)
 
-fun pidMsoMdocV1(jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>): MsoMdocCredentialConfiguration =
+internal fun pidMsoMdocV1(
+    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    keyAttestationRequirement: KeyAttestation,
+): MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
         id = PidMsoMdocV1CredentialConfigurationId,
         docType = PidMsoMdocV1DocType,
@@ -289,7 +292,10 @@ fun pidMsoMdocV1(jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>)
         scope = PidMsoMdocScope,
         proofTypesSupported = ProofTypesSupported(
             nonEmptySetOf(
-                ProofType.Jwt(jwtProofsSupportedSigningAlgorithms, KeyAttestation.NotRequired),
+                ProofType.Jwt(
+                    jwtProofsSupportedSigningAlgorithms,
+                    keyAttestationRequirement,
+                ),
             ),
         ),
         policy = MsoMdocPolicy(oneTimeUse = true),
@@ -308,11 +314,14 @@ internal class IssueMsoMdocPid(
     private val validityDuration: Duration,
     private val storeIssuedCredentials: StoreIssuedCredentials,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    override val jwtProofsKeyAttestationRequirement: KeyAttestation = KeyAttestation.NotRequired,
 ) : IssueSpecificCredential {
 
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
 
-    override val supportedCredential: MsoMdocCredentialConfiguration = pidMsoMdocV1(jwtProofsSupportedSigningAlgorithms)
+    override val supportedCredential: MsoMdocCredentialConfiguration =
+        pidMsoMdocV1(jwtProofsSupportedSigningAlgorithms, jwtProofsKeyAttestationRequirement)
+
     override val publicKey: JWK? = null
 
     override suspend fun invoke(

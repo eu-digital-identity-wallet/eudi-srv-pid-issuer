@@ -22,6 +22,8 @@ import java.text.ParseException
 data class KeyAttestationJWT(val value: String) {
 
     val attestedKeys: List<JWK>
+    val keyStorage: List<String>?
+    val userAuthentication: List<String>?
 
     init {
         val jwt = SignedJWT.parse(value)
@@ -54,6 +56,20 @@ data class KeyAttestationJWT(val value: String) {
                     e,
                 )
             }
+        }
+
+        keyStorage = jwt.jwtClaimsSet.getListClaim("key_storage")?.map {
+            require(it is String) {
+                "Invalid Key Attestation JWT. 'key_storage' items must be strings"
+            }
+            it
+        }
+
+        userAuthentication = jwt.jwtClaimsSet.getListClaim("user_authentication")?.map {
+            require(it is String) {
+                "Invalid Key Attestation JWT. 'user_authentication' items must be strings"
+            }
+            it
         }
     }
 

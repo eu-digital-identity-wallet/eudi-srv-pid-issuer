@@ -298,8 +298,9 @@ val MobileDrivingLicenceV1CredentialConfigurationId: CredentialConfigurationId =
 
 val MobileDrivingLicenceV1DocType: MsoDocType = mdlDocType(1u)
 
-fun mobileDrivingLicenceV1(
+internal fun mobileDrivingLicenceV1(
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    keyAttestationRequirement: KeyAttestation,
 ): MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
         id = MobileDrivingLicenceV1CredentialConfigurationId,
@@ -317,7 +318,7 @@ fun mobileDrivingLicenceV1(
             nonEmptySetOf(
                 ProofType.Jwt(
                     signingAlgorithmsSupported = jwtProofsSupportedSigningAlgorithms,
-                    keyAttestation = KeyAttestation.NotRequired,
+                    keyAttestationRequirement = KeyAttestation.NotRequired,
                 ),
             ),
         ),
@@ -337,9 +338,11 @@ internal class IssueMobileDrivingLicence(
     private val validityDuration: Duration,
     private val storeIssuedCredentials: StoreIssuedCredentials,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    override val jwtProofsKeyAttestationRequirement: KeyAttestation = KeyAttestation.NotRequired,
 ) : IssueSpecificCredential {
 
-    override val supportedCredential: MsoMdocCredentialConfiguration = mobileDrivingLicenceV1(jwtProofsSupportedSigningAlgorithms)
+    override val supportedCredential: MsoMdocCredentialConfiguration =
+        mobileDrivingLicenceV1(jwtProofsSupportedSigningAlgorithms, jwtProofsKeyAttestationRequirement)
 
     override val publicKey: JWK?
         get() = null

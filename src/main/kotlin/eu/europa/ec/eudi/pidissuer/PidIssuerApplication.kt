@@ -478,6 +478,7 @@ fun beans(clock: Clock) = beans {
                         "issuer.pid.mso_mdoc.jwtProofs.supportedSigningAlgorithms",
                         JWSAlgorithm::parse,
                     )
+                    val jwtProofsKeyAttestationRequirement = jwtProofsKeyAttestationRequirement("issuer.pid.mso_mdoc")
                     val issueMsoMdocPid = IssueMsoMdocPid(
                         getPidData = ref(),
                         encodePidInCbor = ref(),
@@ -489,6 +490,7 @@ fun beans(clock: Clock) = beans {
                         storeIssuedCredentials = ref(),
                         validateProofs = ref(),
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
+                        jwtProofsKeyAttestationRequirement = jwtProofsKeyAttestationRequirement,
                     )
                     add(issueMsoMdocPid)
                 }
@@ -496,25 +498,7 @@ fun beans(clock: Clock) = beans {
                 if (enableSdJwtVcPid) {
                     val expiresIn = env.duration("issuer.pid.sd_jwt_vc.duration") ?: Duration.ofDays(30L)
                     val notUseBefore = env.duration("issuer.pid.sd_jwt_vc.notUseBefore")
-                    val keyAttestationRequired = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.key_attestations.required")
-                    val keyStorageConstraints = env.getProperty<List<String>>(
-                        "issuer.pid.sd_jwt_vc.key_attestations.constraints.key_storage",
-                    )
-                    val userAuthenticationConstraints = env.getProperty<List<String>>(
-                        "issuer.pid.sd_jwt_vc.key_attestations.constraints.user_authentication",
-                    )
-
-                    val configuredKeyAttestationRequirement =
-                        if (keyAttestationRequired != null && !keyAttestationRequired)
-                            KeyAttestation.NotRequired
-                        else KeyAttestation.Required(
-                            keyStorage = keyStorageConstraints?.map { AttackPotentialResistance(it) }?.toNonEmptySetOrNull(),
-                            useAuthentication = userAuthenticationConstraints?.map {
-                                AttackPotentialResistance(
-                                    it,
-                                )
-                            }?.toNonEmptySetOrNull(),
-                        )
+                    val jwtProofsKeyAttestationRequirement = jwtProofsKeyAttestationRequirement("issuer.pid.sd_jwt_vc")
 
                     val digestsHashAlgorithm = env.getProperty<HashAlgorithm>(
                         "issuer.pid.sd_jwt_vc.digests.hashAlgorithm",
@@ -545,7 +529,7 @@ fun beans(clock: Clock) = beans {
                         validateProofs = ref(),
                         generateStatusListToken = provider<GenerateStatusListToken>().ifAvailable,
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
-                        configuredKeyAttestationRequirement = configuredKeyAttestationRequirement,
+                        jwtProofsKeyAttestationRequirement = jwtProofsKeyAttestationRequirement,
                     )
 
                     val deferred = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.deferred") ?: false
@@ -561,6 +545,7 @@ fun beans(clock: Clock) = beans {
                         "issuer.mdl.jwtProofs.supportedSigningAlgorithms",
                         JWSAlgorithm::parse,
                     )
+                    val jwtProofsKeyAttestationRequirement = jwtProofsKeyAttestationRequirement("issuer.mdl.mso_mdoc")
                     val mdlIssuer = IssueMobileDrivingLicence(
                         getMobileDrivingLicenceData = ref(),
                         encodeMobileDrivingLicenceInCbor = ref(),
@@ -571,6 +556,7 @@ fun beans(clock: Clock) = beans {
                         storeIssuedCredentials = ref(),
                         validateProofs = ref(),
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
+                        jwtProofsKeyAttestationRequirement = jwtProofsKeyAttestationRequirement,
                     )
                     add(mdlIssuer)
                 }
@@ -592,6 +578,7 @@ fun beans(clock: Clock) = beans {
                         "issuer.ehic.jwtProofs.supportedSigningAlgorithms",
                         JWSAlgorithm::parse,
                     )
+                    val jwtProofsKeyAttestationRequirement = jwtProofsKeyAttestationRequirement("issuer.ehic")
 
                     val ehicJwsJsonFlattenedIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.jwsJsonFlattened(
                         issuerSigningKey = ref<IssuerSigningKey>(),
@@ -610,6 +597,7 @@ fun beans(clock: Clock) = beans {
                         generateNotificationId = ref(),
                         storeIssuedCredentials = ref(),
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
+                        jwtProofsKeyAttestationRequirement = jwtProofsKeyAttestationRequirement,
                     )
                     add(ehicJwsJsonFlattenedIssuer)
 
@@ -630,6 +618,7 @@ fun beans(clock: Clock) = beans {
                         generateNotificationId = ref(),
                         storeIssuedCredentials = ref(),
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
+                        jwtProofsKeyAttestationRequirement = jwtProofsKeyAttestationRequirement,
                     )
                     add(ehicCompactIssuer)
                 }
@@ -902,6 +891,26 @@ fun beans(clock: Clock) = beans {
             it.defaultCodecs().maxInMemorySize(maxInMemorySize.toBytes().toInt())
         }
     }
+}
+
+private fun BeanDefinitionDsl.jwtProofsKeyAttestationRequirement(attestationPropertyPrefix: String): KeyAttestation {
+    val keyAttestationRequired = env.getProperty<Boolean>("$attestationPropertyPrefix.key_attestations.required")
+    val keyStorageConstraints = env.getProperty<List<String>>(
+        "$attestationPropertyPrefix.key_attestations.constraints.key_storage",
+    )
+    val userAuthenticationConstraints = env.getProperty<List<String>>(
+        "$attestationPropertyPrefix.key_attestations.constraints.user_authentication",
+    )
+    return if (keyAttestationRequired == null || !keyAttestationRequired)
+        KeyAttestation.NotRequired
+    else KeyAttestation.Required(
+        keyStorage = keyStorageConstraints?.map {
+            AttackPotentialResistance(it)
+        }?.toNonEmptySetOrNull(),
+        userAuthentication = userAuthenticationConstraints?.map {
+            AttackPotentialResistance(it)
+        }?.toNonEmptySetOrNull(),
+    )
 }
 
 private fun Environment.credentialResponseEncryption(): CredentialResponseEncryption {

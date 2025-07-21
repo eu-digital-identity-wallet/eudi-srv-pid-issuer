@@ -69,6 +69,8 @@ import java.time.Duration
 import java.time.LocalDate
 import java.time.Month
 import java.util.*
+import kotlin.String
+import kotlin.collections.List
 import kotlin.test.*
 
 /**
@@ -173,6 +175,9 @@ internal class BaseWalletApiTest {
         "issuer.credentialResponseEncryption.required=false",
         "issuer.credentialEndpoint.batchIssuance.enabled=true",
         "issuer.credentialEndpoint.batchIssuance.batchSize=3",
+        "issuer.pid.mso_mdoc.key_attestations.required = true",
+        "issuer.pid.mso_mdoc.key_attestations.constraints.key_storage = iso_18045_high, iso_18045_moderate",
+        "issuer.pid.mso_mdoc.key_attestations.constraints.user_authentication = iso_18045_high, iso_18045_moderate",
     ],
 )
 internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
@@ -495,6 +500,53 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
     }
 
     @Test
+    fun `fail when the sent key attestation does not match the expected attack protection requirements`() = runTest {
+        val authentication = dPoPTokenAuthentication(clock = clock)
+        val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
+
+        val jwtProofSigningKey = ECKeyGenerator(Curve.P_256).generate()
+
+        val extraKeysNo = 3
+        val keyAttestationJwtProof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, jwtProofSigningKey) {
+            keyID(extraKeysNo.toString())
+            customParam(
+                "key_attestation",
+                keyAttestationJWT(
+                    proofSigningKey = jwtProofSigningKey,
+                    keyStorageConstraints = listOf("iso_18045_enhanced-basic"),
+                    userAuthorizationConstraints = listOf("iso_18045_enhanced-basic"),
+                ) {
+                    (0..<extraKeysNo).map {
+                        ECKeyGenerator(Curve.P_256).generate()
+                    }
+                },
+            )
+        }
+
+        val noKeyAttestationJwtProof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, jwtProofSigningKey) {
+            jwk(jwtProofSigningKey.toPublicJWK())
+        }
+
+        val proofs = listOf(keyAttestationJwtProof, noKeyAttestationJwtProof).toProofs()
+
+        val response = client()
+            .mutateWith(mockAuthentication(authentication))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(requestByCredentialIdentifier(proof = null, proofs = proofs))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest()
+            .expectBody<IssueCredentialResponse.FailedTO>()
+            .returnResult()
+            .let { assertNotNull(it.responseBody) }
+
+        assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
+        assertEquals("Invalid proof JWT", response.errorDescription)
+    }
+
+    @Test
     fun `when mixed jwt proofs with and without key attestations are sent,the distinct set of keys is used for issuance`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
         val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
@@ -506,7 +558,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             keyID(extraKeysNo.toString())
             customParam(
                 "key_attestation",
-                createKeyAttestationJWT(jwtProofSigningKey) {
+                keyAttestationJWT(jwtProofSigningKey) {
                     (0..<extraKeysNo).map {
                         ECKeyGenerator(Curve.P_256).generate()
                     }
@@ -549,7 +601,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             keyID(extraKeysNo.toString())
             customParam(
                 "key_attestation",
-                createKeyAttestationJWT(jwtProofSigningKey) {
+                keyAttestationJWT(jwtProofSigningKey) {
                     val key = ECKeyGenerator(Curve.P_256).generate()
                     (0..<extraKeysNo).map { key }
                 },
@@ -585,7 +637,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             keyID(extraKeysNo.toString())
             customParam(
                 "key_attestation",
-                createKeyAttestationJWT(jwtProofSigningKey) {
+                keyAttestationJWT(jwtProofSigningKey) {
                     (0..<extraKeysNo).map {
                         ECKeyGenerator(Curve.P_256).generate()
                     }
@@ -938,7 +990,12 @@ val KEY_ATTESTATION_JWT_TYPE = "keyattestation+jwt"
  * @param proofSigningKey The key used to sign the JWT Proof
  * @param extraKeysNo   The extra keys to be generated and included in the 'attested_keys' array claim.
  */
-private fun createKeyAttestationJWT(proofSigningKey: ECKey, extraKeys: () -> List<ECKey>): String {
+private fun keyAttestationJWT(
+    proofSigningKey: ECKey,
+    keyStorageConstraints: List<String> = listOf("iso_18045_high", "iso_18045_moderate"),
+    userAuthorizationConstraints: List<String> = listOf("iso_18045_high", "iso_18045_moderate"),
+    extraKeys: () -> List<ECKey>,
+): String {
     val keyAttestationSigningKey = ECKeyGenerator(Curve.P_256).generate()
     val signer: JWSSigner = ECDSASigner(keyAttestationSigningKey)
 
@@ -956,6 +1013,8 @@ private fun createKeyAttestationJWT(proofSigningKey: ECKey, extraKeys: () -> Lis
         JWTClaimsSet.Builder()
             .issueTime(Date())
             .claim("attested_keys", attestedKeysJsonArray)
+            .claim("key_storage", keyStorageConstraints)
+            .claim("user_authentication", userAuthorizationConstraints)
             .build(),
     ).apply { sign(signer) }.serialize()
 }

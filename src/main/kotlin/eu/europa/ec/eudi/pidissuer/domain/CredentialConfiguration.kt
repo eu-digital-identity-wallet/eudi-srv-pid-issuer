@@ -46,7 +46,7 @@ sealed interface KeyAttestation {
 
     data class Required(
         val keyStorage: NonEmptySet<AttackPotentialResistance>?,
-        val useAuthentication: NonEmptySet<AttackPotentialResistance>?,
+        val userAuthentication: NonEmptySet<AttackPotentialResistance>?,
     ) : KeyAttestation
 }
 
@@ -57,7 +57,7 @@ sealed interface ProofType {
      */
     data class Jwt(
         val signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
-        val keyAttestation: KeyAttestation,
+        val keyAttestationRequirement: KeyAttestation,
     ) : ProofType
 }
 

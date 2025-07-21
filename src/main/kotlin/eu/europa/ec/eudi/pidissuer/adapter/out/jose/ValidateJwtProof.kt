@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.Either
-import arrow.core.NonEmptySet
 import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
 import com.nimbusds.jose.JOSEObjectType
@@ -69,7 +68,7 @@ internal class ValidateJwtProof(
         val signedJwt = SignedJWT.parse(unvalidatedProof.jwt)
         val (algorithm, credentialKey) = algorithmAndCredentialKey(
             signedJwt.header,
-            proofType.signingAlgorithmsSupported,
+            proofType,
         )
         val keySelector = keySelector(credentialKey, algorithm)
         val processor = processor(credentialIssuerId, keySelector)
@@ -81,8 +80,9 @@ internal class ValidateJwtProof(
 
 private fun algorithmAndCredentialKey(
     header: JWSHeader,
-    supported: NonEmptySet<JWSAlgorithm>,
+    proofType: ProofType.Jwt,
 ): Pair<JWSAlgorithm, CredentialKey> {
+    val supported = proofType.signingAlgorithmsSupported
     val algorithm = header.algorithm
         .takeIf(JWSAlgorithm.Family.SIGNATURE::contains)
         ?.takeIf(supported::contains)
@@ -103,7 +103,12 @@ private fun algorithmAndCredentialKey(
         ).getOrThrow()
 
         else -> error("public key(s) must be provided in one of 'kid', 'jwk', 'x5c' or 'key_attestation'")
-    }.apply { ensureCompatibleWith(algorithm) }
+    }.apply {
+        ensureCompatibleWith(algorithm)
+        if (this is CredentialKey.KeyAttestation) {
+            ensureValidKeyAttestation(proofType.keyAttestationRequirement)
+        }
+    }
 
     return (algorithm to key)
 }
@@ -138,6 +143,30 @@ private fun CredentialKey.ensureCompatibleWith(algorithm: JWSAlgorithm) {
             require(algorithm in supportedAlgorithms) {
                 "certificate algorithm '${certificate.publicKey.algorithm}' is not compatible with signing algorithm '${algorithm.name}'"
             }
+        }
+    }
+}
+
+private fun CredentialKey.KeyAttestation.ensureValidKeyAttestation(keyAttestationRequirement: KeyAttestation) {
+    require(keyAttestationRequirement is KeyAttestation.Required) {
+        "No key attestation expected but the provided JWT Proof contains one"
+    }
+    // if key storage constraints are expected, the passed key attestation must meet these constraints
+    keyAttestationRequirement.keyStorage?.let {
+        requireNotNull(keyStorage) {
+            "Key Attestation expected to contain information about the key storage's attack resistance but does not."
+        }
+        require(keyStorage.containsAll(keyAttestationRequirement.keyStorage)) {
+            "The provided key storage's attack resistance does not match the expected one."
+        }
+    }
+    // if user authentication constraints are expected, the passed key attestation must meet these constraints
+    keyAttestationRequirement.userAuthentication?.let {
+        requireNotNull(userAuthentication) {
+            "Key Attestation expected to contain information about the user authentication's attack resistance but does not."
+        }
+        require(userAuthentication.containsAll(keyAttestationRequirement.userAuthentication)) {
+            "The provided user authentication's attack resistance does not match the expected one."
         }
     }
 }
