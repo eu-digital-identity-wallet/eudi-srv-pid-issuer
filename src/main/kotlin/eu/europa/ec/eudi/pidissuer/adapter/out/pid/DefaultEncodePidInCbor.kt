@@ -29,7 +29,7 @@ internal class DefaultEncodePidInCbor(issuerSigningKey: IssuerSigningKey) : Enco
 
     private val signer = MsoMdocSigner<Pair<Pid, PidMetaData>>(
         issuerSigningKey = issuerSigningKey,
-        docType = PidMsoMdocV1.docType,
+        docType = PidMsoMdocV1DocType,
     ) { (pid, pidMetaData) ->
         addItemsToSign(pid)
         addItemsToSign(pidMetaData)

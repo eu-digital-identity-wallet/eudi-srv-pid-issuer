@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer
 import arrow.core.*
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
+import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
@@ -359,11 +360,11 @@ fun beans(clock: Clock) = beans {
                 this[CredentialIdentifier(MobileDrivingLicenceV1Scope.value)] =
                     { identifier, unvalidatedProofs, requestedResponseEncryption ->
                         ResolvedCredentialRequest(
-                            MobileDrivingLicenceV1.id,
+                            MobileDrivingLicenceV1CredentialConfigurationId,
                             MsoMdocCredentialRequest(
                                 unvalidatedProofs = unvalidatedProofs,
                                 credentialResponseEncryption = requestedResponseEncryption,
-                                docType = MobileDrivingLicenceV1.docType,
+                                docType = MobileDrivingLicenceV1DocType,
                             ),
                             identifier,
                         )
@@ -374,11 +375,11 @@ fun beans(clock: Clock) = beans {
                 this[CredentialIdentifier(PidMsoMdocScope.value)] =
                     { identifier, unvalidatedProofs, requestedResponseEncryption ->
                         ResolvedCredentialRequest(
-                            PidMsoMdocV1.id,
+                            PidMsoMdocV1CredentialConfigurationId,
                             MsoMdocCredentialRequest(
                                 unvalidatedProofs = unvalidatedProofs,
                                 credentialResponseEncryption = requestedResponseEncryption,
-                                docType = PidMsoMdocV1.docType,
+                                docType = PidMsoMdocV1DocType,
                             ),
                             identifier,
                         )
@@ -473,6 +474,10 @@ fun beans(clock: Clock) = beans {
             specificCredentialIssuers = buildList {
                 if (enableMsoMdocPid) {
                     val duration = env.duration("issuer.pid.mso_mdoc.encoder.duration")?.toKotlinDuration() ?: 30.days
+                    val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
+                        "issuer.pid.mso_mdoc.jwtProofs.supportedSigningAlgorithms",
+                        JWSAlgorithm::parse,
+                    )
                     val issueMsoMdocPid = IssueMsoMdocPid(
                         getPidData = ref(),
                         encodePidInCbor = ref(),
@@ -483,6 +488,7 @@ fun beans(clock: Clock) = beans {
                         validityDuration = duration,
                         storeIssuedCredentials = ref(),
                         validateProofs = ref(),
+                        jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                     )
                     add(issueMsoMdocPid)
                 }
@@ -493,6 +499,10 @@ fun beans(clock: Clock) = beans {
                     val digestsHashAlgorithm = env.getProperty<HashAlgorithm>(
                         "issuer.pid.sd_jwt_vc.digests.hashAlgorithm",
                     ) ?: HashAlgorithm.SHA_256
+                    val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
+                        "issuer.pid.sd_jwt_vc.jwtProofs.supportedSigningAlgorithms",
+                        JWSAlgorithm::parse,
+                    )
 
                     val issuerSigningKey = ref<IssuerSigningKey>()
                     val issueSdJwtVcPid = IssueSdJwtVcPid(
@@ -514,6 +524,7 @@ fun beans(clock: Clock) = beans {
                         storeIssuedCredentials = ref(),
                         validateProofs = ref(),
                         generateStatusListToken = provider<GenerateStatusListToken>().ifAvailable,
+                        jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                     )
 
                     val deferred = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.deferred") ?: false
@@ -525,6 +536,10 @@ fun beans(clock: Clock) = beans {
 
                 if (enableMobileDrivingLicence) {
                     val duration = env.duration("issuer.mdl.mso_mdoc.encoder.duration")?.toKotlinDuration() ?: 5.days
+                    val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
+                        "issuer.mdl.jwtProofs.supportedSigningAlgorithms",
+                        JWSAlgorithm::parse,
+                    )
                     val mdlIssuer = IssueMobileDrivingLicence(
                         getMobileDrivingLicenceData = ref(),
                         encodeMobileDrivingLicenceInCbor = ref(),
@@ -534,6 +549,7 @@ fun beans(clock: Clock) = beans {
                         validityDuration = duration,
                         storeIssuedCredentials = ref(),
                         validateProofs = ref(),
+                        jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                     )
                     add(mdlIssuer)
                 }
@@ -551,6 +567,10 @@ fun beans(clock: Clock) = beans {
                     }
                     val ehicNotificationsEnabled = env.getProperty<Boolean>("issuer.ehic.notifications.enabled") ?: true
                     val issuingCountry = EhicIssuingCountry(env.getProperty("issuer.ehic.issuingCountry", "GR"))
+                    val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
+                        "issuer.ehic.jwtProofs.supportedSigningAlgorithms",
+                        JWSAlgorithm::parse,
+                    )
 
                     val ehicJwsJsonFlattenedIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.jwsJsonFlattened(
                         issuerSigningKey = ref<IssuerSigningKey>(),
@@ -568,6 +588,7 @@ fun beans(clock: Clock) = beans {
                         notificationsEnabled = ehicNotificationsEnabled,
                         generateNotificationId = ref(),
                         storeIssuedCredentials = ref(),
+                        jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                     )
                     add(ehicJwsJsonFlattenedIssuer)
 
@@ -587,6 +608,7 @@ fun beans(clock: Clock) = beans {
                         notificationsEnabled = ehicNotificationsEnabled,
                         generateNotificationId = ref(),
                         storeIssuedCredentials = ref(),
+                        jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                     )
                     add(ehicCompactIssuer)
                 }

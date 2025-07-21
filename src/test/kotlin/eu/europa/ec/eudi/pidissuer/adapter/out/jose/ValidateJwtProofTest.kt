@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.NonEmptyList
-import arrow.core.nonEmptySetOf
 import arrow.core.toNonEmptyListOrNull
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.JOSEObjectType
@@ -30,7 +29,7 @@ import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.MobileDrivingLicenceV1
+import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.mobileDrivingLicenceV1
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.loadResource
 import kotlinx.coroutines.Dispatchers
@@ -46,13 +45,7 @@ internal class ValidateJwtProofTest {
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.systemDefaultZone()
     private val validateJwtProof = ValidateJwtProof(issuer)
-    private val credentialConfiguration = MobileDrivingLicenceV1.copy(
-        proofTypesSupported = ProofTypesSupported(
-            nonEmptySetOf(
-                ProofType.Jwt(checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()), KeyAttestation.NotRequired),
-            ),
-        ),
-    )
+    private val credentialConfiguration = mobileDrivingLicenceV1(checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()))
 
     @Test
     internal fun `proof validation fails with incorrect 'typ'`() = runTest {

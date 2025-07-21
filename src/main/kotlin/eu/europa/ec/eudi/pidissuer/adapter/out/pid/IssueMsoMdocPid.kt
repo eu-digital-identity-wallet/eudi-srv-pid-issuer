@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.Either
+import arrow.core.NonEmptySet
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
@@ -269,10 +270,14 @@ private fun pidDomesticNameSpace(v: Int?, countryCode: String): MsoNameSpace =
     if (v == null) "$PID_DOCTYPE.$countryCode"
     else "$PID_DOCTYPE.$countryCode.$v"
 
-val PidMsoMdocV1: MsoMdocCredentialConfiguration =
+val PidMsoMdocV1CredentialConfigurationId: CredentialConfigurationId = CredentialConfigurationId(PidMsoMdocScope.value)
+
+val PidMsoMdocV1DocType: MsoDocType = pidDocType(1)
+
+fun pidMsoMdocV1(jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>): MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
-        id = CredentialConfigurationId(PidMsoMdocScope.value),
-        docType = pidDocType(1),
+        id = PidMsoMdocV1CredentialConfigurationId,
+        docType = PidMsoMdocV1DocType,
         display = listOf(
             CredentialDisplay(
                 name = DisplayName("PID (MSO MDoc)", ENGLISH),
@@ -284,7 +289,7 @@ val PidMsoMdocV1: MsoMdocCredentialConfiguration =
         scope = PidMsoMdocScope,
         proofTypesSupported = ProofTypesSupported(
             nonEmptySetOf(
-                ProofType.Jwt(nonEmptySetOf(JWSAlgorithm.ES256), KeyAttestation.NotRequired),
+                ProofType.Jwt(jwtProofsSupportedSigningAlgorithms, KeyAttestation.NotRequired),
             ),
         ),
         policy = MsoMdocPolicy(oneTimeUse = true),
@@ -302,12 +307,12 @@ internal class IssueMsoMdocPid(
     private val clock: Clock,
     private val validityDuration: Duration,
     private val storeIssuedCredentials: StoreIssuedCredentials,
+    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
 ) : IssueSpecificCredential {
 
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
 
-    override val supportedCredential: MsoMdocCredentialConfiguration
-        get() = PidMsoMdocV1
+    override val supportedCredential: MsoMdocCredentialConfiguration = pidMsoMdocV1(jwtProofsSupportedSigningAlgorithms)
     override val publicKey: JWK? = null
 
     override suspend fun invoke(

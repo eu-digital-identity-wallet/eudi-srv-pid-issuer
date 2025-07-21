@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
 import arrow.core.Either
+import arrow.core.NonEmptySet
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
@@ -292,10 +293,17 @@ internal object MsoMdocMdlV1Claims {
     )
 }
 
-val MobileDrivingLicenceV1: MsoMdocCredentialConfiguration =
+val MobileDrivingLicenceV1CredentialConfigurationId: CredentialConfigurationId =
+    CredentialConfigurationId(MobileDrivingLicenceV1Scope.value)
+
+val MobileDrivingLicenceV1DocType: MsoDocType = mdlDocType(1u)
+
+fun mobileDrivingLicenceV1(
+    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+): MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
-        id = CredentialConfigurationId(MobileDrivingLicenceV1Scope.value),
-        docType = mdlDocType(1u),
+        id = MobileDrivingLicenceV1CredentialConfigurationId,
+        docType = MobileDrivingLicenceV1DocType,
         display = listOf(
             CredentialDisplay(
                 name = DisplayName("Mobile Driving Licence (MSO MDoc)", Locale.ENGLISH),
@@ -308,7 +316,7 @@ val MobileDrivingLicenceV1: MsoMdocCredentialConfiguration =
         proofTypesSupported = ProofTypesSupported(
             nonEmptySetOf(
                 ProofType.Jwt(
-                    signingAlgorithmsSupported = nonEmptySetOf(JWSAlgorithm.ES256),
+                    signingAlgorithmsSupported = jwtProofsSupportedSigningAlgorithms,
                     keyAttestation = KeyAttestation.NotRequired,
                 ),
             ),
@@ -328,10 +336,10 @@ internal class IssueMobileDrivingLicence(
     private val clock: Clock,
     private val validityDuration: Duration,
     private val storeIssuedCredentials: StoreIssuedCredentials,
+    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
 ) : IssueSpecificCredential {
 
-    override val supportedCredential: MsoMdocCredentialConfiguration
-        get() = MobileDrivingLicenceV1
+    override val supportedCredential: MsoMdocCredentialConfiguration = mobileDrivingLicenceV1(jwtProofsSupportedSigningAlgorithms)
 
     override val publicKey: JWK?
         get() = null
