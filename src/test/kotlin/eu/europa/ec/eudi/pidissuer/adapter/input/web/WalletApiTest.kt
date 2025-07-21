@@ -26,9 +26,7 @@ import com.nimbusds.jose.crypto.factories.DefaultJWEDecrypterFactory
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.KeyUse
-import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
-import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
@@ -557,7 +555,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, walletKey) {
             jwk(walletKey.toPublicJWK())
         }.toProof()
-        val encryptionKey = RSAKeyGenerator(4096).keyUse(KeyUse.ENCRYPTION).generate()
+        val encryptionKey = ECKeyGenerator(Curve.P_256).keyUse(KeyUse.ENCRYPTION).generate()
         val encryptionParameters = encryptionParameters(encryptionKey)
 
         val response = client()
@@ -579,7 +577,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
                     it.decrypt(
                         DefaultJWEDecrypterFactory().createJWEDecrypter(
                             it.header,
-                            encryptionKey.toRSAPrivateKey(),
+                            encryptionKey.toECPrivateKey(),
                         ),
                     )
                 }
@@ -613,7 +611,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
                 jwk(walletKey.toPublicJWK())
             }
         }.toProofs()
-        val encryptionKey = RSAKeyGenerator(4096).keyUse(KeyUse.ENCRYPTION).generate()
+        val encryptionKey = ECKeyGenerator(Curve.P_256).keyUse(KeyUse.ENCRYPTION).generate()
         val encryptionParameters = encryptionParameters(encryptionKey)
 
         val response = client()
@@ -635,7 +633,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
                     it.decrypt(
                         DefaultJWEDecrypterFactory().createJWEDecrypter(
                             it.header,
-                            encryptionKey.toRSAPrivateKey(),
+                            encryptionKey.toECPrivateKey(),
                         ),
                     )
                 }
@@ -699,7 +697,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, walletKey) {
             jwk(walletKey.toPublicJWK())
         }
-        val encryptionKey = RSAKeyGenerator(4096).keyUse(KeyUse.ENCRYPTION).generate()
+        val encryptionKey = ECKeyGenerator(Curve.P_256).keyUse(KeyUse.ENCRYPTION).generate()
         val encryptionParameters = encryptionParameters(encryptionKey)
 
         val response = client()
@@ -726,7 +724,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
                     it.decrypt(
                         DefaultJWEDecrypterFactory().createJWEDecrypter(
                             it.header,
-                            encryptionKey.toRSAPrivateKey(),
+                            encryptionKey.toECPrivateKey(),
                         ),
                     )
                 }
@@ -803,11 +801,11 @@ private fun requestByCredentialIdentifier(
         credentialResponseEncryption = credentialResponseEncryption,
     )
 
-private fun encryptionParameters(key: RSAKey): CredentialResponseEncryptionTO =
+private fun encryptionParameters(key: ECKey): CredentialResponseEncryptionTO =
     CredentialResponseEncryptionTO(
         key = Json.decodeFromString(key.toPublicJWK().toJSONString()),
-        algorithm = "RSA-OAEP-256",
-        method = "A128CBC-HS256",
+        algorithm = "ECDH-ES",
+        method = "A128GCM",
     )
 
 private fun SignedJWT.toProof(): ProofTo = ProofTo(type = ProofTypeTO.JWT, jwt = serialize())

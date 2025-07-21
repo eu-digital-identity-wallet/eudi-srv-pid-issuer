@@ -155,11 +155,11 @@ Default value: `true`
 
 Variable: `ISSUER_CREDENTIALRESPONSEENCRYPTION_ALGORITHMSSUPPORTED`  
 Description: Comma separated list of supported encryption algorithms for credential response encryption.      
-Default value: `RSA-OAEP-256`
+Default value: `ECDH-ES`
 
 Variable: `ISSUER_CREDENTIALRESPONSEENCRYPTION_ENCRYPTIONMETHODS`  
 Description: Comma separated list of supported encryption method for credential response encryption.      
-Default value: `A128CBC-HS256`
+Default value: `A128GCM`
 
 Variable: `ISSUER_PID_MSO_MDOC_ENABLED`  
 Description: Whether to enable support for PID issuance in *MSO MDOC* format  
