@@ -508,7 +508,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
         val extraKeysNo = 3
         val keyAttestationJwtProof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, jwtProofSigningKey) {
-            keyID(extraKeysNo.toString())
             customParam(
                 "key_attestation",
                 keyAttestationJWT(
@@ -555,7 +554,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
         val extraKeysNo = 3
         val keyAttestationJwtProof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, jwtProofSigningKey) {
-            keyID(extraKeysNo.toString())
             customParam(
                 "key_attestation",
                 keyAttestationJWT(jwtProofSigningKey) {
@@ -598,7 +596,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
         val jwtProofSigningKey = ECKeyGenerator(Curve.P_256).generate()
         val extraKeysNo = 5
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, jwtProofSigningKey) {
-            keyID(extraKeysNo.toString())
             customParam(
                 "key_attestation",
                 keyAttestationJWT(jwtProofSigningKey) {
@@ -634,7 +631,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
         val jwtProofSigningKey = ECKeyGenerator(Curve.P_256).generate()
         val extraKeysNo = 3
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, jwtProofSigningKey) {
-            keyID(extraKeysNo.toString())
             customParam(
                 "key_attestation",
                 keyAttestationJWT(jwtProofSigningKey) {

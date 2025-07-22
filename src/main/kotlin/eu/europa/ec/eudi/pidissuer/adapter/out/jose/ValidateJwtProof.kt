@@ -96,12 +96,8 @@ private fun algorithmAndCredentialKey(
         kid != null && jwk == null && keyAttestation == null && x5c.isNullOrEmpty() -> CredentialKey.DIDUrl(kid).getOrThrow()
         kid == null && jwk != null && keyAttestation == null && x5c.isNullOrEmpty() -> CredentialKey.Jwk(jwk)
         kid == null && jwk == null && keyAttestation == null && !x5c.isNullOrEmpty() -> CredentialKey.X5c.parseDer(x5c).getOrThrow()
-        kid != null && jwk == null && keyAttestation != null && x5c.isNullOrEmpty() -> {
-            val keyAttestationJWT = KeyAttestationJWT(keyAttestation).also {
-                it.ensureValidKeyAttestation(proofType.keyAttestationRequirement)
-            }
-            CredentialKey.AttestedKeys(keyAttestationJWT.attestedKeys)
-        }
+        kid == null && jwk == null && keyAttestation != null && x5c.isNullOrEmpty() ->
+            CredentialKey.AttestedKeys.fromKeyAttestation(keyAttestation, proofType.keyAttestationRequirement)
 
         else -> error("public key(s) must be provided in one of 'kid', 'jwk', 'x5c' or 'key_attestation'")
     }.apply {
@@ -109,6 +105,19 @@ private fun algorithmAndCredentialKey(
     }
 
     return (algorithm to key)
+}
+
+private fun CredentialKey.AttestedKeys.Companion.fromKeyAttestation(
+    keyAttestation: String,
+    keyAttestationRequirement: KeyAttestation,
+): CredentialKey.AttestedKeys {
+    require(keyAttestationRequirement is KeyAttestation.Required) {
+        "Proof type JWT does not require key attestation, though one was provided."
+    }
+    val keyAttestationJWT = KeyAttestationJWT(keyAttestation).also {
+        it.ensureValidKeyAttestation(keyAttestationRequirement)
+    }
+    return CredentialKey.AttestedKeys(keyAttestationJWT.attestedKeys)
 }
 
 private fun CredentialKey.ensureCompatibleWithAlgorithm(algorithm: JWSAlgorithm, signedJwt: SignedJWT) {

@@ -97,11 +97,7 @@ sealed interface CredentialKey {
     }
 
     @JvmInline
-    value class AttestedKeys(val keys: List<JWK>) : CredentialKey {
-        init {
-            require(keys.isNotEmpty()) { "List of attested keys must not be empty" }
-        }
-
+    value class AttestedKeys(val keys: NonEmptyList<JWK>) : CredentialKey {
         companion object
     }
 }

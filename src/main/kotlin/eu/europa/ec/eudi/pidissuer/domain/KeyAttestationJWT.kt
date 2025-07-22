@@ -15,6 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import arrow.core.NonEmptyList
+import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSObject
 import com.nimbusds.jose.crypto.ECDSAVerifier
@@ -25,85 +27,86 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jwt.SignedJWT
 import java.text.ParseException
+import kotlin.collections.isNotEmpty
+import kotlin.collections.mapIndexed
 
-data class KeyAttestationJWT private constructor(val jwt: SignedJWT) {
-
-    val attestedKeys: List<JWK>
-    val keyStorage: List<AttackPotentialResistance>?
-    val userAuthentication: List<AttackPotentialResistance>?
-
-    init {
-        jwt.ensureSignedNotMAC()
-        require(jwt.header.type != null && jwt.header.type.type.equals(KEY_ATTESTATION_JWT_TYPE)) {
-            "Invalid Key Attestation JWT. Type must be set to `$KEY_ATTESTATION_JWT_TYPE`"
-        }
-        requireNotNull(jwt.jwtClaimsSet.issueTime) { "Invalid Key Attestation JWT. Misses `iat` claim" }
-
-        val attestedKeysClaimEntries = jwt.jwtClaimsSet.getListClaim("attested_keys")
-        requireNotNull(attestedKeysClaimEntries) { "Invalid Key Attestation JWT. Misses `attested_keys` claim" }
-        require(attestedKeysClaimEntries.isNotEmpty()) {
-            "Invalid Key Attestation JWT. `attested_keys` claim must not be empty"
-        }
-
-        attestedKeys = attestedKeysClaimEntries.mapIndexed { index, keyObject ->
-            require(keyObject is Map<*, *>) {
-                "Invalid Key Attestation JWT. Item at index $index in `attested_keys` is not a JSON object."
-            }
-            try {
-                @Suppress("UNCHECKED_CAST")
-                val jwk = JWK.parse(keyObject as Map<String, Any>)
-                require(!jwk.isPrivate) {
-                    "Invalid Key Attestation JWT. Item at index $index in `attested_keys` must be a public key."
-                }
-                jwk
-            } catch (e: ParseException) {
-                throw IllegalArgumentException(
-                    "Invalid Key Attestation JWT. Item at index $index in `attested_keys` is not a valid JWK: ${e.message}",
-                    e,
-                )
-            }
-        }
-
-        keyStorage = jwt.jwtClaimsSet.getListClaim("key_storage")?.map {
-            require(it is String) {
-                "Invalid Key Attestation JWT. 'key_storage' items must be strings"
-            }
-            AttackPotentialResistance(it)
-        }
-
-        userAuthentication = jwt.jwtClaimsSet.getListClaim("user_authentication")?.map {
-            require(it is String) {
-                "Invalid Key Attestation JWT. 'user_authentication' items must be strings"
-            }
-            AttackPotentialResistance(it)
-        }
-    }
-
-    private fun SignedJWT.ensureSignedNotMAC() {
-        check(state == JWSObject.State.SIGNED || state == JWSObject.State.VERIFIED) {
-            "Provided JWT is not signed"
-        }
-        val alg = requireNotNull(header.algorithm) { "Invalid JWT misses header alg" }
-        requireIsNotMAC(alg)
-    }
-
-    private fun requireIsNotMAC(alg: JWSAlgorithm) =
-        require(!alg.isMACSigning()) { "MAC signing algorithm not allowed" }
-
-    private fun JWSAlgorithm.isMACSigning(): Boolean = this in MACSigner.SUPPORTED_ALGORITHMS
+data class KeyAttestationJWT private constructor(
+    val jwt: SignedJWT,
+    val attestedKeys: NonEmptyList<JWK>,
+    val keyStorage: List<AttackPotentialResistance>?,
+    val userAuthentication: List<AttackPotentialResistance>?,
+) {
 
     companion object {
         const val KEY_ATTESTATION_JWT_TYPE = "keyattestation+jwt"
 
         operator fun invoke(value: String): KeyAttestationJWT = KeyAttestationJWT(SignedJWT.parse(value))
-        operator fun invoke(signedJWT: SignedJWT): KeyAttestationJWT = KeyAttestationJWT(signedJWT)
+
+        operator fun invoke(jwt: SignedJWT): KeyAttestationJWT {
+            jwt.ensureSignedNotMAC()
+            require(jwt.header.type != null && jwt.header.type.type.equals(KEY_ATTESTATION_JWT_TYPE)) {
+                "Invalid Key Attestation JWT. Type must be set to `$KEY_ATTESTATION_JWT_TYPE`"
+            }
+            requireNotNull(jwt.jwtClaimsSet.issueTime) { "Invalid Key Attestation JWT. Misses `iat` claim" }
+
+            val attestedKeysClaimEntries = jwt.jwtClaimsSet.getListClaim("attested_keys")
+            requireNotNull(attestedKeysClaimEntries) { "Invalid Key Attestation JWT. Misses `attested_keys` claim" }
+            require(attestedKeysClaimEntries.isNotEmpty()) {
+                "Invalid Key Attestation JWT. `attested_keys` claim must not be empty"
+            }
+
+            val attestedKeys = attestedKeysClaimEntries.mapIndexed { index, keyObject ->
+                require(keyObject is Map<*, *>) {
+                    "Invalid Key Attestation JWT. Item at index $index in `attested_keys` is not a JSON object."
+                }
+                try {
+                    @Suppress("UNCHECKED_CAST")
+                    val jwk = JWK.parse(keyObject as Map<String, Any>)
+                    require(!jwk.isPrivate) {
+                        "Invalid Key Attestation JWT. Item at index $index in `attested_keys` must be a public key."
+                    }
+                    jwk
+                } catch (e: ParseException) {
+                    throw IllegalArgumentException(
+                        "Invalid Key Attestation JWT. Item at index $index in `attested_keys` is not a valid JWK: ${e.message}",
+                        e,
+                    )
+                }
+            }.toNonEmptyListOrNull() ?: error("Invalid Key Attestation JWT. `attested_keys` cannot be empty")
+
+            val keyStorage = jwt.jwtClaimsSet.getListClaim("key_storage")?.map {
+                require(it is String) {
+                    "Invalid Key Attestation JWT. 'key_storage' items must be strings"
+                }
+                AttackPotentialResistance(it)
+            }
+
+            val userAuthentication = jwt.jwtClaimsSet.getListClaim("user_authentication")?.map {
+                require(it is String) {
+                    "Invalid Key Attestation JWT. 'user_authentication' items must be strings"
+                }
+                AttackPotentialResistance(it)
+            }
+
+            return KeyAttestationJWT(jwt, attestedKeys, keyStorage, userAuthentication)
+        }
     }
 }
 
-fun KeyAttestationJWT.ensureValidKeyAttestation(keyAttestationRequirement: KeyAttestation) {
-    require(keyAttestationRequirement is KeyAttestation.Required) {
-        "No key attestation expected but the provided JWT Proof contains one"
+private fun SignedJWT.ensureSignedNotMAC() {
+    check(state == JWSObject.State.SIGNED || state == JWSObject.State.VERIFIED) {
+        "Provided JWT is not signed"
     }
+    val alg = requireNotNull(header.algorithm) { "Invalid JWT misses header alg" }
+    requireIsNotMAC(alg)
+}
+
+private fun requireIsNotMAC(alg: JWSAlgorithm) =
+    require(!alg.isMACSigning()) { "MAC signing algorithm not allowed" }
+
+private fun JWSAlgorithm.isMACSigning(): Boolean = this in MACSigner.SUPPORTED_ALGORITHMS
+
+fun KeyAttestationJWT.ensureValidKeyAttestation(keyAttestationRequirement: KeyAttestation.Required) {
     // if key storage constraints are expected, the passed key attestation must meet these constraints
     keyAttestationRequirement.keyStorage?.let {
         requireNotNull(keyStorage) {
@@ -124,11 +127,8 @@ fun KeyAttestationJWT.ensureValidKeyAttestation(keyAttestationRequirement: KeyAt
     }
 }
 
-fun List<JWK>.signingKeyOf(jwtProof: SignedJWT): JWK? {
-    require(jwtProof.header.getCustomParam("key_attestation") != null) {
-        "Missing 'key_attestation' in JWT header"
-    }
-    return this.firstOrNull { jwk: JWK ->
+fun List<JWK>.signingKeyOf(jwtProof: SignedJWT): JWK? =
+    this.firstOrNull { jwk: JWK ->
         try {
             val verifier = when (jwk) {
                 is RSAKey -> RSASSAVerifier(jwk)
@@ -140,4 +140,3 @@ fun List<JWK>.signingKeyOf(jwtProof: SignedJWT): JWK? {
             false
         }
     }
-}

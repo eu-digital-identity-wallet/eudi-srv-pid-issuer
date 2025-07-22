@@ -16,15 +16,17 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.Either
+import arrow.core.NonEmptyList
+import arrow.core.nonEmptyListOf
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
 
 object DefaultExtractJwkFromCredentialKey : ExtractJwkFromCredentialKey {
-    override suspend fun invoke(key: CredentialKey): Either<Throwable, List<JWK>> = Either.catch {
+    override suspend fun invoke(key: CredentialKey): Either<Throwable, NonEmptyList<JWK>> = Either.catch {
         when (key) {
-            is CredentialKey.Jwk -> listOf(key.value)
-            is CredentialKey.X5c -> listOf(JWK.parse(key.certificate))
-            is CredentialKey.DIDUrl -> listOf(key.jwk)
+            is CredentialKey.Jwk -> nonEmptyListOf(key.value)
+            is CredentialKey.X5c -> nonEmptyListOf(JWK.parse(key.certificate))
+            is CredentialKey.DIDUrl -> nonEmptyListOf(key.jwk)
             is CredentialKey.AttestedKeys -> key.keys
         }
     }
