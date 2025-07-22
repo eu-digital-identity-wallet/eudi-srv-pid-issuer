@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.Either
+import arrow.core.NonEmptySet
 import arrow.core.getOrElse
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
@@ -183,7 +184,10 @@ internal val SdJwtVcPidVct: SdJwtVcType = SdJwtVcType(pidDocType(1))
 
 internal val SdJwtVcPidCredentialConfigurationId: CredentialConfigurationId = CredentialConfigurationId(PidSdJwtVcScope.value)
 
-fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration =
+fun pidSdJwtVcV1(
+    signingAlgorithm: JWSAlgorithm,
+    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(
         id = SdJwtVcPidCredentialConfigurationId,
         type = SdJwtVcPidVct,
@@ -198,13 +202,7 @@ fun pidSdJwtVcV1(signingAlgorithm: JWSAlgorithm): SdJwtVcCredentialConfiguration
         scope = PidSdJwtVcScope,
         proofTypesSupported = ProofTypesSupported(
             nonEmptySetOf(
-                ProofType.Jwt(
-                    nonEmptySetOf(
-                        JWSAlgorithm.RS256,
-                        JWSAlgorithm.ES256,
-                    ),
-                    KeyAttestation.NotRequired,
-                ),
+                ProofType.Jwt(jwtProofsSupportedSigningAlgorithms, KeyAttestation.NotRequired),
             ),
         ),
     )
@@ -229,9 +227,11 @@ internal class IssueSdJwtVcPid(
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredentials: StoreIssuedCredentials,
     private val generateStatusListToken: GenerateStatusListToken?,
+    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
 ) : IssueSpecificCredential {
 
-    override val supportedCredential: SdJwtVcCredentialConfiguration = pidSdJwtVcV1(issuerSigningKey.signingAlgorithm)
+    override val supportedCredential: SdJwtVcCredentialConfiguration =
+        pidSdJwtVcV1(issuerSigningKey.signingAlgorithm, jwtProofsSupportedSigningAlgorithms)
     override val publicKey: JWK
         get() = issuerSigningKey.key.toPublicJWK()
 

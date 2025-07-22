@@ -33,7 +33,7 @@ class DefaultEncodeMobileDrivingLicenceInCbor(issuerSigningKey: IssuerSigningKey
 
     private val signer = MsoMdocSigner<MobileDrivingLicence>(
         issuerSigningKey = issuerSigningKey,
-        docType = MobileDrivingLicenceV1.docType,
+        docType = MobileDrivingLicenceV1DocType,
     ) { licence ->
         addItemsToSign(licence)
     }

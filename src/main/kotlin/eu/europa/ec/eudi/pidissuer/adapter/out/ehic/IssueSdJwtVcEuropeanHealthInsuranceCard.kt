@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.ehic
 
 import arrow.core.Either
+import arrow.core.NonEmptySet
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
@@ -171,6 +172,7 @@ private fun europeanHealthInsuranceCardCredentialConfiguration(
     credentialConfigurationId: CredentialConfigurationId,
     scope: Scope,
     credentialDisplay: CredentialDisplay,
+    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
 ): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(
         id = credentialConfigurationId,
@@ -183,14 +185,7 @@ private fun europeanHealthInsuranceCardCredentialConfiguration(
         proofTypesSupported = ProofTypesSupported(
             values = nonEmptySetOf(
                 ProofType.Jwt(
-                    signingAlgorithmsSupported = nonEmptySetOf(
-                        JWSAlgorithm.ES256,
-                        JWSAlgorithm.ES384,
-                        JWSAlgorithm.ES512,
-                        JWSAlgorithm.RS256,
-                        JWSAlgorithm.RS384,
-                        JWSAlgorithm.RS512,
-                    ),
+                    signingAlgorithmsSupported = jwtProofsSupportedSigningAlgorithms,
                     keyAttestation = KeyAttestation.NotRequired,
                 ),
             ),
@@ -269,6 +264,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             notificationsEnabled: Boolean,
             generateNotificationId: GenerateNotificationId,
             storeIssuedCredentials: StoreIssuedCredentials,
+            jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
         ): IssueSdJwtVcEuropeanHealthInsuranceCard =
             IssueSdJwtVcEuropeanHealthInsuranceCard(
                 europeanHealthInsuranceCardCredentialConfiguration(
@@ -278,6 +274,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     CredentialDisplay(
                         name = DisplayName("DC4EU European Health Insurance Card (SD-JWT VC JWS JSON)", Locale.ENGLISH),
                     ),
+                    jwtProofsSupportedSigningAlgorithms,
                 ),
                 issuerSigningKey.key.toPublicJWK(),
                 EncodeEuropeanHealthInsuranceCardInSdJwtVc.jwsJsonFlattened(
@@ -310,6 +307,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             notificationsEnabled: Boolean,
             generateNotificationId: GenerateNotificationId,
             storeIssuedCredentials: StoreIssuedCredentials,
+            jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
         ): IssueSdJwtVcEuropeanHealthInsuranceCard =
             IssueSdJwtVcEuropeanHealthInsuranceCard(
                 europeanHealthInsuranceCardCredentialConfiguration(
@@ -319,6 +317,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     CredentialDisplay(
                         name = DisplayName("DC4EU European Health Insurance Card (SD-JWT VC Compact)", Locale.ENGLISH),
                     ),
+                    jwtProofsSupportedSigningAlgorithms,
                 ),
                 issuerSigningKey.key.toPublicJWK(),
                 EncodeEuropeanHealthInsuranceCardInSdJwtVc.compact(

@@ -16,7 +16,9 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.nonEmptyListOf
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMsoMdocV1
+import arrow.core.nonEmptySetOf
+import com.nimbusds.jose.JWSAlgorithm
+import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
@@ -43,7 +45,7 @@ class ValidateProofTest {
         val proof = UnvalidatedProof.LdpVp("foo")
 
         val result =
-            validateProofs(nonEmptyListOf(proof), PidMsoMdocV1, clock.instant())
+            validateProofs(nonEmptyListOf(proof), pidMsoMdocV1(nonEmptySetOf(JWSAlgorithm.ES256)), clock.instant())
 
         assert(result.isLeft())
 

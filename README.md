@@ -155,11 +155,11 @@ Default value: `true`
 
 Variable: `ISSUER_CREDENTIALRESPONSEENCRYPTION_ALGORITHMSSUPPORTED`  
 Description: Comma separated list of supported encryption algorithms for credential response encryption.      
-Default value: `RSA-OAEP-256`
+Default value: `ECDH-ES`
 
 Variable: `ISSUER_CREDENTIALRESPONSEENCRYPTION_ENCRYPTIONMETHODS`  
 Description: Comma separated list of supported encryption method for credential response encryption.      
-Default value: `A128CBC-HS256`
+Default value: `A128GCM`
 
 Variable: `ISSUER_PID_MSO_MDOC_ENABLED`  
 Description: Whether to enable support for PID issuance in *MSO MDOC* format  
@@ -172,6 +172,10 @@ Default value: `P30D`
 Variable: `ISSUER_PID_MSO_MDOC_NOTIFICATIONS_ENABLED`  
 Description: Whether to enabled Notifications Endpoint support for PIDs issued in *MSO MDOC*.     
 Default value: `true`
+
+Variable: `ISSUER_PID_MSO_MDOC_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`      
+Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
+Default value: `ES256`
 
 Variable: `ISSUER_PID_SD_JWT_VC_ENABLED`  
 Description: Whether to enable support for PID issuance in *SD JWT VC* format.  
@@ -198,6 +202,10 @@ Description: Hash algorithm used to calculate the disclosure digests of PIDs iss
 Allowed values: `sha-256`, `sha-384`, `sha-512`, `sha3-256`, `sha3-384`, `sha3-512`   
 Default value: `sha-256`
 
+Variable: `ISSUER_PID_SD_JWT_VC_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`      
+Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
+Default value: `ES256`
+
 Variable: `ISSUER_PID_ISSUINGCOUNTRY`  
 Description: Code of the Country issuing the PID  
 Default value: `GR`
@@ -218,6 +226,10 @@ Default value: `P5D`
 Variable: `ISSUER_MDL_NOTIFICATIONS_ENABLED`    
 Description: Whether to enabled Notifications Endpoint support for mDLs.    
 Default value: `true`
+
+Variable: `ISSUER_MDL_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`      
+Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
+Default value: `ES256`
 
 Variable: `ISSUER_EHIC_ENABLED`    
 Description: Whether to enabled support for issuing European Health Insurance Cards in *SD-JWT VC* format.    
@@ -244,6 +256,10 @@ Default value: `true`
 Variable: `ISSUER_EHIC_ISSUINGCOUNTRY`      
 Description: Issuing Country used for European Health Insurance Cards issued in *SD-JWT VC* format. 2-letter ISO Country Code.      
 Default value: `GR`  
+
+Variable: `ISSUER_EHIC_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`      
+Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
+Default value: `ES256`  
 
 Variable: `ISSUER_CREDENTIALOFFER_URI`    
 Description: URI to use when generating Credential Offers.    
