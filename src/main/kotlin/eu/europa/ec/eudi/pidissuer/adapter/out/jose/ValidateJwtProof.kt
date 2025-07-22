@@ -96,7 +96,7 @@ private fun algorithmAndCredentialKey(
         kid != null && jwk == null && keyAttestation == null && x5c.isNullOrEmpty() -> CredentialKey.DIDUrl(kid).getOrThrow()
         kid == null && jwk != null && keyAttestation == null && x5c.isNullOrEmpty() -> CredentialKey.Jwk(jwk)
         kid == null && jwk == null && keyAttestation == null && !x5c.isNullOrEmpty() -> CredentialKey.X5c.parseDer(x5c).getOrThrow()
-        kid == null && jwk == null && keyAttestation != null && x5c.isNullOrEmpty() ->
+        jwk == null && keyAttestation != null && x5c.isNullOrEmpty() ->
             CredentialKey.AttestedKeys.fromKeyAttestation(keyAttestation, proofType.keyAttestationRequirement)
 
         else -> error("public key(s) must be provided in one of 'kid', 'jwk', 'x5c' or 'key_attestation'")

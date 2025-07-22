@@ -329,13 +329,13 @@ internal class IssueMsoMdocPid(
     private val validityDuration: Duration,
     private val storeIssuedCredentials: StoreIssuedCredentials,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    override val jwtProofsKeyAttestationRequirement: KeyAttestation = KeyAttestation.NotRequired,
+    override val keyAttestationRequirement: KeyAttestation = KeyAttestation.NotRequired,
 ) : IssueSpecificCredential {
 
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
 
     override val supportedCredential: MsoMdocCredentialConfiguration =
-        pidMsoMdocV1(jwtProofsSupportedSigningAlgorithms, jwtProofsKeyAttestationRequirement)
+        pidMsoMdocV1(jwtProofsSupportedSigningAlgorithms, keyAttestationRequirement)
 
     override val publicKey: JWK? = null
 

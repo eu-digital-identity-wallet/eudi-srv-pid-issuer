@@ -353,11 +353,11 @@ internal class IssueMobileDrivingLicence(
     private val validityDuration: Duration,
     private val storeIssuedCredentials: StoreIssuedCredentials,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    override val jwtProofsKeyAttestationRequirement: KeyAttestation = KeyAttestation.NotRequired,
+    override val keyAttestationRequirement: KeyAttestation = KeyAttestation.NotRequired,
 ) : IssueSpecificCredential {
 
     override val supportedCredential: MsoMdocCredentialConfiguration =
-        mobileDrivingLicenceV1(jwtProofsSupportedSigningAlgorithms, jwtProofsKeyAttestationRequirement)
+        mobileDrivingLicenceV1(jwtProofsSupportedSigningAlgorithms, keyAttestationRequirement)
 
     override val publicKey: JWK?
         get() = null
