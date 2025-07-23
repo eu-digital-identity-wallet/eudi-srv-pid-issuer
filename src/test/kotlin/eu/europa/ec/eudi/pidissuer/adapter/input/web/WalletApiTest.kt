@@ -1022,8 +1022,8 @@ val KEY_ATTESTATION_JWT_TYPE = "keyattestation+jwt"
  */
 private fun keyAttestationJWT(
     proofSigningKey: ECKey,
-    keyStorageConstraints: List<String> = listOf("iso_18045_high", "iso_18045_moderate"),
-    userAuthorizationConstraints: List<String> = listOf("iso_18045_high", "iso_18045_moderate"),
+    keyStorageConstraints: List<String> = listOf("iso_18045_high"),
+    userAuthorizationConstraints: List<String> = listOf("iso_18045_high"),
     cNonce: String? = null,
     extraKeys: () -> List<ECKey>,
 ): SignedJWT {

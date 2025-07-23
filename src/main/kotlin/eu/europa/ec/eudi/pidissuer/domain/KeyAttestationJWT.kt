@@ -112,7 +112,7 @@ fun KeyAttestationJWT.ensureValidKeyAttestation(keyAttestationRequirement: KeyAt
         requireNotNull(keyStorage) {
             "Key Attestation expected to contain information about the key storage's attack resistance but does not."
         }
-        require(keyStorage.containsAll(keyAttestationRequirement.keyStorage)) {
+        require(keyAttestationRequirement.keyStorage.containsAll(keyStorage)) {
             "The provided key storage's attack resistance does not match the expected one."
         }
     }
@@ -121,7 +121,7 @@ fun KeyAttestationJWT.ensureValidKeyAttestation(keyAttestationRequirement: KeyAt
         requireNotNull(userAuthentication) {
             "Key Attestation expected to contain information about the user authentication's attack resistance but does not."
         }
-        require(userAuthentication.containsAll(keyAttestationRequirement.userAuthentication)) {
+        require(keyAttestationRequirement.userAuthentication.containsAll(userAuthentication)) {
             "The provided user authentication's attack resistance does not match the expected one."
         }
     }
