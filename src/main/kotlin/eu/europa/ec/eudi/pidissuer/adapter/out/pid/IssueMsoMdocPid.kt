@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.Either
 import arrow.core.NonEmptySet
-import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
@@ -274,7 +273,31 @@ val PidMsoMdocV1CredentialConfigurationId: CredentialConfigurationId = Credentia
 
 val PidMsoMdocV1DocType: MsoDocType = pidDocType(1)
 
-fun pidMsoMdocV1(jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>): MsoMdocCredentialConfiguration =
+internal fun pidMsoMdocProofTypesSupported(
+    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    keyAttestationRequirement: KeyAttestation,
+) = buildSet {
+    add(
+        ProofType.Jwt(
+            jwtProofsSupportedSigningAlgorithms,
+            keyAttestationRequirement,
+        ),
+    )
+    // Attestation proof is available only when key attestations for this credential are enabled in configuration
+    if (keyAttestationRequirement is KeyAttestation.Required) {
+        add(
+            ProofType.Attestation(
+                jwtProofsSupportedSigningAlgorithms,
+                keyAttestationRequirement,
+            ),
+        )
+    }
+}
+
+internal fun pidMsoMdocV1(
+    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    keyAttestationRequirement: KeyAttestation,
+): MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
         id = PidMsoMdocV1CredentialConfigurationId,
         docType = PidMsoMdocV1DocType,
@@ -288,9 +311,7 @@ fun pidMsoMdocV1(jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>)
         credentialSigningAlgorithmsSupported = emptySet(),
         scope = PidMsoMdocScope,
         proofTypesSupported = ProofTypesSupported(
-            nonEmptySetOf(
-                ProofType.Jwt(jwtProofsSupportedSigningAlgorithms, KeyAttestation.NotRequired),
-            ),
+            pidMsoMdocProofTypesSupported(jwtProofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
         policy = MsoMdocPolicy(oneTimeUse = true),
     )
@@ -308,11 +329,14 @@ internal class IssueMsoMdocPid(
     private val validityDuration: Duration,
     private val storeIssuedCredentials: StoreIssuedCredentials,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    override val keyAttestationRequirement: KeyAttestation = KeyAttestation.NotRequired,
 ) : IssueSpecificCredential {
 
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
 
-    override val supportedCredential: MsoMdocCredentialConfiguration = pidMsoMdocV1(jwtProofsSupportedSigningAlgorithms)
+    override val supportedCredential: MsoMdocCredentialConfiguration =
+        pidMsoMdocV1(jwtProofsSupportedSigningAlgorithms, keyAttestationRequirement)
+
     override val publicKey: JWK? = null
 
     override suspend fun invoke(

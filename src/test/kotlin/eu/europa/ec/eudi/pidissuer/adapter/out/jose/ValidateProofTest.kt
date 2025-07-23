@@ -20,6 +20,7 @@ import arrow.core.nonEmptySetOf
 import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
+import eu.europa.ec.eudi.pidissuer.domain.KeyAttestation
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import kotlinx.coroutines.test.runTest
@@ -32,6 +33,7 @@ class ValidateProofTest {
     private val clock = Clock.systemDefaultZone()
     private val validateProofs = ValidateProofs(
         validateJwtProof = ValidateJwtProof(issuer),
+        validateAttestationProof = ValidateAttestationProof(),
         verifyCNonce = { _, _ ->
             fail("VerifyCNonce should not have been invoked")
         },
@@ -45,7 +47,14 @@ class ValidateProofTest {
         val proof = UnvalidatedProof.LdpVp("foo")
 
         val result =
-            validateProofs(nonEmptyListOf(proof), pidMsoMdocV1(nonEmptySetOf(JWSAlgorithm.ES256)), clock.instant())
+            validateProofs(
+                nonEmptyListOf(proof),
+                pidMsoMdocV1(
+                    nonEmptySetOf(JWSAlgorithm.ES256),
+                    KeyAttestation.NotRequired,
+                ),
+                clock.instant(),
+            )
 
         assert(result.isLeft())
 

@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
 import arrow.core.Either
 import arrow.core.NonEmptySet
-import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
@@ -298,8 +297,30 @@ val MobileDrivingLicenceV1CredentialConfigurationId: CredentialConfigurationId =
 
 val MobileDrivingLicenceV1DocType: MsoDocType = mdlDocType(1u)
 
-fun mobileDrivingLicenceV1(
+internal fun mdlProofTypesSupported(
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    keyAttestationRequirement: KeyAttestation,
+) = buildSet {
+    add(
+        ProofType.Jwt(
+            jwtProofsSupportedSigningAlgorithms,
+            keyAttestationRequirement,
+        ),
+    )
+    // Attestation proof is available only when key attestations for this credential are enabled in configuration
+    if (keyAttestationRequirement is KeyAttestation.Required) {
+        add(
+            ProofType.Attestation(
+                jwtProofsSupportedSigningAlgorithms,
+                keyAttestationRequirement,
+            ),
+        )
+    }
+}
+
+internal fun mobileDrivingLicenceV1(
+    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    keyAttestationRequirement: KeyAttestation,
 ): MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
         id = MobileDrivingLicenceV1CredentialConfigurationId,
@@ -314,12 +335,7 @@ fun mobileDrivingLicenceV1(
         credentialSigningAlgorithmsSupported = emptySet(),
         scope = MobileDrivingLicenceV1Scope,
         proofTypesSupported = ProofTypesSupported(
-            nonEmptySetOf(
-                ProofType.Jwt(
-                    signingAlgorithmsSupported = jwtProofsSupportedSigningAlgorithms,
-                    keyAttestation = KeyAttestation.NotRequired,
-                ),
-            ),
+            mdlProofTypesSupported(jwtProofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
         policy = MsoMdocPolicy(oneTimeUse = false),
     )
@@ -337,9 +353,11 @@ internal class IssueMobileDrivingLicence(
     private val validityDuration: Duration,
     private val storeIssuedCredentials: StoreIssuedCredentials,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    override val keyAttestationRequirement: KeyAttestation = KeyAttestation.NotRequired,
 ) : IssueSpecificCredential {
 
-    override val supportedCredential: MsoMdocCredentialConfiguration = mobileDrivingLicenceV1(jwtProofsSupportedSigningAlgorithms)
+    override val supportedCredential: MsoMdocCredentialConfiguration =
+        mobileDrivingLicenceV1(jwtProofsSupportedSigningAlgorithms, keyAttestationRequirement)
 
     override val publicKey: JWK?
         get() = null

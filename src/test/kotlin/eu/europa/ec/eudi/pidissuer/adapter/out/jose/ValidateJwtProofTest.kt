@@ -45,7 +45,10 @@ internal class ValidateJwtProofTest {
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.systemDefaultZone()
     private val validateJwtProof = ValidateJwtProof(issuer)
-    private val credentialConfiguration = mobileDrivingLicenceV1(checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()))
+    private val credentialConfiguration = mobileDrivingLicenceV1(
+        checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
+        KeyAttestation.NotRequired,
+    )
 
     @Test
     internal fun `proof validation fails with incorrect 'typ'`() = runTest {

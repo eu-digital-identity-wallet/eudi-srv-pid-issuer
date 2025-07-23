@@ -184,9 +184,31 @@ internal val SdJwtVcPidVct: SdJwtVcType = SdJwtVcType(pidDocType(1))
 
 internal val SdJwtVcPidCredentialConfigurationId: CredentialConfigurationId = CredentialConfigurationId(PidSdJwtVcScope.value)
 
+internal fun pidSdJwtVcProofTypesSupported(
+    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    keyAttestationRequirement: KeyAttestation,
+): Set<ProofType> = buildSet {
+    add(
+        ProofType.Jwt(
+            jwtProofsSupportedSigningAlgorithms,
+            keyAttestationRequirement,
+        ),
+    )
+    // Attestation proof is available only when key attestations for this credential are enabled in configuration
+    if (keyAttestationRequirement is KeyAttestation.Required) {
+        add(
+            ProofType.Attestation(
+                jwtProofsSupportedSigningAlgorithms,
+                keyAttestationRequirement,
+            ),
+        )
+    }
+}
+
 fun pidSdJwtVcV1(
     signingAlgorithm: JWSAlgorithm,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    keyAttestationRequirement: KeyAttestation,
 ): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(
         id = SdJwtVcPidCredentialConfigurationId,
@@ -201,9 +223,7 @@ fun pidSdJwtVcV1(
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
         scope = PidSdJwtVcScope,
         proofTypesSupported = ProofTypesSupported(
-            nonEmptySetOf(
-                ProofType.Jwt(jwtProofsSupportedSigningAlgorithms, KeyAttestation.NotRequired),
-            ),
+            pidSdJwtVcProofTypesSupported(jwtProofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
     )
 
@@ -228,10 +248,12 @@ internal class IssueSdJwtVcPid(
     private val storeIssuedCredentials: StoreIssuedCredentials,
     private val generateStatusListToken: GenerateStatusListToken?,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    override val keyAttestationRequirement: KeyAttestation,
 ) : IssueSpecificCredential {
 
     override val supportedCredential: SdJwtVcCredentialConfiguration =
-        pidSdJwtVcV1(issuerSigningKey.signingAlgorithm, jwtProofsSupportedSigningAlgorithms)
+        pidSdJwtVcV1(issuerSigningKey.signingAlgorithm, jwtProofsSupportedSigningAlgorithms, keyAttestationRequirement)
+
     override val publicKey: JWK
         get() = issuerSigningKey.key.toPublicJWK()
 

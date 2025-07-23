@@ -95,6 +95,11 @@ sealed interface CredentialKey {
 
         companion object
     }
+
+    @JvmInline
+    value class AttestedKeys(val keys: NonEmptyList<JWK>) : CredentialKey {
+        companion object
+    }
 }
 
 sealed interface RequestedResponseEncryption {
