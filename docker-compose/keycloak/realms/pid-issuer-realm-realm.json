@@ -459,30 +459,37 @@
     "totpAppFreeOTPName",
     "totpAppGoogleName"
   ],
-  "webAuthnPolicyRpEntityName": "keycloak",
+  "webAuthnPolicyRpEntityName": "https://localhost/idp",
   "webAuthnPolicySignatureAlgorithms": [
-    "ES256"
+    "ES256",
+    "ES384",
+    "ES512"
   ],
-  "webAuthnPolicyRpId": "",
+  "webAuthnPolicyRpId": "localhost",
   "webAuthnPolicyAttestationConveyancePreference": "not specified",
   "webAuthnPolicyAuthenticatorAttachment": "not specified",
   "webAuthnPolicyRequireResidentKey": "not specified",
-  "webAuthnPolicyUserVerificationRequirement": "not specified",
+  "webAuthnPolicyUserVerificationRequirement": "preferred",
   "webAuthnPolicyCreateTimeout": 0,
   "webAuthnPolicyAvoidSameAuthenticatorRegister": false,
   "webAuthnPolicyAcceptableAaguids": [],
-  "webAuthnPolicyPasswordlessRpEntityName": "keycloak",
+  "webAuthnPolicyExtraOrigins": [],
+  "webAuthnPolicyPasswordlessRpEntityName": "https://localhost/idp",
   "webAuthnPolicyPasswordlessSignatureAlgorithms": [
-    "ES256"
+    "ES256",
+    "ES384",
+    "ES512"
   ],
-  "webAuthnPolicyPasswordlessRpId": "",
+  "webAuthnPolicyPasswordlessRpId": "localhost",
   "webAuthnPolicyPasswordlessAttestationConveyancePreference": "not specified",
   "webAuthnPolicyPasswordlessAuthenticatorAttachment": "not specified",
   "webAuthnPolicyPasswordlessRequireResidentKey": "not specified",
-  "webAuthnPolicyPasswordlessUserVerificationRequirement": "not specified",
+  "webAuthnPolicyPasswordlessUserVerificationRequirement": "preferred",
   "webAuthnPolicyPasswordlessCreateTimeout": 0,
   "webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister": false,
   "webAuthnPolicyPasswordlessAcceptableAaguids": [],
+  "webAuthnPolicyPasswordlessExtraOrigins": [],
+  "webAuthnPolicyPasswordlessPasskeysEnabled": true,
   "scopeMappings": [
     {
       "clientScope": "eu.europa.ec.eudi.pid_vc_sd_jwt",
