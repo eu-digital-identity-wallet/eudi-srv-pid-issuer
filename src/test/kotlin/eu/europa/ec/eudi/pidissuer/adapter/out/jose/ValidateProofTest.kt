@@ -31,9 +31,15 @@ class ValidateProofTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.systemDefaultZone()
+    private val verifyKeyAttestation = VerifyKeyAttestation(
+        verifyAttestedKey = { key -> key },
+        verifyCNonce = { _, _ ->
+            fail("VerifyCNonce should not have been invoked")
+        },
+    )
     private val validateProofs = ValidateProofs(
-        validateJwtProof = ValidateJwtProof(issuer),
-        validateAttestationProof = ValidateAttestationProof(),
+        validateJwtProof = ValidateJwtProof(issuer, verifyKeyAttestation),
+        validateAttestationProof = ValidateAttestationProof(verifyKeyAttestation),
         verifyCNonce = { _, _ ->
             fail("VerifyCNonce should not have been invoked")
         },

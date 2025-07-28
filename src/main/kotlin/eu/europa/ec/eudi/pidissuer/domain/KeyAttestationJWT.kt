@@ -26,9 +26,10 @@ import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jwt.SignedJWT
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import java.text.ParseException
-import kotlin.collections.isNotEmpty
-import kotlin.collections.mapIndexed
 
 data class KeyAttestationJWT private constructor(
     val jwt: SignedJWT,
@@ -106,37 +107,29 @@ private fun requireIsNotMAC(alg: JWSAlgorithm) =
 
 private fun JWSAlgorithm.isMACSigning(): Boolean = this in MACSigner.SUPPORTED_ALGORITHMS
 
-fun KeyAttestationJWT.ensureValidKeyAttestation(keyAttestationRequirement: KeyAttestation.Required) {
-    // if key storage constraints are expected, the passed key attestation must meet these constraints
-    keyAttestationRequirement.keyStorage?.let {
-        requireNotNull(keyStorage) {
-            "Key Attestation expected to contain information about the key storage's attack resistance but does not."
-        }
-        require(keyAttestationRequirement.keyStorage.containsAll(keyStorage)) {
-            "The provided key storage's attack resistance does not match the expected one."
-        }
+internal suspend fun List<JWK>.signingKeyOf(signedJwt: SignedJWT): JWK? {
+    val tasks = map { jwk: JWK ->
+        suspend { verifiesSignature(jwk, signedJwt) }
     }
-    // if user authentication constraints are expected, the passed key attestation must meet these constraints
-    keyAttestationRequirement.userAuthentication?.let {
-        requireNotNull(userAuthentication) {
-            "Key Attestation expected to contain information about the user authentication's attack resistance but does not."
-        }
-        require(keyAttestationRequirement.userAuthentication.containsAll(userAuthentication)) {
-            "The provided user authentication's attack resistance does not match the expected one."
-        }
-    }
+    return signatureVerifiedByKey(*tasks.toTypedArray())
 }
 
-fun List<JWK>.signingKeyOf(jwtProof: SignedJWT): JWK? =
-    this.firstOrNull { jwk: JWK ->
-        try {
-            val verifier = when (jwk) {
-                is RSAKey -> RSASSAVerifier(jwk)
-                is ECKey -> ECDSAVerifier(jwk)
-                else -> null
-            }
-            verifier != null && jwtProof.verify(verifier)
-        } catch (_: Exception) {
-            false
+internal fun verifiesSignature(jwk: JWK, signedJwt: SignedJWT): JWK? =
+    try {
+        val verifier = when (jwk) {
+            is RSAKey -> RSASSAVerifier(jwk)
+            is ECKey -> ECDSAVerifier(jwk)
+            else -> null
         }
+        if (verifier != null && signedJwt.verify(verifier)) jwk
+        else null
+    } catch (_: Exception) {
+        null
     }
+
+internal suspend fun signatureVerifiedByKey(vararg tasks: suspend () -> JWK?): JWK? =
+    channelFlow {
+        tasks.forEach {
+            launch { send(it()) }
+        }
+    }.first { it != null }

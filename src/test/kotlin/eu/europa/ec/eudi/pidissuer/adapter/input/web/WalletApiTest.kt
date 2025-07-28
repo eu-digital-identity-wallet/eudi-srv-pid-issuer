@@ -15,19 +15,21 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
+import arrow.core.NonEmptyList
 import arrow.core.nonEmptyListOf
+import arrow.core.toNonEmptyListOrNull
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
-import com.nimbusds.jose.JWSSigner
 import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.crypto.factories.DefaultJWEDecrypterFactory
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
+import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
@@ -40,9 +42,12 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.Scope
+import eu.europa.ec.eudi.pidissuer.loadResource
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateCNonce
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import org.springframework.beans.factory.annotation.Autowired
@@ -64,8 +69,10 @@ import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.reactive.server.WebTestClient
 import org.springframework.test.web.reactive.server.expectBody
 import java.net.URI
+import java.security.cert.X509Certificate
 import java.time.Clock
 import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
 import java.time.Month
 import java.util.*
@@ -507,19 +514,18 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
         val jwtProofSigningKey = ECKeyGenerator(Curve.P_256).generate()
 
         val extraKeysNo = 3
+        val keyAttestationJwt = keyAttestationJWT(
+            proofSigningKey = jwtProofSigningKey,
+            keyStorageConstraints = listOf("iso_18045_enhanced-basic"),
+            userAuthorizationConstraints = listOf("iso_18045_enhanced-basic"),
+        ) {
+            (0..<extraKeysNo).map {
+                ECKeyGenerator(Curve.P_256).generate()
+            }
+        }
+
         val keyAttestationJwtProof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, jwtProofSigningKey) {
-            customParam(
-                "key_attestation",
-                keyAttestationJWT(
-                    proofSigningKey = jwtProofSigningKey,
-                    keyStorageConstraints = listOf("iso_18045_enhanced-basic"),
-                    userAuthorizationConstraints = listOf("iso_18045_enhanced-basic"),
-                ) {
-                    (0..<extraKeysNo).map {
-                        ECKeyGenerator(Curve.P_256).generate()
-                    }
-                }.serialize(),
-            )
+            customParam("key_attestation", keyAttestationJwt.serialize())
         }
 
         val noKeyAttestationJwtProof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, jwtProofSigningKey) {
@@ -553,15 +559,14 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
         val jwtProofSigningKey = ECKeyGenerator(Curve.P_256).generate()
 
         val extraKeysNo = 3
+        val keyAttestationJwt = keyAttestationJWT(jwtProofSigningKey) {
+            (0..<extraKeysNo).map {
+                ECKeyGenerator(Curve.P_256).generate()
+            }
+        }
+
         val keyAttestationJwtProof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, jwtProofSigningKey) {
-            customParam(
-                "key_attestation",
-                keyAttestationJWT(jwtProofSigningKey) {
-                    (0..<extraKeysNo).map {
-                        ECKeyGenerator(Curve.P_256).generate()
-                    }
-                }.serialize(),
-            )
+            customParam("key_attestation", keyAttestationJwt.serialize())
         }
 
         val noKeyAttestationJwtProof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, jwtProofSigningKey) {
@@ -595,14 +600,13 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
         val jwtProofSigningKey = ECKeyGenerator(Curve.P_256).generate()
         val extraKeysNo = 5
+        val keyAttestationJwt = keyAttestationJWT(jwtProofSigningKey) {
+            val key = ECKeyGenerator(Curve.P_256).generate()
+            (0..<extraKeysNo).map { key }
+        }
+
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, jwtProofSigningKey) {
-            customParam(
-                "key_attestation",
-                keyAttestationJWT(jwtProofSigningKey) {
-                    val key = ECKeyGenerator(Curve.P_256).generate()
-                    (0..<extraKeysNo).map { key }
-                }.serialize(),
-            )
+            customParam("key_attestation", keyAttestationJwt.serialize())
         }.toJwtProof()
 
         val response = client()
@@ -630,15 +634,14 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
         val jwtProofSigningKey = ECKeyGenerator(Curve.P_256).generate()
         val extraKeysNo = 3
+        val keyAttestationJwt = keyAttestationJWT(jwtProofSigningKey) {
+            (0..<extraKeysNo).map {
+                ECKeyGenerator(Curve.P_256).generate()
+            }
+        }
+
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, jwtProofSigningKey) {
-            customParam(
-                "key_attestation",
-                keyAttestationJWT(jwtProofSigningKey) {
-                    (0..<extraKeysNo).map {
-                        ECKeyGenerator(Curve.P_256).generate()
-                    }
-                }.serialize(),
-            )
+            customParam("key_attestation", keyAttestationJwt.serialize())
         }.toJwtProof()
 
         val response = client()
@@ -1020,15 +1023,16 @@ val KEY_ATTESTATION_JWT_TYPE = "keyattestation+jwt"
  * @param proofSigningKey The key used to sign the JWT Proof
  * @param extraKeysNo   The extra keys to be generated and included in the 'attested_keys' array claim.
  */
-private fun keyAttestationJWT(
+private suspend fun keyAttestationJWT(
     proofSigningKey: ECKey,
     keyStorageConstraints: List<String> = listOf("iso_18045_high"),
     userAuthorizationConstraints: List<String> = listOf("iso_18045_high"),
     cNonce: String? = null,
+    expiresAt: Instant = Instant.now().plus(Duration.ofDays(1)),
     extraKeys: () -> List<ECKey>,
 ): SignedJWT {
-    val keyAttestationSigningKey = ECKeyGenerator(Curve.P_256).generate()
-    val signer: JWSSigner = ECDSASigner(keyAttestationSigningKey)
+    val keyAttestationSigningKey = loadECKey("key-attestation-key.pem")
+    val signer = ECDSASigner(keyAttestationSigningKey)
 
     val attestedKeys = extraKeys() + proofSigningKey
 
@@ -1036,12 +1040,18 @@ private fun keyAttestationJWT(
         JSONUtils.parseJSON(key.toPublicJWK().toJSONString())
     }
 
+    val chain = loadChain("key-attestation-chain.pem")
+    val encodedChain = chain.map {
+        com.nimbusds.jose.util.Base64.encode(it.encoded)
+    }
+
     return SignedJWT(
         JWSHeader.Builder(JWSAlgorithm.ES256)
             .type(JOSEObjectType(KEY_ATTESTATION_JWT_TYPE))
-            .jwk(keyAttestationSigningKey.toPublicJWK())
+            .x509CertChain(encodedChain)
             .build(),
         JWTClaimsSet.Builder()
+            .expirationTime(Date(expiresAt.toEpochMilli()))
             .issueTime(Date())
             .claim("attested_keys", attestedKeysJsonArray)
             .claim("key_storage", keyStorageConstraints)
@@ -1050,6 +1060,27 @@ private fun keyAttestationJWT(
             .build(),
     ).apply { sign(signer) }
 }
+
+private suspend fun loadChain(filename: String): NonEmptyList<X509Certificate> =
+    withContext(Dispatchers.IO) {
+        loadResource("/eu/europa/ec/eudi/pidissuer/adapter/out/jose/x5c/$filename")
+            .readText()
+            .let {
+                X509CertChainUtils.parse(it)
+            }
+            .let {
+                assertNotNull(it.toNonEmptyListOrNull())
+            }
+    }
+
+private suspend fun loadECKey(filename: String): ECKey =
+    withContext(Dispatchers.IO) {
+        loadResource("/eu/europa/ec/eudi/pidissuer/adapter/out/jose/x5c/$filename")
+            .readText()
+            .let {
+                ECKey.parseFromPEMEncodedObjects(it).toECKey()
+            }
+    }
 
 private fun SignedJWT.toJwtProof(): ProofTo = ProofTo(type = ProofTypeTO.JWT, jwt = serialize())
 private fun SignedJWT.toAttestationProof(): ProofTo = ProofTo(type = ProofTypeTO.ATTESTATION, attestation = serialize())

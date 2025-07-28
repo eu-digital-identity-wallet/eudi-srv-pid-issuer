@@ -44,7 +44,13 @@ internal class ValidateJwtProofTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.systemDefaultZone()
-    private val validateJwtProof = ValidateJwtProof(issuer)
+    private val verifyKeyAttestation = VerifyKeyAttestation(
+        verifyAttestedKey = { key -> key },
+        verifyCNonce = { _, _ ->
+            fail("VerifyCNonce should not have been invoked")
+        },
+    )
+    private val validateJwtProof = ValidateJwtProof(issuer, verifyKeyAttestation)
     private val credentialConfiguration = mobileDrivingLicenceV1(
         checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
         KeyAttestation.NotRequired,
@@ -62,6 +68,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
+                clock.instant(),
             )
 
         assert(result.isLeft())
@@ -76,6 +83,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
+                clock.instant(),
             )
 
         assert(result.isLeft())
@@ -94,6 +102,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
+                clock.instant(),
             )
 
         assertTrue { result.isLeft() }
@@ -111,6 +120,7 @@ internal class ValidateJwtProofTest {
         validateJwtProof(
             UnvalidatedProof.Jwt(signedJwt.serialize()),
             credentialConfiguration,
+            clock.instant(),
         ).fold(
             ifLeft = { fail("Unexpected $it", it.cause) },
             ifRight = { credentialKey ->
@@ -131,6 +141,7 @@ internal class ValidateJwtProofTest {
         validateJwtProof(
             UnvalidatedProof.Jwt(signedJwt.serialize()),
             credentialConfiguration,
+            clock.instant(),
         ).fold(
             ifLeft = { fail("Unexpected $it", it.cause) },
             ifRight = { credentialKey ->
@@ -151,6 +162,7 @@ internal class ValidateJwtProofTest {
         validateJwtProof(
             UnvalidatedProof.Jwt(signedJwt.serialize()),
             credentialConfiguration,
+            clock.instant(),
         ).fold(
             ifLeft = { fail("Unexpected $it", it.cause) },
             ifRight = { credentialKey ->
@@ -173,6 +185,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
+                clock.instant(),
             )
 
         assertTrue { result.isLeft() }
@@ -191,6 +204,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
+                clock.instant(),
             )
 
         assertTrue { result.isLeft() }
@@ -208,6 +222,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
+                clock.instant(),
             )
 
         assertTrue { result.isLeft() }

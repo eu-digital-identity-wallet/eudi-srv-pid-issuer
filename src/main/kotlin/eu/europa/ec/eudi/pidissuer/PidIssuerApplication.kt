@@ -175,6 +175,7 @@ internal object WebClients {
                 }
         }
     }
+
     private fun WebClient.Builder.configureCodecs(): WebClient.Builder {
         val json = Json { ignoreUnknownKeys = true }
 
@@ -459,9 +460,18 @@ fun beans(clock: Clock) = beans {
     //
     // Specific Issuers
     //
-    bean { ValidateJwtProof(issuerPublicUrl) }
+    bean(name = "verify-key-attestation-with-exp-claim") {
+        VerifyKeyAttestation(verifyAttestedKey = { key -> key }, verifyCNonce = ref(), expectExpirationClaim = true)
+    }
+    bean(name = "verify-key-attestation") {
+        VerifyKeyAttestation(verifyAttestedKey = { key -> key }, verifyCNonce = ref(), expectExpirationClaim = false)
+    }
+    bean {
+        ValidateJwtProof(issuerPublicUrl, ref<VerifyKeyAttestation>("verify-key-attestation-with-exp-claim"))
+    }
+    bean { ValidateAttestationProof(ref<VerifyKeyAttestation>("verify-key-attestation")) }
     bean { DefaultExtractJwkFromCredentialKey }
-    bean { ValidateProofs(ref(), ValidateAttestationProof(), ref(), ref()) }
+    bean { ValidateProofs(ref(), ref(), ref(), ref()) }
     bean {
         CredentialIssuerMetaData(
             id = issuerPublicUrl,

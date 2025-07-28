@@ -48,9 +48,9 @@ internal class ValidateProofs(
             val credentialKeysAndCNonces = unvalidatedProofs.map {
                 when (it) {
                     is UnvalidatedProof.Jwt ->
-                        validateJwtProof(it, credentialConfiguration).bind()
+                        validateJwtProof(it, credentialConfiguration, at).bind()
                     is UnvalidatedProof.Attestation ->
-                        validateAttestationProof(it, credentialConfiguration).bind()
+                        validateAttestationProof(it, credentialConfiguration, at).bind()
                     is UnvalidatedProof.LdpVp -> raise(InvalidProof("Supporting only JWT proof"))
                 }
             }

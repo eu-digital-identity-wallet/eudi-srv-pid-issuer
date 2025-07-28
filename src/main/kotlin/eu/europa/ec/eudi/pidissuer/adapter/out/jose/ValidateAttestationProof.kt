@@ -16,34 +16,51 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.Either
-import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import java.time.Instant
 
-internal class ValidateAttestationProof {
-
-    operator fun invoke(
+internal class ValidateAttestationProof(
+    private val verifyKeyAttestation: VerifyKeyAttestation,
+) {
+    suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof.Attestation,
         credentialConfiguration: CredentialConfiguration,
+        at: Instant,
     ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey, String?>> = Either.catch {
         val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.ATTESTATION]
         requireNotNull(proofType) {
             "Credential configuration '${credentialConfiguration.id.value}' doesn't support 'attestation' proofs"
         }
         check(proofType is ProofType.Attestation)
+        val keyAttestationJWT = KeyAttestationJWT(unvalidatedProof.jwt)
+        val credentialKey = CredentialKey.AttestedKeys.fromKeyAttestation(keyAttestationJWT, proofType, at)
+        val nonce = keyAttestationJWT.nonce()
 
-        val signedJWT = SignedJWT.parse(unvalidatedProof.jwt)
-        // TODO: Validate signature
-
-        val keyAttestationJWT = KeyAttestationJWT(signedJWT).also {
-            it.ensureValidKeyAttestation(proofType.keyAttestationRequirement)
-        }
-        val attestedKeys = CredentialKey.AttestedKeys(keyAttestationJWT.attestedKeys)
-
-        val nonce = signedJWT.jwtClaimsSet.getStringClaim("nonce")
-        requireNotNull(nonce) {
-            "Attestation proof must be a key attestation with a nonce set."
-        }
-        attestedKeys to nonce
+        credentialKey to nonce
     }.mapLeft { IssueCredentialError.InvalidProof("Invalid proof Attestation", it) }
+
+    private suspend fun CredentialKey.AttestedKeys.Companion.fromKeyAttestation(
+        keyAttestationJWT: KeyAttestationJWT,
+        proofType: ProofType.Attestation,
+        at: Instant,
+    ): CredentialKey.AttestedKeys {
+        val attestedKeys = verifyKeyAttestation(
+            keyAttestation = keyAttestationJWT,
+            signingAlgorithmsSupported = proofType.signingAlgorithmsSupported,
+            keyAttestationRequirement = proofType.keyAttestationRequirement,
+            at = at,
+        ).getOrThrow()
+
+        return CredentialKey.AttestedKeys(attestedKeys)
+    }
+}
+
+private fun KeyAttestationJWT.nonce(): String {
+    val nonce = jwt.jwtClaimsSet.getStringClaim("nonce")
+    requireNotNull(nonce) {
+        "Attestation proof must be a key attestation with a nonce set."
+    }
+    return nonce
 }
