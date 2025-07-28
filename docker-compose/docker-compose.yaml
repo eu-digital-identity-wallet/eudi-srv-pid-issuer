@@ -6,12 +6,12 @@ networks:
 
 services:
   keycloak:
-    image: quay.io/keycloak/keycloak:26.1.4-0
+    image: quay.io/keycloak/keycloak:26.3.2-0
     container_name: keycloak
     command:
       - start-dev
       - --import-realm
-      - --features=dpop
+      - --features=dpop,passkeys
     environment:
       - KC_PROXY_HEADERS=xforwarded
       - KC_HTTP_ENABLED=true
