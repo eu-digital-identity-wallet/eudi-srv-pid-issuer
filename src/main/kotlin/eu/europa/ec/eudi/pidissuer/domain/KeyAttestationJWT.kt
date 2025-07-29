@@ -29,7 +29,6 @@ import com.nimbusds.jwt.SignedJWT
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.text.ParseException
 
 data class KeyAttestationJWT private constructor(
     val jwt: SignedJWT,
@@ -67,7 +66,7 @@ data class KeyAttestationJWT private constructor(
                         "Invalid Key Attestation JWT. Item at index $index in `attested_keys` must be a public key."
                     }
                     jwk
-                } catch (e: ParseException) {
+                } catch (e: Exception) {
                     throw IllegalArgumentException(
                         "Invalid Key Attestation JWT. Item at index $index in `attested_keys` is not a valid JWK: ${e.message}",
                         e,

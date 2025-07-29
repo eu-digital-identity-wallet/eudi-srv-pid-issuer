@@ -53,7 +53,7 @@ internal class ValidateJwtProofTest {
     private val validateJwtProof = ValidateJwtProof(issuer, verifyKeyAttestation)
     private val credentialConfiguration = mobileDrivingLicenceV1(
         checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
-        KeyAttestation.NotRequired,
+        KeyAttestationRequirement.NotRequired,
     )
 
     @Test

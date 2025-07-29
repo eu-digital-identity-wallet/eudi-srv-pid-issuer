@@ -118,7 +118,7 @@ private suspend fun CredentialKey.AttestedKeys.Companion.fromKeyAttestation(
     verifyKeyAttestation: VerifyKeyAttestation,
     at: Instant,
 ): CredentialKey.AttestedKeys {
-    require(proofJwt.keyAttestationRequirement is KeyAttestation.Required) {
+    require(proofJwt.keyAttestationRequirement is KeyAttestationRequirement.Required) {
         "Proof type JWT does not require key attestation, though one was provided."
     }
     val keyAttestationJWT = KeyAttestationJWT(keyAttestation)
@@ -126,6 +126,7 @@ private suspend fun CredentialKey.AttestedKeys.Companion.fromKeyAttestation(
         keyAttestation = keyAttestationJWT,
         signingAlgorithmsSupported = proofJwt.signingAlgorithmsSupported,
         keyAttestationRequirement = proofJwt.keyAttestationRequirement,
+        expectExpirationClaim = true,
         at = at,
     ).getOrThrow()
 

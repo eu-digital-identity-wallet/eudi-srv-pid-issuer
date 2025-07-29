@@ -98,7 +98,21 @@ sealed interface CredentialKey {
 
     @JvmInline
     value class AttestedKeys(val keys: NonEmptyList<JWK>) : CredentialKey {
-        companion object
+
+        init {
+            keys.forEach { it.isPublicAsymmetricKey() }
+        }
+
+        companion object {
+            private fun JWK.isPublicAsymmetricKey() {
+                require(!isPrivate) {
+                    "Private key provided while expecting a public key."
+                }
+                require(this is AsymmetricJWK) {
+                    "Symmetric key provided. Must be an asymmetric key."
+                }
+            }
+        }
     }
 }
 

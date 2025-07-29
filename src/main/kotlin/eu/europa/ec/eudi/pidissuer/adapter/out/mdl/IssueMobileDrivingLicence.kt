@@ -297,30 +297,9 @@ val MobileDrivingLicenceV1CredentialConfigurationId: CredentialConfigurationId =
 
 val MobileDrivingLicenceV1DocType: MsoDocType = mdlDocType(1u)
 
-internal fun mdlProofTypesSupported(
-    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    keyAttestationRequirement: KeyAttestation,
-) = buildSet {
-    add(
-        ProofType.Jwt(
-            jwtProofsSupportedSigningAlgorithms,
-            keyAttestationRequirement,
-        ),
-    )
-    // Attestation proof is available only when key attestations for this credential are enabled in configuration
-    if (keyAttestationRequirement is KeyAttestation.Required) {
-        add(
-            ProofType.Attestation(
-                jwtProofsSupportedSigningAlgorithms,
-                keyAttestationRequirement,
-            ),
-        )
-    }
-}
-
 internal fun mobileDrivingLicenceV1(
-    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    keyAttestationRequirement: KeyAttestation,
+    proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    keyAttestationRequirement: KeyAttestationRequirement,
 ): MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
         id = MobileDrivingLicenceV1CredentialConfigurationId,
@@ -335,7 +314,7 @@ internal fun mobileDrivingLicenceV1(
         credentialSigningAlgorithmsSupported = emptySet(),
         scope = MobileDrivingLicenceV1Scope,
         proofTypesSupported = ProofTypesSupported(
-            mdlProofTypesSupported(jwtProofsSupportedSigningAlgorithms, keyAttestationRequirement),
+            ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
         policy = MsoMdocPolicy(oneTimeUse = false),
     )
@@ -353,7 +332,7 @@ internal class IssueMobileDrivingLicence(
     private val validityDuration: Duration,
     private val storeIssuedCredentials: StoreIssuedCredentials,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    override val keyAttestationRequirement: KeyAttestation = KeyAttestation.NotRequired,
+    override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.NotRequired,
 ) : IssueSpecificCredential {
 
     override val supportedCredential: MsoMdocCredentialConfiguration =

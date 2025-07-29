@@ -167,34 +167,13 @@ internal object EuropeanHealthInsuranceCardClaims {
 
 private val EuropeanHealthInsuranceCardVct: SdJwtVcType = SdJwtVcType("urn:eudi:ehic:1")
 
-private fun ehicProofTypesSupported(
-    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    keyAttestationRequirement: KeyAttestation,
-) = buildSet {
-    add(
-        ProofType.Jwt(
-            signingAlgorithmsSupported = jwtProofsSupportedSigningAlgorithms,
-            keyAttestationRequirement = keyAttestationRequirement,
-        ),
-    )
-    // Attestation proof is available only when key attestations for this credential are enabled in configuration
-    if (keyAttestationRequirement is KeyAttestation.Required) {
-        add(
-            ProofType.Attestation(
-                signingAlgorithmsSupported = jwtProofsSupportedSigningAlgorithms,
-                keyAttestationRequirement = keyAttestationRequirement,
-            ),
-        )
-    }
-}
-
 private fun europeanHealthInsuranceCardCredentialConfiguration(
     signingAlgorithm: JWSAlgorithm,
     credentialConfigurationId: CredentialConfigurationId,
     scope: Scope,
     credentialDisplay: CredentialDisplay,
-    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    keyAttestationRequirement: KeyAttestation,
+    proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    keyAttestationRequirement: KeyAttestationRequirement,
 ): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(
         id = credentialConfigurationId,
@@ -205,7 +184,7 @@ private fun europeanHealthInsuranceCardCredentialConfiguration(
         display = listOf(credentialDisplay),
         claims = EuropeanHealthInsuranceCardClaims.all(),
         proofTypesSupported = ProofTypesSupported(
-            ehicProofTypesSupported(jwtProofsSupportedSigningAlgorithms, keyAttestationRequirement),
+            ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
 
     )
@@ -223,7 +202,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredentials: StoreIssuedCredentials,
-    override val keyAttestationRequirement: KeyAttestation = KeyAttestation.NotRequired,
+    override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.NotRequired,
 ) : IssueSpecificCredential {
     init {
         require(!validity.isNegative && !validity.isZero)
@@ -282,7 +261,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             generateNotificationId: GenerateNotificationId,
             storeIssuedCredentials: StoreIssuedCredentials,
             jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-            keyAttestationRequirement: KeyAttestation = KeyAttestation.NotRequired,
+            keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.NotRequired,
         ): IssueSdJwtVcEuropeanHealthInsuranceCard =
             IssueSdJwtVcEuropeanHealthInsuranceCard(
                 europeanHealthInsuranceCardCredentialConfiguration(
@@ -327,7 +306,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             generateNotificationId: GenerateNotificationId,
             storeIssuedCredentials: StoreIssuedCredentials,
             jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-            keyAttestationRequirement: KeyAttestation = KeyAttestation.NotRequired,
+            keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.NotRequired,
         ): IssueSdJwtVcEuropeanHealthInsuranceCard =
             IssueSdJwtVcEuropeanHealthInsuranceCard(
                 europeanHealthInsuranceCardCredentialConfiguration(

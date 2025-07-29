@@ -460,16 +460,9 @@ fun beans(clock: Clock) = beans {
     //
     // Specific Issuers
     //
-    bean(name = "verify-key-attestation-with-exp-claim") {
-        VerifyKeyAttestation(verifyAttestedKey = { key -> key }, verifyCNonce = ref(), expectExpirationClaim = true)
-    }
-    bean(name = "verify-key-attestation") {
-        VerifyKeyAttestation(verifyAttestedKey = { key -> key }, verifyCNonce = ref(), expectExpirationClaim = false)
-    }
-    bean {
-        ValidateJwtProof(issuerPublicUrl, ref<VerifyKeyAttestation>("verify-key-attestation-with-exp-claim"))
-    }
-    bean { ValidateAttestationProof(ref<VerifyKeyAttestation>("verify-key-attestation")) }
+    bean { VerifyKeyAttestation(verifyAttestedKey = { key -> key }, verifyCNonce = ref()) }
+    bean { ValidateJwtProof(issuerPublicUrl, ref()) }
+    bean { ValidateAttestationProof(ref()) }
     bean { DefaultExtractJwkFromCredentialKey }
     bean { ValidateProofs(ref(), ref(), ref(), ref()) }
     bean {
@@ -903,7 +896,7 @@ fun beans(clock: Clock) = beans {
     }
 }
 
-private fun BeanDefinitionDsl.keyAttestationRequirement(attestationPropertyPrefix: String): KeyAttestation {
+private fun BeanDefinitionDsl.keyAttestationRequirement(attestationPropertyPrefix: String): KeyAttestationRequirement {
     val keyAttestationRequired = env.getProperty<Boolean>("$attestationPropertyPrefix.key_attestations.required")
     val keyStorageConstraints = env.getProperty<List<String>>(
         "$attestationPropertyPrefix.key_attestations.constraints.key_storage",
@@ -912,8 +905,8 @@ private fun BeanDefinitionDsl.keyAttestationRequirement(attestationPropertyPrefi
         "$attestationPropertyPrefix.key_attestations.constraints.user_authentication",
     )
     return if (keyAttestationRequired == null || !keyAttestationRequired)
-        KeyAttestation.NotRequired
-    else KeyAttestation.Required(
+        KeyAttestationRequirement.NotRequired
+    else KeyAttestationRequirement.Required(
         keyStorage = keyStorageConstraints?.map {
             AttackPotentialResistance(it)
         }?.toNonEmptySetOrNull(),

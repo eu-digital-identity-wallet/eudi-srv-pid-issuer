@@ -50,6 +50,7 @@ internal class ValidateAttestationProof(
             keyAttestation = keyAttestationJWT,
             signingAlgorithmsSupported = proofType.signingAlgorithmsSupported,
             keyAttestationRequirement = proofType.keyAttestationRequirement,
+            expectExpirationClaim = false,
             at = at,
         ).getOrThrow()
 

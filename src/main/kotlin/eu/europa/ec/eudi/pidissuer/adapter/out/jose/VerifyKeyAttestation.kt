@@ -15,11 +15,14 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.*
+import arrow.core.Either
+import arrow.core.NonEmptyList
+import arrow.core.NonEmptySet
+import arrow.core.raise.either
+import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
-import com.nimbusds.jose.crypto.Ed25519Signer
 import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
@@ -27,16 +30,14 @@ import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jose.proc.SingleKeyJWSKeySelector
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.X509CertChainUtils
-import com.nimbusds.jose.util.X509CertUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
-import eu.europa.ec.eudi.pidissuer.domain.KeyAttestation
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationJWT
+import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement
 import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyCNonce
 import java.net.URI
-import java.security.KeyStore
 import java.security.cert.*
 import java.time.Instant
 import kotlin.time.Duration
@@ -46,31 +47,26 @@ import kotlin.time.DurationUnit
 internal val SkipRevocation: PKIXParameters.() -> Unit = { isRevocationEnabled = false }
 
 internal class VerifyKeyAttestation(
-    private val trustAnchors: KeyStore? = null,
+    private val trustAnchors: NonEmptyList<X509Certificate>? = null,
     private val verifyAttestedKey: (JWK) -> JWK?,
     private val maxSkew: Duration = 30.seconds,
-    private val expectExpirationClaim: Boolean = false,
     private val verifyCNonce: VerifyCNonce,
 ) {
     suspend operator fun invoke(
         keyAttestation: KeyAttestationJWT,
         signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
-        keyAttestationRequirement: KeyAttestation.Required,
+        keyAttestationRequirement: KeyAttestationRequirement.Required,
+        expectExpirationClaim: Boolean,
         at: Instant,
-    ): Either<Throwable, NonEmptyList<JWK>> = Either.catch {
+    ): Either<Throwable, NonEmptyList<JWK>> = either {
         with(keyAttestation) {
             val algorithm = extractSupportedAlgorithm(signingAlgorithmsSupported)
-            val key = extractSigningKey().also {
-                it.ensureCompatibleWith(algorithm)
-                require(!it.isPrivate) {
-                    "Private key provided in key attestation. Must be a public key."
-                }
-            }
-            require(key is AsymmetricJWK) {
-                "Symmetric key provided in key attestation. Must be an asymmetric key."
-            }
+            val key = extractSigningKey()
+                .ensureCompatibleWith(algorithm)
+                .ensurePublicAsymmetricKey()
+
             verifyCNonce(at)
-            verifySignature(key, algorithm)
+            verifySignature(key, algorithm, expectExpirationClaim)
             ensureMeetsKeyAttestationRequirements(keyAttestationRequirement)
         }
         keyAttestation.attestedKeys
@@ -78,17 +74,18 @@ internal class VerifyKeyAttestation(
 
     private fun KeyAttestationJWT.extractSigningKey(): JWK {
         val header = jwt.header
-        val kid = header.keyID
-        val x5c = header.x509CertChain
+        val kid: String? = header.keyID
+        val x5c: List<Base64>? = header.x509CertChain
 
         return when {
             kid != null && x5c.isNullOrEmpty() -> resolveDidUrl(URI.create(kid)).getOrThrow()
             kid == null && !x5c.isNullOrEmpty() -> {
-                trustAnchors?.let {
-                    val chain = x5c.map { X509CertUtils.parse(it.decode()) }
-                    chain.isTrusted(it)
+                val chain = X509CertChainUtils.parse(x5c).toNonEmptyListOrNull()
+                requireNotNull(chain) { "x5c chain cannot be empty" }
+                if (trustAnchors != null) {
+                    chain.isTrusted(trustAnchors)
                 }
-                parseDer(x5c).getOrThrow()
+                JWK.parse(chain.head)
             }
             else -> error("Invalid Key attestation : No signing key found in one of 'kid' or 'x5c'. 'trust_chain not yet supported'")
         }
@@ -105,6 +102,7 @@ internal class VerifyKeyAttestation(
     private fun KeyAttestationJWT.verifySignature(
         key: AsymmetricJWK,
         algorithm: JWSAlgorithm,
+        expectExpirationClaim: Boolean,
     ) {
         val expectedType = JOSEObjectType(KeyAttestationJWT.KEY_ATTESTATION_JWT_TYPE)
         val keySelector = SingleKeyJWSKeySelector<SecurityContext>(algorithm, key.toPublicKey())
@@ -128,7 +126,7 @@ internal class VerifyKeyAttestation(
         processor.process(jwt, null)
     }
 
-    private fun KeyAttestationJWT.ensureMeetsKeyAttestationRequirements(keyAttestationRequirement: KeyAttestation.Required) {
+    private fun KeyAttestationJWT.ensureMeetsKeyAttestationRequirements(keyAttestationRequirement: KeyAttestationRequirement.Required) {
         // if key storage constraints are expected, the passed key attestation must meet these constraints
         keyAttestationRequirement.keyStorage?.let {
             requireNotNull(keyStorage) {
@@ -157,58 +155,42 @@ internal class VerifyKeyAttestation(
 
 private fun KeyAttestationJWT.extractSupportedAlgorithm(signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>): JWSAlgorithm =
     jwt.header.algorithm
-        .takeIf(JWSAlgorithm.Family.SIGNATURE::contains)
-        ?.takeIf(signingAlgorithmsSupported::contains)
+        .takeIf(signingAlgorithmsSupported::contains)
         ?: error("signing algorithm of key attestation '${jwt.header.algorithm.name}' is not supported")
 
-private fun JWK.ensureCompatibleWith(algorithm: JWSAlgorithm) {
+private fun JWK.ensureCompatibleWith(algorithm: JWSAlgorithm): JWK {
     val supportedAlgorithms =
         when (this) {
             is RSAKey -> RSASSASigner.SUPPORTED_ALGORITHMS
             is ECKey -> ECDSASigner.SUPPORTED_ALGORITHMS
-            is OctetKeyPair -> Ed25519Signer.SUPPORTED_ALGORITHMS
             else -> error("unsupported key type '${keyType.value}'")
         }
     require(algorithm in supportedAlgorithms) {
         "key type '${keyType.value}' is not compatible with signing algorithm '${algorithm.name}'"
     }
+    return this
 }
 
-private fun KeyStore.trustedCAs(): List<X509Certificate> {
-    fun x509(alias: String) =
-        alias.takeIf(::isCertificateEntry)
-            ?.let(::getCertificate) as? X509Certificate
-
-    return buildList {
-        for (alias in aliases()) {
-            x509(alias)?.let(::add)
-        }
+private fun JWK.ensurePublicAsymmetricKey(): AsymmetricJWK {
+    require(!isPrivate) {
+        "Private key provided in key attestation. Must be a public key."
     }
+    require(this is AsymmetricJWK) {
+        "Symmetric key provided in key attestation. Must be an asymmetric key."
+    }
+    return this as AsymmetricJWK
 }
 
-private fun List<X509Certificate>.isTrusted(trustAnchors: KeyStore) {
-    val trustedCAs = trustAnchors.trustedCAs().toNonEmptyListOrNull()
-    requireNotNull(trustedCAs) { "Empty trust anchors keystore passed" }
-    trustOrThrow(toNonEmptyListOrNull()!!, trustedCAs)
-}
-
-private fun trustOrThrow(
-    chain: Nel<X509Certificate>,
-    rootCACertificates: NonEmptyList<X509Certificate>,
+private fun NonEmptyList<X509Certificate>.isTrusted(
+    trustAnchors: NonEmptyList<X509Certificate>,
     customizePKIX: PKIXParameters.() -> Unit = SkipRevocation,
 ) {
     val factory = CertificateFactory.getInstance("X.509")
-    val certPath = factory.generateCertPath(chain)
+    val certPath = factory.generateCertPath(this)
 
-    val trust = rootCACertificates.map { cert -> TrustAnchor(cert, null) }.toSet()
+    val trust = trustAnchors.map { cert -> TrustAnchor(cert, null) }.toSet()
     val pkixParameters = PKIXParameters(trust).apply(customizePKIX)
 
     val validator = CertPathValidator.getInstance("PKIX")
     validator.validate(certPath, pkixParameters)
-}
-
-private fun parseDer(der: List<Base64>): Either<Throwable, JWK> = Either.catch {
-    val chain = X509CertChainUtils.parse(der).toNonEmptyListOrNull()
-    requireNotNull(chain) { "der must contain no certificates" }
-    JWK.parse(chain.head)
 }

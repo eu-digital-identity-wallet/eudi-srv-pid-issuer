@@ -15,14 +15,10 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
-import arrow.core.Either
-import arrow.core.NonEmptySet
-import arrow.core.getOrElse
-import arrow.core.nonEmptySetOf
+import arrow.core.*
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
-import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
@@ -184,31 +180,10 @@ internal val SdJwtVcPidVct: SdJwtVcType = SdJwtVcType(pidDocType(1))
 
 internal val SdJwtVcPidCredentialConfigurationId: CredentialConfigurationId = CredentialConfigurationId(PidSdJwtVcScope.value)
 
-internal fun pidSdJwtVcProofTypesSupported(
-    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    keyAttestationRequirement: KeyAttestation,
-): Set<ProofType> = buildSet {
-    add(
-        ProofType.Jwt(
-            jwtProofsSupportedSigningAlgorithms,
-            keyAttestationRequirement,
-        ),
-    )
-    // Attestation proof is available only when key attestations for this credential are enabled in configuration
-    if (keyAttestationRequirement is KeyAttestation.Required) {
-        add(
-            ProofType.Attestation(
-                jwtProofsSupportedSigningAlgorithms,
-                keyAttestationRequirement,
-            ),
-        )
-    }
-}
-
 fun pidSdJwtVcV1(
     signingAlgorithm: JWSAlgorithm,
-    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    keyAttestationRequirement: KeyAttestation,
+    proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    keyAttestationRequirement: KeyAttestationRequirement,
 ): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(
         id = SdJwtVcPidCredentialConfigurationId,
@@ -223,7 +198,7 @@ fun pidSdJwtVcV1(
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
         scope = PidSdJwtVcScope,
         proofTypesSupported = ProofTypesSupported(
-            pidSdJwtVcProofTypesSupported(jwtProofsSupportedSigningAlgorithms, keyAttestationRequirement),
+            ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
     )
 
@@ -248,7 +223,7 @@ internal class IssueSdJwtVcPid(
     private val storeIssuedCredentials: StoreIssuedCredentials,
     private val generateStatusListToken: GenerateStatusListToken?,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    override val keyAttestationRequirement: KeyAttestation,
+    override val keyAttestationRequirement: KeyAttestationRequirement,
 ) : IssueSpecificCredential {
 
     override val supportedCredential: SdJwtVcCredentialConfiguration =

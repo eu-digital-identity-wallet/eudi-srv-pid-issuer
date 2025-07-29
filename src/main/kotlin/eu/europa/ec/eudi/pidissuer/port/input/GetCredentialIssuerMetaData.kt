@@ -214,19 +214,22 @@ private fun ProofType.toJsonObject(): JsonObject =
                 putJsonArray("proof_signing_alg_values_supported") {
                     addAll(signingAlgorithmsSupported.map { it.name })
                 }
-                if (keyAttestationRequirement is KeyAttestation.Required) {
-                    putJsonObject("key_attestations_required") {
-                        keyAttestationRequirement.keyStorage?.let { keyStorage ->
-                            putJsonArray("key_storage") {
-                                addAll(keyStorage.map { it.value })
+                when (keyAttestationRequirement) {
+                    is KeyAttestationRequirement.Required -> {
+                        putJsonObject("key_attestations_required") {
+                            keyAttestationRequirement.keyStorage?.let { keyStorage ->
+                                putJsonArray("key_storage") {
+                                    addAll(keyStorage.map { it.value })
+                                }
                             }
-                        }
-                        keyAttestationRequirement.userAuthentication?.let { userAuthentication ->
-                            putJsonArray("user_authentication") {
-                                addAll(userAuthentication.map { it.value })
+                            keyAttestationRequirement.userAuthentication?.let { userAuthentication ->
+                                putJsonArray("user_authentication") {
+                                    addAll(userAuthentication.map { it.value })
+                                }
                             }
                         }
                     }
+                    is KeyAttestationRequirement.NotRequired -> Unit
                 }
             }
 

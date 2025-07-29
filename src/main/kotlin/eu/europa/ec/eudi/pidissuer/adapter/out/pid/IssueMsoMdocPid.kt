@@ -273,30 +273,9 @@ val PidMsoMdocV1CredentialConfigurationId: CredentialConfigurationId = Credentia
 
 val PidMsoMdocV1DocType: MsoDocType = pidDocType(1)
 
-internal fun pidMsoMdocProofTypesSupported(
-    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    keyAttestationRequirement: KeyAttestation,
-) = buildSet {
-    add(
-        ProofType.Jwt(
-            jwtProofsSupportedSigningAlgorithms,
-            keyAttestationRequirement,
-        ),
-    )
-    // Attestation proof is available only when key attestations for this credential are enabled in configuration
-    if (keyAttestationRequirement is KeyAttestation.Required) {
-        add(
-            ProofType.Attestation(
-                jwtProofsSupportedSigningAlgorithms,
-                keyAttestationRequirement,
-            ),
-        )
-    }
-}
-
 internal fun pidMsoMdocV1(
-    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    keyAttestationRequirement: KeyAttestation,
+    proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+    keyAttestationRequirement: KeyAttestationRequirement,
 ): MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
         id = PidMsoMdocV1CredentialConfigurationId,
@@ -311,7 +290,7 @@ internal fun pidMsoMdocV1(
         credentialSigningAlgorithmsSupported = emptySet(),
         scope = PidMsoMdocScope,
         proofTypesSupported = ProofTypesSupported(
-            pidMsoMdocProofTypesSupported(jwtProofsSupportedSigningAlgorithms, keyAttestationRequirement),
+            ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
         policy = MsoMdocPolicy(oneTimeUse = true),
     )
@@ -329,7 +308,7 @@ internal class IssueMsoMdocPid(
     private val validityDuration: Duration,
     private val storeIssuedCredentials: StoreIssuedCredentials,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    override val keyAttestationRequirement: KeyAttestation = KeyAttestation.NotRequired,
+    override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.NotRequired,
 ) : IssueSpecificCredential {
 
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)

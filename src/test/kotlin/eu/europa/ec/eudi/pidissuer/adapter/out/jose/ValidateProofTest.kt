@@ -20,7 +20,7 @@ import arrow.core.nonEmptySetOf
 import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
-import eu.europa.ec.eudi.pidissuer.domain.KeyAttestation
+import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import kotlinx.coroutines.test.runTest
@@ -57,7 +57,7 @@ class ValidateProofTest {
                 nonEmptyListOf(proof),
                 pidMsoMdocV1(
                     nonEmptySetOf(JWSAlgorithm.ES256),
-                    KeyAttestation.NotRequired,
+                    KeyAttestationRequirement.NotRequired,
                 ),
                 clock.instant(),
             )

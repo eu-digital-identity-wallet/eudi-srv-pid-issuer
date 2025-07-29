@@ -40,14 +40,14 @@ value class AttackPotentialResistance(val value: String) {
     }
 }
 
-sealed interface KeyAttestation {
+sealed interface KeyAttestationRequirement {
 
-    data object NotRequired : KeyAttestation
+    data object NotRequired : KeyAttestationRequirement
 
     data class Required(
         val keyStorage: NonEmptySet<AttackPotentialResistance>?,
         val userAuthentication: NonEmptySet<AttackPotentialResistance>?,
-    ) : KeyAttestation
+    ) : KeyAttestationRequirement
 }
 
 sealed interface ProofType {
@@ -57,13 +57,32 @@ sealed interface ProofType {
      */
     data class Jwt(
         val signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
-        val keyAttestationRequirement: KeyAttestation,
+        val keyAttestationRequirement: KeyAttestationRequirement,
     ) : ProofType
 
     data class Attestation(
         val signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
-        val keyAttestationRequirement: KeyAttestation.Required,
+        val keyAttestationRequirement: KeyAttestationRequirement.Required,
     ) : ProofType
+
+    companion object {
+        fun proofTypes(
+            supportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
+            keyAttestationRequirement: KeyAttestationRequirement,
+        ): Set<ProofType> = buildSet {
+            add(
+                Jwt(supportedSigningAlgorithms, keyAttestationRequirement),
+            )
+            // Attestation proof is available only when key attestations for this credential are enabled in configuration
+            when (keyAttestationRequirement) {
+                is KeyAttestationRequirement.Required ->
+                    add(
+                        Attestation(supportedSigningAlgorithms, keyAttestationRequirement),
+                    )
+                KeyAttestationRequirement.NotRequired -> Unit
+            }
+        }
+    }
 }
 
 fun ProofType.type(): ProofTypeEnum = when (this) {
