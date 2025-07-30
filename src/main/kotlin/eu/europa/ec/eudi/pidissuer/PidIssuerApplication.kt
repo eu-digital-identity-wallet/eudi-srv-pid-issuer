@@ -460,7 +460,7 @@ fun beans(clock: Clock) = beans {
     //
     // Specific Issuers
     //
-    bean { VerifyKeyAttestation(verifyAttestedKey = { key -> key }, verifyCNonce = ref()) }
+    bean { VerifyKeyAttestation(verifyCNonce = ref()) }
     bean { ValidateJwtProof(issuerPublicUrl, ref()) }
     bean { ValidateAttestationProof(ref()) }
     bean { DefaultExtractJwkFromCredentialKey }

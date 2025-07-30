@@ -48,7 +48,7 @@ internal val SkipRevocation: PKIXParameters.() -> Unit = { isRevocationEnabled =
 
 internal class VerifyKeyAttestation(
     private val trustAnchors: NonEmptyList<X509Certificate>? = null,
-    private val verifyAttestedKey: (JWK) -> JWK?,
+    private val verifyAttestedKey: VerifyAttestedKey? = null,
     private val maxSkew: Duration = 30.seconds,
     private val verifyCNonce: VerifyCNonce,
 ) {
@@ -58,18 +58,19 @@ internal class VerifyKeyAttestation(
         keyAttestationRequirement: KeyAttestationRequirement.Required,
         expectExpirationClaim: Boolean,
         at: Instant,
-    ): Either<Throwable, NonEmptyList<JWK>> = either {
+    ): Either<Throwable, Pair<NonEmptyList<JWK>, String>> = either {
         with(keyAttestation) {
             val algorithm = extractSupportedAlgorithm(signingAlgorithmsSupported)
             val key = extractSigningKey()
                 .ensureCompatibleWith(algorithm)
                 .ensurePublicAsymmetricKey()
 
-            verifyCNonce(at)
+            val nonce = verifyCNonce(at)
             verifySignature(key, algorithm, expectExpirationClaim)
-            ensureMeetsKeyAttestationRequirements(keyAttestationRequirement)
+            ensureMeetsKeyAttestationRequirements(keyAttestationRequirement, nonce)
+
+            keyAttestation.attestedKeys to nonce
         }
-        keyAttestation.attestedKeys
     }
 
     private fun KeyAttestationJWT.extractSigningKey(): JWK {
@@ -91,12 +92,15 @@ internal class VerifyKeyAttestation(
         }
     }
 
-    private suspend fun KeyAttestationJWT.verifyCNonce(at: Instant) {
-        jwt.jwtClaimsSet.getStringClaim("nonce")?.let { nonce ->
-            require(verifyCNonce(nonce, at)) {
-                "Invalid c_nonce provided in key attestation JWT"
-            }
+    private suspend fun KeyAttestationJWT.verifyCNonce(at: Instant): String {
+        val nonce = jwt.jwtClaimsSet.getStringClaim("nonce")
+        requireNotNull(nonce) {
+            "Key attestation does not contain a c_nonce."
         }
+        require(verifyCNonce(nonce, at)) {
+            "Invalid c_nonce provided in key attestation JWT"
+        }
+        return nonce
     }
 
     private fun KeyAttestationJWT.verifySignature(
@@ -126,7 +130,10 @@ internal class VerifyKeyAttestation(
         processor.process(jwt, null)
     }
 
-    private fun KeyAttestationJWT.ensureMeetsKeyAttestationRequirements(keyAttestationRequirement: KeyAttestationRequirement.Required) {
+    private suspend fun KeyAttestationJWT.ensureMeetsKeyAttestationRequirements(
+        keyAttestationRequirement: KeyAttestationRequirement.Required,
+        nonce: String,
+    ) {
         // if key storage constraints are expected, the passed key attestation must meet these constraints
         keyAttestationRequirement.keyStorage?.let {
             requireNotNull(keyStorage) {
@@ -145,11 +152,10 @@ internal class VerifyKeyAttestation(
                 "The provided user authentication's attack resistance does not match the expected one."
             }
         }
-        attestedKeys.forEach { key ->
-            requireNotNull(verifyAttestedKey(key)) {
-                "Key Attestation contains key(s) that cannot be verified as attested."
+        verifyAttestedKey?.verify(attestedKeys, keyAttestationRequirement, nonce)
+            ?.mapLeft {
+                error("${it.size} of the total ${attestedKeys.size} attested keys failed to pass verification")
             }
-        }
     }
 }
 

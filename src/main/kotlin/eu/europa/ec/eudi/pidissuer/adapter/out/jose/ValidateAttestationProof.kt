@@ -28,25 +28,23 @@ internal class ValidateAttestationProof(
         unvalidatedProof: UnvalidatedProof.Attestation,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
-    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey, String?>> = Either.catch {
+    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey.AttestedKeys, String>> = Either.catch {
         val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.ATTESTATION]
         requireNotNull(proofType) {
             "Credential configuration '${credentialConfiguration.id.value}' doesn't support 'attestation' proofs"
         }
         check(proofType is ProofType.Attestation)
         val keyAttestationJWT = KeyAttestationJWT(unvalidatedProof.jwt)
-        val credentialKey = CredentialKey.AttestedKeys.fromKeyAttestation(keyAttestationJWT, proofType, at)
-        val nonce = keyAttestationJWT.nonce()
 
-        credentialKey to nonce
+        credentialKeyAndNonce(keyAttestationJWT, proofType, at)
     }.mapLeft { IssueCredentialError.InvalidProof("Invalid proof Attestation", it) }
 
-    private suspend fun CredentialKey.AttestedKeys.Companion.fromKeyAttestation(
+    private suspend fun credentialKeyAndNonce(
         keyAttestationJWT: KeyAttestationJWT,
         proofType: ProofType.Attestation,
         at: Instant,
-    ): CredentialKey.AttestedKeys {
-        val attestedKeys = verifyKeyAttestation(
+    ): Pair<CredentialKey.AttestedKeys, String> {
+        val (attestedKeys, nonce) = verifyKeyAttestation(
             keyAttestation = keyAttestationJWT,
             signingAlgorithmsSupported = proofType.signingAlgorithmsSupported,
             keyAttestationRequirement = proofType.keyAttestationRequirement,
@@ -54,14 +52,6 @@ internal class ValidateAttestationProof(
             at = at,
         ).getOrThrow()
 
-        return CredentialKey.AttestedKeys(attestedKeys)
+        return CredentialKey.AttestedKeys(attestedKeys) to nonce
     }
-}
-
-private fun KeyAttestationJWT.nonce(): String {
-    val nonce = jwt.jwtClaimsSet.getStringClaim("nonce")
-    requireNotNull(nonce) {
-        "Attestation proof must be a key attestation with a nonce set."
-    }
-    return nonce
 }

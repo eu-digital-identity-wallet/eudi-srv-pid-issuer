@@ -122,7 +122,7 @@ private suspend fun CredentialKey.AttestedKeys.Companion.fromKeyAttestation(
         "Proof type JWT does not require key attestation, though one was provided."
     }
     val keyAttestationJWT = KeyAttestationJWT(keyAttestation)
-    val attestedKeys = verifyKeyAttestation(
+    val (attestedKeys, _) = verifyKeyAttestation(
         keyAttestation = keyAttestationJWT,
         signingAlgorithmsSupported = proofJwt.signingAlgorithmsSupported,
         keyAttestationRequirement = proofJwt.keyAttestationRequirement,
@@ -139,7 +139,6 @@ private suspend fun CredentialKey.ensureCompatibleWithAlgorithm(algorithm: JWSAl
             when (this) {
                 is RSAKey -> RSASSASigner.SUPPORTED_ALGORITHMS
                 is ECKey -> ECDSASigner.SUPPORTED_ALGORITHMS
-                is OctetKeyPair -> Ed25519Signer.SUPPORTED_ALGORITHMS
                 else -> error("unsupported key type '${keyType.value}'")
             }
         require(algorithm in supportedAlgorithms) {
