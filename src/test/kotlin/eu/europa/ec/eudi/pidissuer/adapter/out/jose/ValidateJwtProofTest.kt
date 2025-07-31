@@ -21,8 +21,8 @@ import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
-import com.nimbusds.jose.crypto.RSASSASigner
-import com.nimbusds.jose.jwk.RSAKey
+import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.Base64URL
@@ -51,7 +51,7 @@ internal class ValidateJwtProofTest {
     )
     private val validateJwtProof = ValidateJwtProof(issuer, verifyKeyAttestation)
     private val credentialConfiguration = mobileDrivingLicenceV1(
-        checkNotNull(RSASSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
+        checkNotNull(ECDSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
         KeyAttestationRequirement.NotRequired,
     )
 
@@ -228,9 +228,9 @@ internal class ValidateJwtProofTest {
     }
 
     private fun generateSignedJwt(
-        key: RSAKey,
+        key: ECKey,
         nonce: String,
-        algorithm: JWSAlgorithm = RSASSASigner.SUPPORTED_ALGORITHMS.first(),
+        algorithm: JWSAlgorithm = ECDSASigner.SUPPORTED_ALGORITHMS.first(),
         headersProvider: JWSHeader.Builder.() -> Unit = {},
     ): SignedJWT {
         val header = JWSHeader.Builder(algorithm)
@@ -244,7 +244,7 @@ internal class ValidateJwtProofTest {
             .claim("nonce", nonce)
             .build()
 
-        return SignedJWT(header, claims).apply { sign(RSASSASigner(key)) }
+        return SignedJWT(header, claims).apply { sign(ECDSASigner(key)) }
     }
 }
 
@@ -261,11 +261,11 @@ private suspend fun loadChain(): NonEmptyList<X509Certificate> =
             }
     }
 
-private suspend fun loadKey(): RSAKey =
+private suspend fun loadKey(): ECKey =
     withContext(Dispatchers.IO) {
         loadResource("/eu/europa/ec/eudi/pidissuer/adapter/out/jose/x5c/Key.key")
             .readText()
             .let {
-                RSAKey.parseFromPEMEncodedObjects(it).toRSAKey()
+                ECKey.parseFromPEMEncodedObjects(it).toECKey()
             }
     }

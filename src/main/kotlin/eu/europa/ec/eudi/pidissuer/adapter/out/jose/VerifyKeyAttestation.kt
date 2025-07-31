@@ -23,7 +23,6 @@ import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
-import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
 import com.nimbusds.jose.proc.SecurityContext
@@ -63,7 +62,7 @@ internal class VerifyKeyAttestation(
             val algorithm = extractSupportedAlgorithm(signingAlgorithmsSupported)
             val key = extractSigningKey()
                 .ensureCompatibleWith(algorithm)
-                .ensurePublicAsymmetricKey()
+                .ensureIsPublicAsymmetricKey()
 
             val nonce = verifyCNonce(at)
             verifySignature(key, algorithm, expectExpirationClaim)
@@ -161,30 +160,30 @@ internal class VerifyKeyAttestation(
 
 private fun KeyAttestationJWT.extractSupportedAlgorithm(signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>): JWSAlgorithm =
     jwt.header.algorithm
-        .takeIf(signingAlgorithmsSupported::contains)
+        .takeIf(JWSAlgorithm.Family.EC::contains)
+        ?.takeIf(signingAlgorithmsSupported::contains)
         ?: error("signing algorithm of key attestation '${jwt.header.algorithm.name}' is not supported")
 
-private fun JWK.ensureCompatibleWith(algorithm: JWSAlgorithm): JWK {
-    val supportedAlgorithms =
+private fun JWK.ensureCompatibleWith(signingAlgorithm: JWSAlgorithm): JWK {
+    val keySupportedAlgorithms =
         when (this) {
-            is RSAKey -> RSASSASigner.SUPPORTED_ALGORITHMS
             is ECKey -> ECDSASigner.SUPPORTED_ALGORITHMS
             else -> error("unsupported key type '${keyType.value}'")
         }
-    require(algorithm in supportedAlgorithms) {
+    require(signingAlgorithm in keySupportedAlgorithms) {
         "key type '${keyType.value}' is not compatible with signing algorithm '${algorithm.name}'"
     }
     return this
 }
 
-private fun JWK.ensurePublicAsymmetricKey(): AsymmetricJWK {
+private fun JWK.ensureIsPublicAsymmetricKey(): AsymmetricJWK {
     require(!isPrivate) {
         "Private key provided in key attestation. Must be a public key."
     }
     require(this is AsymmetricJWK) {
         "Symmetric key provided in key attestation. Must be an asymmetric key."
     }
-    return this as AsymmetricJWK
+    return this
 }
 
 private fun NonEmptyList<X509Certificate>.isTrusted(

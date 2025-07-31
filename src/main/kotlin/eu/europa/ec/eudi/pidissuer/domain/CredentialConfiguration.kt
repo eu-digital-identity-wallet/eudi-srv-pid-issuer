@@ -69,17 +69,25 @@ sealed interface ProofType {
         fun proofTypes(
             supportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
             keyAttestationRequirement: KeyAttestationRequirement,
-        ): Set<ProofType> = buildSet {
-            add(
-                Jwt(supportedSigningAlgorithms, keyAttestationRequirement),
-            )
-            // Attestation proof is available only when key attestations for this credential are enabled in configuration
-            when (keyAttestationRequirement) {
-                is KeyAttestationRequirement.Required ->
-                    add(
-                        Attestation(supportedSigningAlgorithms, keyAttestationRequirement),
-                    )
-                KeyAttestationRequirement.NotRequired -> Unit
+        ): Set<ProofType> {
+            supportedSigningAlgorithms.forEach {
+                require(it in JWSAlgorithm.Family.EC) {
+                    "Only EC signing algorithms are supported."
+                }
+            }
+            return buildSet {
+                add(
+                    Jwt(supportedSigningAlgorithms, keyAttestationRequirement),
+                )
+                // Attestation proof is available only when key attestations for this credential are enabled in configuration
+                when (keyAttestationRequirement) {
+                    is KeyAttestationRequirement.Required ->
+                        add(
+                            Attestation(supportedSigningAlgorithms, keyAttestationRequirement),
+                        )
+
+                    KeyAttestationRequirement.NotRequired -> Unit
+                }
             }
         }
     }
