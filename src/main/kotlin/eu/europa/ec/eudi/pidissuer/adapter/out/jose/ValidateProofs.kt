@@ -34,6 +34,7 @@ import java.time.Instant
  */
 internal class ValidateProofs(
     private val validateJwtProof: ValidateJwtProof,
+    private val validateAttestationProof: ValidateAttestationProof,
     private val verifyCNonce: VerifyCNonce,
     private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
 ) {
@@ -47,10 +48,10 @@ internal class ValidateProofs(
             val credentialKeysAndCNonces = unvalidatedProofs.map {
                 when (it) {
                     is UnvalidatedProof.Jwt ->
-                        validateJwtProof(it, credentialConfiguration).bind()
-                    is UnvalidatedProof.LdpVp,
-                    is UnvalidatedProof.Attestation,
-                    -> raise(InvalidProof("Supporting only JWT proof"))
+                        validateJwtProof(it, credentialConfiguration, at).bind()
+                    is UnvalidatedProof.Attestation ->
+                        validateAttestationProof(it, credentialConfiguration, at).bind()
+                    is UnvalidatedProof.LdpVp -> raise(InvalidProof("Supporting only JWT proof"))
                 }
             }
 
@@ -64,7 +65,10 @@ internal class ValidateProofs(
                 extractJwkFromCredentialKey(it.first).getOrElse { error ->
                     raise(InvalidProof("Unable to extract JWK from CredentialKey", error))
                 }
-            }.toNonEmptyListOrNull()
+            }.flatten()
+                .distinct()
+                .toNonEmptyListOrNull()
+
             checkNotNull(jwks)
         }
     }

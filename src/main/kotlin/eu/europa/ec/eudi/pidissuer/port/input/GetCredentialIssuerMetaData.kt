@@ -204,6 +204,7 @@ private fun CryptographicBindingMethod.methodName(): String =
 private fun ProofType.proofTypeName(): String =
     when (this) {
         is ProofType.Jwt -> "jwt"
+        is ProofType.Attestation -> "attestation"
     }
 
 private fun ProofType.toJsonObject(): JsonObject =
@@ -213,17 +214,38 @@ private fun ProofType.toJsonObject(): JsonObject =
                 putJsonArray("proof_signing_alg_values_supported") {
                     addAll(signingAlgorithmsSupported.map { it.name })
                 }
-                if (keyAttestation is KeyAttestation.Required) {
-                    putJsonObject("key_attestations_required") {
-                        keyAttestation.keyStorage?.let { keyStorage ->
-                            putJsonArray("key_storage") {
-                                addAll(keyStorage.map { it.value })
+                when (keyAttestationRequirement) {
+                    is KeyAttestationRequirement.Required -> {
+                        putJsonObject("key_attestations_required") {
+                            keyAttestationRequirement.keyStorage?.let { keyStorage ->
+                                putJsonArray("key_storage") {
+                                    addAll(keyStorage.map { it.value })
+                                }
+                            }
+                            keyAttestationRequirement.userAuthentication?.let { userAuthentication ->
+                                putJsonArray("user_authentication") {
+                                    addAll(userAuthentication.map { it.value })
+                                }
                             }
                         }
-                        keyAttestation.useAuthentication?.let { userAuthentication ->
-                            putJsonArray("user_authentication") {
-                                addAll(userAuthentication.map { it.value })
-                            }
+                    }
+                    is KeyAttestationRequirement.NotRequired -> Unit
+                }
+            }
+
+            is ProofType.Attestation -> {
+                putJsonArray("proof_signing_alg_values_supported") {
+                    addAll(signingAlgorithmsSupported.map { it.name })
+                }
+                putJsonObject("key_attestations_required") {
+                    keyAttestationRequirement.keyStorage?.let { keyStorage ->
+                        putJsonArray("key_storage") {
+                            addAll(keyStorage.map { it.value })
+                        }
+                    }
+                    keyAttestationRequirement.userAuthentication?.let { userAuthentication ->
+                        putJsonArray("user_authentication") {
+                            addAll(userAuthentication.map { it.value })
                         }
                     }
                 }
