@@ -22,6 +22,7 @@ import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIdentifier
 import eu.europa.ec.eudi.pidissuer.domain.CredentialRequest
 import eu.europa.ec.eudi.pidissuer.domain.CredentialResponse
+import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
@@ -32,6 +33,7 @@ interface IssueSpecificCredential {
 
     val supportedCredential: CredentialConfiguration
     val publicKey: JWK?
+    val keyAttestationRequirement: KeyAttestationRequirement
 
     suspend operator fun invoke(
         authorizationContext: AuthorizationContext,
