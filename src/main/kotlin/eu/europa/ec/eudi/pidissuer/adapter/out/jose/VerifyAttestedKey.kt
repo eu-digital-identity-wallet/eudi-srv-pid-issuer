@@ -17,17 +17,22 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.Either
 import arrow.core.NonEmptyList
-import arrow.core.nonEmptyListOf
+import arrow.core.mapOrAccumulate
 import com.nimbusds.jose.jwk.JWK
-import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
+import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement
 
-object DefaultExtractJwkFromCredentialKey : ExtractJwkFromCredentialKey {
-    override suspend fun invoke(key: CredentialKey): Either<Throwable, NonEmptyList<JWK>> = Either.catch {
-        when (key) {
-            is CredentialKey.Jwk -> nonEmptyListOf(key.value)
-            is CredentialKey.X5c -> nonEmptyListOf(JWK.parse(key.certificate))
-            is CredentialKey.DIDUrl -> nonEmptyListOf(key.jwk)
-            is CredentialKey.AttestedKeys -> key.keys
+fun interface VerifyAttestedKey {
+
+    suspend fun verify(key: JWK, requirement: KeyAttestationRequirement.Required, cNonce: String?): Either<AttestedKeyError, JWK>
+
+    suspend fun verify(
+        keys: NonEmptyList<JWK>,
+        requirement: KeyAttestationRequirement.Required,
+        cNonce: String?,
+    ): Either<NonEmptyList<AttestedKeyError>, NonEmptyList<JWK>> =
+        keys.mapOrAccumulate { key ->
+            verify(key, requirement, cNonce).bind()
         }
-    }
 }
+
+sealed interface AttestedKeyError
