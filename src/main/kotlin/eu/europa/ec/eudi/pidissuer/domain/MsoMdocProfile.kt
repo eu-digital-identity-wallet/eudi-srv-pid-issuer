@@ -63,6 +63,7 @@ data class MsoMdocCredentialConfiguration(
         require(claims.all { it.isMsoMDoc() }) {
             "'claims' does not contain valid MSO MDoc ClaimDefinitions"
         }
+        validateCryptographicBindingsAndProofTypes()
     }
 }
 
@@ -86,7 +87,7 @@ data class MsoMdocCredentialRequest(
     override val format: Format = MSO_MDOC_FORMAT
 }
 
-internal fun Raise<String>.validate(msoMdocCredentialRequest: MsoMdocCredentialRequest, meta: MsoMdocCredentialConfiguration) {
+internal fun Raise<String>.validateCryptographicBindingsAndProofTypes(msoMdocCredentialRequest: MsoMdocCredentialRequest, meta: MsoMdocCredentialConfiguration) {
     ensure(msoMdocCredentialRequest.docType == meta.docType) {
         "doctype is ${msoMdocCredentialRequest.docType} but was expecting ${meta.docType}"
     }
