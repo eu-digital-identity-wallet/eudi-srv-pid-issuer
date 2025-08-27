@@ -30,6 +30,8 @@ import org.springframework.core.io.Resource
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.server.*
 
+val MEDIA_TYPE_APPLICATION_JWT = MediaType("application", "jwt")
+
 class MetaDataApi(
     private val getCredentialIssuerMetaData: GetCredentialIssuerMetaData,
     private val credentialIssuerMetaData: CredentialIssuerMetaData,
@@ -38,7 +40,10 @@ class MetaDataApi(
 
     val route = coRouter {
         GET(WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, accept(MediaType.APPLICATION_JSON)) { _ ->
-            handleGetClientIssuerMetaData()
+            handleGetUnsignedCredentialIssuerMetaData()
+        }
+        GET(WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, accept(MEDIA_TYPE_APPLICATION_JWT)) { _ ->
+            handleGetSignedCredentialIssuerMetaData()
         }
         GET(WELL_KNOWN_JWT_VC_ISSUER, accept(MediaType.APPLICATION_JSON)) {
             handleGetJwtVcIssuerMetadata()
@@ -49,8 +54,13 @@ class MetaDataApi(
         GET(TYPE_METADATA, accept(MediaType.APPLICATION_JSON), ::handleGetSdJwtVcTypeMetadata)
     }
 
-    private suspend fun handleGetClientIssuerMetaData(): ServerResponse =
-        getCredentialIssuerMetaData().let { metaData -> ServerResponse.ok().json().bodyValueAndAwait(metaData) }
+    private suspend fun handleGetUnsignedCredentialIssuerMetaData(): ServerResponse =
+        getCredentialIssuerMetaData.unsigned().let { metaData -> ServerResponse.ok().json().bodyValueAndAwait(metaData) }
+
+    private suspend fun handleGetSignedCredentialIssuerMetaData(): ServerResponse =
+        getCredentialIssuerMetaData.signed()?.let { metaData ->
+            ServerResponse.ok().contentType(MEDIA_TYPE_APPLICATION_JWT).bodyValueAndAwait(metaData)
+        } ?: ServerResponse.notFound().buildAndAwait()
 
     private suspend fun handleGetJwtVcIssuerMetadata(): ServerResponse =
         ServerResponse.ok()
