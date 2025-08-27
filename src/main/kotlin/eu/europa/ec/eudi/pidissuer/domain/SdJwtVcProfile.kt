@@ -66,7 +66,7 @@ data class SdJwtVcCredentialRequest(
     override val format: Format = SD_JWT_VC_FORMAT
 }
 
-internal fun Raise<String>.validateCryptographicBindingsAndProofTypes(sdJwtVcCredentialRequest: SdJwtVcCredentialRequest, meta: SdJwtVcCredentialConfiguration) {
+internal fun Raise<String>.validate(sdJwtVcCredentialRequest: SdJwtVcCredentialRequest, meta: SdJwtVcCredentialConfiguration) {
     ensure(sdJwtVcCredentialRequest.type == meta.type) {
         "doctype is ${sdJwtVcCredentialRequest.type} but was expecting ${meta.type}"
     }
