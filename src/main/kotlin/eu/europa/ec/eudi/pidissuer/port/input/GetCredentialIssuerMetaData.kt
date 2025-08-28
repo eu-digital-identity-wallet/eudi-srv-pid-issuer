@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.port.input
 import arrow.core.Option
 import arrow.core.none
 import arrow.core.some
+import com.nimbusds.jose.util.JSONObjectUtils
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.out.jose.GenerateSignedMetadata
 import kotlinx.serialization.Required
@@ -65,7 +66,7 @@ data class CredentialIssuerMetaDataTO(
     @Serializable
     data class CredentialRequestEncryptionTO(
         @Required @SerialName("jwks")
-        val jwks: JsonArray,
+        val jwks: JsonObject,
         @Required @SerialName("enc_values_supported")
         val encryptionMethods: List<String>,
         @SerialName("zip_values_supported")
@@ -135,7 +136,7 @@ private fun CredentialRequestEncryption.toTransferObject(): Option<CredentialIss
         ifNotSupported = none(),
         ifOptional = { optional ->
             CredentialIssuerMetaDataTO.CredentialRequestEncryptionTO(
-                jwks = JsonArray(optional.parameters.jwks.keys.map { Json.decodeFromString<JsonObject>(it.toJSONString()) }),
+                jwks = Json.decodeFromString(JSONObjectUtils.toJSONString(optional.parameters.jwks.toJSONObject())),
                 encryptionMethods = optional.parameters.methodsSupported.map { it.name },
                 zipValuesSupported = optional.parameters.zipAlgorithmsSupported?.map { it.name },
                 required = false,
@@ -143,7 +144,7 @@ private fun CredentialRequestEncryption.toTransferObject(): Option<CredentialIss
         },
         ifRequired = { required ->
             CredentialIssuerMetaDataTO.CredentialRequestEncryptionTO(
-                jwks = JsonArray(required.parameters.jwks.keys.map { Json.decodeFromString<JsonObject>(it.toJSONString()) }),
+                jwks = Json.decodeFromString(JSONObjectUtils.toJSONString(required.parameters.jwks.toJSONObject())),
                 encryptionMethods = required.parameters.methodsSupported.map { it.name },
                 zipValuesSupported = required.parameters.zipAlgorithmsSupported?.map { it.name },
                 required = true,
