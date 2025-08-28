@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer
 
 import arrow.core.*
+import com.nimbusds.jose.Algorithm
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
@@ -1079,7 +1080,7 @@ private fun loadJwkFromKeystore(environment: Environment, prefix: String): JWK {
     val keyAlias = environment.getRequiredProperty(property("alias"))
     val keyPassword = environment.getProperty(property("password"))?.takeIf { it.isNotBlank() }
     val keyAlgorithm = environment.getProperty(property("algorithm"))?.takeIf { it.isNotBlank() }
-        ?.let { JWSAlgorithm.parse(it) }
+        ?.let { Algorithm.parse(it) }
 
     return keystoreResource.inputStream.use { inputStream ->
         val keystore = KeyStore.getInstance(keystoreType)
