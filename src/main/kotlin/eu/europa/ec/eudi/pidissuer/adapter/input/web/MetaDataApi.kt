@@ -27,6 +27,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromStream
 import org.springframework.core.io.Resource
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.server.*
 
@@ -55,12 +56,13 @@ class MetaDataApi(
     }
 
     private suspend fun handleGetUnsignedCredentialIssuerMetaData(): ServerResponse =
-        getCredentialIssuerMetaData.unsigned().let { metaData -> ServerResponse.ok().json().bodyValueAndAwait(metaData) }
+        getCredentialIssuerMetaData.unsigned().let { metaData -> ServerResponse.ok()
+            .contentType(MediaType.APPLICATION_JSON).json().bodyValueAndAwait(metaData) }
 
     private suspend fun handleGetSignedCredentialIssuerMetaData(): ServerResponse =
         getCredentialIssuerMetaData.signed()?.let { metaData ->
             ServerResponse.ok().contentType(MEDIA_TYPE_APPLICATION_JWT).bodyValueAndAwait(metaData)
-        } ?: ServerResponse.notFound().buildAndAwait()
+        } ?: handleGetUnsignedCredentialIssuerMetaData()
 
     private suspend fun handleGetJwtVcIssuerMetadata(): ServerResponse =
         ServerResponse.ok()
