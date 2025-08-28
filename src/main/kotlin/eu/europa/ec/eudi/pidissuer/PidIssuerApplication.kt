@@ -949,7 +949,7 @@ private fun Environment.credentialRequestEncryption(): CredentialRequestEncrypti
                         }
                         RSAKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
                     }
-                    else -> error("unsupported key type '$loadedJwk.javaClass'")
+                    else -> error("unsupported key type '${loadedJwk.javaClass}'")
                 }
             }
         }
