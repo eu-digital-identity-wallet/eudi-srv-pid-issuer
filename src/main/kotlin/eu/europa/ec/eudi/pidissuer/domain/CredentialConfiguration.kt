@@ -135,6 +135,6 @@ internal fun CredentialConfiguration.validateCryptographicBindingsAndProofTypes(
     val hasCryptoBinding = cryptographicBindingMethodsSupported.isNotEmpty()
     val hasProofTypes = proofTypesSupported != ProofTypesSupported.Empty
     require(hasCryptoBinding == hasProofTypes) {
-        "proofTypesSupported be present if cryptographicBindingMethodsSupported are provided, and omitted otherwise"
+        "proofTypesSupported must be present if cryptographicBindingMethodsSupported are provided, and omitted otherwise"
     }
 }
