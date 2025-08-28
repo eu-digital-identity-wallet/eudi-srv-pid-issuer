@@ -928,7 +928,7 @@ private fun Environment.credentialRequestEncryption(): CredentialRequestEncrypti
                 ECKeyGenerator(Curve.P_256)
                     .keyID(UUID.randomUUID().toString())
                     .keyUse(KeyUse.ENCRYPTION)
-                    .algorithm(JWEAlgorithm.ECDH_ES_A128KW)
+                    .algorithm(JWEAlgorithm.ECDH_ES)
                     .generate()
             }
             KeyOption.LoadFromKeystore -> {
@@ -939,17 +939,17 @@ private fun Environment.credentialRequestEncryption(): CredentialRequestEncrypti
                 when (val loadedJwk = loadJwkFromKeystore(this, "issuer.credentialRequestEncryption.jwks")) {
                     is ECKey -> {
                         require(JWEAlgorithm.Family.ECDH_ES.contains(keyAlgorithm)) {
-                            "The 'alg' '$keyAlgorithm' is not compatible with the loaded EC key"
+                            "The algorithm '$keyAlgorithm' is not compatible with the loaded EC key"
                         }
                         ECKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
                     }
                     is RSAKey -> {
                         require(JWEAlgorithm.Family.RSA.contains(keyAlgorithm)) {
-                            "The 'alg' '$keyAlgorithm' is not compatible with the loaded RSA key"
+                            "The algorithm '$keyAlgorithm' is not compatible with the loaded RSA key"
                         }
                         RSAKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
                     }
-                    else -> error("unsupported key type '$javaClass'")
+                    else -> error("unsupported key type '$loadedJwk.javaClass'")
                 }
             }
         }
