@@ -926,8 +926,9 @@ private fun Environment.credentialRequestEncryption(): CredentialRequestEncrypti
         val key = when (getProperty<KeyOption>("issuer.credentialRequestEncryption.jwks")) {
             null, KeyOption.GenerateRandom -> {
                 ECKeyGenerator(Curve.P_256)
-                    .keyID("issuer-kid-1")
+                    .keyID(UUID.randomUUID().toString())
                     .keyUse(KeyUse.ENCRYPTION)
+                    .algorithm(JWSAlgorithm.ES256)
                     .generate()
             }
             KeyOption.LoadFromKeystore -> {
@@ -1077,12 +1078,23 @@ private fun loadJwkFromKeystore(environment: Environment, prefix: String): JWK {
     val keystorePassword = environment.getProperty(property("keystore.password"))?.takeIf { it.isNotBlank() }
     val keyAlias = environment.getRequiredProperty(property("alias"))
     val keyPassword = environment.getProperty(property("password"))?.takeIf { it.isNotBlank() }
+    val keyAlgorithm = environment.getProperty(property("algorithm"))?.takeIf { it.isNotBlank() }
+        ?.let { JWSAlgorithm.parse(it) }
 
     return keystoreResource.inputStream.use { inputStream ->
         val keystore = KeyStore.getInstance(keystoreType)
         keystore.load(inputStream, keystorePassword?.toCharArray())
 
         val jwk = JWK.load(keystore, keyAlias, keyPassword?.toCharArray())
+            .let { loadedJwk ->
+                keyAlgorithm?.let { alg ->
+                    when (loadedJwk) {
+                        is ECKey -> ECKey.Builder(loadedJwk).algorithm(alg).build()
+                        is RSAKey -> RSAKey.Builder(loadedJwk).algorithm(alg).build()
+                        else -> loadedJwk
+                    }
+                } ?: loadedJwk
+            }
         val chain = keystore.getCertificateChain(keyAlias).orEmpty()
             .map { certificate -> certificate as X509Certificate }
             .toList()

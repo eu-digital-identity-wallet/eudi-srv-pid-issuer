@@ -46,6 +46,7 @@ data class CredentialRequestEncryptionSupportedParameters(
         require(jwks.keys.isNotEmpty()) { "jwks must contain at least one key" }
         require(jwks.keys.all { !it.isPrivate }) { "jwks must contain only public keys" }
         require(jwks.keys.all { !it.keyID.isNullOrBlank() }) { "jwks must contain keys with a kid value" }
+        require(jwks.keys.all { it.algorithm != null }) { "jwks must contain keys with an alg value" }
     }
 }
 
