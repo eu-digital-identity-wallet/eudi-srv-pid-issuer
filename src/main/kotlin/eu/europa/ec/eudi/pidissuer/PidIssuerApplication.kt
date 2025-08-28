@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer
 
 import arrow.core.*
-import com.nimbusds.jose.Algorithm
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
@@ -929,11 +928,29 @@ private fun Environment.credentialRequestEncryption(): CredentialRequestEncrypti
                 ECKeyGenerator(Curve.P_256)
                     .keyID(UUID.randomUUID().toString())
                     .keyUse(KeyUse.ENCRYPTION)
-                    .algorithm(JWSAlgorithm.ES256)
+                    .algorithm(JWEAlgorithm.ECDH_ES_A128KW)
                     .generate()
             }
             KeyOption.LoadFromKeystore -> {
-                loadJwkFromKeystore(this, "issuer.credentialRequestEncryption.jwks")
+                val keyAlgorithm = getProperty<String>("issuer.credentialRequestEncryption.jwks.algorithm")?.let {
+                    JWEAlgorithm.parse(it)
+                } ?: error("Missing or invalid 'issuer.credentialRequestEncryption.jwks.algorithm' property")
+
+                when (val loadedJwk = loadJwkFromKeystore(this, "issuer.credentialRequestEncryption.jwks")) {
+                    is ECKey -> {
+                        require(JWEAlgorithm.Family.ECDH_ES.contains(keyAlgorithm)) {
+                            "The 'alg' '$keyAlgorithm' is not compatible with the loaded EC key"
+                        }
+                        ECKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
+                    }
+                    is RSAKey -> {
+                        require(JWEAlgorithm.Family.RSA.contains(keyAlgorithm)) {
+                            "The 'alg' '$keyAlgorithm' is not compatible with the loaded RSA key"
+                        }
+                        RSAKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
+                    }
+                    else -> error("unsupported key type '$javaClass'")
+                }
             }
         }
 
@@ -1079,23 +1096,11 @@ private fun loadJwkFromKeystore(environment: Environment, prefix: String): JWK {
     val keystorePassword = environment.getProperty(property("keystore.password"))?.takeIf { it.isNotBlank() }
     val keyAlias = environment.getRequiredProperty(property("alias"))
     val keyPassword = environment.getProperty(property("password"))?.takeIf { it.isNotBlank() }
-    val keyAlgorithm = environment.getProperty(property("algorithm"))?.takeIf { it.isNotBlank() }
-        ?.let { Algorithm.parse(it) }
 
     return keystoreResource.inputStream.use { inputStream ->
         val keystore = KeyStore.getInstance(keystoreType)
         keystore.load(inputStream, keystorePassword?.toCharArray())
-
         val jwk = JWK.load(keystore, keyAlias, keyPassword?.toCharArray())
-            .let { loadedJwk ->
-                keyAlgorithm?.let { alg ->
-                    when (loadedJwk) {
-                        is ECKey -> ECKey.Builder(loadedJwk).algorithm(alg).build()
-                        is RSAKey -> RSAKey.Builder(loadedJwk).algorithm(alg).build()
-                        else -> loadedJwk
-                    }
-                } ?: loadedJwk
-            }
         val chain = keystore.getCertificateChain(keyAlias).orEmpty()
             .map { certificate -> certificate as X509Certificate }
             .toList()
