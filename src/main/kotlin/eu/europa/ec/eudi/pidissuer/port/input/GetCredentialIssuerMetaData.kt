@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.port.input
 import arrow.core.Option
 import arrow.core.none
 import arrow.core.some
+import com.nimbusds.jose.util.JSONObjectUtils
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.out.jose.GenerateSignedMetadata
 import kotlinx.serialization.Required
@@ -29,15 +30,9 @@ class GetCredentialIssuerMetaData(
     private val credentialIssuerMetaData: CredentialIssuerMetaData,
     private val generateSignedMetadata: GenerateSignedMetadata?,
 ) {
-    operator fun invoke(): CredentialIssuerMetaDataTO {
-        val withoutSignedMetadata = credentialIssuerMetaData.toTransferObject()
-        return if (null != generateSignedMetadata) {
-            val signedMetadata = generateSignedMetadata.invoke(Json.encodeToJsonElement(withoutSignedMetadata).jsonObject)
-            withoutSignedMetadata.copy(signedMetadata = signedMetadata)
-        } else {
-            withoutSignedMetadata
-        }
-    }
+    fun unsigned() = credentialIssuerMetaData.toTransferObject()
+
+    fun signed(): String? = generateSignedMetadata?.invoke(Json.encodeToJsonElement(unsigned()).jsonObject)
 }
 
 @Serializable
@@ -54,12 +49,12 @@ data class CredentialIssuerMetaDataTO(
     val notificationEndpoint: String? = null,
     @SerialName("nonce_endpoint")
     val nonceEndpoint: String? = null,
+    @SerialName("credential_request_encryption")
+    val credentialRequestEncryption: CredentialRequestEncryptionTO? = null,
     @SerialName("credential_response_encryption")
     val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
     @SerialName("batch_credential_issuance")
     val batchCredentialIssuance: BatchCredentialIssuanceTO? = null,
-    @SerialName("signed_metadata")
-    val signedMetadata: String? = null,
     @SerialName("display")
     val display: List<DisplayTO>? = null,
     @Required @SerialName("credential_configurations_supported")
@@ -69,11 +64,25 @@ data class CredentialIssuerMetaDataTO(
 ) {
 
     @Serializable
+    data class CredentialRequestEncryptionTO(
+        @Required @SerialName("jwks")
+        val jwks: JsonObject,
+        @Required @SerialName("enc_values_supported")
+        val encryptionMethods: List<String>,
+        @SerialName("zip_values_supported")
+        val zipValuesSupported: List<String>? = null,
+        @Required @SerialName("encryption_required")
+        val required: Boolean,
+    )
+
+    @Serializable
     data class CredentialResponseEncryptionTO(
         @Required @SerialName("alg_values_supported")
         val encryptionAlgorithms: List<String>,
         @Required @SerialName("enc_values_supported")
         val encryptionMethods: List<String>,
+        @SerialName("zip_values_supported")
+        val zipValuesSupported: List<String>? = null,
         @Required @SerialName("encryption_required")
         val required: Boolean,
     )
@@ -109,18 +118,39 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
     deferredCredentialEndpoint = deferredCredentialEndpoint?.externalForm,
     notificationEndpoint = notificationEndpoint?.externalForm,
     nonceEndpoint = nonceEndpoint?.externalForm,
+    credentialRequestEncryption = credentialRequestEncryption.toTransferObject().getOrNull(),
     credentialResponseEncryption = credentialResponseEncryption.toTransferObject().getOrNull(),
     batchCredentialIssuance = when (batchCredentialIssuance) {
         BatchCredentialIssuance.NotSupported -> null
         is BatchCredentialIssuance.Supported -> CredentialIssuerMetaDataTO.BatchCredentialIssuanceTO(batchCredentialIssuance.batchSize)
     },
-    signedMetadata = null,
     display = display.map { it.toTransferObject() }.takeIf { it.isNotEmpty() },
     credentialConfigurationsSupported = JsonObject(
         credentialConfigurationsSupported.associate { it.id.value to credentialMetaDataJson(it, batchCredentialIssuance) },
     ),
     openid4VciVersion = OpenId4VciSpec.VERSION,
 )
+
+private fun CredentialRequestEncryption.toTransferObject(): Option<CredentialIssuerMetaDataTO.CredentialRequestEncryptionTO> =
+    fold(
+        ifNotSupported = none(),
+        ifOptional = { optional ->
+            CredentialIssuerMetaDataTO.CredentialRequestEncryptionTO(
+                jwks = Json.decodeFromString(JSONObjectUtils.toJSONString(optional.parameters.jwks.toJSONObject())),
+                encryptionMethods = optional.parameters.methodsSupported.map { it.name },
+                zipValuesSupported = optional.parameters.zipAlgorithmsSupported?.map { it.name },
+                required = false,
+            ).some()
+        },
+        ifRequired = { required ->
+            CredentialIssuerMetaDataTO.CredentialRequestEncryptionTO(
+                jwks = Json.decodeFromString(JSONObjectUtils.toJSONString(required.parameters.jwks.toJSONObject())),
+                encryptionMethods = required.parameters.methodsSupported.map { it.name },
+                zipValuesSupported = required.parameters.zipAlgorithmsSupported?.map { it.name },
+                required = true,
+            ).some()
+        },
+    )
 
 private fun CredentialResponseEncryption.toTransferObject(): Option<CredentialIssuerMetaDataTO.CredentialResponseEncryptionTO> =
     fold(
@@ -129,6 +159,7 @@ private fun CredentialResponseEncryption.toTransferObject(): Option<CredentialIs
             CredentialIssuerMetaDataTO.CredentialResponseEncryptionTO(
                 encryptionAlgorithms = optional.parameters.algorithmsSupported.map { it.name },
                 encryptionMethods = optional.parameters.methodsSupported.map { it.name },
+                zipValuesSupported = optional.parameters.zipAlgorithmsSupported?.map { it.name },
                 required = false,
             ).some()
         },
@@ -136,6 +167,7 @@ private fun CredentialResponseEncryption.toTransferObject(): Option<CredentialIs
             CredentialIssuerMetaDataTO.CredentialResponseEncryptionTO(
                 encryptionAlgorithms = required.parameters.algorithmsSupported.map { it.name },
                 encryptionMethods = required.parameters.methodsSupported.map { it.name },
+                zipValuesSupported = required.parameters.zipAlgorithmsSupported?.map { it.name },
                 required = true,
             ).some()
         },
@@ -257,11 +289,6 @@ internal fun MsoMdocCredentialConfiguration.toTransferObject(
     batchCredentialIssuance: BatchCredentialIssuance,
 ): JsonObjectBuilder.() -> Unit = {
     put("doctype", docType)
-    if (display.isNotEmpty()) {
-        putJsonArray("display") {
-            addAll(display.map { it.toTransferObject() })
-        }
-    }
     if (policy != null) {
         putJsonObject("policy") {
             put("one_time_use", policy.oneTimeUse)
@@ -270,24 +297,30 @@ internal fun MsoMdocCredentialConfiguration.toTransferObject(
             }
         }
     }
-
-    if (claims.isNotEmpty()) {
-        putJsonArray("claims") {
-            addAll(claims.flatMap { it.toJsonObjects() })
-        }
-    }
+    putCredentialMetadata(display, claims)
 }
 
 internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilder.() -> Unit = {
-    if (display.isNotEmpty()) {
-        putJsonArray("display") {
-            addAll(display.map { it.toTransferObject() })
-        }
-    }
     put("vct", type.value)
-    if (claims.isNotEmpty()) {
-        putJsonArray("claims") {
-            addAll(claims.flatMap { it.toJsonObjects() })
+    putCredentialMetadata(display, claims)
+}
+
+private fun JsonObjectBuilder.putCredentialMetadata(
+    display: List<CredentialDisplay>,
+    claims: List<ClaimDefinition>,
+) {
+    if (display.isNotEmpty() || claims.isNotEmpty()) {
+        putJsonObject("credential_metadata") {
+            if (display.isNotEmpty()) {
+                putJsonArray("display") {
+                    addAll(display.map { it.toTransferObject() })
+                }
+            }
+            if (claims.isNotEmpty()) {
+                putJsonArray("claims") {
+                    addAll(claims.flatMap { it.toJsonObjects() })
+                }
+            }
         }
     }
 }
