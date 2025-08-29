@@ -204,12 +204,6 @@ private fun credentialMetaDataJson(
                 addAll(cryptographicBindingMethodsSupported.map { it.methodName() })
             }
         }
-    d.credentialSigningAlgorithmsSupported.takeIf { it.isNotEmpty() }
-        ?.let { credentialSigningAlgorithmsSupported ->
-            putJsonArray("credential_signing_alg_values_supported") {
-                addAll(credentialSigningAlgorithmsSupported.map { it.name })
-            }
-        }
     d.proofTypesSupported.takeIf { it != ProofTypesSupported.Empty }
         ?.let { proofTypesSupported ->
             putJsonObject("proof_types_supported") {
@@ -288,6 +282,12 @@ private fun ProofType.toJsonObject(): JsonObject =
 internal fun MsoMdocCredentialConfiguration.toTransferObject(
     batchCredentialIssuance: BatchCredentialIssuance,
 ): JsonObjectBuilder.() -> Unit = {
+    credentialSigningAlgorithmsSupported
+        ?.let { credentialSigningAlgorithmsSupported ->
+            putJsonArray("credential_signing_alg_values_supported") {
+                addAll(credentialSigningAlgorithmsSupported.map { it.value })
+            }
+        }
     put("doctype", docType)
     if (policy != null) {
         putJsonObject("policy") {
@@ -301,6 +301,12 @@ internal fun MsoMdocCredentialConfiguration.toTransferObject(
 }
 
 internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilder.() -> Unit = {
+    credentialSigningAlgorithmsSupported
+        ?.let { credentialSigningAlgorithmsSupported ->
+            putJsonArray("credential_signing_alg_values_supported") {
+                addAll(credentialSigningAlgorithmsSupported.map { it.name })
+            }
+        }
     put("vct", type.value)
     putCredentialMetadata(display, claims)
 }

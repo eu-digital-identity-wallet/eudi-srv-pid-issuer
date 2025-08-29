@@ -16,9 +16,9 @@
 package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptyList
+import arrow.core.NonEmptySet
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
-import com.nimbusds.jose.JWSAlgorithm
 
 //
 // Credential MetaData
@@ -52,7 +52,7 @@ data class MsoMdocCredentialConfiguration(
     override val id: CredentialConfigurationId,
     val docType: MsoDocType,
     override val cryptographicBindingMethodsSupported: Set<CryptographicBindingMethod>,
-    override val credentialSigningAlgorithmsSupported: Set<JWSAlgorithm>,
+    val credentialSigningAlgorithmsSupported: NonEmptySet<CoseAlgorithm>?,
     override val scope: Scope,
     override val display: List<CredentialDisplay> = emptyList(),
     val claims: List<ClaimDefinition> = emptyList(),
