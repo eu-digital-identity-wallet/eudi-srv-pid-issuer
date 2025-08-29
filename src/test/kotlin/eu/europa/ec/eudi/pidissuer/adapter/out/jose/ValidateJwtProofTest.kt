@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.NonEmptyList
+import arrow.core.nonEmptySetOf
 import arrow.core.toNonEmptyListOrNull
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.JOSEObjectType
@@ -221,6 +222,26 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
+                clock.instant(),
+            )
+
+        assertTrue { result.isLeft() }
+    }
+
+    @Test
+    internal fun `proof validation fails with unsupported 'alg' in header`() = runTest {
+        val key = loadKey()
+        val signedJwt =
+            generateSignedJwt(key, "nonce") {
+                jwk(key.toPublicJWK())
+            }
+        val result =
+            validateJwtProof(
+                UnvalidatedProof.Jwt(signedJwt.serialize()),
+                mobileDrivingLicenceV1(
+                    nonEmptySetOf(JWSAlgorithm.ES512),
+                    KeyAttestationRequirement.NotRequired,
+                ),
                 clock.instant(),
             )
 
