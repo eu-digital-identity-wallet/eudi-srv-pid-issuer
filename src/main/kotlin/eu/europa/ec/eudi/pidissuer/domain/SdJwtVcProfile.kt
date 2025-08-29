@@ -40,7 +40,11 @@ data class SdJwtVcCredentialConfiguration(
     override val display: List<CredentialDisplay>,
     val claims: List<ClaimDefinition>,
     override val proofTypesSupported: ProofTypesSupported = ProofTypesSupported.Empty,
-) : CredentialConfiguration
+) : CredentialConfiguration {
+    init {
+        validateCryptographicBindingsAndProofTypes()
+    }
+}
 
 internal fun SdJwtVcCredentialConfiguration.credentialRequest(
     unvalidatedProofs: NonEmptyList<UnvalidatedProof>,

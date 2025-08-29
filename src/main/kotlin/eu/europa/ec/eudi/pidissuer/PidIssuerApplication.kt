@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer
 
 import arrow.core.*
+import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
@@ -471,6 +472,7 @@ fun beans(clock: Clock) = beans {
             notificationEndpoint = issuerPublicUrl.appendPath(WalletApi.NOTIFICATION_ENDPOINT),
             nonceEndpoint = issuerPublicUrl.appendPath(WalletApi.NONCE_ENDPOINT),
             authorizationServers = listOf(env.readRequiredUrl("issuer.authorizationServer.publicUrl")),
+            credentialRequestEncryption = env.credentialRequestEncryption(),
             credentialResponseEncryption = env.credentialResponseEncryption(),
             specificCredentialIssuers = buildList {
                 if (enableMsoMdocPid) {
@@ -914,6 +916,61 @@ private fun BeanDefinitionDsl.keyAttestationRequirement(attestationPropertyPrefi
     )
 }
 
+private fun Environment.credentialRequestEncryption(): CredentialRequestEncryption {
+    val isSupported = getProperty<Boolean>("issuer.credentialRequestEncryption.supported") ?: false
+    return if (!isSupported) {
+        CredentialRequestEncryption.NotSupported
+    } else {
+        val key = when (getProperty<KeyOption>("issuer.credentialRequestEncryption.jwks")) {
+            null, KeyOption.GenerateRandom -> {
+                ECKeyGenerator(Curve.P_256)
+                    .keyID(UUID.randomUUID().toString())
+                    .keyUse(KeyUse.ENCRYPTION)
+                    .algorithm(JWEAlgorithm.ECDH_ES)
+                    .generate()
+            }
+            KeyOption.LoadFromKeystore -> {
+                val keyAlgorithm = getProperty<String>("issuer.credentialRequestEncryption.jwks.algorithm")?.let {
+                    JWEAlgorithm.parse(it)
+                } ?: error("Missing or invalid 'issuer.credentialRequestEncryption.jwks.algorithm' property")
+
+                when (val loadedJwk = loadJwkFromKeystore(this, "issuer.credentialRequestEncryption.jwks")) {
+                    is ECKey -> {
+                        require(JWEAlgorithm.Family.ECDH_ES.contains(keyAlgorithm)) {
+                            "The algorithm '$keyAlgorithm' is not compatible with the loaded EC key"
+                        }
+                        ECKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
+                    }
+                    is RSAKey -> {
+                        require(JWEAlgorithm.Family.RSA.contains(keyAlgorithm)) {
+                            "The algorithm '$keyAlgorithm' is not compatible with the loaded RSA key"
+                        }
+                        RSAKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
+                    }
+                    else -> error("unsupported key type '${loadedJwk.javaClass}'")
+                }
+            }
+        }
+
+        val parameters = CredentialRequestEncryptionSupportedParameters(
+            jwks = JWKSet(key.toPublicJWK()),
+            methodsSupported = readNonEmptySet(
+                "issuer.credentialRequestEncryption.encryptionMethods",
+                EncryptionMethod::parse,
+            ),
+            zipAlgorithmsSupported = readNonEmptySet(
+                "issuer.credentialRequestEncryption.zipAlgorithmsSupported",
+            ) { CompressionAlgorithm(it) },
+        )
+        val isRequired = getProperty<Boolean>("issuer.credentialRequestEncryption.required") ?: false
+        if (!isRequired) {
+            CredentialRequestEncryption.Optional(parameters)
+        } else {
+            CredentialRequestEncryption.Required(parameters)
+        }
+    }
+}
+
 private fun Environment.credentialResponseEncryption(): CredentialResponseEncryption {
     val isSupported = getProperty<Boolean>("issuer.credentialResponseEncryption.supported") ?: false
     return if (!isSupported) {
@@ -928,6 +985,9 @@ private fun Environment.credentialResponseEncryption(): CredentialResponseEncryp
                 "issuer.credentialResponseEncryption.encryptionMethods",
                 EncryptionMethod::parse,
             ),
+            zipAlgorithmsSupported = readNonEmptySet(
+                "issuer.credentialResponseEncryption.zipAlgorithmsSupported",
+            ) { CompressionAlgorithm(it) },
         )
         val isRequired = getProperty<Boolean>("issuer.credentialResponseEncryption.required") ?: false
         if (!isRequired) {
@@ -1038,7 +1098,6 @@ private fun loadJwkFromKeystore(environment: Environment, prefix: String): JWK {
     return keystoreResource.inputStream.use { inputStream ->
         val keystore = KeyStore.getInstance(keystoreType)
         keystore.load(inputStream, keystorePassword?.toCharArray())
-
         val jwk = JWK.load(keystore, keyAlias, keyPassword?.toCharArray())
         val chain = keystore.getCertificateChain(keyAlias).orEmpty()
             .map { certificate -> certificate as X509Certificate }
