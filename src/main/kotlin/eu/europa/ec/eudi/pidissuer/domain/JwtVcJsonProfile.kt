@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import arrow.core.NonEmptySet
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 
@@ -32,7 +33,7 @@ data class JwtVcJsonCredentialConfiguration(
     override val id: CredentialConfigurationId,
     override val scope: Scope,
     override val cryptographicBindingMethodsSupported: Set<CryptographicBindingMethod>,
-    override val credentialSigningAlgorithmsSupported: Set<JWSAlgorithm>,
+    val credentialSigningAlgorithmsSupported: NonEmptySet<JWSAlgorithm>?,
     override val display: List<CredentialDisplay>,
     override val proofTypesSupported: ProofTypesSupported = ProofTypesSupported.Empty,
 ) : CredentialConfiguration {
