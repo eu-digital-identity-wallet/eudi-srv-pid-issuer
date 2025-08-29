@@ -19,4 +19,6 @@ internal object OpenId4VciSpec {
     const val VERSION = "draft 16"
 
     const val SIGNED_METADATA_JWT_TYPE = "openidvci-issuer-metadata+jwt"
+
+    val ZIP_ALGORITHMS = setOf("DEF")
 }

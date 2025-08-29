@@ -20,6 +20,7 @@ import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.JWKSet
+import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec.ZIP_ALGORITHMS
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import java.util.*
 
@@ -47,6 +48,9 @@ data class CredentialRequestEncryptionSupportedParameters(
         require(jwks.keys.all { !it.isPrivate }) { "jwks must contain only public keys" }
         require(jwks.keys.all { !it.keyID.isNullOrBlank() }) { "jwks must contain keys with a kid value" }
         require(jwks.keys.all { it.algorithm != null }) { "jwks must contain keys with an alg value" }
+        require(zipAlgorithmsSupported?.all { it.name in ZIP_ALGORITHMS } ?: true) {
+            "zipAlgorithmsSupported must be one of ${ZIP_ALGORITHMS.joinToString(", ") { it }}"
+        }
     }
 }
 
@@ -69,7 +73,13 @@ data class CredentialResponseEncryptionSupportedParameters(
     val algorithmsSupported: NonEmptySet<JWEAlgorithm>,
     val methodsSupported: NonEmptySet<EncryptionMethod>,
     val zipAlgorithmsSupported: NonEmptySet<CompressionAlgorithm>?,
-)
+) {
+    init {
+        require(zipAlgorithmsSupported?.all { it.name in ZIP_ALGORITHMS } ?: true) {
+            "zipAlgorithmsSupported must be one of ${ZIP_ALGORITHMS.joinToString(", ") { it }}"
+        }
+    }
+}
 
 sealed interface CredentialResponseEncryption {
 
