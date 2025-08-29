@@ -66,6 +66,10 @@ internal class ValidateJwtProof(
         at: Instant,
     ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey, String?>> = Either.catch {
         val signedJwt = SignedJWT.parse(unvalidatedProof.jwt)
+        require(signedJwt.header.algorithm in proofType.signingAlgorithmsSupported) {
+            "JWT proof signing algorithm '${signedJwt.header.algorithm}' is not supported, " +
+                "must be one of: ${proofType.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
+        }
         val (algorithm, credentialKey) = algorithmAndCredentialKey(signedJwt, proofType, verifyKeyAttestation, at)
         val keySelector = keySelector(signedJwt, credentialKey, algorithm)
         val processor = processor(credentialIssuerId, keySelector)
@@ -119,6 +123,10 @@ private suspend fun CredentialKey.AttestedKeys.Companion.fromKeyAttestation(
         "Proof type JWT does not require key attestation, though one was provided."
     }
     val keyAttestationJWT = KeyAttestationJWT(keyAttestation)
+    require(keyAttestationJWT.jwt.header.algorithm in proofJwt.signingAlgorithmsSupported) {
+        "Key attestation signing algorithm '${keyAttestationJWT.jwt.header.algorithm}' is not supported, " +
+            "must be one of: ${proofJwt.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
+    }
     val (attestedKeys, _) = verifyKeyAttestation(
         keyAttestation = keyAttestationJWT,
         signingAlgorithmsSupported = proofJwt.signingAlgorithmsSupported,
