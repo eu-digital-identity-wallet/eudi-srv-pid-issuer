@@ -38,8 +38,8 @@ enum class ProofTypeTO {
     @SerialName("jwt")
     JWT,
 
-    @SerialName("ldp_vp")
-    LDP_VP,
+    @SerialName("di_vp")
+    DI_VP,
 
     @SerialName("attestation")
     ATTESTATION,
@@ -49,15 +49,15 @@ enum class ProofTypeTO {
 data class ProofTo(
     @SerialName("proof_type") @Required val type: ProofTypeTO,
     val jwt: String? = null,
-    @SerialName("ldp_vp")
-    val ldpVp: String? = null,
+    @SerialName("di_vp")
+    val diVp: String? = null,
     val attestation: String? = null,
 )
 
 @Serializable
 data class ProofsTO(
     @SerialName("jwt") val jwtProofs: List<String>? = null,
-    @SerialName("ldp_vp") val ldpVpProofs: List<String>? = null,
+    @SerialName("di_vp") val diVpProofs: List<String>? = null,
     @SerialName("attestation") val attestations: List<String>? = null,
 )
 
@@ -440,17 +440,17 @@ private interface Validations : Raise<IssueCredentialError> {
                 proof != null && proofs == null -> nonEmptyListOf(proof.toDomain())
                 proof == null && proofs != null -> {
                     val jwtProofs = proofs.jwtProofs?.map { UnvalidatedProof.Jwt(it) }
-                    val ldpVpProofs = proofs.ldpVpProofs?.map { UnvalidatedProof.LdpVp(it) }
+                    val diVpProofs = proofs.diVpProofs?.map { UnvalidatedProof.DiVp(it) }
                     val attestations = proofs.attestations?.map { UnvalidatedProof.Attestation(it) }
                         ?.also {
                             ensure(1 == it.size) { InvalidProof("'attestation' can contain only a single element") }
                         }
                     // Proof object contains exactly one parameter named as the proof type
-                    ensure(1 == listOfNotNull(jwtProofs, ldpVpProofs, attestations).size) {
+                    ensure(1 == listOfNotNull(jwtProofs, diVpProofs, attestations).size) {
                         InvalidProof("Only a single proof type is allowed")
                     }
 
-                    val proofs = (jwtProofs.orEmpty() + ldpVpProofs.orEmpty() + attestations.orEmpty()).toNonEmptyListOrNull()
+                    val proofs = (jwtProofs.orEmpty() + diVpProofs.orEmpty() + attestations.orEmpty()).toNonEmptyListOrNull()
                     ensureNotNull(proofs) { MissingProof }
                 }
 
@@ -582,9 +582,9 @@ private interface Validations : Raise<IssueCredentialError> {
             UnvalidatedProof.Jwt(jwt)
         }
 
-        ProofTypeTO.LDP_VP -> {
-            ensureNotNull(ldpVp) { MissingProof }
-            UnvalidatedProof.LdpVp(ldpVp)
+        ProofTypeTO.DI_VP -> {
+            ensureNotNull(diVp) { MissingProof }
+            UnvalidatedProof.DiVp(diVp)
         }
 
         ProofTypeTO.ATTESTATION -> {

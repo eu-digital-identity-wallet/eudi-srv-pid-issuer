@@ -49,7 +49,7 @@ class ValidateProofTest {
 
     @Test
     internal fun `fails with unsupported proof type`() = runTest {
-        val proof = UnvalidatedProof.LdpVp("foo")
+        val proof = UnvalidatedProof.DiVp("foo")
 
         val result =
             validateProofs(

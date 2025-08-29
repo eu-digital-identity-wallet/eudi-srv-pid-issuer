@@ -22,8 +22,8 @@ import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.util.JSONObjectUtils
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
+import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
 import eu.europa.ec.eudi.pidissuer.port.out.jose.GenerateSignedMetadata
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import java.time.Clock
 
@@ -59,6 +59,7 @@ data class MetadataSigningKey(
     val jwsHeader: JWSHeader
         get() = JWSHeader.Builder(signingAlgorithm)
             .apply {
+                type(JOSEObjectType(OpenId4VciSpec.SIGNED_METADATA_JWT_TYPE))
                 val publicJwk = key.toPublicJWK()
                 if (null != publicJwk.x509CertChain) {
                     x509CertChain(publicJwk.x509CertChain)

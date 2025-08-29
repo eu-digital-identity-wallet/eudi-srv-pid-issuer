@@ -51,7 +51,7 @@ internal class ValidateProofs(
                         validateJwtProof(it, credentialConfiguration, at).bind()
                     is UnvalidatedProof.Attestation ->
                         validateAttestationProof(it, credentialConfiguration, at).bind()
-                    is UnvalidatedProof.LdpVp -> raise(InvalidProof("Supporting only JWT proof"))
+                    is UnvalidatedProof.DiVp -> raise(InvalidProof("Supporting only JWT proof"))
                 }
             }
 
