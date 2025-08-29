@@ -127,7 +127,6 @@ sealed interface CredentialConfiguration {
     val scope: Scope
     val display: List<CredentialDisplay>
     val cryptographicBindingMethodsSupported: Set<CryptographicBindingMethod>
-    val credentialSigningAlgorithmsSupported: Set<JWSAlgorithm>
     val proofTypesSupported: ProofTypesSupported
 }
 
