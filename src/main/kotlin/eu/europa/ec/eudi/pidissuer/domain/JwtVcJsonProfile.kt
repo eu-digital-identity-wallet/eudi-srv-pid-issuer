@@ -35,7 +35,11 @@ data class JwtVcJsonCredentialConfiguration(
     override val credentialSigningAlgorithmsSupported: Set<JWSAlgorithm>,
     override val display: List<CredentialDisplay>,
     override val proofTypesSupported: ProofTypesSupported = ProofTypesSupported.Empty,
-) : CredentialConfiguration
+) : CredentialConfiguration {
+    init {
+        validateCryptographicBindingsAndProofTypes()
+    }
+}
 
 //
 // Credential Offer

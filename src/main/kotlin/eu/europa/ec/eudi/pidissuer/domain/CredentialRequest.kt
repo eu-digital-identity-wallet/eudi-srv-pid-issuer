@@ -41,7 +41,7 @@ sealed interface UnvalidatedProof {
     /**
      * Proof of possession using a W3C Verifiable Presentation object signed using the Data Integrity Proof.
      */
-    data class LdpVp(val vp: String) : UnvalidatedProof
+    data class DiVp(val vp: String) : UnvalidatedProof
 
     /**
      * A JWT representing a key attestation without using a proof of possession of
