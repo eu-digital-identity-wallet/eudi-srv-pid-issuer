@@ -74,8 +74,6 @@ data class CredentialRequestTO(
     val credentialIdentifier: String? = null,
     @SerialName("credential_configuration_id")
     val credentialConfigurationId: String? = null,
-    @Deprecated(message = "Will be removed in a future draft.")
-    val proof: ProofTo? = null,
     val proofs: ProofsTO? = null,
     @SerialName("credential_response_encryption")
     val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
@@ -437,8 +435,7 @@ private interface Validations : Raise<IssueCredentialError> {
 
         val proofs =
             when {
-                proof != null && proofs == null -> nonEmptyListOf(proof.toDomain())
-                proof == null && proofs != null -> {
+                proofs != null -> {
                     val jwtProofs = proofs.jwtProofs?.map { UnvalidatedProof.Jwt(it) }
                     val diVpProofs = proofs.diVpProofs?.map { UnvalidatedProof.DiVp(it) }
                     val attestations = proofs.attestations?.map { UnvalidatedProof.Attestation(it) }
@@ -453,11 +450,6 @@ private interface Validations : Raise<IssueCredentialError> {
                     val proofs = (jwtProofs.orEmpty() + diVpProofs.orEmpty() + attestations.orEmpty()).toNonEmptyListOrNull()
                     ensureNotNull(proofs) { MissingProof }
                 }
-
-                proof != null && proofs != null -> raise(
-                    InvalidProof("Only one of `proof` or `proofs` is allowed"),
-                )
-
                 else -> raise(MissingProof)
             }
         ensure(proofs.size <= supportedBatchIssuance.maxProofsSupported) {
