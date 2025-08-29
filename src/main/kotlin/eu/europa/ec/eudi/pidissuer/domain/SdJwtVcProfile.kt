@@ -36,7 +36,7 @@ data class SdJwtVcCredentialConfiguration(
     val type: SdJwtVcType,
     override val scope: Scope,
     override val cryptographicBindingMethodsSupported: NonEmptySet<CryptographicBindingMethod>,
-    override val credentialSigningAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
+    val credentialSigningAlgorithmsSupported: NonEmptySet<JWSAlgorithm>?,
     override val display: List<CredentialDisplay>,
     val claims: List<ClaimDefinition>,
     override val proofTypesSupported: ProofTypesSupported = ProofTypesSupported.Empty,
