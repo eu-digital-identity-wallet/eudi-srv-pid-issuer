@@ -315,7 +315,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
     fun `fails when multiple proof types are provided`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
 
-        val proofs = ProofsTO(jwtProofs = listOf("jwt"), ldpVpProofs = listOf("ldp_vc"), attestations = listOf("attestation"))
+        val proofs = ProofsTO(jwtProofs = listOf("jwt"), diVpProofs = listOf("di_vc"), attestations = listOf("attestation"))
 
         val response = client()
             .mutateWith(mockAuthentication(authentication))

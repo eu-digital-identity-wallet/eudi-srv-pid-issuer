@@ -310,7 +310,7 @@ internal fun mobileDrivingLicenceV1(
             ),
         ),
         claims = MsoMdocMdlV1Claims.all(),
-        cryptographicBindingMethodsSupported = emptySet(),
+        cryptographicBindingMethodsSupported = setOf(CryptographicBindingMethod.Jwk),
         credentialSigningAlgorithmsSupported = emptySet(),
         scope = MobileDrivingLicenceV1Scope,
         proofTypesSupported = ProofTypesSupported(
