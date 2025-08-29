@@ -239,7 +239,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 mobileDrivingLicenceV1(
-                    checkNotNull(nonEmptySetOf(JWSAlgorithm.ES512)),
+                    nonEmptySetOf(JWSAlgorithm.ES512),
                     KeyAttestationRequirement.NotRequired,
                 ),
                 clock.instant(),
