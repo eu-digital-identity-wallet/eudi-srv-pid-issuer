@@ -37,12 +37,11 @@ val msoMdoc = """
        "credential_configuration_id": "eu.europa.ec.eudi.pid_mso_mdo",
        "credential_response_encryption": {
         "jwk": {},
-        "alg": "ECDH-ES",
-        "enc": "A256CBC-HS512"
+        "enc": "A256CBC-HS512",
+        "zip": "DEF"
        },
-       "proof": {
-          "proof_type": "jwt",
-          "jwt": "eyJraWQiOiJkaWQ6ZXhhbXBsZ"
+       "proofs": {
+          "jwt": ["eyJraWQiOiJkaWQ6ZXhhbXBsZ"]
        }
     }
 """.trimIndent()
@@ -50,16 +49,15 @@ val msoMdoc = """
 val sdJwtVc = """
     {
        "credential_configuration_id": "eu.europa.ec.eudi.pid_vc_sd_jwt",
-       "proof": {
-          "proof_type": "jwt",
-          "jwt":"${
+       "proofs": {
+          "jwt":["${
     """
                 eyJraWQiOiJkaWQ6ZXhhbXBsZTplYmZlYjFmNzEyZWJjNmYxYzI3NmUxMmVjMjEva2V5cy8
                 xIiwiYWxnIjoiRVMyNTYiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJzNkJoZFJrcXQzIiwiYXVkIjoiaHR
                 0cHM6Ly9zZXJ2ZXIuZXhhbXBsZS5jb20iLCJpYXQiOiIyMDE4LTA5LTE0VDIxOjE5OjEwWiIsIm5vbm
                 NlIjoidFppZ25zbkZicCJ9.ewdkIkPV50iOeBUqMXCC_aZKPxgihac0aW9EkL1nOzM        
     """.trimIndent().replace("\n","")
-}"
+}"]
        }
     }
 """.trimIndent()

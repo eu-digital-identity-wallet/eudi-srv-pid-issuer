@@ -34,27 +34,6 @@ import kotlinx.serialization.json.*
 import org.slf4j.LoggerFactory
 
 @Serializable
-enum class ProofTypeTO {
-    @SerialName("jwt")
-    JWT,
-
-    @SerialName("di_vp")
-    DI_VP,
-
-    @SerialName("attestation")
-    ATTESTATION,
-}
-
-@Serializable
-data class ProofTo(
-    @SerialName("proof_type") @Required val type: ProofTypeTO,
-    val jwt: String? = null,
-    @SerialName("di_vp")
-    val diVp: String? = null,
-    val attestation: String? = null,
-)
-
-@Serializable
 data class ProofsTO(
     @SerialName("jwt") val jwtProofs: List<String>? = null,
     @SerialName("di_vp") val diVpProofs: List<String>? = null,
@@ -64,8 +43,8 @@ data class ProofsTO(
 @Serializable
 data class CredentialResponseEncryptionTO(
     @SerialName("jwk") @Required val key: JsonObject,
-    @SerialName("alg") @Required val algorithm: String,
     @SerialName("enc") @Required val method: String,
+    @SerialName("zip") val zipAlgorithm: String? = null,
 )
 
 @Serializable
@@ -74,8 +53,6 @@ data class CredentialRequestTO(
     val credentialIdentifier: String? = null,
     @SerialName("credential_configuration_id")
     val credentialConfigurationId: String? = null,
-    @Deprecated(message = "Will be removed in a future draft.")
-    val proof: ProofTo? = null,
     val proofs: ProofsTO? = null,
     @SerialName("credential_response_encryption")
     val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
@@ -127,6 +104,11 @@ sealed interface IssueCredentialError {
     data class InvalidProof(val msg: String, val cause: Throwable? = null) : IssueCredentialError
 
     /**
+     * Indicates a credential request contained a proof with an invalid 'nonce'.
+     */
+    data class InvalidNonce(val msg: String, val cause: Throwable? = null) : IssueCredentialError
+
+    /**
      * Indicates a credential request contained contains an invalid 'credential_response_encryption_alg'.
      */
     data class InvalidEncryptionParameters(val error: Throwable) : IssueCredentialError
@@ -145,11 +127,17 @@ enum class CredentialErrorTypeTo {
     @SerialName("invalid_credential_request")
     INVALID_CREDENTIAL_REQUEST,
 
-    @SerialName("unsupported_credential_type")
-    UNSUPPORTED_CREDENTIAL_TYPE,
+    @SerialName("unknown_credential_configuration")
+    UNKNOWN_CREDENTIAL_CONFIGURATION,
+
+    @SerialName("unknown_credential_identifier")
+    UNKNOWN_CREDENTIAL_IDENTIFIER,
 
     @SerialName("invalid_proof")
     INVALID_PROOF,
+
+    @SerialName("invalid_nonce")
+    INVALID_NONCE,
 
     @SerialName("invalid_encryption_parameters")
     INVALID_ENCRYPTION_PARAMETERS,
@@ -168,6 +156,7 @@ sealed interface IssueCredentialResponse {
     data class PlainTO(
         val credentials: List<CredentialTO>? = null,
         @SerialName("transaction_id") val transactionId: String? = null,
+        @SerialName("interval") val interval: Long? = null,
         @SerialName("notification_id") val notificationId: String? = null,
     ) : IssueCredentialResponse {
         init {
@@ -177,6 +166,9 @@ sealed interface IssueCredentialResponse {
                 }
                 require(null == notificationId) {
                     "cannot provide notificationId when transactionId is provided"
+                }
+                requireNotNull(interval) {
+                    "'interval' must be provided when 'transactionId' is provided"
                 }
             } else {
                 requireNotNull(!credentials.isNullOrEmpty()) {
@@ -197,7 +189,8 @@ sealed interface IssueCredentialResponse {
             /**
              * Credential issuance has been deferred.
              */
-            fun deferred(transactionId: String): PlainTO = PlainTO(transactionId = transactionId)
+            fun deferred(transactionId: String, interval: Long): PlainTO =
+                PlainTO(transactionId = transactionId, interval = interval)
         }
 
         /**
@@ -437,8 +430,7 @@ private interface Validations : Raise<IssueCredentialError> {
 
         val proofs =
             when {
-                proof != null && proofs == null -> nonEmptyListOf(proof.toDomain())
-                proof == null && proofs != null -> {
+                proofs != null -> {
                     val jwtProofs = proofs.jwtProofs?.map { UnvalidatedProof.Jwt(it) }
                     val diVpProofs = proofs.diVpProofs?.map { UnvalidatedProof.DiVp(it) }
                     val attestations = proofs.attestations?.map { UnvalidatedProof.Attestation(it) }
@@ -453,11 +445,6 @@ private interface Validations : Raise<IssueCredentialError> {
                     val proofs = (jwtProofs.orEmpty() + diVpProofs.orEmpty() + attestations.orEmpty()).toNonEmptyListOrNull()
                     ensureNotNull(proofs) { MissingProof }
                 }
-
-                proof != null && proofs != null -> raise(
-                    InvalidProof("Only one of `proof` or `proofs` is allowed"),
-                )
-
                 else -> raise(MissingProof)
             }
         ensure(proofs.size <= supportedBatchIssuance.maxProofsSupported) {
@@ -508,8 +495,8 @@ private interface Validations : Raise<IssueCredentialError> {
     fun CredentialResponseEncryptionTO.toDomain(): RequestedResponseEncryption.Required =
         RequestedResponseEncryption.Required(
             Json.encodeToString(key),
-            algorithm,
             method,
+            zipAlgorithm,
         ).getOrElse { raise(InvalidEncryptionParameters(it)) }
 
     /**
@@ -572,26 +559,6 @@ private interface Validations : Raise<IssueCredentialError> {
             }
         }
     }
-
-    /**
-     * Gets the [UnvalidatedProof] that corresponds to this [ProofTo].
-     */
-    fun ProofTo.toDomain(): UnvalidatedProof = when (type) {
-        ProofTypeTO.JWT -> {
-            ensure(!jwt.isNullOrEmpty()) { MissingProof }
-            UnvalidatedProof.Jwt(jwt)
-        }
-
-        ProofTypeTO.DI_VP -> {
-            ensureNotNull(diVp) { MissingProof }
-            UnvalidatedProof.DiVp(diVp)
-        }
-
-        ProofTypeTO.ATTESTATION -> {
-            ensureNotNull(attestation) { MissingProof }
-            UnvalidatedProof.Attestation(attestation)
-        }
-    }
 }
 
 fun CredentialResponse.toTO(): IssueCredentialResponse.PlainTO = when (this) {
@@ -603,7 +570,7 @@ fun CredentialResponse.toTO(): IssueCredentialResponse.PlainTO = when (this) {
     }
 
     is CredentialResponse.Deferred ->
-        IssueCredentialResponse.PlainTO.deferred(transactionId = transactionId.value)
+        IssueCredentialResponse.PlainTO.deferred(transactionId = transactionId.value, interval.inWholeSeconds)
 }
 
 /**
@@ -612,17 +579,20 @@ fun CredentialResponse.toTO(): IssueCredentialResponse.PlainTO = when (this) {
 private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
     val (type, description) = when (this) {
         is UnsupportedCredentialConfigurationId ->
-            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
+            CredentialErrorTypeTo.UNKNOWN_CREDENTIAL_CONFIGURATION to
                 "Unsupported Credential Configuration Id '${credentialConfigurationId.value}'"
 
         is UnsupportedCredentialType ->
-            CredentialErrorTypeTo.UNSUPPORTED_CREDENTIAL_TYPE to "Unsupported format '${format.value}' type `$types`"
+            CredentialErrorTypeTo.UNKNOWN_CREDENTIAL_CONFIGURATION to "Unsupported format '${format.value}' type `$types`"
 
         is MissingProof ->
             CredentialErrorTypeTo.INVALID_PROOF to "The Credential Request must include Proof of Possession"
 
         is InvalidProof ->
             (CredentialErrorTypeTo.INVALID_PROOF to msg)
+
+        is InvalidNonce ->
+            (CredentialErrorTypeTo.INVALID_NONCE to msg)
 
         is InvalidEncryptionParameters ->
             CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS to "Invalid Credential Response Encryption Parameters"
@@ -640,7 +610,7 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Only one of 'format' or 'credential_identifier' must be provided"
 
         is InvalidCredentialIdentifier ->
-            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "'${credentialIdentifier.value}' is not a valid Credential Identifier"
+            CredentialErrorTypeTo.UNKNOWN_CREDENTIAL_IDENTIFIER to "'${credentialIdentifier.value}' is not a valid Credential Identifier"
 
         is InvalidClaims ->
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to

@@ -19,6 +19,7 @@ import arrow.core.Either
 import arrow.core.NonEmptyList
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
+import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.AsymmetricJWK
@@ -129,9 +130,6 @@ sealed interface RequestedResponseEncryption {
      * [encryptionJwk]: A JSON object containing a single public key as a JWK
      * used for encrypting the Credential Response
      *
-     * [encryptionAlgorithm]: JWE RFC7516 alg algorithm RFC7518 REQUIRED
-     * for encrypting Credential and/or Batch Credential Responses
-     *
      * [encryptionMethod]: JWE RFC7516 enc algorithm RFC7518 REQUIRED
      * for encrypting Credential Responses.
      * If credential_response_encryption_alg is specified, the default for this value is A256GCM.
@@ -139,27 +137,36 @@ sealed interface RequestedResponseEncryption {
      */
     data class Required(
         val encryptionJwk: JWK,
-        val encryptionAlgorithm: JWEAlgorithm,
         val encryptionMethod: EncryptionMethod = EncryptionMethod.A256GCM,
+        val compressionAlgorithm: CompressionAlgorithm? = null,
     ) : RequestedResponseEncryption {
         init {
             require(!encryptionJwk.isPrivate) { "encryptionJwk must not contain a private key" }
-            require(encryptionAlgorithm in JWEAlgorithm.Family.ASYMMETRIC) {
+            requireNotNull(encryptionJwk.algorithm) {
+                "encryptionJwk must have an 'alg' (algorithm) parameter"
+            }
+            require(encryptionJwk.algorithm in JWEAlgorithm.Family.ASYMMETRIC) {
                 "encryptionAlgorithm is not an asymmetric encryption algorithm"
             }
         }
 
+        val encryptionAlgorithm: JWEAlgorithm
+            get() = JWEAlgorithm(encryptionJwk.algorithm.name)
+
         companion object {
             operator fun invoke(
                 encryptionKey: String,
-                encryptionAlgorithm: String,
                 encryptionMethod: String,
+                compressionAlgorithm: String? = null,
             ): Either<Throwable, Required> =
                 Either.catch {
                     val key = JWK.parse(encryptionKey)
-                    val algorithm = JWEAlgorithm.parse(encryptionAlgorithm)
+                    requireNotNull(key.algorithm) {
+                        "encryptionJwk must have an 'alg' parameter present"
+                    }
                     val method = EncryptionMethod.parse(encryptionMethod)
-                    Required(key, algorithm, method)
+                    val zipMethod = compressionAlgorithm?.let { CompressionAlgorithm(it) }
+                    Required(key, method, zipMethod)
                 }
         }
     }
