@@ -119,6 +119,7 @@ import java.time.Duration
 import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 import kotlin.time.toKotlinDuration
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IssuingCountry as EhicIssuingCountry
@@ -537,8 +538,11 @@ fun beans(clock: Clock) = beans {
 
                     val deferred = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.deferred") ?: false
                     add(
-                        if (deferred) issueSdJwtVcPid.asDeferred(ref(), ref())
-                        else issueSdJwtVcPid,
+                        if (deferred) {
+                            val interval = env.duration("issuer.pid.sd_jwt_vc.deferred.interval")?.toKotlinDuration()
+                                ?: 1.minutes
+                            issueSdJwtVcPid.asDeferred(ref(), ref(), interval)
+                        } else issueSdJwtVcPid,
                     )
                 }
 

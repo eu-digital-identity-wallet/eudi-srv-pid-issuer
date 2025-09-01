@@ -33,7 +33,6 @@ import eu.europa.ec.eudi.pidissuer.port.input.DeferredCredentialSuccessResponse
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptDeferredResponse
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import java.time.Clock
 import java.time.Instant
@@ -134,6 +133,9 @@ private class EncryptResponse(
             jwk(encryptionJwk)
             keyID(encryptionJwk.keyID)
             type(JOSEObjectType.JWT)
+            compressionAlgorithm?.let {
+                compressionAlgorithm(it)
+            }
         }.build()
 
     private fun asJwtClaimSet(iat: Instant, responseAsJwtClaims: JWTClaimsSet.Builder.() -> Unit) =
