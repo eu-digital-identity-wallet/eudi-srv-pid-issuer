@@ -562,7 +562,7 @@ fun CredentialResponse.toTO(): IssueCredentialResponse.PlainTO = when (this) {
     }
 
     is CredentialResponse.Deferred ->
-        IssueCredentialResponse.PlainTO.deferred(transactionId = transactionId.value, interval)
+        IssueCredentialResponse.PlainTO.deferred(transactionId = transactionId.value, interval.inWholeSeconds)
 }
 
 /**
