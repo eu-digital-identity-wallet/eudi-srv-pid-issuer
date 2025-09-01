@@ -539,8 +539,10 @@ fun beans(clock: Clock) = beans {
 
                     val deferred = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.deferred") ?: false
                     add(
-                        if (deferred) issueSdJwtVcPid.asDeferred(ref(), ref())
-                        else issueSdJwtVcPid,
+                        if (deferred) {
+                            val interval = env.getProperty<Long>("issuer.pid.sd_jwt_vc.deferred.interval", 1000L)
+                            issueSdJwtVcPid.asDeferred(ref(), ref(), interval)
+                        } else issueSdJwtVcPid,
                     )
                 }
 

@@ -45,13 +45,15 @@ interface IssueSpecificCredential {
 fun IssueSpecificCredential.asDeferred(
     generateTransactionId: GenerateTransactionId,
     storeDeferredCredential: StoreDeferredCredential,
+    interval: Long,
 ): IssueSpecificCredential =
-    DeferredIssuer(this, generateTransactionId, storeDeferredCredential)
+    DeferredIssuer(this, generateTransactionId, storeDeferredCredential, interval)
 
 private class DeferredIssuer(
     val issuer: IssueSpecificCredential,
     val generateTransactionId: GenerateTransactionId,
     val storeDeferredCredential: StoreDeferredCredential,
+    val interval: Long,
 ) : IssueSpecificCredential by issuer {
 
     private val log = LoggerFactory.getLogger(DeferredIssuer::class.java)
@@ -68,7 +70,7 @@ private class DeferredIssuer(
 
         val transactionId = generateTransactionId()
         storeDeferredCredential.invoke(transactionId, credentialResponse, request.credentialResponseEncryption)
-        CredentialResponse.Deferred(transactionId).also {
+        CredentialResponse.Deferred(transactionId, interval).also {
             log.info("Repackaged $credentialResponse  as $it")
         }
     }

@@ -37,8 +37,8 @@ val msoMdoc = """
        "credential_configuration_id": "eu.europa.ec.eudi.pid_mso_mdo",
        "credential_response_encryption": {
         "jwk": {},
-        "alg": "ECDH-ES",
-        "enc": "A256CBC-HS512"
+        "enc": "A256CBC-HS512",
+        "zip": "DEF"
        },
        "proofs": {
           "jwt": ["eyJraWQiOiJkaWQ6ZXhhbXBsZ"]

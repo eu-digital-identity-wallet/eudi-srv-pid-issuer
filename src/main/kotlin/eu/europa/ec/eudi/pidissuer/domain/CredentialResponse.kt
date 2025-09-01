@@ -44,5 +44,5 @@ sealed interface CredentialResponse {
      * The issuance of the requested Credential has been deferred.
      * The deferred transaction can be identified by [transactionId].
      */
-    data class Deferred(val transactionId: TransactionId) : CredentialResponse
+    data class Deferred(val transactionId: TransactionId, val interval: Long) : CredentialResponse
 }

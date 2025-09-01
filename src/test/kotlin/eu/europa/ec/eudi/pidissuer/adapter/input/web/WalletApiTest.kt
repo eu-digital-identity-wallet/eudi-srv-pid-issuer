@@ -21,6 +21,7 @@ import arrow.core.toNonEmptyListOrNull
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.nimbusds.jose.JOSEObjectType
+import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSASigner
@@ -222,7 +223,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .responseBody
 
         assertNotNull(response)
-        assertEquals(CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST, response.type)
+        assertEquals(CredentialErrorTypeTo.UNKNOWN_CREDENTIAL_CONFIGURATION, response.type)
         assertEquals("Unsupported Credential Configuration Id 'foo'", response.errorDescription)
     }
 
@@ -885,7 +886,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
         val proofs = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, walletKey) {
             jwk(walletKey.toPublicJWK())
         }.toJwtProofs()
-        val encryptionKey = ECKeyGenerator(Curve.P_256).keyUse(KeyUse.ENCRYPTION).generate()
+        val encryptionKey = ECKeyGenerator(Curve.P_256).algorithm(JWEAlgorithm.ECDH_ES).keyUse(KeyUse.ENCRYPTION).generate()
         val encryptionParameters = encryptionParameters(encryptionKey)
 
         val response = client()
@@ -941,7 +942,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
                 jwk(walletKey.toPublicJWK())
             }
         }.toJwtProofs()
-        val encryptionKey = ECKeyGenerator(Curve.P_256).keyUse(KeyUse.ENCRYPTION).generate()
+        val encryptionKey = ECKeyGenerator(Curve.P_256).algorithm(JWEAlgorithm.ECDH_ES).keyUse(KeyUse.ENCRYPTION).generate()
         val encryptionParameters = encryptionParameters(encryptionKey)
 
         val response = client()
@@ -1027,7 +1028,7 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
         val proof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, walletKey) {
             jwk(walletKey.toPublicJWK())
         }
-        val encryptionKey = ECKeyGenerator(Curve.P_256).keyUse(KeyUse.ENCRYPTION).generate()
+        val encryptionKey = ECKeyGenerator(Curve.P_256).algorithm(JWEAlgorithm.ECDH_ES).keyUse(KeyUse.ENCRYPTION).generate()
         val encryptionParameters = encryptionParameters(encryptionKey)
 
         val response = client()
@@ -1130,8 +1131,8 @@ private fun requestByCredentialIdentifier(
 private fun encryptionParameters(key: ECKey): CredentialResponseEncryptionTO =
     CredentialResponseEncryptionTO(
         key = Json.decodeFromString(key.toPublicJWK().toJSONString()),
-        algorithm = "ECDH-ES",
         method = "A128GCM",
+        zipAlgorithm = "DEF",
     )
 
 /**
@@ -1208,7 +1209,6 @@ private suspend fun loadECKey(filename: String): ECKey =
             }
     }
 
-private fun SignedJWT.toJwtProof(): ProofTo = ProofTo(type = ProofTypeTO.JWT, jwt = serialize())
 private fun SignedJWT.toAttestationProofs(): ProofsTO = ProofsTO(attestations = listOf(serialize()))
 private fun SignedJWT.toJwtProofs(): ProofsTO = ProofsTO(jwtProofs = listOf(serialize()))
 private fun Iterable<SignedJWT>.toJwtProofs(): ProofsTO = ProofsTO(jwtProofs = map { it.serialize() })
