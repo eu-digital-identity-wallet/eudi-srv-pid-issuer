@@ -21,4 +21,6 @@ internal object OpenId4VciSpec {
     const val SIGNED_METADATA_JWT_TYPE = "openidvci-issuer-metadata+jwt"
 
     val ZIP_ALGORITHMS = setOf("DEF")
+
+    const val KEY_ATTESTATION_JWT_TYPE = "key-attestation+jwt"
 }
