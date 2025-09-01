@@ -38,14 +38,12 @@ data class KeyAttestationJWT private constructor(
 ) {
 
     companion object {
-        const val KEY_ATTESTATION_JWT_TYPE = "keyattestation+jwt"
-
         operator fun invoke(value: String): KeyAttestationJWT = KeyAttestationJWT(SignedJWT.parse(value))
 
         operator fun invoke(jwt: SignedJWT): KeyAttestationJWT {
             jwt.ensureSignedNotMAC()
-            require(jwt.header.type != null && jwt.header.type.type.equals(KEY_ATTESTATION_JWT_TYPE)) {
-                "Invalid Key Attestation JWT. Type must be set to `$KEY_ATTESTATION_JWT_TYPE`"
+            require(jwt.header.type != null && jwt.header.type.type.equals(OpenId4VciSpec.KEY_ATTESTATION_JWT_TYPE)) {
+                "Invalid Key Attestation JWT. Type must be set to `$OpenId4VciSpec.KEY_ATTESTATION_JWT_TYPE`"
             }
             requireNotNull(jwt.jwtClaimsSet.issueTime) { "Invalid Key Attestation JWT. Misses `iat` claim" }
 

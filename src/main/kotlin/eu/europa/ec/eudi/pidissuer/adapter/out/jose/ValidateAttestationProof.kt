@@ -36,6 +36,11 @@ internal class ValidateAttestationProof(
         check(proofType is ProofType.Attestation)
         val keyAttestationJWT = KeyAttestationJWT(unvalidatedProof.jwt)
 
+        require(keyAttestationJWT.jwt.header.algorithm in proofType.signingAlgorithmsSupported) {
+            "Key attestation signing algorithm '${keyAttestationJWT.jwt.header.algorithm}' is not supported, " +
+                "must be one of: ${proofType.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
+        }
+
         credentialKeyAndNonce(keyAttestationJWT, proofType, at)
     }.mapLeft { IssueCredentialError.InvalidProof("Invalid proof Attestation", it) }
 

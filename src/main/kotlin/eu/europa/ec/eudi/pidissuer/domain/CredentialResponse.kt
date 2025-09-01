@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptyList
 import kotlinx.serialization.json.JsonElement
+import kotlin.time.Duration
 
 /**
  * String identifying an issued Credential that the Wallet includes in the Notification Request.
@@ -44,5 +45,9 @@ sealed interface CredentialResponse {
      * The issuance of the requested Credential has been deferred.
      * The deferred transaction can be identified by [transactionId].
      */
-    data class Deferred(val transactionId: TransactionId) : CredentialResponse
+    data class Deferred(val transactionId: TransactionId, val interval: Duration) : CredentialResponse {
+        init {
+            require(interval.isPositive()) { "interval must be a positive number" }
+        }
+    }
 }

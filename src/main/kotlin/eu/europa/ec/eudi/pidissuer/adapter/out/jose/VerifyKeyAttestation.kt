@@ -35,6 +35,7 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationJWT
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement
+import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
 import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyCNonce
 import java.net.URI
 import java.security.cert.*
@@ -107,7 +108,7 @@ internal class VerifyKeyAttestation(
         algorithm: JWSAlgorithm,
         expectExpirationClaim: Boolean,
     ) {
-        val expectedType = JOSEObjectType(KeyAttestationJWT.KEY_ATTESTATION_JWT_TYPE)
+        val expectedType = JOSEObjectType(OpenId4VciSpec.KEY_ATTESTATION_JWT_TYPE)
         val keySelector = SingleKeyJWSKeySelector<SecurityContext>(algorithm, key.toPublicKey())
         val requiredClaims = if (expectExpirationClaim) {
             setOf("iat", "attested_keys", "exp")

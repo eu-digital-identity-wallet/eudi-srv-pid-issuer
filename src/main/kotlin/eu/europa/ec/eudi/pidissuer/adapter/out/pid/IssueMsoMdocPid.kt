@@ -286,8 +286,8 @@ internal fun pidMsoMdocV1(
             ),
         ),
         claims = MsoMdocPidClaims.all(),
-        cryptographicBindingMethodsSupported = emptySet(),
-        credentialSigningAlgorithmsSupported = emptySet(),
+        cryptographicBindingMethodsSupported = setOf(CryptographicBindingMethod.Jwk),
+        credentialSigningAlgorithmsSupported = null,
         scope = PidMsoMdocScope,
         proofTypesSupported = ProofTypesSupported(
             ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),

@@ -127,6 +127,13 @@ sealed interface CredentialConfiguration {
     val scope: Scope
     val display: List<CredentialDisplay>
     val cryptographicBindingMethodsSupported: Set<CryptographicBindingMethod>
-    val credentialSigningAlgorithmsSupported: Set<JWSAlgorithm>
     val proofTypesSupported: ProofTypesSupported
+}
+
+internal fun CredentialConfiguration.validateCryptographicBindingsAndProofTypes() {
+    val hasCryptoBinding = cryptographicBindingMethodsSupported.isNotEmpty()
+    val hasProofTypes = proofTypesSupported != ProofTypesSupported.Empty
+    require(hasCryptoBinding == hasProofTypes) {
+        "proofTypesSupported must be present if cryptographicBindingMethodsSupported are provided, and omitted otherwise"
+    }
 }
