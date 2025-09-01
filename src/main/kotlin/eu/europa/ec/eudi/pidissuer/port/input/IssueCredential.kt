@@ -104,6 +104,11 @@ sealed interface IssueCredentialError {
     data class InvalidProof(val msg: String, val cause: Throwable? = null) : IssueCredentialError
 
     /**
+     * Indicates a credential request contained a proof with an invalid 'nonce'.
+     */
+    data class InvalidNonce(val msg: String, val cause: Throwable? = null) : IssueCredentialError
+
+    /**
      * Indicates a credential request contained contains an invalid 'credential_response_encryption_alg'.
      */
     data class InvalidEncryptionParameters(val error: Throwable) : IssueCredentialError
@@ -130,6 +135,9 @@ enum class CredentialErrorTypeTo {
 
     @SerialName("invalid_proof")
     INVALID_PROOF,
+
+    @SerialName("invalid_nonce")
+    INVALID_NONCE,
 
     @SerialName("invalid_encryption_parameters")
     INVALID_ENCRYPTION_PARAMETERS,
@@ -582,6 +590,9 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
 
         is InvalidProof ->
             (CredentialErrorTypeTo.INVALID_PROOF to msg)
+
+        is InvalidNonce ->
+            (CredentialErrorTypeTo.INVALID_NONCE to msg)
 
         is InvalidEncryptionParameters ->
             CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS to "Invalid Credential Response Encryption Parameters"

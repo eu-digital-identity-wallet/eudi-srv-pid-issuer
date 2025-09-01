@@ -358,7 +358,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
+        assertEquals(CredentialErrorTypeTo.INVALID_NONCE, response.type)
         assertEquals("CNonce is not valid", response.errorDescription)
     }
 
