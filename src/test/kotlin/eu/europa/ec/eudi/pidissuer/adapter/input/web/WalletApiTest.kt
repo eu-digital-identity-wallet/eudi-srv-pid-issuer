@@ -41,6 +41,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentic
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
+import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.loadResource
 import eu.europa.ec.eudi.pidissuer.port.input.*
@@ -1180,8 +1181,6 @@ private fun encryptionParameters(key: ECKey): CredentialResponseEncryptionTO =
         method = "A128GCM",
     )
 
-val KEY_ATTESTATION_JWT_TYPE = "keyattestation+jwt"
-
 /**
  * Creates a key attestation jwt having as attested keys the one passed in [proofSigningKey]
  * plus a number of keys generated from [extraKeys] function.
@@ -1228,7 +1227,7 @@ private suspend fun keyAttestationJWT(
 
     return SignedJWT(
         JWSHeader.Builder(JWSAlgorithm.ES256)
-            .type(JOSEObjectType(KEY_ATTESTATION_JWT_TYPE))
+            .type(JOSEObjectType(OpenId4VciSpec.KEY_ATTESTATION_JWT_TYPE))
             .x509CertChain(encodedChain)
             .build(),
         claimsSet,
