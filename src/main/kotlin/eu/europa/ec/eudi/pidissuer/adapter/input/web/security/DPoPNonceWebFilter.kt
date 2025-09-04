@@ -22,12 +22,14 @@ import org.springframework.web.server.ServerWebExchange
 import org.springframework.web.server.WebFilter
 import org.springframework.web.server.WebFilterChain
 import reactor.core.publisher.Mono
+import java.time.Clock
 
 /**
- * [WebFilter] that checks if new DPoP Nonce values must be generated for DPoP authenticated web requests.
+ * [WebFilter] that generates a new DPoP Nonce for DPoP authenticated web requests.
  */
 class DPoPNonceWebFilter(
     private val dpopNonce: DPoPNoncePolicy.Enforcing,
+    private val clock: Clock,
 ) : WebFilter {
 
     override fun filter(exchange: ServerWebExchange, chain: WebFilterChain): Mono<Void> =
@@ -39,9 +41,9 @@ class DPoPNonceWebFilter(
                     ?.authentication
 
                 if (authentication is DPoPTokenAuthentication) {
-                    val newDPoPNonce = dpopNonce.generateDPoPNonce()
+                    val newDPoPNonce = dpopNonce.generateDPoPNonce(clock.instant())
                     val response = exchange.response
-                    response.headers["DPoP-Nonce"] = newDPoPNonce.nonce.value
+                    response.headers["DPoP-Nonce"] = newDPoPNonce
                 }
             }
 
