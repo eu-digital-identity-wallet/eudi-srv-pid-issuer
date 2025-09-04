@@ -36,9 +36,9 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CredentialRequestFactory
-import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DecryptCNonceWithNimbusAndVerify
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DecryptNonceWithNimbusAndVerify
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultResolveCredentialRequestByCredentialIdentifier
-import eu.europa.ec.eudi.pidissuer.adapter.out.credential.GenerateCNonceAndEncryptWithNimbus
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.GenerateNonceAndEncryptWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.GetEuropeanHealthInsuranceCardDataMock
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IssueSdJwtVcEuropeanHealthInsuranceCard
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
@@ -249,19 +249,19 @@ fun beans(clock: Clock) = beans {
     }
 
     //
-    // CNonce encryption key
+    // Nonce encryption key
     //
-    val cnonceEncryptionKey: RSAKey = when (env.getProperty<KeyOption>("issuer.cnonce.encryption-key")) {
+    val nonceEncryptionKey: RSAKey = when (env.getProperty<KeyOption>("issuer.nonce.encryption-key")) {
         null, KeyOption.GenerateRandom -> {
-            log.info("Generating random encryption key for CNonce")
+            log.info("Generating random encryption key for Nonce")
             RSAKeyGenerator(4096, false).generate()
         }
 
         KeyOption.LoadFromKeystore -> {
-            log.info("Loading CNonce encryption key from keystore")
-            val cnonceEncryptionKey = loadJwkFromKeystore(env, "issuer.cnonce.encryption-key")
-            require(cnonceEncryptionKey is RSAKey) { "Only RSAKeys are supported for encryption" }
-            cnonceEncryptionKey
+            log.info("Loading Nonce encryption key from keystore")
+            val nonceEncryptionKey = loadJwkFromKeystore(env, "issuer.nonce.encryption-key")
+            require(nonceEncryptionKey is RSAKey) { "Only RSAKeys are supported for encryption" }
+            nonceEncryptionKey
         }
     }
 
@@ -433,11 +433,12 @@ fun beans(clock: Clock) = beans {
     bean(isLazyInit = true) {
         EncryptCredentialResponseNimbus(ref<CredentialIssuerMetaData>().id, clock)
     }
+
     //
-    // CNonce
+    // Nonce
     //
-    bean { GenerateCNonceAndEncryptWithNimbus(issuerPublicUrl, cnonceEncryptionKey) }
-    bean { DecryptCNonceWithNimbusAndVerify(issuerPublicUrl, cnonceEncryptionKey) }
+    bean { GenerateNonceAndEncryptWithNimbus(issuerPublicUrl, nonceEncryptionKey) }
+    bean { DecryptNonceWithNimbusAndVerify(issuerPublicUrl, nonceEncryptionKey) }
 
     //
     // Credentials
@@ -460,7 +461,7 @@ fun beans(clock: Clock) = beans {
     //
     // Specific Issuers
     //
-    bean { VerifyKeyAttestation(verifyCNonce = ref()) }
+    bean { VerifyKeyAttestation(verifyNonce = ref()) }
     bean { ValidateJwtProof(issuerPublicUrl, ref()) }
     bean { ValidateAttestationProof(ref()) }
     bean { DefaultExtractJwkFromCredentialKey }
