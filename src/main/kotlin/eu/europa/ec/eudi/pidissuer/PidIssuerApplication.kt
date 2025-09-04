@@ -38,7 +38,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CredentialRequestFactory
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DecryptCNonceWithNimbusAndVerify
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultResolveCredentialRequestByCredentialIdentifier
-import eu.europa.ec.eudi.pidissuer.adapter.out.credential.GenerateCNonceAndEncryptWithNimbus
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.GenerateNonceAndEncryptWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.GetEuropeanHealthInsuranceCardDataMock
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IssueSdJwtVcEuropeanHealthInsuranceCard
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
@@ -435,10 +435,11 @@ fun beans(clock: Clock) = beans {
     bean(isLazyInit = true) {
         EncryptCredentialResponseNimbus(ref<CredentialIssuerMetaData>().id, clock)
     }
+
     //
-    // CNonce
+    // Nonce
     //
-    bean { GenerateCNonceAndEncryptWithNimbus(issuerPublicUrl, ref<RSAKey>("cnonce-encryption-key")) }
+    bean { GenerateNonceAndEncryptWithNimbus(issuerPublicUrl, ref<RSAKey>("cnonce-encryption-key")) }
     bean { DecryptCNonceWithNimbusAndVerify(issuerPublicUrl, ref<RSAKey>("cnonce-encryption-key")) }
 
     //
@@ -462,7 +463,7 @@ fun beans(clock: Clock) = beans {
     //
     // Specific Issuers
     //
-    bean { VerifyKeyAttestation(verifyCNonce = ref()) }
+    bean { VerifyKeyAttestation(verifyNonce = ref()) }
     bean { ValidateJwtProof(issuerPublicUrl, ref()) }
     bean { ValidateAttestationProof(ref()) }
     bean { DefaultExtractJwkFromCredentialKey }

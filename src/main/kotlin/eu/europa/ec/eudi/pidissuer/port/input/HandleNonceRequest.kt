@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
-import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateCNonce
+import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -36,7 +36,7 @@ data class NonceResponseTO(
 internal class HandleNonceRequest(
     private val clock: Clock,
     private val cNonceExpiresIn: Duration,
-    private val generateCNonce: GenerateCNonce,
+    private val generateNonce: GenerateNonce,
 ) {
-    suspend operator fun invoke(): NonceResponseTO = NonceResponseTO(generateCNonce(clock.instant(), cNonceExpiresIn))
+    suspend operator fun invoke(): NonceResponseTO = NonceResponseTO(generateNonce(clock.instant(), cNonceExpiresIn))
 }

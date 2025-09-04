@@ -31,7 +31,7 @@ import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
-import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyCNonce
+import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.time.Instant
 
@@ -41,14 +41,14 @@ import java.time.Instant
 internal class DecryptCNonceWithNimbusAndVerify(
     private val issuer: CredentialIssuerId,
     private val decryptionKey: RSAKey,
-) : VerifyCNonce {
+) : VerifyNonce {
     init {
         require(decryptionKey.isPrivate) { "a private key is required for decryption" }
     }
 
     private val processor = DefaultJWTProcessor<SecurityContext>()
         .apply {
-            jweTypeVerifier = DefaultJOSEObjectTypeVerifier(JOSEObjectType("cnonce+jwt"))
+            jweTypeVerifier = DefaultJOSEObjectTypeVerifier(JOSEObjectType("nonce+jwt"))
             jweKeySelector = JWEDecryptionKeySelector(
                 JWEAlgorithm.RSA_OAEP_512,
                 EncryptionMethod.XC20P,
@@ -64,7 +64,7 @@ internal class DecryptCNonceWithNimbusAndVerify(
                     .issuer(issuer.externalForm)
                     .audience(issuer.externalForm)
                     .build(),
-                setOf("iss", "aud", "cnonce", "iat", "exp"),
+                setOf("iss", "aud", "nonce", "iat", "exp"),
             )
         }
 
