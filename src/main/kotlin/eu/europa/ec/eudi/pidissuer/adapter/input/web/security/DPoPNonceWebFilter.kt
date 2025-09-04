@@ -22,7 +22,7 @@ import org.springframework.web.server.CoWebFilterChain
 import org.springframework.web.server.ServerWebExchange
 
 /**
- * [WebFilter] that checks if new DPoP Nonce values must be generated for DPoP authenticated web requests.
+ * [CoWebFilter] that checks if new DPoP Nonce values must be generated for DPoP authenticated web requests.
  */
 class DPoPNonceWebFilter(
     private val dpopNonce: DPoPNoncePolicy.Enforcing,
@@ -38,12 +38,9 @@ class DPoPNonceWebFilter(
                 ?.authentication
 
             if (authentication is DPoPTokenAuthentication) {
-                val currentDPoPNonce = dpopNonce.loadActiveDPoPNonce(authentication.accessToken)
-                if (currentDPoPNonce == null) {
-                    val newDPoPNonce = dpopNonce.generateDPoPNonce(authentication.accessToken)
-                    val response = exchange.response
-                    response.headers["DPoP-Nonce"] = newDPoPNonce.nonce.value
-                }
+                val newDPoPNonce = dpopNonce.generateDPoPNonce()
+                val response = exchange.response
+                response.headers["DPoP-Nonce"] = newDPoPNonce.nonce.value
             }
         }
 

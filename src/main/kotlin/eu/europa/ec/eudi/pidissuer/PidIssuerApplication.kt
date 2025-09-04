@@ -692,7 +692,7 @@ fun beans(clock: Clock) = beans {
     if (env.getProperty("issuer.dpop.nonce.enabled", Boolean::class.java, false)) {
         val dpopNonceExpiresIn = env.duration("issuer.dpop.nonce.expiration") ?: Duration.ofMinutes(5L)
         with(InMemoryDPoPNonceRepository(clock, dpopNonceExpiresIn)) {
-            bean { DPoPNoncePolicy.Enforcing(loadActiveDPoPNonce, generateDPoPNonce) }
+            bean { DPoPNoncePolicy.Enforcing(validateDPoPNonce, generateDPoPNonce) }
             bean {
                 object {
                     @Scheduled(fixedRate = 1L, timeUnit = TimeUnit.MINUTES)
