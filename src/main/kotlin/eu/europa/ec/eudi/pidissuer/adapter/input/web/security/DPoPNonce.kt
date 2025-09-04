@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
-import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import com.nimbusds.openid.connect.sdk.Nonce
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -27,20 +26,20 @@ import java.time.Instant
 /**
  * A Nonce value used for DPoP authentication.
  */
-data class DPoPNonce(val nonce: Nonce, val accessToken: DPoPAccessToken, val createdAt: Instant, val expiresAt: Instant)
+data class DPoPNonce(val nonce: Nonce, val createdAt: Instant, val expiresAt: Instant)
 
 /**
- * Loads the active Nonce value for DPoP, for a specific DPoP Access Token.
+ * Checks if a value is a valid DPoP Nonce.
  */
-fun interface LoadActiveDPoPNonce {
-    suspend operator fun invoke(accessToken: DPoPAccessToken): DPoPNonce?
+fun interface ValidateDPoPNonce {
+    suspend operator fun invoke(unvalidated: String): DPoPNonce?
 }
 
 /**
  * Generates a new Nonce value for DPoP, for a specific DPoP Access Token.
  */
 fun interface GenerateDPoPNonce {
-    suspend operator fun invoke(accessToken: DPoPAccessToken): DPoPNonce
+    suspend operator fun invoke(): DPoPNonce
 }
 
 /**
@@ -51,7 +50,7 @@ fun interface CleanupInactiveDPoPNonce {
 }
 
 /**
- * In memory repository providing implementations for [LoadActiveDPoPNonce], and [GenerateDPoPNonce].
+ * In memory repository providing implementations for [ValidateDPoPNonce], and [GenerateDPoPNonce].
  */
 class InMemoryDPoPNonceRepository(
     private val clock: Clock,
@@ -61,30 +60,29 @@ class InMemoryDPoPNonceRepository(
         require(!dpopNonceExpiresIn.isZero && !dpopNonceExpiresIn.isNegative) { "dpopNonceExpiresIn must be positive" }
     }
 
-    private val data = mutableMapOf<DPoPAccessToken, DPoPNonce>()
+    private val data = mutableSetOf<DPoPNonce>()
     private val mutex = Mutex()
     private val log = LoggerFactory.getLogger(InMemoryDPoPNonceRepository::class.java)
 
-    val loadActiveDPoPNonce: LoadActiveDPoPNonce by lazy {
-        LoadActiveDPoPNonce { accessToken ->
+    val validateDPoPNonce: ValidateDPoPNonce by lazy {
+        ValidateDPoPNonce { unvalidated ->
             mutex.withLock {
-                data[accessToken]?.takeIf { dpopNonce -> dpopNonce.expiresAt > clock.instant() }
+                data.find { dpopNonce -> dpopNonce.nonce.value == unvalidated }
             }
         }
     }
 
     val generateDPoPNonce: GenerateDPoPNonce by lazy {
-        GenerateDPoPNonce { accessToken ->
+        GenerateDPoPNonce {
             mutex.withLock {
                 val createdAt = clock.instant()
                 val expiresAt = createdAt + dpopNonceExpiresIn
                 val dpopNonce = DPoPNonce(
                     nonce = Nonce(),
-                    accessToken = accessToken,
                     createdAt = createdAt,
                     expiresAt = expiresAt,
                 )
-                data[accessToken] = dpopNonce
+                data.add(dpopNonce)
                 dpopNonce
             }
         }
@@ -94,7 +92,7 @@ class InMemoryDPoPNonceRepository(
         CleanupInactiveDPoPNonce {
             mutex.withLock {
                 val now = clock.instant()
-                val inactive = data.entries.filter { (_, dpopNonce) -> dpopNonce.expiresAt >= now }.map { it.key }
+                val inactive = data.filter { it.expiresAt >= now }
                 inactive.forEach(data::remove)
 
                 log.debug("Removed '${inactive.size}' inactive DPoPNonce values")
@@ -109,26 +107,15 @@ class InMemoryDPoPNonceRepository(
 sealed interface DPoPNoncePolicy {
 
     /**
-     * Gets the [DPoPNonce] associated with [accessToken].
-     * In case no [DPoPNonce] is associated with [accessToken] a new one might be generated.
-     */
-    suspend fun getActiveOrGenerateNew(accessToken: DPoPAccessToken): DPoPNonce?
-
-    /**
      * [DPoPNonce] is enforced.
      */
     class Enforcing(
-        val loadActiveDPoPNonce: LoadActiveDPoPNonce,
+        val validateDPoPNonce: ValidateDPoPNonce,
         val generateDPoPNonce: GenerateDPoPNonce,
-    ) : DPoPNoncePolicy {
-        override suspend fun getActiveOrGenerateNew(accessToken: DPoPAccessToken): DPoPNonce =
-            loadActiveDPoPNonce(accessToken) ?: generateDPoPNonce(accessToken)
-    }
+    ) : DPoPNoncePolicy
 
     /**
      * [DPoPNonce] is disabled.
      */
-    data object Disabled : DPoPNoncePolicy {
-        override suspend fun getActiveOrGenerateNew(accessToken: DPoPAccessToken): DPoPNonce? = null
-    }
+    data object Disabled : DPoPNoncePolicy
 }

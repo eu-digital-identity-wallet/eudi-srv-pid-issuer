@@ -63,8 +63,11 @@ class DPoPTokenServerAuthenticationEntryPoint(
     private suspend fun AuthenticationException.dpopNonce(): DPoPNonce? =
         when (this) {
             is OAuth2AuthenticationException ->
-                when (val error = error) {
-                    is DPoPTokenError.UseDPoPNonce -> dpopNonce.getActiveOrGenerateNew(error.accessToken)
+                when (error) {
+                    is DPoPTokenError.UseDPoPNonce -> {
+                        check(dpopNonce is DPoPNoncePolicy.Enforcing)
+                        dpopNonce.generateDPoPNonce()
+                    }
                     else -> null
                 }
             else -> null

@@ -39,12 +39,9 @@ class DPoPNonceWebFilter(
                     ?.authentication
 
                 if (authentication is DPoPTokenAuthentication) {
-                    val currentDPoPNonce = dpopNonce.loadActiveDPoPNonce(authentication.accessToken)
-                    if (currentDPoPNonce == null) {
-                        val newDPoPNonce = dpopNonce.generateDPoPNonce(authentication.accessToken)
-                        val response = exchange.response
-                        response.headers["DPoP-Nonce"] = newDPoPNonce.nonce.value
-                    }
+                    val newDPoPNonce = dpopNonce.generateDPoPNonce()
+                    val response = exchange.response
+                    response.headers["DPoP-Nonce"] = newDPoPNonce.nonce.value
                 }
             }
 

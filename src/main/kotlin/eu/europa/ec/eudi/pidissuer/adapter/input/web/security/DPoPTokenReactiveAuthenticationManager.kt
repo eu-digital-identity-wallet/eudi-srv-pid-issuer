@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
 import arrow.core.NonFatal
+import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.oauth2.sdk.dpop.JWKThumbprintConfirmation
 import com.nimbusds.oauth2.sdk.dpop.verifiers.AccessTokenValidationException
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPIssuer
@@ -56,7 +57,7 @@ class DPoPTokenReactiveAuthenticationManager(
                     val principal = introspect(authentication.accessToken)
                     val issuer = principal.issuer()
                     val thumbprint = principal.jwkThumbprint()
-                    val dpopNonce = dpopNonce.getActiveOrGenerateNew(authentication.accessToken)
+                    val dpopNonce = authentication.dpop.nonce()?.let { dpopNonce.validateDPoPNonce(it) }
                     verify(authentication, issuer, thumbprint, dpopNonce)
                     authentication.authenticate(principal)
                 }
@@ -100,7 +101,7 @@ class DPoPTokenReactiveAuthenticationManager(
             )
         } catch (exception: InvalidDPoPProofException) {
             val error = if (exception.message?.contains("nonce", ignoreCase = true) == true) {
-                DPoPTokenError.useDPoPNonce("Invalid DPoP proof '${exception.message}'.", authentication.accessToken)
+                DPoPTokenError.useDPoPNonce("Invalid DPoP proof '${exception.message}'.")
             } else {
                 DPoPTokenError.invalidToken("Invalid DPoP proof '${exception.message}'.")
             }
@@ -149,3 +150,27 @@ private fun OAuth2AuthenticatedPrincipal.jwkThumbprint(): JWKThumbprintConfirmat
         else throw exception
     }
 }
+
+/**
+ * Tries to extract the 'nonce' claim from this [SignedJWT].
+ */
+private fun SignedJWT.nonce(): String? =
+    try {
+        jwtClaimsSet.getStringClaim("nonce")
+    } catch (exception: Exception) {
+        if (NonFatal(exception))
+            throw OAuth2AuthenticationException(DPoPTokenError.invalidToken("Invalid DPoP proof"))
+        else throw exception
+    }
+
+/**
+ * Checks if the provided value is a valid DPoP Nonce per the configured policy.
+ */
+private suspend fun DPoPNoncePolicy.validateDPoPNonce(unvalidated: String): DPoPNonce? =
+    when (this) {
+        DPoPNoncePolicy.Disabled -> null
+
+        is DPoPNoncePolicy.Enforcing -> {
+            validateDPoPNonce(unvalidated) ?: throw OAuth2AuthenticationException(DPoPTokenError.useDPoPNonce("Invalid DPoP proof."))
+        }
+    }
