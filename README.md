@@ -415,7 +415,7 @@ Default value: `pid-issuer`
 
 Variable: `ISSUER_DPOP_NONCE_ENABLED`  
 Description: Whether Nonce values are required for DPoP authentication    
-Default value: `false`
+Default value: `true`
 
 Variable: `ISSUER_DPOP_NONCE_EXPIRATION`  
 Description: Duration after which Nonce values for DPoP authentication expire    

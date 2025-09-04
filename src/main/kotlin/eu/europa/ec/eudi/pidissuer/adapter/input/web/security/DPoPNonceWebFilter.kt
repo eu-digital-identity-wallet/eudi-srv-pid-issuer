@@ -15,34 +15,39 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
-import kotlinx.coroutines.reactor.awaitSingleOrNull
-import org.springframework.security.core.context.ReactiveSecurityContextHolder
+import com.nimbusds.oauth2.sdk.token.AccessTokenType
+import org.springframework.http.HttpHeaders
+import org.springframework.http.server.reactive.ServerHttpRequest
 import org.springframework.web.server.CoWebFilter
 import org.springframework.web.server.CoWebFilterChain
 import org.springframework.web.server.ServerWebExchange
 import java.time.Clock
 
 /**
- * [CoWebFilter] that checks if new DPoP Nonce values must be generated for DPoP authenticated web requests.
+ * [CoWebFilter] that generates a new DPoP Nonce for DPoP authenticated web requests and explicitly configured paths.
  */
 class DPoPNonceWebFilter(
     private val dpopNonce: DPoPNoncePolicy.Enforcing,
     private val clock: Clock,
+    private val paths: List<String>,
 ) : CoWebFilter() {
     override suspend fun filter(exchange: ServerWebExchange, chain: CoWebFilterChain) {
         val request = exchange.request
-        if (request.headers.contains("DPoP")) {
-            val authentication = ReactiveSecurityContextHolder.getContext()
-                .awaitSingleOrNull()
-                ?.authentication
-
-            if (authentication is DPoPTokenAuthentication) {
-                val newDPoPNonce = dpopNonce.generateDPoPNonce(clock.instant())
-                val response = exchange.response
-                response.headers["DPoP-Nonce"] = newDPoPNonce
-            }
+        if (request.requiresDPoPNonce()) {
+            val newDPoPNonce = dpopNonce.generateDPoPNonce(clock.instant())
+            val response = exchange.response
+            response.headers["DPoP-Nonce"] = newDPoPNonce
         }
-
         chain.filter(exchange)
+    }
+
+    private fun ServerHttpRequest.requiresDPoPNonce(): Boolean {
+        val isUsingDPoP = run {
+            val containsDPoPProof = AccessTokenType.DPOP.value in headers
+            val containsDPoPAccessToken = headers[HttpHeaders.AUTHORIZATION].orEmpty().any { it.startsWith(AccessTokenType.DPOP.value) }
+            containsDPoPProof || containsDPoPAccessToken
+        }
+        val isExplicitlyConfigured = path.pathWithinApplication().value() in paths
+        return isUsingDPoP || isExplicitlyConfigured
     }
 }
