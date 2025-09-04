@@ -19,8 +19,8 @@ import java.time.Duration
 import java.time.Instant
 
 /**
- * Generates a new CNonce that expires after a specific [Duration].
+ * Generates a new Nonce that expires after a specific [Duration].
  */
-fun interface GenerateCNonce {
+fun interface GenerateNonce {
     suspend operator fun invoke(generatedAt: Instant, expiresIn: Duration): String
 }

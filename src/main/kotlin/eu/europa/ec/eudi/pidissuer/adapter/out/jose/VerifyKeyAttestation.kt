@@ -36,7 +36,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationJWT
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
-import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyCNonce
+import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
 import java.net.URI
 import java.security.cert.*
 import java.time.Instant
@@ -50,7 +50,7 @@ internal class VerifyKeyAttestation(
     private val trustAnchors: NonEmptyList<X509Certificate>? = null,
     private val verifyAttestedKey: VerifyAttestedKey? = null,
     private val maxSkew: Duration = 30.seconds,
-    private val verifyCNonce: VerifyCNonce,
+    private val verifyNonce: VerifyNonce,
 ) {
     suspend operator fun invoke(
         keyAttestation: KeyAttestationJWT,
@@ -97,7 +97,7 @@ internal class VerifyKeyAttestation(
         requireNotNull(nonce) {
             "Key attestation does not contain a c_nonce."
         }
-        require(verifyCNonce(nonce, at)) {
+        require(verifyNonce(nonce, at)) {
             "Invalid c_nonce provided in key attestation JWT"
         }
         return nonce

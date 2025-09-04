@@ -25,6 +25,7 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException
 import org.springframework.security.web.server.ServerAuthenticationEntryPoint
 import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Mono
+import java.time.Clock
 
 /**
  * [ServerAuthenticationEntryPoint] implementation used to commence authentication of a protected resource using DPoP.
@@ -33,6 +34,7 @@ import reactor.core.publisher.Mono
 class DPoPTokenServerAuthenticationEntryPoint(
     private val realm: String? = null,
     private val dpopNonce: DPoPNoncePolicy,
+    private val clock: Clock,
 ) : ServerAuthenticationEntryPoint {
 
     override fun commence(exchange: ServerWebExchange, ex: AuthenticationException): Mono<Void> =
@@ -50,7 +52,7 @@ class DPoPTokenServerAuthenticationEntryPoint(
                     statusCode = ex.status()
                     headers[HttpHeaders.WWW_AUTHENTICATE] = wwwAuthenticate
                     dpopNonce?.let {
-                        headers["DPoP-Nonce"] = it.nonce.value
+                        headers["DPoP-Nonce"] = it
                     }
                 }
                 .setComplete()
@@ -60,11 +62,14 @@ class DPoPTokenServerAuthenticationEntryPoint(
     /**
      * Generates a new [DPoPNonce] in case this [AuthenticationException] contains a [DPoPTokenError.UseDPoPNonce] error.
      */
-    private suspend fun AuthenticationException.dpopNonce(): DPoPNonce? =
+    private suspend fun AuthenticationException.dpopNonce(): String? =
         when (this) {
             is OAuth2AuthenticationException ->
-                when (val error = error) {
-                    is DPoPTokenError.UseDPoPNonce -> dpopNonce.getActiveOrGenerateNew(error.accessToken)
+                when (error) {
+                    is DPoPTokenError.UseDPoPNonce -> {
+                        check(dpopNonce is DPoPNoncePolicy.Enforcing)
+                        dpopNonce.generateDPoPNonce(clock.instant())
+                    }
                     else -> null
                 }
             else -> null

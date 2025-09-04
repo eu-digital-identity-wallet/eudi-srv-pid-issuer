@@ -25,20 +25,20 @@ import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.openid.connect.sdk.Nonce
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
-import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateCNonce
+import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.time.Duration
 import java.time.Instant
 import java.util.*
 
 /**
- * Generates a CNonce and encrypts it as a [EncryptedJWT] with Nimbus.
+ * Generates a Nonce and encrypts it as a [EncryptedJWT] with Nimbus.
  */
-internal class GenerateCNonceAndEncryptWithNimbus(
+internal class GenerateNonceAndEncryptWithNimbus(
     private val issuer: CredentialIssuerId,
     encryptionKey: RSAKey,
     private val generator: suspend () -> String = { Nonce(128).value },
-) : GenerateCNonce {
+) : GenerateNonce {
 
     private val encrypter = RSAEncrypter(encryptionKey)
         .apply {
@@ -50,13 +50,13 @@ internal class GenerateCNonceAndEncryptWithNimbus(
 
         return EncryptedJWT(
             JWEHeader.Builder(JWEAlgorithm.RSA_OAEP_512, EncryptionMethod.XC20P)
-                .type(JOSEObjectType("cnonce+jwt"))
+                .type(JOSEObjectType("nonce+jwt"))
                 .build(),
             JWTClaimsSet.Builder()
                 .apply {
                     issuer(issuer.externalForm)
                     audience(issuer.externalForm)
-                    claim("cnonce", generator())
+                    claim("nonce", generator())
                     issueTime(Date.from(generatedAt))
                     expirationTime(Date.from(expiresAt))
                 }

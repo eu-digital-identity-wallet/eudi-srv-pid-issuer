@@ -17,37 +17,37 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
 import kotlinx.coroutines.reactor.awaitSingleOrNull
 import kotlinx.coroutines.reactor.mono
+import org.springframework.http.server.reactive.ServerHttpRequest
 import org.springframework.security.core.context.ReactiveSecurityContextHolder
 import org.springframework.web.server.ServerWebExchange
 import org.springframework.web.server.WebFilter
 import org.springframework.web.server.WebFilterChain
 import reactor.core.publisher.Mono
+import java.time.Clock
 
 /**
- * [WebFilter] that checks if new DPoP Nonce values must be generated for DPoP authenticated web requests.
+ * [WebFilter] that generates a new DPoP Nonce for DPoP authenticated web requests and explicitly configured paths.
  */
 class DPoPNonceWebFilter(
     private val dpopNonce: DPoPNoncePolicy.Enforcing,
+    private val clock: Clock,
+    private val paths: List<String>,
 ) : WebFilter {
 
     override fun filter(exchange: ServerWebExchange, chain: WebFilterChain): Mono<Void> =
         mono {
             val request = exchange.request
-            if (request.headers.contains("DPoP")) {
-                val authentication = ReactiveSecurityContextHolder.getContext()
-                    .awaitSingleOrNull()
-                    ?.authentication
-
-                if (authentication is DPoPTokenAuthentication) {
-                    val currentDPoPNonce = dpopNonce.loadActiveDPoPNonce(authentication.accessToken)
-                    if (currentDPoPNonce == null) {
-                        val newDPoPNonce = dpopNonce.generateDPoPNonce(authentication.accessToken)
-                        val response = exchange.response
-                        response.headers["DPoP-Nonce"] = newDPoPNonce.nonce.value
-                    }
-                }
+            if (request.requiresDPoPNonce()) {
+                val newDPoPNonce = dpopNonce.generateDPoPNonce(clock.instant())
+                val response = exchange.response
+                response.headers["DPoP-Nonce"] = newDPoPNonce
             }
-
             chain.filter(exchange).awaitSingleOrNull()
         }
+
+    private suspend fun ServerHttpRequest.requiresDPoPNonce(): Boolean {
+        val isUsingDPoP = ReactiveSecurityContextHolder.getContext().awaitSingleOrNull()?.authentication is DPoPTokenAuthentication
+        val isExplicitlyConfigured = path.pathWithinApplication().value() in paths
+        return isUsingDPoP || isExplicitlyConfigured
+    }
 }
