@@ -20,17 +20,16 @@ import org.springframework.security.core.context.ReactiveSecurityContextHolder
 import org.springframework.web.server.CoWebFilter
 import org.springframework.web.server.CoWebFilterChain
 import org.springframework.web.server.ServerWebExchange
+import java.time.Clock
 
 /**
  * [CoWebFilter] that checks if new DPoP Nonce values must be generated for DPoP authenticated web requests.
  */
 class DPoPNonceWebFilter(
     private val dpopNonce: DPoPNoncePolicy.Enforcing,
+    private val clock: Clock,
 ) : CoWebFilter() {
-    override suspend fun filter(
-        exchange: ServerWebExchange,
-        chain: CoWebFilterChain,
-    ) {
+    override suspend fun filter(exchange: ServerWebExchange, chain: CoWebFilterChain) {
         val request = exchange.request
         if (request.headers.contains("DPoP")) {
             val authentication = ReactiveSecurityContextHolder.getContext()
@@ -38,9 +37,9 @@ class DPoPNonceWebFilter(
                 ?.authentication
 
             if (authentication is DPoPTokenAuthentication) {
-                val newDPoPNonce = dpopNonce.generateDPoPNonce()
+                val newDPoPNonce = dpopNonce.generateDPoPNonce(clock.instant())
                 val response = exchange.response
-                response.headers["DPoP-Nonce"] = newDPoPNonce.nonce.value
+                response.headers["DPoP-Nonce"] = newDPoPNonce
             }
         }
 

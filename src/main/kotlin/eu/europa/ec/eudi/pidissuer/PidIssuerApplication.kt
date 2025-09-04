@@ -89,7 +89,6 @@ import org.springframework.http.client.reactive.ReactorClientHttpConnector
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
 import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
 import org.springframework.scheduling.annotation.EnableScheduling
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.config.web.server.invoke
@@ -117,7 +116,6 @@ import java.security.cert.X509Certificate
 import java.time.Clock
 import java.time.Duration
 import java.util.*
-import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
@@ -692,18 +690,8 @@ fun beans(clock: Clock) = beans {
     //
     if (env.getProperty("issuer.dpop.nonce.enabled", Boolean::class.java, false)) {
         val dpopNonceExpiresIn = env.duration("issuer.dpop.nonce.expiration") ?: Duration.ofMinutes(5L)
-        with(InMemoryDPoPNonceRepository(clock, dpopNonceExpiresIn)) {
-            bean { DPoPNoncePolicy.Enforcing(validateDPoPNonce, generateDPoPNonce) }
-            bean {
-                object {
-                    @Scheduled(fixedRate = 1L, timeUnit = TimeUnit.MINUTES)
-                    suspend fun cleanup() {
-                        cleanupInactiveDPoPNonce()
-                    }
-                }
-            }
-        }
-        bean(::DPoPNonceWebFilter)
+        bean { DPoPNoncePolicy.Enforcing(ref(), ref(), dpopNonceExpiresIn) }
+        bean { DPoPNonceWebFilter(ref(), ref()) }
     } else {
         bean { DPoPNoncePolicy.Disabled }
     }
@@ -783,7 +771,7 @@ fun beans(clock: Clock) = beans {
             val enableDPoP = dPoPProperties.algorithms.isNotEmpty()
 
             val dPoPTokenConverter by lazy { ServerDPoPAuthenticationTokenAuthenticationConverter() }
-            val dPoPEntryPoint by lazy { DPoPTokenServerAuthenticationEntryPoint(dPoPProperties.realm, ref()) }
+            val dPoPEntryPoint by lazy { DPoPTokenServerAuthenticationEntryPoint(dPoPProperties.realm, ref(), ref()) }
 
             val bearerTokenConverter = ServerBearerTokenAuthenticationConverter()
             val bearerTokenEntryPoint = BearerTokenServerAuthenticationEntryPoint()
@@ -857,7 +845,7 @@ fun beans(clock: Clock) = beans {
                         ),
                     )
 
-                    val authenticationManager = DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier, ref())
+                    val authenticationManager = DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier, ref(), ref())
 
                     AuthenticationWebFilter(authenticationManager).apply {
                         setServerAuthenticationConverter(ServerDPoPAuthenticationTokenAuthenticationConverter())
