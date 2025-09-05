@@ -18,11 +18,18 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 import arrow.core.Either
 import arrow.core.NonEmptySet
 import arrow.core.toNonEmptySetOrNull
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet
+import com.nimbusds.jose.proc.JWEDecryptionKeySelector
+import com.nimbusds.jose.proc.SecurityContext
+import com.nimbusds.jwt.EncryptedJWT
+import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
+import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
+import eu.europa.ec.eudi.pidissuer.domain.CredentialRequestEncryption
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import kotlinx.coroutines.async
@@ -36,6 +43,7 @@ import org.springframework.security.oauth2.core.OAuth2TokenIntrospectionClaimNam
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthentication
 import org.springframework.web.reactive.function.server.*
 import org.springframework.web.server.ServerWebInputException
+import kotlin.jvm.optionals.getOrNull
 
 private val APPLICATION_JWT = MediaType.parseMediaType("application/jwt")
 
@@ -45,12 +53,13 @@ internal class WalletApi(
     private val getPidData: GetPidData,
     private val handleNotificationRequest: HandleNotificationRequest,
     private val handleNonceRequest: HandleNonceRequest,
+    private val metadata: CredentialIssuerMetaData,
 ) {
 
     val route = coRouter {
         POST(
             CREDENTIAL_ENDPOINT,
-            contentType(MediaType.APPLICATION_JSON) and accept(MediaType.APPLICATION_JSON, APPLICATION_JWT),
+            contentType(MediaType.APPLICATION_JSON, APPLICATION_JWT) and accept(MediaType.APPLICATION_JSON, APPLICATION_JWT),
             this@WalletApi::handleIssueCredential,
         )
         GET(
@@ -74,10 +83,70 @@ internal class WalletApi(
         ) { handleNonceRequest() }
     }
 
+    private fun decrypt(jwt: String): CredentialRequestTO {
+        val encryptedJWT = EncryptedJWT.parse(jwt)
+
+        val algorithm = checkNotNull(encryptedJWT.header.algorithm)
+
+        val (jwks, methodsSupported, compressionMethodsSupported) = when (val requestEncryption = metadata.credentialRequestEncryption) {
+            is CredentialRequestEncryption.Optional -> {
+                requestEncryption.parameters
+            }
+            is CredentialRequestEncryption.Required -> {
+                requestEncryption.parameters
+            }
+            is CredentialRequestEncryption.NotSupported -> error("Unsupported encryption method")
+        }
+
+        require(encryptedJWT.header.encryptionMethod.name in methodsSupported.map { it.name }) {
+            "Unsupported encryption method ${encryptedJWT.header.encryptionMethod}, supported methods: $methodsSupported"
+        }
+        encryptedJWT.header.compressionAlgorithm?.let { compressionAlgorithm ->
+            require(compressionMethodsSupported?.map { it.name }?.contains(compressionAlgorithm.name) == true) {
+                "Unsupported compression method ${encryptedJWT.header.compressionAlgorithm}, " +
+                    "supported methods: $compressionMethodsSupported"
+            }
+        }
+
+        val processor = DefaultJWTProcessor<SecurityContext>()
+        processor.jweKeySelector = JWEDecryptionKeySelector(
+            algorithm,
+            encryptedJWT.header.encryptionMethod,
+            ImmutableJWKSet(jwks),
+        )
+        val claims = processor.process(encryptedJWT, null)
+        return CredentialRequestTO.from(claims)
+    }
+
     private suspend fun handleIssueCredential(req: ServerRequest): ServerResponse {
         val context = req.authorizationContext().getOrThrow()
         val response = try {
-            val credentialRequest = req.awaitBody<CredentialRequestTO>()
+            val credentialRequest = when (req.headers().contentType().getOrNull()) {
+                MediaType.APPLICATION_JSON -> {
+                    val request = req.awaitBody<CredentialRequestTO>()
+                    require(request.credentialResponseEncryption == null) {
+                        "Credential response encryption requires the use of an encrypted credential request"
+                    }
+                    require(metadata.credentialRequestEncryption !is CredentialRequestEncryption.Required) {
+                        "Credential request encryption is required"
+                    }
+                    request
+                }
+                APPLICATION_JWT -> {
+                    require(metadata.credentialRequestEncryption !is CredentialRequestEncryption.NotSupported) {
+                        "Credential request encryption is not supported"
+                    }
+                    val jwt = req.awaitBody<String>()
+                    decrypt(jwt)
+                }
+
+                else -> {
+                    return ServerResponse.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+                        .cacheControl(CacheControl.noStore())
+                        .buildAndAwait()
+                }
+            }
+
             issueCredential(context, credentialRequest)
         } catch (error: ServerWebInputException) {
             IssueCredentialResponse.FailedTO(
