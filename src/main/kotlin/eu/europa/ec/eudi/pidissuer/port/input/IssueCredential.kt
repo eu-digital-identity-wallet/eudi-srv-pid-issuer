@@ -20,6 +20,7 @@ import arrow.core.raise.Raise
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
+import com.nimbusds.jwt.JWTClaimsSet
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
@@ -56,7 +57,26 @@ data class CredentialRequestTO(
     val proofs: ProofsTO? = null,
     @SerialName("credential_response_encryption")
     val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
-)
+) {
+    companion object {
+        fun from(jwtClaimsSet: JWTClaimsSet): CredentialRequestTO {
+            val claims = jwtClaimsSet.asJsonObject()
+            return CredentialRequestTO(
+                credentialIdentifier = jwtClaimsSet.getStringClaim("credential_identifier"),
+                credentialConfigurationId = jwtClaimsSet.getStringClaim("credential_configuration_id"),
+                proofs = claims["proofs"]?.let { Json.decodeFromJsonElement<ProofsTO>(it) },
+                credentialResponseEncryption = claims["credential_response_encryption"]
+                    ?.let { Json.decodeFromJsonElement<CredentialResponseEncryptionTO>(it) },
+            )
+        }
+
+        private fun JWTClaimsSet.asJsonObject(): JsonObject {
+            val json = Json.parseToJsonElement(toString())
+            check(json is JsonObject)
+            return json
+        }
+    }
+}
 
 /**
  * Errors that might be raised while trying to issue a credential.
