@@ -18,18 +18,12 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 import arrow.core.Either
 import arrow.core.NonEmptySet
 import arrow.core.toNonEmptySetOrNull
-import com.nimbusds.jose.jwk.source.ImmutableJWKSet
-import com.nimbusds.jose.proc.JWEDecryptionKeySelector
-import com.nimbusds.jose.proc.SecurityContext
-import com.nimbusds.jwt.EncryptedJWT
-import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
-import eu.europa.ec.eudi.pidissuer.domain.CredentialRequestEncryption
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import kotlinx.coroutines.async
@@ -83,71 +77,24 @@ internal class WalletApi(
         ) { handleNonceRequest() }
     }
 
-    private fun decrypt(jwt: String): CredentialRequestTO {
-        val encryptedJWT = EncryptedJWT.parse(jwt)
-
-        val algorithm = checkNotNull(encryptedJWT.header.algorithm)
-
-        val (jwks, methodsSupported, compressionMethodsSupported) = when (val requestEncryption = metadata.credentialRequestEncryption) {
-            is CredentialRequestEncryption.Optional -> {
-                requestEncryption.parameters
-            }
-            is CredentialRequestEncryption.Required -> {
-                requestEncryption.parameters
-            }
-            is CredentialRequestEncryption.NotSupported -> error("Unsupported encryption method")
-        }
-
-        require(encryptedJWT.header.encryptionMethod.name in methodsSupported.map { it.name }) {
-            "Unsupported encryption method ${encryptedJWT.header.encryptionMethod}, supported methods: $methodsSupported"
-        }
-        encryptedJWT.header.compressionAlgorithm?.let { compressionAlgorithm ->
-            require(compressionMethodsSupported?.map { it.name }?.contains(compressionAlgorithm.name) == true) {
-                "Unsupported compression method ${encryptedJWT.header.compressionAlgorithm}, " +
-                    "supported methods: $compressionMethodsSupported"
-            }
-        }
-
-        val processor = DefaultJWTProcessor<SecurityContext>()
-        processor.jweKeySelector = JWEDecryptionKeySelector(
-            algorithm,
-            encryptedJWT.header.encryptionMethod,
-            ImmutableJWKSet(jwks),
-        )
-        val claims = processor.process(encryptedJWT, null)
-        return CredentialRequestTO.from(claims)
-    }
-
     private suspend fun handleIssueCredential(req: ServerRequest): ServerResponse {
         val context = req.authorizationContext().getOrThrow()
         val response = try {
-            val credentialRequest = when (req.headers().contentType().getOrNull()) {
+            when (req.headers().contentType().getOrNull()) {
                 MediaType.APPLICATION_JSON -> {
                     val request = req.awaitBody<CredentialRequestTO>()
-                    require(request.credentialResponseEncryption == null) {
-                        "Credential response encryption requires the use of an encrypted credential request"
-                    }
-                    require(metadata.credentialRequestEncryption !is CredentialRequestEncryption.Required) {
-                        "Credential request encryption is required"
-                    }
-                    request
+                    issueCredential.fromPlainRequest(context, request)
                 }
                 APPLICATION_JWT -> {
-                    require(metadata.credentialRequestEncryption !is CredentialRequestEncryption.NotSupported) {
-                        "Credential request encryption is not supported"
-                    }
                     val jwt = req.awaitBody<String>()
-                    decrypt(jwt)
+                    issueCredential.fromEncryptedRequest(context, jwt)
                 }
-
                 else -> {
                     return ServerResponse.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
                         .cacheControl(CacheControl.noStore())
                         .buildAndAwait()
                 }
             }
-
-            issueCredential(context, credentialRequest)
         } catch (error: ServerWebInputException) {
             IssueCredentialResponse.FailedTO(
                 type = CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST,
