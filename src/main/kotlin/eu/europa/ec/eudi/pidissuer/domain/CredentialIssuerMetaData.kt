@@ -45,9 +45,9 @@ data class CredentialRequestEncryptionSupportedParameters(
 ) {
     init {
         require(jwks.keys.isNotEmpty()) { "jwks must contain at least one key" }
-        require(jwks.keys.all { !it.isPrivate }) { "jwks must contain only public keys" }
         require(jwks.keys.all { !it.keyID.isNullOrBlank() }) { "jwks must contain keys with a kid value" }
         require(jwks.keys.all { it.algorithm != null }) { "jwks must contain keys with an alg value" }
+        require(jwks.keys.all { it.algorithm is JWEAlgorithm }) { "jwks must contain keys with a JWE alg value" }
         require(zipAlgorithmsSupported?.all { it.name in ZIP_ALGORITHMS } ?: true) {
             "zipAlgorithmsSupported must be one of ${ZIP_ALGORITHMS.joinToString(", ") { it }}"
         }
