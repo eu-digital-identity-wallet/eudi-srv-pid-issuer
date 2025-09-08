@@ -249,22 +249,18 @@ fun beans(clock: Clock) = beans {
     //
     // CNonce encryption key
     //
-    val CNONCE_ENCRYPTION_KEY = "cnonce-encryption-key"
-    bean(name = CNONCE_ENCRYPTION_KEY) {
-        val encryptionKey = when (env.getProperty<KeyOption>("issuer.cnonce.encryption-key")) {
-            null, KeyOption.GenerateRandom -> {
-                log.info("Generating random encryption key for CNonce")
-                RSAKeyGenerator(4096, false).generate()
-            }
-
-            KeyOption.LoadFromKeystore -> {
-                log.info("Loading CNonce encryption key from keystore")
-                loadJwkFromKeystore(env, "issuer.cnonce.encryption-key")
-            }
+    val encryptionKey = when (env.getProperty<KeyOption>("issuer.cnonce.encryption-key")) {
+        null, KeyOption.GenerateRandom -> {
+            log.info("Generating random encryption key for CNonce")
+            RSAKeyGenerator(4096, false).generate()
         }
-        require(encryptionKey is RSAKey) { "Only RSAKeys are supported for encryption" }
-        encryptionKey
+
+        KeyOption.LoadFromKeystore -> {
+            log.info("Loading CNonce encryption key from keystore")
+            loadJwkFromKeystore(env, "issuer.cnonce.encryption-key")
+        }
     }
+    require(encryptionKey is RSAKey) { "Only RSAKeys are supported for encryption" }
 
     //
     // Signed metadata signing key
@@ -437,8 +433,8 @@ fun beans(clock: Clock) = beans {
     //
     // CNonce
     //
-    bean { GenerateCNonceAndEncryptWithNimbus(issuerPublicUrl, ref<RSAKey>(CNONCE_ENCRYPTION_KEY)) }
-    bean { DecryptCNonceWithNimbusAndVerify(issuerPublicUrl, ref<RSAKey>(CNONCE_ENCRYPTION_KEY)) }
+    bean { GenerateCNonceAndEncryptWithNimbus(issuerPublicUrl, encryptionKey) }
+    bean { DecryptCNonceWithNimbusAndVerify(issuerPublicUrl, encryptionKey) }
 
     //
     // Credentials
