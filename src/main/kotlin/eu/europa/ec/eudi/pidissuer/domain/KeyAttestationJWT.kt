@@ -44,7 +44,7 @@ data class KeyAttestationJWT private constructor(
 
         operator fun invoke(jwt: SignedJWT): KeyAttestationJWT {
             jwt.ensureSignedNotMAC()
-            require(jwt.header.type != null && jwt.header.type.type.equals(KEY_ATTESTATION_JWT_TYPE)) {
+            require(jwt.header.type != null && (jwt.header.type.type == KEY_ATTESTATION_JWT_TYPE)) {
                 "Invalid Key Attestation JWT. Type must be set to `$KEY_ATTESTATION_JWT_TYPE`"
             }
             requireNotNull(jwt.jwtClaimsSet.issueTime) { "Invalid Key Attestation JWT. Misses `iat` claim" }
