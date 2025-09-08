@@ -16,13 +16,12 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.Either
-import arrow.core.NonEmptyList
 import arrow.core.nonEmptyListOf
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
 
-object DefaultExtractJwkFromCredentialKey : ExtractJwkFromCredentialKey {
-    override suspend fun invoke(key: CredentialKey): Either<Throwable, NonEmptyList<JWK>> = Either.catch {
+val DefaultExtractJwkFromCredentialKey = ExtractJwkFromCredentialKey { key ->
+    Either.catch {
         when (key) {
             is CredentialKey.Jwk -> nonEmptyListOf(key.value)
             is CredentialKey.X5c -> nonEmptyListOf(JWK.parse(key.certificate))
