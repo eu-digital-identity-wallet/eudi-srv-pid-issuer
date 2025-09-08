@@ -16,38 +16,37 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
 import kotlinx.coroutines.reactor.awaitSingleOrNull
-import kotlinx.coroutines.reactor.mono
 import org.springframework.security.core.context.ReactiveSecurityContextHolder
+import org.springframework.web.server.CoWebFilter
+import org.springframework.web.server.CoWebFilterChain
 import org.springframework.web.server.ServerWebExchange
-import org.springframework.web.server.WebFilter
-import org.springframework.web.server.WebFilterChain
-import reactor.core.publisher.Mono
 
 /**
  * [WebFilter] that checks if new DPoP Nonce values must be generated for DPoP authenticated web requests.
  */
 class DPoPNonceWebFilter(
     private val dpopNonce: DPoPNoncePolicy.Enforcing,
-) : WebFilter {
+) : CoWebFilter() {
+    override suspend fun filter(
+        exchange: ServerWebExchange,
+        chain: CoWebFilterChain,
+    ) {
+        val request = exchange.request
+        if (request.headers.contains("DPoP")) {
+            val authentication = ReactiveSecurityContextHolder.getContext()
+                .awaitSingleOrNull()
+                ?.authentication
 
-    override fun filter(exchange: ServerWebExchange, chain: WebFilterChain): Mono<Void> =
-        mono {
-            val request = exchange.request
-            if (request.headers.contains("DPoP")) {
-                val authentication = ReactiveSecurityContextHolder.getContext()
-                    .awaitSingleOrNull()
-                    ?.authentication
-
-                if (authentication is DPoPTokenAuthentication) {
-                    val currentDPoPNonce = dpopNonce.loadActiveDPoPNonce(authentication.accessToken)
-                    if (currentDPoPNonce == null) {
-                        val newDPoPNonce = dpopNonce.generateDPoPNonce(authentication.accessToken)
-                        val response = exchange.response
-                        response.headers["DPoP-Nonce"] = newDPoPNonce.nonce.value
-                    }
+            if (authentication is DPoPTokenAuthentication) {
+                val currentDPoPNonce = dpopNonce.loadActiveDPoPNonce(authentication.accessToken)
+                if (currentDPoPNonce == null) {
+                    val newDPoPNonce = dpopNonce.generateDPoPNonce(authentication.accessToken)
+                    val response = exchange.response
+                    response.headers["DPoP-Nonce"] = newDPoPNonce.nonce.value
                 }
             }
-
-            chain.filter(exchange).awaitSingleOrNull()
         }
+
+        chain.filter(exchange)
+    }
 }
