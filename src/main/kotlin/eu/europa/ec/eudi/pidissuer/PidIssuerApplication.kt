@@ -249,7 +249,8 @@ fun beans(clock: Clock) = beans {
     //
     // CNonce encryption key
     //
-    bean(name = "cnonce-encryption-key") {
+    val CNONCE_ENCRYPTION_KEY = "cnonce-encryption-key"
+    bean(name = CNONCE_ENCRYPTION_KEY) {
         val encryptionKey = when (env.getProperty<KeyOption>("issuer.cnonce.encryption-key")) {
             null, KeyOption.GenerateRandom -> {
                 log.info("Generating random encryption key for CNonce")
@@ -436,8 +437,8 @@ fun beans(clock: Clock) = beans {
     //
     // CNonce
     //
-    bean { GenerateCNonceAndEncryptWithNimbus(issuerPublicUrl, ref<RSAKey>("cnonce-encryption-key")) }
-    bean { DecryptCNonceWithNimbusAndVerify(issuerPublicUrl, ref<RSAKey>("cnonce-encryption-key")) }
+    bean { GenerateCNonceAndEncryptWithNimbus(issuerPublicUrl, ref<RSAKey>(CNONCE_ENCRYPTION_KEY)) }
+    bean { DecryptCNonceWithNimbusAndVerify(issuerPublicUrl, ref<RSAKey>(CNONCE_ENCRYPTION_KEY)) }
 
     //
     // Credentials
