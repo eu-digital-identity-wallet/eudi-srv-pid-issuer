@@ -963,7 +963,7 @@ private fun <T> Environment.readNonEmptySet(key: String, f: (String) -> T?): Non
 private fun Environment.duration(key: String): Duration? =
     getProperty(key)?.let { Duration.parse(it) }?.takeUnless { it.isNegative || it.isZero }
 
-private fun HttpsUrl.appendPath(path: String): HttpsUrl =
+internal fun HttpsUrl.appendPath(path: String): HttpsUrl =
     HttpsUrl.unsafe(
         UriComponentsBuilder.fromUriString(externalForm)
             .path(path)
