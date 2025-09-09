@@ -28,6 +28,7 @@ import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
+import eu.europa.ec.eudi.pidissuer.adapter.out.json.jsonSupport
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
@@ -136,7 +137,9 @@ sealed interface IssueCredentialError {
         val methodsSupported: NonEmptySet<EncryptionMethod>,
     ) : IssueCredentialError
 
-    data class UnsupportedCompressionMethod(
+    data object RequestCompressionNotSupported : IssueCredentialError
+
+    data class UnsupportedRequestCompressionMethod(
         val compressionAlgorithm: CompressionAlgorithm,
         val compressionMethodsSupported: NonEmptySet<CompressionAlgorithm>?,
     ) : IssueCredentialError
@@ -338,12 +341,15 @@ class IssueCredential(
                 is CredentialRequestEncryption.NotSupported -> raise(RequestEncryptionNotSupported)
             }
 
-        ensure(methodsSupported.any { it == jwt.header.encryptionMethod}) {
+        ensure(methodsSupported.any { it == jwt.header.encryptionMethod }) {
             UnsupportedEncryptionMethod(jwt.header.encryptionMethod, methodsSupported)
         }
         jwt.header.compressionAlgorithm?.let { compressionAlgorithm ->
-            ensure(compressionMethodsSupported?.any { it.name == compressionAlgorithm.name } == true) {
-                UnsupportedCompressionMethod(jwt.header.compressionAlgorithm, compressionMethodsSupported)
+            ensureNotNull(compressionMethodsSupported) {
+                RequestCompressionNotSupported
+            }
+            ensure(compressionMethodsSupported.any { it.name == compressionAlgorithm.name }) {
+                UnsupportedRequestCompressionMethod(jwt.header.compressionAlgorithm, compressionMethodsSupported)
             }
         }
 
@@ -354,7 +360,7 @@ class IssueCredential(
             ImmutableJWKSet(encryptionKeys),
         )
         val claims = processor.process(jwt, null)
-        return Json.decodeFromString<CredentialRequestTO>(JSONObjectUtils.toJSONString(claims.toJSONObject()))
+        return jsonSupport.decodeFromString<CredentialRequestTO>(JSONObjectUtils.toJSONString(claims.toJSONObject()))
     }
 
     private fun successResponse(
@@ -714,9 +720,13 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
                 "Unsupported encryption method $encryptionMethod, supported methods: $methodsSupported"
 
-        is UnsupportedCompressionMethod ->
+        is RequestCompressionNotSupported ->
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request compression is not supported"
+
+        is UnsupportedRequestCompressionMethod ->
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
-                "Unsupported compression method $compressionAlgorithm, supported methods: $compressionMethodsSupported"
+                "Unsupported credential request compression method $compressionAlgorithm, " +
+                "supported methods: $compressionMethodsSupported"
     }
     return IssueCredentialResponse.FailedTO(type, description)
 }
