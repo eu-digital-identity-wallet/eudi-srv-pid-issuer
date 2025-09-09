@@ -533,11 +533,9 @@ fun beans(clock: Clock) = beans {
                         keyAttestationRequirement = keyAttestationRequirement,
                     )
 
-                    val deferred = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.deferred") ?: false
-                    add(
-                        if (deferred) issueSdJwtVcPid.asDeferred(ref(), ref())
-                        else issueSdJwtVcPid,
-                    )
+                    add(issueSdJwtVcPid)
+
+                    add(issueSdJwtVcPid.asDeferred(ref(), ref()))
                 }
 
                 if (enableMobileDrivingLicence) {
@@ -560,6 +558,8 @@ fun beans(clock: Clock) = beans {
                         keyAttestationRequirement = keyAttestationRequirement,
                     )
                     add(mdlIssuer)
+
+                    add(mdlIssuer.asDeferred(ref(), ref()))
                 }
 
                 if (enableEhic) {
