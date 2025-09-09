@@ -22,8 +22,12 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWEAlgorithm
+import com.nimbusds.jose.JWEHeader
+import com.nimbusds.jose.JWEObject
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
+import com.nimbusds.jose.Payload
+import com.nimbusds.jose.crypto.ECDHEncrypter
 import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.crypto.factories.DefaultJWEDecrypterFactory
 import com.nimbusds.jose.jwk.Curve
@@ -42,6 +46,8 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentic
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
+import eu.europa.ec.eudi.pidissuer.domain.CredentialRequestEncryption
+import eu.europa.ec.eudi.pidissuer.domain.CredentialRequestEncryptionSupportedParameters
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.loadResource
@@ -175,15 +181,16 @@ internal class BaseWalletApiTest {
  */
 @TestPropertySource(
     properties = [
+        "issuer.credentialRequestEncryption.required=false",
         "issuer.credentialResponseEncryption.required=false",
         "issuer.credentialEndpoint.batchIssuance.enabled=true",
         "issuer.credentialEndpoint.batchIssuance.batchSize=3",
-        "issuer.pid.mso_mdoc.key_attestations.required = true",
-        "issuer.pid.mso_mdoc.key_attestations.constraints.key_storage = iso_18045_high, iso_18045_moderate",
-        "issuer.pid.mso_mdoc.key_attestations.constraints.user_authentication = iso_18045_high, iso_18045_moderate",
+        "issuer.pid.mso_mdoc.key_attestations.required=true",
+        "issuer.pid.mso_mdoc.key_attestations.constraints.key_storage=iso_18045_high, iso_18045_moderate",
+        "issuer.pid.mso_mdoc.key_attestations.constraints.user_authentication=iso_18045_high, iso_18045_moderate",
     ],
 )
-internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
+internal class WalletApiResponseEncryptionOptionalTest : BaseWalletApiTest() {
 
     /**
      * Verifies credential endpoint is not accessible by anonymous users.
@@ -822,6 +829,45 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
         assertEquals("Invalid proof JWT", response.errorDescription)
     }
+
+    @Test
+    fun `issuance success by credential configuration id with encrypted request`() = runTest {
+        val authentication = dPoPTokenAuthentication(clock = clock)
+        val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
+
+        val credentialRequestEncryption = credentialIssuerMetadata.credentialRequestEncryption
+        require(credentialRequestEncryption is CredentialRequestEncryption.Optional)
+
+        val key = ECKeyGenerator(Curve.P_256)
+            .algorithm(JWEAlgorithm.ECDH_ES)
+            .keyID("ec-key-0")
+            .generate()
+        val proofs = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, key) {
+            jwk(key.toPublicJWK())
+        }.toJwtProofs()
+
+        val response = client()
+            .mutateWith(mockAuthentication(authentication))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.parseMediaType("application/jwt"))
+            .bodyValue(
+                requestByCredentialConfigurationId(proofs = proofs)
+                    .encrypt(credentialRequestEncryption.parameters),
+            )
+            .accept(MediaType.parseMediaType("application/jwt"))
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody<IssueCredentialResponse.PlainTO>()
+            .returnResult()
+            .let { assertNotNull(it.responseBody) }
+
+        val issuedCredentials = assertNotNull(response.credentials)
+        issuedCredentials.forEach {
+            assertEquals(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID")), it)
+        }
+        assertNull(response.transactionId)
+    }
 }
 
 /**
@@ -834,7 +880,7 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
         "issuer.credentialEndpoint.batchIssuance.batchSize=3",
     ],
 )
-internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
+internal class WalletApiResponseEncryptionRequiredTest : BaseWalletApiTest() {
 
     private val jacksonObjectMapper: ObjectMapper by lazy { jacksonObjectMapper() }
 
@@ -858,8 +904,11 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
             .mutateWith(mockAuthentication(authentication))
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
+            .contentType(MediaType.parseMediaType("application/jwt"))
+            .bodyValue(
+                requestByCredentialConfigurationId(proofs = proofs)
+                    .encrypt((credentialIssuerMetadata.credentialRequestEncryption as CredentialRequestEncryption.Required).parameters),
+            )
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isBadRequest()
@@ -887,14 +936,17 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
             jwk(walletKey.toPublicJWK())
         }.toJwtProofs()
         val encryptionKey = ECKeyGenerator(Curve.P_256).algorithm(JWEAlgorithm.ECDH_ES).keyUse(KeyUse.ENCRYPTION).generate()
-        val encryptionParameters = encryptionParameters(encryptionKey)
+        val encryptionParameters = encryptionResponseParameters(encryptionKey)
 
         val response = client()
             .mutateWith(mockAuthentication(authentication))
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByCredentialConfigurationId(proofs = proofs, credentialResponseEncryption = encryptionParameters))
+            .contentType(MediaType.parseMediaType("application/jwt"))
+            .bodyValue(
+                requestByCredentialConfigurationId(proofs = proofs, credentialResponseEncryption = encryptionParameters)
+                    .encrypt((credentialIssuerMetadata.credentialRequestEncryption as CredentialRequestEncryption.Required).parameters),
+            )
             .accept(MediaType.parseMediaType("application/jwt"))
             .exchange()
             .expectStatus().isOk()
@@ -943,14 +995,17 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
             }
         }.toJwtProofs()
         val encryptionKey = ECKeyGenerator(Curve.P_256).algorithm(JWEAlgorithm.ECDH_ES).keyUse(KeyUse.ENCRYPTION).generate()
-        val encryptionParameters = encryptionParameters(encryptionKey)
+        val encryptionParameters = encryptionResponseParameters(encryptionKey)
 
         val response = client()
             .mutateWith(mockAuthentication(authentication))
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByCredentialConfigurationId(proofs = proofs, credentialResponseEncryption = encryptionParameters))
+            .contentType(MediaType.parseMediaType("application/jwt"))
+            .bodyValue(
+                requestByCredentialConfigurationId(proofs = proofs, credentialResponseEncryption = encryptionParameters)
+                    .encrypt((credentialIssuerMetadata.credentialRequestEncryption as CredentialRequestEncryption.Required).parameters),
+            )
             .accept(MediaType.parseMediaType("application/jwt"))
             .exchange()
             .expectStatus().isOk()
@@ -1000,8 +1055,11 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
             .mutateWith(mockAuthentication(authentication))
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByCredentialIdentifier(proofs))
+            .contentType(MediaType.parseMediaType("application/jwt"))
+            .bodyValue(
+                requestByCredentialIdentifier(proofs)
+                    .encrypt((credentialIssuerMetadata.credentialRequestEncryption as CredentialRequestEncryption.Required).parameters),
+            )
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isBadRequest()
@@ -1029,18 +1087,18 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
             jwk(walletKey.toPublicJWK())
         }
         val encryptionKey = ECKeyGenerator(Curve.P_256).algorithm(JWEAlgorithm.ECDH_ES).keyUse(KeyUse.ENCRYPTION).generate()
-        val encryptionParameters = encryptionParameters(encryptionKey)
+        val encryptionParameters = encryptionResponseParameters(encryptionKey)
 
         val response = client()
             .mutateWith(mockAuthentication(authentication))
             .post()
             .uri(WalletApi.CREDENTIAL_ENDPOINT)
-            .contentType(MediaType.APPLICATION_JSON)
+            .contentType(MediaType.parseMediaType("application/jwt"))
             .bodyValue(
                 requestByCredentialIdentifier(
                     proofs = proof.toJwtProofs(),
                     credentialResponseEncryption = encryptionParameters,
-                ),
+                ).encrypt((credentialIssuerMetadata.credentialRequestEncryption as CredentialRequestEncryption.Required).parameters),
             )
             .accept(MediaType.parseMediaType("application/jwt"))
             .exchange()
@@ -1070,6 +1128,35 @@ internal class WalletApiEncryptionRequiredTest : BaseWalletApiTest() {
                 Json.decodeFromString<IssueCredentialResponse.PlainTO.CredentialTO>(jacksonObjectMapper.writeValueAsString(it)),
             )
         }
+    }
+
+    @Test
+    fun `issuance fails when credential response is encrypted but credential request is not encrypted`() = runTest {
+        val authentication = dPoPTokenAuthentication(clock = clock)
+        val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
+
+        val key = ECKeyGenerator(Curve.P_256).generate()
+        val proofs = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, key) {
+            jwk(key.toPublicJWK())
+        }.toJwtProofs()
+        val encryptionKey = ECKeyGenerator(Curve.P_256).algorithm(JWEAlgorithm.ECDH_ES).keyUse(KeyUse.ENCRYPTION).generate()
+        val encryptionParameters = encryptionResponseParameters(encryptionKey)
+
+        val response = client()
+            .mutateWith(mockAuthentication(authentication))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(requestByCredentialIdentifier(proofs, encryptionParameters))
+            .accept(MediaType.parseMediaType("application/jwt"))
+            .exchange()
+            .expectStatus().isBadRequest()
+            .expectBody<IssueCredentialResponse.FailedTO>()
+            .returnResult()
+            .let { assertNotNull(it.responseBody) }
+
+        assertEquals(CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST, response.type)
+        assertEquals("Credential response encryption requires an encrypted credential request", response.errorDescription)
     }
 }
 
@@ -1128,12 +1215,26 @@ private fun requestByCredentialIdentifier(
         credentialResponseEncryption = credentialResponseEncryption,
     )
 
-private fun encryptionParameters(key: ECKey): CredentialResponseEncryptionTO =
+private fun encryptionResponseParameters(key: ECKey): CredentialResponseEncryptionTO =
     CredentialResponseEncryptionTO(
         key = Json.decodeFromString(key.toPublicJWK().toJSONString()),
         method = "A128GCM",
         zipAlgorithm = "DEF",
     )
+
+private fun CredentialRequestTO.encrypt(encParams: CredentialRequestEncryptionSupportedParameters): String =
+    JWEObject(
+        JWEHeader.Builder(JWEAlgorithm.ECDH_ES, encParams.methodsSupported.head)
+            .keyID(encParams.encryptionKeys.keys[0].keyID)
+            .jwk(encParams.encryptionKeys.keys[0].toPublicJWK())
+            .type(JOSEObjectType.JWT)
+            .build(),
+        Payload(Json.encodeToString(this)),
+    ).apply {
+        encrypt(
+            ECDHEncrypter(encParams.encryptionKeys.keys[0].toECKey()),
+        )
+    }.serialize()
 
 /**
  * Creates a key attestation jwt having as attested keys the one passed in [proofSigningKey]
