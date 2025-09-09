@@ -20,6 +20,15 @@ import arrow.core.raise.Raise
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
+import com.nimbusds.jose.CompressionAlgorithm
+import com.nimbusds.jose.EncryptionMethod
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet
+import com.nimbusds.jose.proc.JWEDecryptionKeySelector
+import com.nimbusds.jose.proc.SecurityContext
+import com.nimbusds.jose.util.JSONObjectUtils
+import com.nimbusds.jwt.EncryptedJWT
+import com.nimbusds.jwt.proc.DefaultJWTProcessor
+import eu.europa.ec.eudi.pidissuer.adapter.out.json.jsonSupport
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
@@ -116,6 +125,24 @@ sealed interface IssueCredentialError {
     data class WrongScope(val expected: Scope) : IssueCredentialError
 
     data class Unexpected(val msg: String, val cause: Throwable? = null) : IssueCredentialError
+
+    data object RequestEncryptionNotSupported : IssueCredentialError
+
+    data object RequestEncryptionIsRequired : IssueCredentialError
+
+    data object ResponseEncryptionRequiresEncryptedRequest : IssueCredentialError
+
+    data class UnsupportedEncryptionMethod(
+        val encryptionMethod: EncryptionMethod,
+        val methodsSupported: NonEmptySet<EncryptionMethod>,
+    ) : IssueCredentialError
+
+    data object RequestCompressionNotSupported : IssueCredentialError
+
+    data class UnsupportedRequestCompressionMethod(
+        val compressionAlgorithm: CompressionAlgorithm,
+        val compressionMethodsSupported: NonEmptySet<CompressionAlgorithm>?,
+    ) : IssueCredentialError
 }
 
 /**
@@ -255,7 +282,37 @@ class IssueCredential(
     private fun Raise<IssueCredentialError>.services(): Services =
         Services(this, credentialIssuerMetadata, resolveCredentialRequestByCredentialIdentifier)
 
-    suspend operator fun invoke(
+    suspend fun fromEncryptedRequest(
+        authorizationContext: AuthorizationContext,
+        credentialRequestJwt: String,
+    ): IssueCredentialResponse =
+        either {
+            val parsedJwt = Either.catch { EncryptedJWT.parse(credentialRequestJwt) }
+                .mapLeft { Unexpected("Could not parse encrypted credential request", it) }
+                .bind()
+            val request = decryptCredentialRequest(parsedJwt)
+            invoke(authorizationContext, request)
+        }.getOrElse { error ->
+            errorResponse(error)
+        }
+
+    suspend fun fromPlainRequest(
+        authorizationContext: AuthorizationContext,
+        credentialRequestTO: CredentialRequestTO,
+    ): IssueCredentialResponse =
+        either {
+            ensure(credentialRequestTO.credentialResponseEncryption == null) {
+                ResponseEncryptionRequiresEncryptedRequest
+            }
+            ensure(credentialIssuerMetadata.credentialRequestEncryption !is CredentialRequestEncryption.Required) {
+                RequestEncryptionIsRequired
+            }
+            invoke(authorizationContext, credentialRequestTO)
+        }.getOrElse { error ->
+            errorResponse(error)
+        }
+
+    private suspend operator fun invoke(
         authorizationContext: AuthorizationContext,
         credentialRequestTO: CredentialRequestTO,
     ): IssueCredentialResponse = coroutineScope {
@@ -270,6 +327,40 @@ class IssueCredential(
         }.getOrElse { error ->
             errorResponse(error)
         }
+    }
+
+    private fun Raise<IssueCredentialError>.decryptCredentialRequest(jwt: EncryptedJWT): CredentialRequestTO {
+        val (encryptionKeys, methodsSupported, compressionMethodsSupported) =
+            when (val requestEncryption = credentialIssuerMetadata.credentialRequestEncryption) {
+                is CredentialRequestEncryption.Optional -> {
+                    requestEncryption.parameters
+                }
+                is CredentialRequestEncryption.Required -> {
+                    requestEncryption.parameters
+                }
+                is CredentialRequestEncryption.NotSupported -> raise(RequestEncryptionNotSupported)
+            }
+
+        ensure(methodsSupported.any { it == jwt.header.encryptionMethod }) {
+            UnsupportedEncryptionMethod(jwt.header.encryptionMethod, methodsSupported)
+        }
+        jwt.header.compressionAlgorithm?.let { compressionAlgorithm ->
+            ensureNotNull(compressionMethodsSupported) {
+                RequestCompressionNotSupported
+            }
+            ensure(compressionMethodsSupported.any { it.name == compressionAlgorithm.name }) {
+                UnsupportedRequestCompressionMethod(jwt.header.compressionAlgorithm, compressionMethodsSupported)
+            }
+        }
+
+        val processor = DefaultJWTProcessor<SecurityContext>()
+        processor.jweKeySelector = JWEDecryptionKeySelector(
+            jwt.header.algorithm,
+            jwt.header.encryptionMethod,
+            ImmutableJWKSet(encryptionKeys),
+        )
+        val claims = processor.process(jwt, null)
+        return jsonSupport.decodeFromString<CredentialRequestTO>(JSONObjectUtils.toJSONString(claims.toJSONObject()))
     }
 
     private fun successResponse(
@@ -615,6 +706,27 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
         is InvalidClaims ->
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
                 "'claims' does not have the expected structure${error.message?.let { " : $it" } ?: ""}"
+
+        is RequestEncryptionIsRequired ->
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request encryption is required"
+
+        is RequestEncryptionNotSupported ->
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request encryption is not supported"
+
+        is ResponseEncryptionRequiresEncryptedRequest ->
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential response encryption requires an encrypted credential request"
+
+        is UnsupportedEncryptionMethod ->
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
+                "Unsupported encryption method $encryptionMethod, supported methods: $methodsSupported"
+
+        is RequestCompressionNotSupported ->
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request compression is not supported"
+
+        is UnsupportedRequestCompressionMethod ->
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
+                "Unsupported credential request compression method $compressionAlgorithm, " +
+                "supported methods: $compressionMethodsSupported"
     }
     return IssueCredentialResponse.FailedTO(type, description)
 }

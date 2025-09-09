@@ -680,7 +680,7 @@ fun beans(clock: Clock) = beans {
             .associateBy { Vct(it.vct) }
             .mapValues { it.value.resource }
         val metaDataApi = MetaDataApi(ref(), ref(), typeMetadata)
-        val walletApi = WalletApi(ref(), ref(), ref(), ref(), ref())
+        val walletApi = WalletApi(ref(), ref(), ref(), ref(), ref(), ref())
         val issuerUi = IssuerUi(credentialsOfferUri, ref(), ref(), ref())
         val issuerApi = IssuerApi(ref())
         metaDataApi.route.and(walletApi.route).and(issuerUi.router).and(issuerApi.router)
@@ -940,15 +940,9 @@ private fun Environment.credentialRequestEncryption(): CredentialRequestEncrypti
 
                 when (val loadedJwk = loadJwkFromKeystore(this, "issuer.credentialRequestEncryption.jwks")) {
                     is ECKey -> {
-                        require(JWEAlgorithm.Family.ECDH_ES.contains(keyAlgorithm)) {
-                            "The algorithm '$keyAlgorithm' is not compatible with the loaded EC key"
-                        }
                         ECKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
                     }
                     is RSAKey -> {
-                        require(JWEAlgorithm.Family.RSA.contains(keyAlgorithm)) {
-                            "The algorithm '$keyAlgorithm' is not compatible with the loaded RSA key"
-                        }
                         RSAKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
                     }
                     else -> error("unsupported key type '${loadedJwk.javaClass}'")
@@ -957,7 +951,7 @@ private fun Environment.credentialRequestEncryption(): CredentialRequestEncrypti
         }
 
         val parameters = CredentialRequestEncryptionSupportedParameters(
-            jwks = JWKSet(key.toPublicJWK()),
+            encryptionKeys = JWKSet(key),
             methodsSupported = readNonEmptySet(
                 "issuer.credentialRequestEncryption.encryptionMethods",
                 EncryptionMethod::parse,
