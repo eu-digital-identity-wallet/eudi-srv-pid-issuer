@@ -19,7 +19,9 @@ import arrow.core.NonEmptySet
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
+import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWKSet
+import com.nimbusds.jose.jwk.RSAKey
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec.ZIP_ALGORITHMS
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import java.util.*
@@ -27,7 +29,7 @@ import java.util.*
 /**
  * Encryption algorithms and methods supported for encrypting Credential Responses.
  *
- * @param jwks a Json Web Key Set (JWK Set) RFC7517 containing the one or more
+ * @param encryptionKeys a Json Web Key Set (JWK Set) RFC7517 containing the one or more
  * public keys to be used by the Wallet as an input to a key agreement
  * for encryption of the Credential Request
  * @param methodsSupported a list of the JWE RFC7516 encryption algorithms
@@ -39,15 +41,27 @@ import java.util.*
  * to uncompress the Credential Request after decryption
  */
 data class CredentialRequestEncryptionSupportedParameters(
-    val jwks: JWKSet,
+    val encryptionKeys: JWKSet,
     val methodsSupported: NonEmptySet<EncryptionMethod>,
     val zipAlgorithmsSupported: NonEmptySet<CompressionAlgorithm>?,
 ) {
     init {
-        require(jwks.keys.isNotEmpty()) { "jwks must contain at least one key" }
-        require(jwks.keys.all { !it.isPrivate }) { "jwks must contain only public keys" }
-        require(jwks.keys.all { !it.keyID.isNullOrBlank() }) { "jwks must contain keys with a kid value" }
-        require(jwks.keys.all { it.algorithm != null }) { "jwks must contain keys with an alg value" }
+        require(encryptionKeys.keys.isNotEmpty()) { "encryptionKeys must contain at least one key" }
+        require(encryptionKeys.keys.all { it.isPrivate }) { "encryptionKeys must contain only private keys" }
+        require(encryptionKeys.keys.all { !it.keyID.isNullOrBlank() }) { "encryptionKeys must contain keys with a kid value" }
+        require(encryptionKeys.keys.all { it.algorithm != null }) { "encryptionKeys must contain keys with an alg value" }
+        require(encryptionKeys.keys.all { it.algorithm is JWEAlgorithm }) { "encryptionKeys must contain keys with a JWE alg value" }
+        require(
+            encryptionKeys.keys.all {
+                when (it) {
+                    is ECKey -> JWEAlgorithm.Family.ECDH_ES.contains(it.algorithm)
+                    is RSAKey -> JWEAlgorithm.Family.RSA.contains(it.algorithm)
+                    else -> false
+                }
+            },
+        ) {
+            "encryptionKeys must contain only EC or RSA keys with a compatible JWE alg value"
+        }
         require(zipAlgorithmsSupported?.all { it.name in ZIP_ALGORITHMS } ?: true) {
             "zipAlgorithmsSupported must be one of ${ZIP_ALGORITHMS.joinToString(", ") { it }}"
         }
