@@ -17,14 +17,18 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.getOrElse
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
+import eu.europa.ec.eudi.pidissuer.appendPath
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfigurationId
+import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
+import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOffer
 import eu.europa.ec.eudi.pidissuer.port.out.qr.Dimensions
 import eu.europa.ec.eudi.pidissuer.port.out.qr.Format
 import eu.europa.ec.eudi.pidissuer.port.out.qr.GenerateQqCode
 import eu.europa.ec.eudi.pidissuer.port.out.qr.Pixels
+import io.ktor.http.URLBuilder
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -62,6 +66,7 @@ class IssuerUi(
     private suspend fun handleDisplayGenerateCredentialsOfferForm(): ServerResponse {
         log.info("Displaying 'Generate Credentials Offer' page")
         val credentialIds = metadata.credentialConfigurationsSupported.map { it.id.value }
+        val usefulLinks = createUsefulLinks(metadata.id, metadata.authorizationServers[0])
         return ServerResponse.ok()
             .contentType(MediaType.TEXT_HTML)
             .renderAndAwait(
@@ -70,6 +75,7 @@ class IssuerUi(
                     "credentialIds" to credentialIds,
                     "credentialsOfferUri" to credentialsOfferUri,
                     "openid4VciVersion" to OpenId4VciSpec.VERSION,
+                    "usefulLinks" to usefulLinks,
                 ),
             )
     }
@@ -112,6 +118,28 @@ class IssuerUi(
                     ),
                 )
         }
+    }
+
+    private fun createUsefulLinks(credentialIssuer: CredentialIssuerId, authorizationServer: HttpsUrl): Map<String, String> {
+        fun HttpsUrl.wellKnown(path: String): HttpsUrl =
+            HttpsUrl.unsafe(
+                URLBuilder(value.toExternalForm())
+                    .apply {
+                        pathSegments = listOf(".well-known", path) + pathSegments.filterNot { it.isBlank() }
+                    }.buildString(),
+            )
+
+        val credentialIssuerMetadata = credentialIssuer.appendPath("/.well-known/openid-credential-issuer")
+        val authorizationServerMetadata = authorizationServer.wellKnown("oauth-authorization-server")
+        val sdJwtVcIssuerMetadata = credentialIssuer.wellKnown("jwt-vc-issuer")
+        val pidSdJwtVcTypeMetadata = credentialIssuer.appendPath("/type-metadata/urn:eudi:pid:1")
+
+        return mapOf(
+            "credential_issuer_metadata" to credentialIssuerMetadata.externalForm,
+            "authorization_server_metadata" to authorizationServerMetadata.externalForm,
+            "sdjwt_vc_issuer_metadata" to sdJwtVcIssuerMetadata.externalForm,
+            "pid_sdjwt_vc_type_metadata" to pidSdJwtVcTypeMetadata.externalForm,
+        )
     }
 
     companion object {
