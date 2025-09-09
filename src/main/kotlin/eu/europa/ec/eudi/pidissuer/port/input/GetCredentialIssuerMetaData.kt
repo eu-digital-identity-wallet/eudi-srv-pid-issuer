@@ -137,7 +137,7 @@ private fun CredentialRequestEncryption.toTransferObject(): Option<CredentialIss
         ifOptional = { optional ->
             CredentialIssuerMetaDataTO.CredentialRequestEncryptionTO(
                 jwks = Json.decodeFromString(
-                    JSONObjectUtils.toJSONString(optional.parameters.jwks.toPublicJWKSet().toJSONObject()),
+                    JSONObjectUtils.toJSONString(optional.parameters.encryptionKeys.toPublicJWKSet().toJSONObject()),
                 ),
                 encryptionMethods = optional.parameters.methodsSupported.map { it.name },
                 zipValuesSupported = optional.parameters.zipAlgorithmsSupported?.map { it.name },
@@ -147,7 +147,7 @@ private fun CredentialRequestEncryption.toTransferObject(): Option<CredentialIss
         ifRequired = { required ->
             CredentialIssuerMetaDataTO.CredentialRequestEncryptionTO(
                 jwks = Json.decodeFromString(
-                    JSONObjectUtils.toJSONString(required.parameters.jwks.toPublicJWKSet().toJSONObject()),
+                    JSONObjectUtils.toJSONString(required.parameters.encryptionKeys.toPublicJWKSet().toJSONObject()),
                 ),
                 encryptionMethods = required.parameters.methodsSupported.map { it.name },
                 zipValuesSupported = required.parameters.zipAlgorithmsSupported?.map { it.name },

@@ -957,7 +957,7 @@ private fun Environment.credentialRequestEncryption(): CredentialRequestEncrypti
         }
 
         val parameters = CredentialRequestEncryptionSupportedParameters(
-            jwks = JWKSet(key),
+            encryptionKeys = JWKSet(key),
             methodsSupported = readNonEmptySet(
                 "issuer.credentialRequestEncryption.encryptionMethods",
                 EncryptionMethod::parse,

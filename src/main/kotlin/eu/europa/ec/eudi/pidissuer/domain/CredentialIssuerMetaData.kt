@@ -27,7 +27,7 @@ import java.util.*
 /**
  * Encryption algorithms and methods supported for encrypting Credential Responses.
  *
- * @param jwks a Json Web Key Set (JWK Set) RFC7517 containing the one or more
+ * @param encryptionKeys a Json Web Key Set (JWK Set) RFC7517 containing the one or more
  * public keys to be used by the Wallet as an input to a key agreement
  * for encryption of the Credential Request
  * @param methodsSupported a list of the JWE RFC7516 encryption algorithms
@@ -39,15 +39,16 @@ import java.util.*
  * to uncompress the Credential Request after decryption
  */
 data class CredentialRequestEncryptionSupportedParameters(
-    val jwks: JWKSet,
+    val encryptionKeys: JWKSet,
     val methodsSupported: NonEmptySet<EncryptionMethod>,
     val zipAlgorithmsSupported: NonEmptySet<CompressionAlgorithm>?,
 ) {
     init {
-        require(jwks.keys.isNotEmpty()) { "jwks must contain at least one key" }
-        require(jwks.keys.all { !it.keyID.isNullOrBlank() }) { "jwks must contain keys with a kid value" }
-        require(jwks.keys.all { it.algorithm != null }) { "jwks must contain keys with an alg value" }
-        require(jwks.keys.all { it.algorithm is JWEAlgorithm }) { "jwks must contain keys with a JWE alg value" }
+        require(encryptionKeys.keys.isNotEmpty()) { "encryptionKeys must contain at least one key" }
+        require(encryptionKeys.keys.all { it.isPrivate }) { "encryptionKeys must contain only private keys" }
+        require(encryptionKeys.keys.all { !it.keyID.isNullOrBlank() }) { "encryptionKeys must contain keys with a kid value" }
+        require(encryptionKeys.keys.all { it.algorithm != null }) { "encryptionKeys must contain keys with an alg value" }
+        require(encryptionKeys.keys.all { it.algorithm is JWEAlgorithm }) { "encryptionKeys must contain keys with a JWE alg value" }
         require(zipAlgorithmsSupported?.all { it.name in ZIP_ALGORITHMS } ?: true) {
             "zipAlgorithmsSupported must be one of ${ZIP_ALGORITHMS.joinToString(", ") { it }}"
         }

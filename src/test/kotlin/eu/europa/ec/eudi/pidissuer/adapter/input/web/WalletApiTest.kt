@@ -835,7 +835,8 @@ internal class WalletApiResponseEncryptionOptionalTest : BaseWalletApiTest() {
         val authentication = dPoPTokenAuthentication(clock = clock)
         val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
 
-        require(credentialIssuerMetadata.credentialRequestEncryption is CredentialRequestEncryption.Optional)
+        val credentialRequestEncryption = credentialIssuerMetadata.credentialRequestEncryption
+        require(credentialRequestEncryption is CredentialRequestEncryption.Optional)
 
         val key = ECKeyGenerator(Curve.P_256)
             .algorithm(JWEAlgorithm.ECDH_ES)
@@ -852,7 +853,7 @@ internal class WalletApiResponseEncryptionOptionalTest : BaseWalletApiTest() {
             .contentType(MediaType.parseMediaType("application/jwt"))
             .bodyValue(
                 requestByCredentialConfigurationId(proofs = proofs)
-                    .encrypt((credentialIssuerMetadata.credentialRequestEncryption as CredentialRequestEncryption.Optional).parameters),
+                    .encrypt(credentialRequestEncryption.parameters),
             )
             .accept(MediaType.parseMediaType("application/jwt"))
             .exchange()
@@ -1224,14 +1225,14 @@ private fun encryptionResponseParameters(key: ECKey): CredentialResponseEncrypti
 private fun CredentialRequestTO.encrypt(encParams: CredentialRequestEncryptionSupportedParameters): String =
     JWEObject(
         JWEHeader.Builder(JWEAlgorithm.ECDH_ES, encParams.methodsSupported.head)
-            .keyID(encParams.jwks.keys[0].keyID)
-            .jwk(encParams.jwks.keys[0].toPublicJWK())
+            .keyID(encParams.encryptionKeys.keys[0].keyID)
+            .jwk(encParams.encryptionKeys.keys[0].toPublicJWK())
             .type(JOSEObjectType.JWT)
             .build(),
         Payload(Json.encodeToString(this)),
     ).apply {
         encrypt(
-            ECDHEncrypter(encParams.jwks.keys[0].toECKey()),
+            ECDHEncrypter(encParams.encryptionKeys.keys[0].toECKey()),
         )
     }.serialize()
 

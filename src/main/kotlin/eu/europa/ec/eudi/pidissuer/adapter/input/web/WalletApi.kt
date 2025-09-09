@@ -89,11 +89,7 @@ internal class WalletApi(
                     val jwt = req.awaitBody<String>()
                     issueCredential.fromEncryptedRequest(context, jwt)
                 }
-                else -> {
-                    return ServerResponse.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
-                        .cacheControl(CacheControl.noStore())
-                        .buildAndAwait()
-                }
+                else -> error("Unexpected content-type")
             }
         } catch (error: ServerWebInputException) {
             IssueCredentialResponse.FailedTO(

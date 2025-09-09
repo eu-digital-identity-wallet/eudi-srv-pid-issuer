@@ -25,8 +25,8 @@ import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
 import com.nimbusds.jose.proc.JWEDecryptionKeySelector
 import com.nimbusds.jose.proc.SecurityContext
+import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.EncryptedJWT
-import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -64,26 +64,7 @@ data class CredentialRequestTO(
     val proofs: ProofsTO? = null,
     @SerialName("credential_response_encryption")
     val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
-) {
-    companion object {
-        fun from(jwtClaimsSet: JWTClaimsSet): CredentialRequestTO {
-            val claims = jwtClaimsSet.asJsonObject()
-            return CredentialRequestTO(
-                credentialIdentifier = jwtClaimsSet.getStringClaim("credential_identifier"),
-                credentialConfigurationId = jwtClaimsSet.getStringClaim("credential_configuration_id"),
-                proofs = claims["proofs"]?.let { Json.decodeFromJsonElement<ProofsTO>(it) },
-                credentialResponseEncryption = claims["credential_response_encryption"]
-                    ?.let { Json.decodeFromJsonElement<CredentialResponseEncryptionTO>(it) },
-            )
-        }
-
-        private fun JWTClaimsSet.asJsonObject(): JsonObject {
-            val json = Json.parseToJsonElement(toString())
-            check(json is JsonObject)
-            return json
-        }
-    }
-}
+)
 
 /**
  * Errors that might be raised while trying to issue a credential.
@@ -301,22 +282,21 @@ class IssueCredential(
     suspend fun fromEncryptedRequest(
         authorizationContext: AuthorizationContext,
         credentialRequestJwt: String,
-    ): IssueCredentialResponse = coroutineScope {
+    ): IssueCredentialResponse =
         either {
-            ensure(credentialIssuerMetadata.credentialRequestEncryption !is CredentialRequestEncryption.NotSupported) {
-                RequestEncryptionNotSupported
-            }
-            val request = decryptCredentialRequest(EncryptedJWT.parse(credentialRequestJwt))
+            val parsedJwt = Either.catch { EncryptedJWT.parse(credentialRequestJwt) }
+                .mapLeft { Unexpected("Could not parse encrypted credential request", it) }
+                .bind()
+            val request = decryptCredentialRequest(parsedJwt)
             invoke(authorizationContext, request)
         }.getOrElse { error ->
             errorResponse(error)
         }
-    }
 
     suspend fun fromPlainRequest(
         authorizationContext: AuthorizationContext,
         credentialRequestTO: CredentialRequestTO,
-    ): IssueCredentialResponse = coroutineScope {
+    ): IssueCredentialResponse =
         either {
             ensure(credentialRequestTO.credentialResponseEncryption == null) {
                 ResponseEncryptionRequiresEncryptedRequest
@@ -328,7 +308,6 @@ class IssueCredential(
         }.getOrElse { error ->
             errorResponse(error)
         }
-    }
 
     private suspend operator fun invoke(
         authorizationContext: AuthorizationContext,
@@ -348,9 +327,7 @@ class IssueCredential(
     }
 
     private fun Raise<IssueCredentialError>.decryptCredentialRequest(jwt: EncryptedJWT): CredentialRequestTO {
-        val algorithm = checkNotNull(jwt.header.algorithm)
-
-        val (jwks, methodsSupported, compressionMethodsSupported) =
+        val (encryptionKeys, methodsSupported, compressionMethodsSupported) =
             when (val requestEncryption = credentialIssuerMetadata.credentialRequestEncryption) {
                 is CredentialRequestEncryption.Optional -> {
                     requestEncryption.parameters
@@ -361,23 +338,23 @@ class IssueCredential(
                 is CredentialRequestEncryption.NotSupported -> raise(RequestEncryptionNotSupported)
             }
 
-        ensure(methodsSupported.map { it.name }.contains(jwt.header.encryptionMethod.name)) {
+        ensure(methodsSupported.any { it == jwt.header.encryptionMethod}) {
             UnsupportedEncryptionMethod(jwt.header.encryptionMethod, methodsSupported)
         }
         jwt.header.compressionAlgorithm?.let { compressionAlgorithm ->
-            ensure(compressionMethodsSupported?.map { it.name }?.contains(compressionAlgorithm.name) == true) {
+            ensure(compressionMethodsSupported?.any { it.name == compressionAlgorithm.name } == true) {
                 UnsupportedCompressionMethod(jwt.header.compressionAlgorithm, compressionMethodsSupported)
             }
         }
 
         val processor = DefaultJWTProcessor<SecurityContext>()
         processor.jweKeySelector = JWEDecryptionKeySelector(
-            algorithm,
+            jwt.header.algorithm,
             jwt.header.encryptionMethod,
-            ImmutableJWKSet(jwks),
+            ImmutableJWKSet(encryptionKeys),
         )
         val claims = processor.process(jwt, null)
-        return CredentialRequestTO.from(claims)
+        return Json.decodeFromString<CredentialRequestTO>(JSONObjectUtils.toJSONString(claims.toJSONObject()))
     }
 
     private fun successResponse(
