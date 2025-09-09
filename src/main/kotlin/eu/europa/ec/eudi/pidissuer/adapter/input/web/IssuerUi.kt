@@ -67,7 +67,7 @@ class IssuerUi(
     private suspend fun handleDisplayGenerateCredentialsOfferForm(): ServerResponse {
         log.info("Displaying 'Generate Credentials Offer' page")
         val credentialIds = metadata.credentialConfigurationsSupported.map { it.id.value }
-        val usefulLinks = createUsefulLinks(metadata.id, metadata.authorizationServers[0])
+        val usefulLinks = createUsefulMetadataLinks(metadata.id, metadata.authorizationServers[0])
         return ServerResponse.ok()
             .contentType(MediaType.TEXT_HTML)
             .renderAndAwait(
@@ -121,7 +121,7 @@ class IssuerUi(
         }
     }
 
-    private fun createUsefulLinks(credentialIssuerId: CredentialIssuerId, authorizationServerUrl: HttpsUrl): Map<String, String> {
+    private fun createUsefulMetadataLinks(credentialIssuerId: CredentialIssuerId, authorizationServerUrl: HttpsUrl): Map<String, String> {
         fun URL.toMetadataUrlLocation(metadataPath: String, beforePath: Boolean = true): Url {
             val url = Url(this.toString())
             return URLBuilder(url).apply {
