@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.server.*
+import java.net.URL
 import kotlin.io.encoding.Base64
 
 class IssuerUi(
@@ -70,6 +71,7 @@ class IssuerUi(
                     "credentialIds" to credentialIds,
                     "credentialsOfferUri" to credentialsOfferUri,
                     "openid4VciVersion" to OpenId4VciSpec.VERSION,
+                    "metadata" to createMetadataTable(metadata.id.value, metadata.authorizationServers[0].value),
                 ),
             )
     }
@@ -112,6 +114,35 @@ class IssuerUi(
                     ),
                 )
         }
+    }
+
+    private fun createMetadataTable(issuerPublicUrl: URL, authorizationServerUrl: URL): Map<String, String> {
+        fun URL.toMetadataUrlPresent(metadataPath: String): URL {
+            val url = this
+            val string = StringBuilder().apply {
+                append("${url.protocol}://")
+                append("${url.host}")
+                if (url.port != -1)
+                    append(":${url.port}")
+                append(metadataPath)
+                if (url.path != null)
+                    append(url.path)
+            }.toString()
+
+            return URL(string)
+        }
+
+        val authorizationServerMetadataLink = authorizationServerUrl.toMetadataUrlPresent("/.well-known/openid-authorization-server")
+        val credentialIssuerMetadataLink = issuerPublicUrl.toMetadataUrlPresent("/.well-known/openid-credential-issuer")
+        val jwtIssuerMetadataLink = issuerPublicUrl.toMetadataUrlPresent("/.well-known/jwt-vc-issuer")
+        val pidTypeMetadataLink = issuerPublicUrl.toMetadataUrlPresent("/type-metadata/urn:eudi:pid:1")
+
+        return mapOf(
+            "Authorization Server Metadata" to authorizationServerMetadataLink.toString(),
+            "VCI Credential Issuer Metadata" to credentialIssuerMetadataLink.toString(),
+            "JWT VC Issuer Metadata" to jwtIssuerMetadataLink.toString(),
+            "Type Metadata PID" to pidTypeMetadataLink.toString(),
+        )
     }
 
     companion object {
