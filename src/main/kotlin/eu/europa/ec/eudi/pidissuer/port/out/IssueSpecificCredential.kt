@@ -51,11 +51,20 @@ private class DeferredIssuer(
 ) : IssueSpecificCredential by issuer {
 
     override val supportedCredential: CredentialConfiguration
-            get() = when (val cfg = issuer.supportedCredential) {
-                is JwtVcJsonCredentialConfiguration -> cfg.copy(id = CredentialConfigurationId(cfg.id.value + "_deferred"))
-                is MsoMdocCredentialConfiguration -> cfg.copy(id = CredentialConfigurationId(cfg.id.value + "_deferred"))
-                is SdJwtVcCredentialConfiguration -> cfg.copy(id = CredentialConfigurationId(cfg.id.value + "_deferred"))
-            }
+        get() = when (val cfg = issuer.supportedCredential) {
+            is JwtVcJsonCredentialConfiguration -> cfg.copy(
+                id = CredentialConfigurationId(cfg.id.value + "_deferred"),
+                display = cfg.display.map { it.copy(name = it.name.copy(name = it.name.name + " (deferred)")) },
+            )
+            is MsoMdocCredentialConfiguration -> cfg.copy(
+                id = CredentialConfigurationId(cfg.id.value + "_deferred"),
+                display = cfg.display.map { it.copy(name = it.name.copy(name = it.name.name + " (deferred)")) },
+            )
+            is SdJwtVcCredentialConfiguration -> cfg.copy(
+                id = CredentialConfigurationId(cfg.id.value + "_deferred"),
+                display = cfg.display.map { it.copy(name = it.name.copy(name = it.name.name + " (deferred)")) },
+            )
+        }
 
     private val log = LoggerFactory.getLogger(DeferredIssuer::class.java)
 

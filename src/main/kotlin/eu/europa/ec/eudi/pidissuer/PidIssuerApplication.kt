@@ -494,6 +494,7 @@ fun beans(clock: Clock) = beans {
                         keyAttestationRequirement = keyAttestationRequirement,
                     )
                     add(issueMsoMdocPid)
+                    add(issueMsoMdocPid.asDeferred(ref(), ref()))
                 }
 
                 if (enableSdJwtVcPid) {
@@ -534,7 +535,6 @@ fun beans(clock: Clock) = beans {
                     )
 
                     add(issueSdJwtVcPid)
-
                     add(issueSdJwtVcPid.asDeferred(ref(), ref()))
                 }
 
@@ -558,7 +558,6 @@ fun beans(clock: Clock) = beans {
                         keyAttestationRequirement = keyAttestationRequirement,
                     )
                     add(mdlIssuer)
-
                     add(mdlIssuer.asDeferred(ref(), ref()))
                 }
 
@@ -601,6 +600,7 @@ fun beans(clock: Clock) = beans {
                         keyAttestationRequirement = keyAttestationRequirement,
                     )
                     add(ehicJwsJsonFlattenedIssuer)
+                    add(ehicJwsJsonFlattenedIssuer.asDeferred(ref(), ref()))
 
                     val ehicCompactIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.compact(
                         issuerSigningKey = ref<IssuerSigningKey>(),
@@ -622,6 +622,7 @@ fun beans(clock: Clock) = beans {
                         keyAttestationRequirement = keyAttestationRequirement,
                     )
                     add(ehicCompactIssuer)
+                    add(ehicCompactIssuer.asDeferred(ref(), ref()))
                 }
             },
             batchCredentialIssuance = run {
