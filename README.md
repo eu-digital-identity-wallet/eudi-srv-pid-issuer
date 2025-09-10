@@ -411,7 +411,7 @@ Default value: `pid-issuer`
 
 Variable: `ISSUER_DPOP_NONCE_ENABLED`  
 Description: Whether Nonce values are required for DPoP authentication    
-Default value: `false`
+Default value: `true`
 
 Variable: `ISSUER_DPOP_NONCE_EXPIRATION`  
 Description: Duration after which Nonce values for DPoP authentication expire    
@@ -439,33 +439,58 @@ Description: URI of the service used to generate Status List Tokens
 Variable: `ISSUER_STATUSLIST_SERVICE_APIKEY`  
 Description: API Key of the service used to generate Status List Tokens
 
-Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS`
+Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS`  
 Description: Whether to generate a new, or use an existing key-pair for credential request encryption.    
-Possible values: `GenerateRandom`, `LoadFromKeystore`
+Possible values: `GenerateRandom`, `LoadFromKeystore`  
 Default value: `GenerateRandom`
 
-Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_KEYSTORE`
-Description: Location of the keystore from which to load the key-pair for credential request encryption. Uses Spring Resource URL syntax.
+Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_KEYSTORE`   
+Description: Location of the keystore from which to load the key-pair for credential request encryption. Uses Spring Resource URL syntax.  
 Default value: N/A
 
-Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_KEYSTORE_TYPE`
-Description: Type of the keystore from which to load the key-pair for credential request encryption.
+Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_KEYSTORE_TYPE`   
+Description: Type of the keystore from which to load the key-pair for credential request encryption.  
 Default value: N/A
 
-Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_KEYSTORE_PASSWORD`
-Description: Password of the keystore from which to load the key-pair for credential request encryption.
+Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_KEYSTORE_PASSWORD`   
+Description: Password of the keystore from which to load the key-pair for credential request encryption.  
+Default value: N/A  
+
+Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_ALIAS`  
+Description: Alias of the key-pair for credential request encryption.    
+Default value: N/A  
+
+Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_PASSWORD`  
+Description: Password of the key-pair for credential request encryption.  
 Default value: N/A
 
-Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_ALIAS`
-Description: Alias of the key-pair for credential request encryption.
+Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_ALGORITHM`  
+Description: The algorithm of the key for credential request encryption.  
 Default value: N/A
 
-Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_PASSWORD`
-Description: Password of the key-pair for credential request encryption.
+Variable: `ISSUER_NONCE_ENCRYPTION_KEY`  
+Description: Whether to generate a new, or use an existing EC key-pair for nonce encryption.      
+Possible values: `GenerateRandom`, `LoadFromKeystore`    
+Default value: `GenerateRandom`
+
+Variable: `ISSUER_NONCE_ENCRYPTION_KEY_KEYSTORE`  
+Description: Location of the keystore from which to load the EC key-pair for nonce encryption. Uses Spring Resource URL syntax.  
 Default value: N/A
 
-Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_ALGORITHM`
-Description: The algorithm of the key for credential request encryption.
+Variable: `ISSUER_NONCE_ENCRYPTION_KEY_KEYSTORE_TYPE`  
+Description: Type of the keystore from which to load the EC key-pair for nonce encryption.  
+Default value: N/A
+
+Variable: `ISSUER_NONCE_ENCRYPTION_KEY_KEYSTORE_PASSWORD`  
+Description: Password of the keystore from which to load the EC key-pair for nonce encryption.  
+Default value: N/A
+
+Variable: `ISSUER_NONCE_ENCRYPTION_KEY_ALIAS`  
+Description: Alias of the EC key-pair for nonce encryption.  
+Default value: N/A
+
+Variable: `ISSUER_NONCE_ENCRYPTION_KEY_PASSWORD`  
+Description: Password of the EC key-pair for nonce encryption.  
 Default value: N/A
 
 ### Metadata configuration

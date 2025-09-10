@@ -32,6 +32,7 @@ value class AttackPotentialResistance(val value: String) {
 
     override fun toString(): String = value
 
+    @Suppress("unused")
     companion object {
         val Iso18045High: AttackPotentialResistance get() = AttackPotentialResistance("iso_18045_high")
         val Iso18045Moderate: AttackPotentialResistance get() = AttackPotentialResistance("iso_18045_moderate")

@@ -177,8 +177,8 @@ private fun selectivelyDisclosed(
         pidMetaData.personalAdministrativeNumber?.let { sdClaim(SdJwtVcPidClaims.PersonalAdministrativeNumber.name, it.value) }
         pid.portrait?.let {
             val encodedBytes = when (it) {
-                is PortraitImage.JPEG -> Base64.Default.encode(it.value)
-                is PortraitImage.JPEG2000 -> Base64.Default.encode(it.value)
+                is PortraitImage.JPEG -> Base64.encode(it.value)
+                is PortraitImage.JPEG2000 -> Base64.encode(it.value)
             }
             val url = "data:image/jpeg;base64,$encodedBytes"
             sdClaim(SdJwtVcPidClaims.Picture.name, url)

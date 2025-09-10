@@ -26,7 +26,7 @@ import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
-import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyCNonce
+import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
 import kotlinx.coroutines.coroutineScope
 import java.time.Instant
 
@@ -36,7 +36,7 @@ import java.time.Instant
 internal class ValidateProofs(
     private val validateJwtProof: ValidateJwtProof,
     private val validateAttestationProof: ValidateAttestationProof,
-    private val verifyCNonce: VerifyCNonce,
+    private val verifyNonce: VerifyNonce,
     private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
 ) {
 
@@ -58,7 +58,7 @@ internal class ValidateProofs(
 
             val cnonces = credentialKeysAndCNonces.map { it.second }.toNonEmptyListOrNull()
             checkNotNull(cnonces)
-            ensure(verifyCNonce(cnonces, at)) {
+            ensure(verifyNonce(cnonces, at)) {
                 InvalidNonce("CNonce is not valid")
             }
 
