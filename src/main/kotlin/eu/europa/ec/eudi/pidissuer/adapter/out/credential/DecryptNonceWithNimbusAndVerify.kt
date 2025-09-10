@@ -16,12 +16,9 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.credential
 
 import arrow.core.raise.result
-import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JOSEObjectType
-import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.crypto.factories.DefaultJWEDecrypterFactory
 import com.nimbusds.jose.jwk.JWKSet
-import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
 import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
 import com.nimbusds.jose.proc.JWEDecryptionKeySelector
@@ -40,19 +37,15 @@ import java.time.Instant
  */
 internal class DecryptNonceWithNimbusAndVerify(
     private val issuer: CredentialIssuerId,
-    private val decryptionKey: RSAKey,
+    private val decryptionKey: NonceEncryptionKey,
 ) : VerifyNonce {
-    init {
-        require(decryptionKey.isPrivate) { "a private key is required for decryption" }
-    }
-
     private val processor = DefaultJWTProcessor<SecurityContext>()
         .apply {
             jweTypeVerifier = DefaultJOSEObjectTypeVerifier(JOSEObjectType("nonce+jwt"))
             jweKeySelector = JWEDecryptionKeySelector(
-                JWEAlgorithm.RSA_OAEP_512,
-                EncryptionMethod.XC20P,
-                ImmutableJWKSet(JWKSet(decryptionKey)),
+                decryptionKey.algorithm,
+                decryptionKey.method,
+                ImmutableJWKSet(JWKSet(decryptionKey.encryptionKey)),
             )
             jweDecrypterFactory = DefaultJWEDecrypterFactory()
                 .apply {

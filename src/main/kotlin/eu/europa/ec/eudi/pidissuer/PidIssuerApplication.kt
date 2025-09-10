@@ -22,7 +22,6 @@ import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
-import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPProtectedResourceRequestVerifier
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DefaultDPoPSingleUseChecker
@@ -39,6 +38,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CredentialRequestFacto
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DecryptNonceWithNimbusAndVerify
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultResolveCredentialRequestByCredentialIdentifier
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.GenerateNonceAndEncryptWithNimbus
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.NonceEncryptionKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.GetEuropeanHealthInsuranceCardDataMock
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IssueSdJwtVcEuropeanHealthInsuranceCard
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
@@ -249,18 +249,21 @@ fun beans(clock: Clock) = beans {
     //
     // Nonce encryption key
     //
-    val nonceEncryptionKey: RSAKey = when (env.getProperty<KeyOption>("issuer.nonce.encryption-key")) {
-        null, KeyOption.GenerateRandom -> {
-            log.info("Generating random encryption key for Nonce")
-            RSAKeyGenerator(4096, false).generate()
-        }
+    val nonceEncryptionKey = run {
+        val encryptionKey: ECKey = when (env.getProperty<KeyOption>("issuer.nonce.encryption-key")) {
+            null, KeyOption.GenerateRandom -> {
+                log.info("Generating random encryption key for Nonce")
+                ECKeyGenerator(Curve.P_256).keyUse(KeyUse.ENCRYPTION).generate()
+            }
 
-        KeyOption.LoadFromKeystore -> {
-            log.info("Loading Nonce encryption key from keystore")
-            val nonceEncryptionKey = loadJwkFromKeystore(env, "issuer.nonce.encryption-key")
-            require(nonceEncryptionKey is RSAKey) { "Only RSAKeys are supported for encryption" }
-            nonceEncryptionKey
+            KeyOption.LoadFromKeystore -> {
+                log.info("Loading Nonce encryption key from keystore")
+                val nonceEncryptionKey = loadJwkFromKeystore(env, "issuer.nonce.encryption-key")
+                require(nonceEncryptionKey is ECKey) { "Only ECKey are supported for encryption" }
+                nonceEncryptionKey
+            }
         }
+        NonceEncryptionKey(encryptionKey)
     }
 
     //

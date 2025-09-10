@@ -15,12 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.credential
 
-import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JOSEObjectType
-import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWEHeader
-import com.nimbusds.jose.crypto.RSAEncrypter
-import com.nimbusds.jose.jwk.RSAKey
+import com.nimbusds.jose.crypto.ECDHEncrypter
 import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.openid.connect.sdk.Nonce
@@ -36,11 +33,11 @@ import java.util.*
  */
 internal class GenerateNonceAndEncryptWithNimbus(
     private val issuer: CredentialIssuerId,
-    encryptionKey: RSAKey,
+    private val encryptionKey: NonceEncryptionKey,
     private val generator: suspend () -> String = { Nonce(128).value },
 ) : GenerateNonce {
 
-    private val encrypter = RSAEncrypter(encryptionKey)
+    private val encrypter = ECDHEncrypter(encryptionKey.encryptionKey)
         .apply {
             jcaContext.provider = BouncyCastleProvider()
         }
@@ -49,7 +46,7 @@ internal class GenerateNonceAndEncryptWithNimbus(
         val expiresAt = generatedAt + expiresIn
 
         return EncryptedJWT(
-            JWEHeader.Builder(JWEAlgorithm.RSA_OAEP_512, EncryptionMethod.XC20P)
+            JWEHeader.Builder(encryptionKey.algorithm, encryptionKey.method)
                 .type(JOSEObjectType("nonce+jwt"))
                 .build(),
             JWTClaimsSet.Builder()
