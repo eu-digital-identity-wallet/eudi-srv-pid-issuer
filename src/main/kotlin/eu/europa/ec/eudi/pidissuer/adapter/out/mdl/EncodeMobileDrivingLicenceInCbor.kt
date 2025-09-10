@@ -18,7 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 import arrow.core.Either
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * Encodes a Mobile Driving Licence in CBOR format.

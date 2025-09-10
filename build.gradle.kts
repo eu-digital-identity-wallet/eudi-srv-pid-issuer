@@ -71,10 +71,10 @@ dependencies {
     implementation(libs.waltid.mdoc.credentials) {
         because("To sign CBOR credentials")
     }
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2") {
+    implementation(libs.kotlinx.datetime) {
         because("required by walt.id")
     }
-    implementation("com.augustcellars.cose:cose-java:1.1.0") {
+    implementation(libs.cose.java) {
         because("required by walt.id")
     }
     implementation(libs.uri.kmp) {
@@ -101,7 +101,7 @@ kotlin {
     }
 
     compilerOptions {
-        apiVersion = KotlinVersion.KOTLIN_2_0
+        apiVersion = KotlinVersion.KOTLIN_2_1
         freeCompilerArgs.addAll(
             "-Xjsr305=strict",
             "-Xconsistent-data-class-copy-visibility",
@@ -110,6 +110,7 @@ kotlin {
             "kotlinx.serialization.ExperimentalSerializationApi",
             "kotlin.io.encoding.ExperimentalEncodingApi",
             "kotlin.contracts.ExperimentalContracts",
+            "kotlin.time.ExperimentalTime",
         )
     }
 }

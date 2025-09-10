@@ -26,8 +26,9 @@ import id.walt.mdoc.dataelement.MapElement
 import id.walt.mdoc.doc.MDocBuilder
 import id.walt.mdoc.mso.DeviceKeyInfo
 import id.walt.mdoc.mso.ValidityInfo
-import kotlinx.datetime.Instant
+import kotlinx.datetime.toDeprecatedInstant
 import kotlin.io.encoding.Base64
+import kotlin.time.Instant
 
 internal class MsoMdocSigner<in Credential>(
     private val issuerSigningKey: IssuerSigningKey,
@@ -45,7 +46,12 @@ internal class MsoMdocSigner<in Credential>(
         expiresAt: Instant,
     ): String {
         require(expiresAt >= issuedAt) { "expiresAt must greater or equal to issuedAt" }
-        val validityInfo = ValidityInfo(signed = issuedAt, validFrom = issuedAt, validUntil = expiresAt, expectedUpdate = null)
+        val validityInfo = ValidityInfo(
+            signed = issuedAt.toDeprecatedInstant(),
+            validFrom = issuedAt.toDeprecatedInstant(),
+            validUntil = expiresAt.toDeprecatedInstant(),
+            expectedUpdate = null,
+        )
         val deviceKeyInfo = deviceKeyInfo(deviceKey)
         val mdoc = MDocBuilder(docType)
             .apply { usage(credential) }

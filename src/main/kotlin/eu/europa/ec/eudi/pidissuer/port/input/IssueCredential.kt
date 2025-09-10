@@ -339,7 +339,6 @@ private class Services(
                     unresolvedRequest.credentialResponseEncryption,
                 )
                 ensureNotNull(resolvedRequest) { InvalidCredentialIdentifier(unresolvedRequest.credentialIdentifier) }
-                resolvedRequest
             }.bind()
 
         private suspend fun issue(

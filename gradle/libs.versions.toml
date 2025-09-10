@@ -1,15 +1,15 @@
 [versions]
-coroutines = "1.10.1"
-kotlin = "2.0.21"
+coroutines = "1.10.2"
+kotlin = "2.1.21"
 arrow = "2.0.1"
 springboot = "3.4.6"
 spotless = "7.0.2"
 java = "17"
-kotlinxSerialization = "1.8.0"
+kotlinxSerialization = "1.8.1"
 ktlint = "0.50.0"
 nimbusJoseJwt = "10.0.2"
 nimbusOAuth2 = "11.23.1"
-eudiSdJwt = "0.14.0"
+eudiSdJwt = "0.16.0"
 bouncyCastle = "1.80"
 dependencyCheck = "12.1.1"
 bootstrap = "5.3.3"
@@ -20,7 +20,8 @@ uri-kmp = "0.0.19"
 zxing = "3.5.3"
 tink = "1.17.0"
 kover = "0.9.1"
-
+cose-java = "1.1.0"
+kotlinx-datetime = "0.7.1-0.6.x-compat"
 
 [libraries]
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
@@ -38,6 +39,8 @@ result-monad = { module = "org.erwinkok.result:result-monad", version.ref = "res
 waltid-mdoc-credentials = { module = "id.walt.mdoc-credentials:waltid-mdoc-credentials-jvm", version.ref = "waltid" }
 uri-kmp = { module = "com.eygraber:uri-kmp", version.ref = "uri-kmp" }
 zxing = { module = "com.google.zxing:javase", version.ref = "zxing" }
+cose-java = { module = "com.augustcellars.cose:cose-java", version.ref = "cose-java" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "springboot" }

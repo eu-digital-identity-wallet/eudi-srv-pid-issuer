@@ -33,12 +33,12 @@ import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
 import kotlinx.coroutines.Dispatchers
-import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.util.*
 import kotlin.time.Duration
+import kotlin.time.toKotlinInstant
 
 val MobileDrivingLicenceV1Scope: Scope = Scope(mdlDocType(1u))
 
