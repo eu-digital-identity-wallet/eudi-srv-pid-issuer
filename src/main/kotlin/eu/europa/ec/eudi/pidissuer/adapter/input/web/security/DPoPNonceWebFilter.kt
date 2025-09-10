@@ -15,9 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
-import com.nimbusds.oauth2.sdk.token.AccessTokenType
-import org.springframework.http.HttpHeaders
-import org.springframework.http.server.reactive.ServerHttpRequest
 import org.springframework.web.server.CoWebFilter
 import org.springframework.web.server.CoWebFilterChain
 import org.springframework.web.server.ServerWebExchange
@@ -33,21 +30,11 @@ class DPoPNonceWebFilter(
 ) : CoWebFilter() {
     override suspend fun filter(exchange: ServerWebExchange, chain: CoWebFilterChain) {
         val request = exchange.request
-        if (request.requiresDPoPNonce()) {
+        if (request.path.pathWithinApplication().value() in paths) {
             val newDPoPNonce = dpopNonce.generateDPoPNonce(clock.instant())
             val response = exchange.response
             response.headers["DPoP-Nonce"] = newDPoPNonce
         }
         chain.filter(exchange)
-    }
-
-    private fun ServerHttpRequest.requiresDPoPNonce(): Boolean {
-        val isUsingDPoP = run {
-            val containsDPoPProof = AccessTokenType.DPOP.value in headers
-            val containsDPoPAccessToken = headers[HttpHeaders.AUTHORIZATION].orEmpty().any { it.startsWith(AccessTokenType.DPOP.value) }
-            containsDPoPProof || containsDPoPAccessToken
-        }
-        val isExplicitlyConfigured = path.pathWithinApplication().value() in paths
-        return isUsingDPoP || isExplicitlyConfigured
     }
 }

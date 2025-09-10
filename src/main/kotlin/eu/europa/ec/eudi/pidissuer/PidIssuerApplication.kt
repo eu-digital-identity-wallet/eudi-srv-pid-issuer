@@ -691,7 +691,18 @@ fun beans(clock: Clock) = beans {
     if (env.getProperty("issuer.dpop.nonce.enabled", Boolean::class.java, false)) {
         val dpopNonceExpiresIn = env.duration("issuer.dpop.nonce.expiration") ?: Duration.ofMinutes(5L)
         bean { DPoPNoncePolicy.Enforcing(ref(), ref(), dpopNonceExpiresIn) }
-        bean { DPoPNonceWebFilter(ref(), ref(), listOf(WalletApi.NONCE_ENDPOINT)) }
+        bean {
+            DPoPNonceWebFilter(
+                ref(),
+                ref(),
+                listOf(
+                    WalletApi.CREDENTIAL_ENDPOINT,
+                    WalletApi.DEFERRED_ENDPOINT,
+                    WalletApi.NOTIFICATION_ENDPOINT,
+                    WalletApi.NONCE_ENDPOINT,
+                ),
+            )
+        }
     } else {
         bean { DPoPNoncePolicy.Disabled }
     }
