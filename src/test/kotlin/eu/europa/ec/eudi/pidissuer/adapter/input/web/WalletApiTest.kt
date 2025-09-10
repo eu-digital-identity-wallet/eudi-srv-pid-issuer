@@ -833,7 +833,7 @@ internal class WalletApiResponseEncryptionOptionalTest : BaseWalletApiTest() {
     @Test
     fun `issuance success by credential configuration id with encrypted request`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
+        val previousCNonce = generateNonce(clock.instant(), Duration.ofMinutes(5L))
 
         val credentialRequestEncryption = credentialIssuerMetadata.credentialRequestEncryption
         require(credentialRequestEncryption is CredentialRequestEncryption.Optional)
@@ -1133,7 +1133,7 @@ internal class WalletApiResponseEncryptionRequiredTest : BaseWalletApiTest() {
     @Test
     fun `issuance fails when credential response is encrypted but credential request is not encrypted`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
+        val previousCNonce = generateNonce(clock.instant(), Duration.ofMinutes(5L))
 
         val key = ECKeyGenerator(Curve.P_256).generate()
         val proofs = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, key) {
