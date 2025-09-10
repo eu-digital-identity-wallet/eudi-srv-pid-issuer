@@ -93,8 +93,12 @@ private suspend fun algorithmAndCredentialKey(
     val x5c: List<Base64>? = header.x509CertChain
     val keyAttestation = header.getCustomParam("key_attestation") as String?
 
-    if (proofType.keyAttestationRequirement is KeyAttestationRequirement.Required) {
-        requireNotNull(keyAttestation) { "JWT Proof must contain `key_attestation`" }
+    when (proofType.keyAttestationRequirement) {
+        KeyAttestationRequirement.NotRequired ->
+            require(null == keyAttestation) { "JWT Proof cannot contain `key_attestation`" }
+
+        is KeyAttestationRequirement.Required ->
+            requireNotNull(keyAttestation) { "JWT Proof must contain `key_attestation`" }
     }
 
     val key = when {

@@ -497,6 +497,47 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
         assertEquals(listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID"))), issuedCredentials)
         assertNull(response.transactionId)
     }
+
+    @Test
+    fun `fails when key_attestation is included when not required`() = runTest {
+        val authentication = dPoPTokenAuthentication(clock = clock)
+        val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
+
+        val jwtProofSigningKey = ECKeyGenerator(Curve.P_256).generate()
+
+        val extraKeysNo = 3
+        val keyAttestationJwt = keyAttestationJWT(
+            proofSigningKey = jwtProofSigningKey,
+            keyStorageConstraints = listOf("iso_18045_enhanced-basic"),
+            userAuthorizationConstraints = listOf("iso_18045_enhanced-basic"),
+        ) {
+            (0..<extraKeysNo).map {
+                ECKeyGenerator(Curve.P_256).generate()
+            }
+        }
+
+        val keyAttestationJwtProof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, jwtProofSigningKey) {
+            customParam("key_attestation", keyAttestationJwt.serialize())
+        }
+
+        val proofs = listOf(keyAttestationJwtProof).toJwtProofs()
+
+        val response = client()
+            .mutateWith(mockAuthentication(authentication))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(requestByCredentialIdentifier(proof = null, proofs = proofs))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest()
+            .expectBody<IssueCredentialResponse.FailedTO>()
+            .returnResult()
+            .let { assertNotNull(it.responseBody) }
+
+        assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
+        assertEquals("Invalid proof JWT", response.errorDescription)
+    }
 }
 
 /**
