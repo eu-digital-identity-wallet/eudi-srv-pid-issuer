@@ -177,9 +177,6 @@ private suspend fun DPoPNoncePolicy.verifyDPoPNonce(unverified: String?, now: In
             else null
 
         is DPoPNoncePolicy.Enforcing ->
-            if (unverified == null) throw OAuth2AuthenticationException(DPoPTokenError.useDPoPNonce("Invalid DPoP proof."))
-            else {
-                if (verifyDPoPNonce(unverified, now)) Nonce(unverified)
-                else throw OAuth2AuthenticationException(DPoPTokenError.invalidToken("Invalid DPoP proof."))
-            }
+            if (verifyDPoPNonce(unverified, now)) Nonce(unverified)
+            else throw OAuth2AuthenticationException(DPoPTokenError.useDPoPNonce("Invalid DPoP proof."))
     }
