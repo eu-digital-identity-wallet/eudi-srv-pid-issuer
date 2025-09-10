@@ -43,7 +43,7 @@ data class DPoPConfigurationProperties(
 sealed interface DPoPNoncePolicy {
 
     /**
-     * [DPoPNonce] is enforced.
+     * DPoP Nonce is enforced.
      */
     class Enforcing(
         val verifyDPoPNonce: VerifyNonce,
@@ -54,7 +54,7 @@ sealed interface DPoPNoncePolicy {
     }
 
     /**
-     * [DPoPNonce] is disabled.
+     * DPoP Nonce is disabled.
      */
     data object Disabled : DPoPNoncePolicy
 }
