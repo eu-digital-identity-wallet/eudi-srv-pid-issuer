@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
-import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import org.springframework.http.HttpStatus
 import org.springframework.security.oauth2.core.OAuth2Error
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes
@@ -50,10 +49,7 @@ sealed class DPoPTokenError(
     /**
      * Indicates DPoP Nonce must be used.
      */
-    class UseDPoPNonce(
-        description: String,
-        val accessToken: DPoPAccessToken,
-    ) : DPoPTokenError("use_dpop_nonce", description, HttpStatus.UNAUTHORIZED)
+    class UseDPoPNonce(description: String) : DPoPTokenError("use_dpop_nonce", description, HttpStatus.UNAUTHORIZED)
 
     companion object {
 
@@ -75,6 +71,6 @@ sealed class DPoPTokenError(
         /**
          * Creates a new 'use dpop nonce' error.
          */
-        fun useDPoPNonce(description: String, accessToken: DPoPAccessToken): UseDPoPNonce = UseDPoPNonce(description, accessToken)
+        fun useDPoPNonce(description: String): UseDPoPNonce = UseDPoPNonce(description)
     }
 }

@@ -25,9 +25,3 @@ internal fun <T, E : Exception> Either<Throwable, T>.getOrThrow(convert: (Throwa
         ifLeft = { throw convert(it) },
         ifRight = { it },
     )
-
-internal fun <T> Either<Throwable, T>.toResult(): Result<T> =
-    fold(
-        ifLeft = { Result.failure(it) },
-        ifRight = { Result.success(it) },
-    )
