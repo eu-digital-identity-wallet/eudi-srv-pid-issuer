@@ -18,11 +18,7 @@ package eu.europa.ec.eudi.pidissuer.port.out
 import arrow.core.Either
 import arrow.core.raise.either
 import com.nimbusds.jose.jwk.JWK
-import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
-import eu.europa.ec.eudi.pidissuer.domain.CredentialIdentifier
-import eu.europa.ec.eudi.pidissuer.domain.CredentialRequest
-import eu.europa.ec.eudi.pidissuer.domain.CredentialResponse
-import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement
+import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
@@ -53,6 +49,22 @@ private class DeferredIssuer(
     val generateTransactionId: GenerateTransactionId,
     val storeDeferredCredential: StoreDeferredCredential,
 ) : IssueSpecificCredential by issuer {
+
+    override val supportedCredential: CredentialConfiguration
+        get() = when (val cfg = issuer.supportedCredential) {
+            is JwtVcJsonCredentialConfiguration -> cfg.copy(
+                id = CredentialConfigurationId(cfg.id.value + "_deferred"),
+                display = cfg.display.map { it.copy(name = it.name.copy(name = it.name.name + " (deferred)")) },
+            )
+            is MsoMdocCredentialConfiguration -> cfg.copy(
+                id = CredentialConfigurationId(cfg.id.value + "_deferred"),
+                display = cfg.display.map { it.copy(name = it.name.copy(name = it.name.name + " (deferred)")) },
+            )
+            is SdJwtVcCredentialConfiguration -> cfg.copy(
+                id = CredentialConfigurationId(cfg.id.value + "_deferred"),
+                display = cfg.display.map { it.copy(name = it.name.copy(name = it.name.name + " (deferred)")) },
+            )
+        }
 
     private val log = LoggerFactory.getLogger(DeferredIssuer::class.java)
 
