@@ -26,6 +26,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
 import org.slf4j.LoggerFactory
 
+@Suppress("unused")
 @Serializable
 enum class EventTypeTO {
     /**

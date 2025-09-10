@@ -15,91 +15,25 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
-import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
-import com.nimbusds.openid.connect.sdk.Nonce
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import org.slf4j.LoggerFactory
-import java.time.Clock
+import com.nimbusds.jose.JWSAlgorithm
+import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
+import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
 import java.time.Duration
 import java.time.Instant
 
 /**
- * A Nonce value used for DPoP authentication.
+ * Properties for configuring DPoP.
  */
-data class DPoPNonce(val nonce: Nonce, val accessToken: DPoPAccessToken, val createdAt: Instant, val expiresAt: Instant)
-
-/**
- * Loads the active Nonce value for DPoP, for a specific DPoP Access Token.
- */
-fun interface LoadActiveDPoPNonce {
-    suspend operator fun invoke(accessToken: DPoPAccessToken): DPoPNonce?
-}
-
-/**
- * Generates a new Nonce value for DPoP, for a specific DPoP Access Token.
- */
-fun interface GenerateDPoPNonce {
-    suspend operator fun invoke(accessToken: DPoPAccessToken): DPoPNonce
-}
-
-/**
- * Cleans up any inactive DPoP Nonce values.
- */
-fun interface CleanupInactiveDPoPNonce {
-    suspend operator fun invoke()
-}
-
-/**
- * In memory repository providing implementations for [LoadActiveDPoPNonce], and [GenerateDPoPNonce].
- */
-class InMemoryDPoPNonceRepository(
-    private val clock: Clock,
-    private val dpopNonceExpiresIn: Duration = Duration.ofMinutes(5L),
+data class DPoPConfigurationProperties(
+    val algorithms: Set<JWSAlgorithm>,
+    val proofMaxAge: Duration,
+    val cachePurgeInterval: Duration,
+    val realm: String?,
 ) {
     init {
-        require(!dpopNonceExpiresIn.isZero && !dpopNonceExpiresIn.isNegative) { "dpopNonceExpiresIn must be positive" }
-    }
-
-    private val data = mutableMapOf<DPoPAccessToken, DPoPNonce>()
-    private val mutex = Mutex()
-    private val log = LoggerFactory.getLogger(InMemoryDPoPNonceRepository::class.java)
-
-    val loadActiveDPoPNonce: LoadActiveDPoPNonce by lazy {
-        LoadActiveDPoPNonce { accessToken ->
-            mutex.withLock {
-                data[accessToken]?.takeIf { dpopNonce -> dpopNonce.expiresAt > clock.instant() }
-            }
-        }
-    }
-
-    val generateDPoPNonce: GenerateDPoPNonce by lazy {
-        GenerateDPoPNonce { accessToken ->
-            mutex.withLock {
-                val createdAt = clock.instant()
-                val expiresAt = createdAt + dpopNonceExpiresIn
-                val dpopNonce = DPoPNonce(
-                    nonce = Nonce(),
-                    accessToken = accessToken,
-                    createdAt = createdAt,
-                    expiresAt = expiresAt,
-                )
-                data[accessToken] = dpopNonce
-                dpopNonce
-            }
-        }
-    }
-
-    val cleanupInactiveDPoPNonce: CleanupInactiveDPoPNonce by lazy {
-        CleanupInactiveDPoPNonce {
-            mutex.withLock {
-                val now = clock.instant()
-                val inactive = data.entries.filter { (_, dpopNonce) -> dpopNonce.expiresAt >= now }.map { it.key }
-                inactive.forEach(data::remove)
-
-                log.debug("Removed '${inactive.size}' inactive DPoPNonce values")
-            }
-        }
+        require(JWSAlgorithm.Family.SIGNATURE.containsAll(algorithms)) { "'algorithms' contains invalid values" }
+        require(!proofMaxAge.isZero && !proofMaxAge.isNegative) { "'proofMaxAge' must be positive" }
+        require(!cachePurgeInterval.isZero && !cachePurgeInterval.isNegative) { "'cachePurgeInterval' must be positive" }
     }
 }
 
@@ -109,26 +43,18 @@ class InMemoryDPoPNonceRepository(
 sealed interface DPoPNoncePolicy {
 
     /**
-     * Gets the [DPoPNonce] associated with [accessToken].
-     * In case no [DPoPNonce] is associated with [accessToken] a new one might be generated.
-     */
-    suspend fun getActiveOrGenerateNew(accessToken: DPoPAccessToken): DPoPNonce?
-
-    /**
-     * [DPoPNonce] is enforced.
+     * DPoP Nonce is enforced.
      */
     class Enforcing(
-        val loadActiveDPoPNonce: LoadActiveDPoPNonce,
-        val generateDPoPNonce: GenerateDPoPNonce,
+        val verifyDPoPNonce: VerifyNonce,
+        private val generateDPoPNonce: GenerateNonce,
+        private val dpopNonceExpiresIn: Duration,
     ) : DPoPNoncePolicy {
-        override suspend fun getActiveOrGenerateNew(accessToken: DPoPAccessToken): DPoPNonce =
-            loadActiveDPoPNonce(accessToken) ?: generateDPoPNonce(accessToken)
+        suspend fun generateDPoPNonce(generatedAt: Instant): String = generateDPoPNonce(generatedAt, dpopNonceExpiresIn)
     }
 
     /**
-     * [DPoPNonce] is disabled.
+     * DPoP Nonce is disabled.
      */
-    data object Disabled : DPoPNoncePolicy {
-        override suspend fun getActiveOrGenerateNew(accessToken: DPoPAccessToken): DPoPNonce? = null
-    }
+    data object Disabled : DPoPNoncePolicy
 }

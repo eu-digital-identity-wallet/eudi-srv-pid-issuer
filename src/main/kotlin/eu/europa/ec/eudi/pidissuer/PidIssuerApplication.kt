@@ -22,7 +22,6 @@ import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
-import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPProtectedResourceRequestVerifier
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DefaultDPoPSingleUseChecker
@@ -36,9 +35,10 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CredentialRequestFactory
-import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DecryptCNonceWithNimbusAndVerify
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DecryptNonceWithNimbusAndVerify
 import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultResolveCredentialRequestByCredentialIdentifier
-import eu.europa.ec.eudi.pidissuer.adapter.out.credential.GenerateCNonceAndEncryptWithNimbus
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.GenerateNonceAndEncryptWithNimbus
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.NonceEncryptionKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.GetEuropeanHealthInsuranceCardDataMock
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IssueSdJwtVcEuropeanHealthInsuranceCard
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
@@ -89,7 +89,6 @@ import org.springframework.http.client.reactive.ReactorClientHttpConnector
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
 import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
 import org.springframework.scheduling.annotation.EnableScheduling
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.config.web.server.invoke
@@ -117,7 +116,6 @@ import java.security.cert.X509Certificate
 import java.time.Clock
 import java.time.Duration
 import java.util.*
-import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.days
 import kotlin.time.toJavaDuration
 import kotlin.time.toKotlinDuration
@@ -248,20 +246,23 @@ fun beans(clock: Clock) = beans {
     }
 
     //
-    // CNonce encryption key
+    // Nonce encryption key
     //
-    val cnonceEncryptionKey: RSAKey = when (env.getProperty<KeyOption>("issuer.cnonce.encryption-key")) {
-        null, KeyOption.GenerateRandom -> {
-            log.info("Generating random encryption key for CNonce")
-            RSAKeyGenerator(4096, false).generate()
-        }
+    val nonceEncryptionKey = run {
+        val encryptionKey: ECKey = when (env.getProperty<KeyOption>("issuer.nonce.encryption-key")) {
+            null, KeyOption.GenerateRandom -> {
+                log.info("Generating random encryption key for Nonce")
+                ECKeyGenerator(Curve.P_256).keyUse(KeyUse.ENCRYPTION).generate()
+            }
 
-        KeyOption.LoadFromKeystore -> {
-            log.info("Loading CNonce encryption key from keystore")
-            val cnonceEncryptionKey = loadJwkFromKeystore(env, "issuer.cnonce.encryption-key")
-            require(cnonceEncryptionKey is RSAKey) { "Only RSAKeys are supported for encryption" }
-            cnonceEncryptionKey
+            KeyOption.LoadFromKeystore -> {
+                log.info("Loading Nonce encryption key from keystore")
+                val nonceEncryptionKey = loadJwkFromKeystore(env, "issuer.nonce.encryption-key")
+                require(nonceEncryptionKey is ECKey) { "Only ECKey are supported for encryption" }
+                nonceEncryptionKey
+            }
         }
+        NonceEncryptionKey(encryptionKey)
     }
 
     //
@@ -432,11 +433,12 @@ fun beans(clock: Clock) = beans {
     bean(isLazyInit = true) {
         EncryptCredentialResponseNimbus(ref<CredentialIssuerMetaData>().id, clock)
     }
+
     //
-    // CNonce
+    // Nonce
     //
-    bean { GenerateCNonceAndEncryptWithNimbus(issuerPublicUrl, cnonceEncryptionKey) }
-    bean { DecryptCNonceWithNimbusAndVerify(issuerPublicUrl, cnonceEncryptionKey) }
+    bean { GenerateNonceAndEncryptWithNimbus(issuerPublicUrl, nonceEncryptionKey) }
+    bean { DecryptNonceWithNimbusAndVerify(issuerPublicUrl, nonceEncryptionKey) }
 
     //
     // Credentials
@@ -459,7 +461,7 @@ fun beans(clock: Clock) = beans {
     //
     // Specific Issuers
     //
-    bean { VerifyKeyAttestation(verifyCNonce = ref()) }
+    bean { VerifyKeyAttestation(verifyNonce = ref()) }
     bean { ValidateJwtProof(issuerPublicUrl, ref()) }
     bean { ValidateAttestationProof(ref()) }
     bean { DefaultExtractJwkFromCredentialKey }
@@ -684,28 +686,11 @@ fun beans(clock: Clock) = beans {
     }
 
     //
-    // DPoP Nonce
+    // Security
     //
-    if (env.getProperty("issuer.dpop.nonce.enabled", Boolean::class.java, false)) {
-        val dpopNonceExpiresIn = env.duration("issuer.dpop.nonce.expiration") ?: Duration.ofMinutes(5L)
-        with(InMemoryDPoPNonceRepository(clock, dpopNonceExpiresIn)) {
-            bean { DPoPNoncePolicy.Enforcing(loadActiveDPoPNonce, generateDPoPNonce) }
-            bean {
-                object {
-                    @Scheduled(fixedRate = 1L, timeUnit = TimeUnit.MINUTES)
-                    suspend fun cleanup() {
-                        cleanupInactiveDPoPNonce()
-                    }
-                }
-            }
-        }
-        bean(::DPoPNonceWebFilter)
-    } else {
-        bean { DPoPNoncePolicy.Disabled }
-    }
 
     //
-    // Security
+    // DPoP Configuration Properties
     //
     bean {
         val algorithms = Either.catch {
@@ -733,6 +718,20 @@ fun beans(clock: Clock) = beans {
 
         DPoPConfigurationProperties(algorithms, proofMaxAge, cachePurgeInterval, realm)
     }
+
+    //
+    // DPoP Nonce
+    //
+    val enableDPoPNonce = env.getProperty<Boolean>("issuer.dpop.nonce.enabled") ?: true
+    bean<DPoPNoncePolicy>(isLazyInit = true) {
+        if (enableDPoPNonce) {
+            val dpopNonceExpiresIn = env.duration("issuer.dpop.nonce.expiration") ?: Duration.ofMinutes(5L)
+            DPoPNoncePolicy.Enforcing(ref(), ref(), dpopNonceExpiresIn)
+        } else {
+            DPoPNoncePolicy.Disabled
+        }
+    }
+
     bean {
         /*
          * This is a Spring naming convention
@@ -779,7 +778,7 @@ fun beans(clock: Clock) = beans {
             val enableDPoP = dPoPProperties.algorithms.isNotEmpty()
 
             val dPoPTokenConverter by lazy { ServerDPoPAuthenticationTokenAuthenticationConverter() }
-            val dPoPEntryPoint by lazy { DPoPTokenServerAuthenticationEntryPoint(dPoPProperties.realm, ref()) }
+            val dPoPEntryPoint by lazy { DPoPTokenServerAuthenticationEntryPoint(dPoPProperties.realm, ref(), ref()) }
 
             val bearerTokenConverter = ServerBearerTokenAuthenticationConverter()
             val bearerTokenEntryPoint = BearerTokenServerAuthenticationEntryPoint()
@@ -853,7 +852,7 @@ fun beans(clock: Clock) = beans {
                         ),
                     )
 
-                    val authenticationManager = DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier, ref())
+                    val authenticationManager = DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier, ref(), ref())
 
                     AuthenticationWebFilter(authenticationManager).apply {
                         setServerAuthenticationConverter(ServerDPoPAuthenticationTokenAuthenticationConverter())
@@ -862,6 +861,20 @@ fun beans(clock: Clock) = beans {
                 }
 
                 http.addFilterAt(dPoPFilter, SecurityWebFiltersOrder.AUTHENTICATION)
+
+                if (enableDPoPNonce) {
+                    val dpopNonceFilter = DPoPNonceWebFilter(
+                        ref(),
+                        ref(),
+                        listOf(
+                            WalletApi.CREDENTIAL_ENDPOINT,
+                            WalletApi.DEFERRED_ENDPOINT,
+                            WalletApi.NOTIFICATION_ENDPOINT,
+                            WalletApi.NONCE_ENDPOINT,
+                        ),
+                    )
+                    http.addFilterAt(dpopNonceFilter, SecurityWebFiltersOrder.LAST)
+                }
             }
 
             val bearerTokenFilter = run {
