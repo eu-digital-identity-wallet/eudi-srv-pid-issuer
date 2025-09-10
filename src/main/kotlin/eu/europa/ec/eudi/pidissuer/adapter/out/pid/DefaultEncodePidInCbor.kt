@@ -22,8 +22,8 @@ import eu.europa.ec.eudi.pidissuer.domain.ClaimDefinition
 import id.walt.mdoc.dataelement.DataElement
 import id.walt.mdoc.dataelement.toDataElement
 import id.walt.mdoc.doc.MDocBuilder
-import kotlinx.datetime.Instant
 import kotlinx.datetime.toKotlinLocalDate
+import kotlin.time.Instant
 
 internal class DefaultEncodePidInCbor(issuerSigningKey: IssuerSigningKey) : EncodePidInCbor {
 

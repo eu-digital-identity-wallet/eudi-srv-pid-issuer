@@ -26,8 +26,8 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import id.walt.mdoc.dataelement.DataElement
 import id.walt.mdoc.dataelement.toDataElement
 import id.walt.mdoc.doc.MDocBuilder
-import kotlinx.datetime.Instant
 import kotlinx.datetime.toKotlinLocalDate
+import kotlin.time.Instant
 
 class DefaultEncodeMobileDrivingLicenceInCbor(issuerSigningKey: IssuerSigningKey) : EncodeMobileDrivingLicenceInCbor {
 
