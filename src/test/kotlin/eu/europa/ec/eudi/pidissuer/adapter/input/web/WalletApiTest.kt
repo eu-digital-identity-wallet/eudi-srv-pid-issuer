@@ -89,24 +89,24 @@ import kotlin.test.*
 internal class BaseWalletApiTest {
 
     @Autowired
-    protected lateinit var applicationContext: ApplicationContext
+    lateinit var applicationContext: ApplicationContext
 
     @Autowired
-    protected lateinit var clock: Clock
+    lateinit var clock: Clock
 
     @Autowired
-    protected lateinit var generateNonce: GenerateNonce
+    lateinit var generateNonce: GenerateNonce
 
     @Autowired
-    protected lateinit var credentialIssuerMetadata: CredentialIssuerMetaData
+    lateinit var credentialIssuerMetadata: CredentialIssuerMetaData
 
-    protected final fun client(): WebTestClient =
+    final fun client(): WebTestClient =
         WebTestClient.bindToApplicationContext(applicationContext)
             .apply(springSecurity())
             .configureClient()
             .build()
 
-    protected suspend fun jwtProof(
+    suspend fun jwtProof(
         audience: CredentialIssuerId,
         clock: Clock,
         nonce: String,
