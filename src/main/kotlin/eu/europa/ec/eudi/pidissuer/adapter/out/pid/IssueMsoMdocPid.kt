@@ -51,176 +51,176 @@ internal object MsoMdocPidClaims {
         PidMsoMdocNamespace,
         "given_name",
         mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Given Name(s)"),
+        display = mapOf(ENGLISH to "Given Name(s)"),
     )
     val FamilyName = ClaimDefinition(
         PidMsoMdocNamespace,
         "family_name",
         mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Family Name(s)"),
+        display = mapOf(ENGLISH to "Family Name(s)"),
     )
     val BirthDate = ClaimDefinition(
         PidMsoMdocNamespace,
         "birth_date",
         mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Birth Date"),
+        display = mapOf(ENGLISH to "Birth Date"),
     )
     val FamilyNameBirth = ClaimDefinition(
         PidMsoMdocNamespace,
         "family_name_birth",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Birth Family Name(s)"),
+        display = mapOf(ENGLISH to "Birth Family Name(s)"),
     )
     val GivenNameBirth = ClaimDefinition(
         PidMsoMdocNamespace,
         "given_name_birth",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Birth Given Name(s)"),
+        display = mapOf(ENGLISH to "Birth Given Name(s)"),
     )
     val Sex = ClaimDefinition(
         PidMsoMdocNamespace,
         "sex",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Sex"),
+        display = mapOf(ENGLISH to "Sex"),
     )
     val AgeOver18 = ClaimDefinition(
         PidMsoMdocNamespace,
         "age_over_18",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Age Over 18"),
+        display = mapOf(ENGLISH to "Age Over 18"),
     )
     val AgeBirthYear = ClaimDefinition(
         PidMsoMdocNamespace,
         "age_birth_year",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Age Year of Birth"),
+        display = mapOf(ENGLISH to "Age Year of Birth"),
     )
     val AgeInYears = ClaimDefinition(
         PidMsoMdocNamespace,
         "age_in_years",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Age in Years"),
+        display = mapOf(ENGLISH to "Age in Years"),
     )
     val Nationality = ClaimDefinition(
         PidMsoMdocNamespace,
         "nationality",
         mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Nationality"),
+        display = mapOf(ENGLISH to "Nationality"),
     )
     val IssuanceDate = ClaimDefinition(
         PidMsoMdocNamespace,
         "issuance_date",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Issuance Date"),
+        display = mapOf(ENGLISH to "Issuance Date"),
     )
     val ExpiryDate = ClaimDefinition(
         PidMsoMdocNamespace,
         "expiry_date",
         mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Expiry Date"),
+        display = mapOf(ENGLISH to "Expiry Date"),
     )
     val IssuingAuthority = ClaimDefinition(
         PidMsoMdocNamespace,
         "issuing_authority",
         mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Issuance Authority"),
+        display = mapOf(ENGLISH to "Issuance Authority"),
     )
     val BirthPlace = ClaimDefinition(
         PidMsoMdocNamespace,
         "birth_place",
         mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Birth Place"),
+        display = mapOf(ENGLISH to "Birth Place"),
     )
     val ResidenceAddress = ClaimDefinition(
         PidMsoMdocNamespace,
         "resident_address",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Resident Address"),
+        display = mapOf(ENGLISH to "Resident Address"),
     )
     val ResidenceCountry = ClaimDefinition(
         PidMsoMdocNamespace,
         "resident_country",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Resident Country"),
+        display = mapOf(ENGLISH to "Resident Country"),
     )
     val ResidenceState = ClaimDefinition(
         PidMsoMdocNamespace,
         "resident_state",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Resident State"),
+        display = mapOf(ENGLISH to "Resident State"),
     )
     val ResidenceCity = ClaimDefinition(
         PidMsoMdocNamespace,
         "resident_city",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Resident City"),
+        display = mapOf(ENGLISH to "Resident City"),
     )
     val ResidencePostalCode = ClaimDefinition(
         PidMsoMdocNamespace,
         "resident_postal_code",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Resident Postal Code"),
+        display = mapOf(ENGLISH to "Resident Postal Code"),
     )
     val ResidenceStreet = ClaimDefinition(
         PidMsoMdocNamespace,
         "resident_street",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Resident Street"),
+        display = mapOf(ENGLISH to "Resident Street"),
     )
     val ResidenceHouseNumber = ClaimDefinition(
         PidMsoMdocNamespace,
         "resident_house_number",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Resident House Number"),
+        display = mapOf(ENGLISH to "Resident House Number"),
     )
     val DocumentNumber = ClaimDefinition(
         PidMsoMdocNamespace,
         "document_number",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Document Number"),
+        display = mapOf(ENGLISH to "Document Number"),
     )
     val PersonalAdministrativeNumber = ClaimDefinition(
         PidMsoMdocNamespace,
         "personal_administrative_number",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Personal Administrative Number"),
+        display = mapOf(ENGLISH to "Personal Administrative Number"),
     )
     val IssuingCountry = ClaimDefinition(
         PidMsoMdocNamespace,
         "issuing_country",
         mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Issuing Country"),
+        display = mapOf(ENGLISH to "Issuing Country"),
     )
     val IssuingJurisdiction = ClaimDefinition(
         PidMsoMdocNamespace,
         "issuing_jurisdiction",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Issuing Jurisdiction"),
+        display = mapOf(ENGLISH to "Issuing Jurisdiction"),
     )
     val Portrait = ClaimDefinition(
         PidMsoMdocNamespace,
         "portrait",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Portrait Image"),
+        display = mapOf(ENGLISH to "Portrait Image"),
     )
     val EmailAddress = ClaimDefinition(
         PidMsoMdocNamespace,
         "email_address",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Email Address"),
+        display = mapOf(ENGLISH to "Email Address"),
     )
     val MobilePhoneNumberAttribute = ClaimDefinition(
         PidMsoMdocNamespace,
         "mobile_phone_number",
         mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Mobile Phone Number"),
+        display = mapOf(ENGLISH to "Mobile Phone Number"),
     )
     val TrustAnchor = ClaimDefinition(
         PidMsoMdocNamespace,
         "trust_anchor",
         mandatory = false,
         display = mapOf(
-            Locale.ENGLISH to "Trust Anchor",
+            ENGLISH to "Trust Anchor",
         ),
     )
 
