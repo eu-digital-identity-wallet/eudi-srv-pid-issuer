@@ -686,29 +686,11 @@ fun beans(clock: Clock) = beans {
     }
 
     //
-    // DPoP Nonce
+    // Security
     //
-    if (env.getProperty("issuer.dpop.nonce.enabled", Boolean::class.java, false)) {
-        val dpopNonceExpiresIn = env.duration("issuer.dpop.nonce.expiration") ?: Duration.ofMinutes(5L)
-        bean { DPoPNoncePolicy.Enforcing(ref(), ref(), dpopNonceExpiresIn) }
-        bean {
-            DPoPNonceWebFilter(
-                ref(),
-                ref(),
-                listOf(
-                    WalletApi.CREDENTIAL_ENDPOINT,
-                    WalletApi.DEFERRED_ENDPOINT,
-                    WalletApi.NOTIFICATION_ENDPOINT,
-                    WalletApi.NONCE_ENDPOINT,
-                ),
-            )
-        }
-    } else {
-        bean { DPoPNoncePolicy.Disabled }
-    }
 
     //
-    // Security
+    // DPoP Configuration Properties
     //
     bean {
         val algorithms = Either.catch {
@@ -736,6 +718,20 @@ fun beans(clock: Clock) = beans {
 
         DPoPConfigurationProperties(algorithms, proofMaxAge, cachePurgeInterval, realm)
     }
+
+    //
+    // DPoP Nonce
+    //
+    val enableDPoPNonce = env.getProperty<Boolean>("issuer.dpop.nonce.enabled") ?: true
+    bean<DPoPNoncePolicy>(isLazyInit = true) {
+        if (enableDPoPNonce) {
+            val dpopNonceExpiresIn = env.duration("issuer.dpop.nonce.expiration") ?: Duration.ofMinutes(5L)
+            DPoPNoncePolicy.Enforcing(ref(), ref(), dpopNonceExpiresIn)
+        } else {
+            DPoPNoncePolicy.Disabled
+        }
+    }
+
     bean {
         /*
          * This is a Spring naming convention
@@ -865,6 +861,20 @@ fun beans(clock: Clock) = beans {
                 }
 
                 http.addFilterAt(dPoPFilter, SecurityWebFiltersOrder.AUTHENTICATION)
+
+                if (enableDPoPNonce) {
+                    val dpopNonceFilter = DPoPNonceWebFilter(
+                        ref(),
+                        ref(),
+                        listOf(
+                            WalletApi.CREDENTIAL_ENDPOINT,
+                            WalletApi.DEFERRED_ENDPOINT,
+                            WalletApi.NOTIFICATION_ENDPOINT,
+                            WalletApi.NONCE_ENDPOINT,
+                        ),
+                    )
+                    http.addFilterAt(dpopNonceFilter, SecurityWebFiltersOrder.LAST)
+                }
             }
 
             val bearerTokenFilter = run {
