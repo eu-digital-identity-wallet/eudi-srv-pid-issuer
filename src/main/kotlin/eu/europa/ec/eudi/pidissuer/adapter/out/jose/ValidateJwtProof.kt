@@ -91,7 +91,15 @@ private suspend fun algorithmAndCredentialKey(
     val kid: String? = header.keyID
     val jwk: JWK? = header.jwk
     val x5c: List<Base64>? = header.x509CertChain
-    val keyAttestation: String? = header.getCustomParam("key_attestation") as? String?
+    val keyAttestation = header.getCustomParam("key_attestation") as String?
+
+    when (proofType.keyAttestationRequirement) {
+        KeyAttestationRequirement.NotRequired ->
+            require(null == keyAttestation) { "JWT Proof cannot contain `key_attestation`" }
+
+        is KeyAttestationRequirement.Required ->
+            requireNotNull(keyAttestation) { "JWT Proof must contain `key_attestation`" }
+    }
 
     val key = when {
         kid != null && jwk == null && keyAttestation == null && x5c.isNullOrEmpty() -> CredentialKey.DIDUrl(kid).getOrThrow()

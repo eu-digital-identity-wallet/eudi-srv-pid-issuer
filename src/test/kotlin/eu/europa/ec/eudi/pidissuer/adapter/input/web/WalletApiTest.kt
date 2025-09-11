@@ -169,19 +169,17 @@ internal class BaseWalletApiTest {
 }
 
 /**
- * Test cases for [WalletApi] when encryption is optional.
+ * Test cases for [WalletApi] when encryption is optional. Key Attestations are **NOT** required.
  */
 @TestPropertySource(
     properties = [
         "issuer.credentialResponseEncryption.required=false",
         "issuer.credentialEndpoint.batchIssuance.enabled=true",
         "issuer.credentialEndpoint.batchIssuance.batchSize=3",
-        "issuer.pid.mso_mdoc.key_attestations.required = true",
-        "issuer.pid.mso_mdoc.key_attestations.constraints.key_storage = iso_18045_high, iso_18045_moderate",
-        "issuer.pid.mso_mdoc.key_attestations.constraints.user_authentication = iso_18045_high, iso_18045_moderate",
+        "issuer.pid.mso_mdoc.key_attestations.required=false",
     ],
 )
-internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
+internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseWalletApiTest() {
 
     /**
      * Verifies credential endpoint is not accessible by anonymous users.
@@ -501,6 +499,63 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
     }
 
     @Test
+    fun `fails when key_attestation is included when not required`() = runTest {
+        val authentication = dPoPTokenAuthentication(clock = clock)
+        val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
+
+        val jwtProofSigningKey = ECKeyGenerator(Curve.P_256).generate()
+
+        val extraKeysNo = 3
+        val keyAttestationJwt = keyAttestationJWT(
+            proofSigningKey = jwtProofSigningKey,
+            keyStorageConstraints = listOf("iso_18045_enhanced-basic"),
+            userAuthorizationConstraints = listOf("iso_18045_enhanced-basic"),
+        ) {
+            (0..<extraKeysNo).map {
+                ECKeyGenerator(Curve.P_256).generate()
+            }
+        }
+
+        val keyAttestationJwtProof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, jwtProofSigningKey) {
+            customParam("key_attestation", keyAttestationJwt.serialize())
+        }
+
+        val proofs = listOf(keyAttestationJwtProof).toJwtProofs()
+
+        val response = client()
+            .mutateWith(mockAuthentication(authentication))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(requestByCredentialIdentifier(proof = null, proofs = proofs))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest()
+            .expectBody<IssueCredentialResponse.FailedTO>()
+            .returnResult()
+            .let { assertNotNull(it.responseBody) }
+
+        assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
+        assertEquals("Invalid proof JWT", response.errorDescription)
+    }
+}
+
+/**
+ * Test cases for [WalletApi] when encryption is optional. Key Attestations are **REQUIRED**.
+ */
+@TestPropertySource(
+    properties = [
+        "issuer.credentialResponseEncryption.required=false",
+        "issuer.credentialEndpoint.batchIssuance.enabled=true",
+        "issuer.credentialEndpoint.batchIssuance.batchSize=3",
+        "issuer.pid.mso_mdoc.key_attestations.required=true",
+        "issuer.pid.mso_mdoc.key_attestations.constraints.key_storage=iso_18045_high,iso_18045_moderate",
+        "issuer.pid.mso_mdoc.key_attestations.constraints.user_authentication=iso_18045_high,iso_18045_moderate",
+    ],
+)
+internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWalletApiTest() {
+
+    @Test
     fun `fail when the sent key attestation does not match the expected attack protection requirements`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
         val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
@@ -543,51 +598,6 @@ internal class WalletApiEncryptionOptionalTest : BaseWalletApiTest() {
 
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
         assertEquals("Invalid proof JWT", response.errorDescription)
-    }
-
-    @Test
-    fun `when mixed jwt proofs with and without key attestations are sent,the distinct set of keys is used for issuance`() = runTest {
-        val authentication = dPoPTokenAuthentication(clock = clock)
-        val previousCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
-        val keyAttestationCNonce = generateCNonce(clock.instant(), Duration.ofMinutes(5L))
-        val jwtProofSigningKey = ECKeyGenerator(Curve.P_256).generate()
-
-        val extraKeysNo = 3
-        val keyAttestationJwt = keyAttestationJWT(
-            proofSigningKey = jwtProofSigningKey,
-            cNonce = keyAttestationCNonce,
-        ) {
-            (0..<extraKeysNo).map {
-                ECKeyGenerator(Curve.P_256).generate()
-            }
-        }
-
-        val keyAttestationJwtProof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, jwtProofSigningKey) {
-            customParam("key_attestation", keyAttestationJwt.serialize())
-        }
-
-        val noKeyAttestationJwtProof = jwtProof(credentialIssuerMetadata.id, clock, previousCNonce, jwtProofSigningKey) {
-            jwk(jwtProofSigningKey.toPublicJWK())
-        }
-
-        val proofs = listOf(keyAttestationJwtProof, noKeyAttestationJwtProof).toJwtProofs()
-
-        val response = client()
-            .mutateWith(mockAuthentication(authentication))
-            .post()
-            .uri(WalletApi.CREDENTIAL_ENDPOINT)
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByCredentialIdentifier(proof = null, proofs = proofs))
-            .accept(MediaType.APPLICATION_JSON)
-            .exchange()
-            .expectStatus().isOk()
-            .expectBody<IssueCredentialResponse.PlainTO>()
-            .returnResult()
-            .let { assertNotNull(it.responseBody) }
-
-        val issuedCredentials = assertNotNull(response.credentials)
-        assertEquals(extraKeysNo + 1, issuedCredentials.size)
-        assertNull(response.transactionId)
     }
 
     @Test
