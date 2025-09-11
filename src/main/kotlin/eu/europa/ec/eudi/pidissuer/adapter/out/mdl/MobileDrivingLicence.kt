@@ -364,6 +364,7 @@ data class DrivingPrivilege(
         /**
          * Generic restrictions for the driver or the vehicle.
          */
+        @Suppress("unused")
         enum class GenericRestriction(override val code: String) : Restriction {
             EYESIGHT_CORRECTION_OR_PROTECTION("01"),
             PROSTHETIC_DEVICE_FOR_LIMBS("03"),

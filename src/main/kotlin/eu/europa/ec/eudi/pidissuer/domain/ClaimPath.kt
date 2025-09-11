@@ -62,11 +62,13 @@ value class ClaimPath(val value: List<ClaimPathElement>) : List<ClaimPathElement
     /**
      * Appends a wild-card indicator [ClaimPathElement.AllArrayElements]
      */
+    @Suppress("unused")
     fun allArrayElements(): ClaimPath = this + ClaimPathElement.AllArrayElements
 
     /**
      * Appends an indexed path [ClaimPathElement.ArrayElement]
      */
+    @Suppress("unused")
     fun arrayElement(i: Int): ClaimPath = this + ClaimPathElement.ArrayElement(i)
 
     /**

@@ -23,6 +23,7 @@ import com.nimbusds.oauth2.sdk.token.BearerAccessToken
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
+import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import kotlinx.coroutines.async
@@ -36,6 +37,7 @@ import org.springframework.security.oauth2.core.OAuth2TokenIntrospectionClaimNam
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthentication
 import org.springframework.web.reactive.function.server.*
 import org.springframework.web.server.ServerWebInputException
+import kotlin.jvm.optionals.getOrNull
 
 private val APPLICATION_JWT = MediaType.parseMediaType("application/jwt")
 
@@ -45,12 +47,13 @@ internal class WalletApi(
     private val getPidData: GetPidData,
     private val handleNotificationRequest: HandleNotificationRequest,
     private val handleNonceRequest: HandleNonceRequest,
+    private val metadata: CredentialIssuerMetaData,
 ) {
 
     val route = coRouter {
         POST(
             CREDENTIAL_ENDPOINT,
-            contentType(MediaType.APPLICATION_JSON) and accept(MediaType.APPLICATION_JSON, APPLICATION_JWT),
+            contentType(MediaType.APPLICATION_JSON, APPLICATION_JWT) and accept(MediaType.APPLICATION_JSON, APPLICATION_JWT),
             this@WalletApi::handleIssueCredential,
         )
         GET(
@@ -77,8 +80,17 @@ internal class WalletApi(
     private suspend fun handleIssueCredential(req: ServerRequest): ServerResponse {
         val context = req.authorizationContext().getOrThrow()
         val response = try {
-            val credentialRequest = req.awaitBody<CredentialRequestTO>()
-            issueCredential(context, credentialRequest)
+            when (req.headers().contentType().getOrNull()) {
+                MediaType.APPLICATION_JSON -> {
+                    val request = req.awaitBody<CredentialRequestTO>()
+                    issueCredential.fromPlainRequest(context, request)
+                }
+                APPLICATION_JWT -> {
+                    val jwt = req.awaitBody<String>()
+                    issueCredential.fromEncryptedRequest(context, jwt)
+                }
+                else -> error("Unexpected content-type")
+            }
         } catch (error: ServerWebInputException) {
             IssueCredentialResponse.FailedTO(
                 type = CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST,

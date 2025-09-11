@@ -28,7 +28,7 @@ interface IsAttribute {
 //
 // Open ID Connect Core
 //
-
+@Suppress("unused")
 val OidcSub: ClaimDefinition by lazy {
     ClaimDefinition(
         path = ClaimPath.claim("sub"),
@@ -61,6 +61,7 @@ val OidcBirthDate: ClaimDefinition by lazy {
     )
 }
 
+@Suppress("unused")
 val OidcGender: ClaimDefinition by lazy {
     ClaimDefinition(
         path = ClaimPath.claim("gender"),
