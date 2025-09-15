@@ -24,9 +24,11 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreDeferredCredential
 import org.slf4j.LoggerFactory
-import kotlin.time.Clock
+import java.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.toJavaDuration
+import kotlin.time.toKotlinInstant
 
 interface IssueSpecificCredential {
 
@@ -44,14 +46,16 @@ interface IssueSpecificCredential {
 fun IssueSpecificCredential.asDeferred(
     generateTransactionId: GenerateTransactionId,
     storeDeferredCredential: StoreDeferredCredential,
+    clock: Clock,
     interval: Duration = 1.minutes,
 ): IssueSpecificCredential =
-    DeferredIssuer(this, generateTransactionId, storeDeferredCredential, interval)
+    DeferredIssuer(this, generateTransactionId, storeDeferredCredential, clock, interval)
 
 private class DeferredIssuer(
     val issuer: IssueSpecificCredential,
     val generateTransactionId: GenerateTransactionId,
     val storeDeferredCredential: StoreDeferredCredential,
+    val clock: Clock,
     val interval: Duration,
 ) : IssueSpecificCredential by issuer {
 
@@ -84,7 +88,7 @@ private class DeferredIssuer(
         require(credentialResponse is CredentialResponse.Issued) { "Actual issuer should return issued credentials" }
 
         val transactionId = generateTransactionId()
-        storeDeferredCredential.invoke(transactionId, credentialResponse, Clock.System.now().plus(interval))
+        storeDeferredCredential.invoke(transactionId, credentialResponse, clock.instant().plus(interval.toJavaDuration()).toKotlinInstant())
         CredentialResponse.Deferred(transactionId, interval).also {
             log.info("Repackaged $credentialResponse  as $it")
         }

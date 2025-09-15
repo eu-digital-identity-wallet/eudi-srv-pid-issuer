@@ -452,7 +452,7 @@ fun beans(clock: Clock) = beans {
     //
     // Deferred Credentials
     //
-    with(InMemoryDeferredCredentialRepository(mutableMapOf())) {
+    with(InMemoryDeferredCredentialRepository(mutableMapOf(), clock)) {
         bean { GenerateTransactionId.Random }
         bean { storeDeferredCredential }
         bean { loadDeferredCredentialByTransactionId }
@@ -498,7 +498,7 @@ fun beans(clock: Clock) = beans {
                         keyAttestationRequirement = keyAttestationRequirement,
                     )
                     add(issueMsoMdocPid)
-                    add(issueMsoMdocPid.asDeferred(ref(), ref()))
+                    add(issueMsoMdocPid.asDeferred(ref(), ref(), clock))
                 }
 
                 if (enableSdJwtVcPid) {
@@ -539,7 +539,7 @@ fun beans(clock: Clock) = beans {
                     )
 
                     add(issueSdJwtVcPid)
-                    add(issueSdJwtVcPid.asDeferred(ref(), ref()))
+                    add(issueSdJwtVcPid.asDeferred(ref(), ref(), clock))
                 }
 
                 if (enableMobileDrivingLicence) {
@@ -562,7 +562,7 @@ fun beans(clock: Clock) = beans {
                         keyAttestationRequirement = keyAttestationRequirement,
                     )
                     add(mdlIssuer)
-                    add(mdlIssuer.asDeferred(ref(), ref()))
+                    add(mdlIssuer.asDeferred(ref(), ref(), clock))
                 }
 
                 if (enableEhic) {
@@ -604,7 +604,7 @@ fun beans(clock: Clock) = beans {
                         keyAttestationRequirement = keyAttestationRequirement,
                     )
                     add(ehicJwsJsonFlattenedIssuer)
-                    add(ehicJwsJsonFlattenedIssuer.asDeferred(ref(), ref()))
+                    add(ehicJwsJsonFlattenedIssuer.asDeferred(ref(), ref(), clock))
 
                     val ehicCompactIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.compact(
                         issuerSigningKey = ref<IssuerSigningKey>(),
@@ -626,7 +626,7 @@ fun beans(clock: Clock) = beans {
                         keyAttestationRequirement = keyAttestationRequirement,
                     )
                     add(ehicCompactIssuer)
-                    add(ehicCompactIssuer.asDeferred(ref(), ref()))
+                    add(ehicCompactIssuer.asDeferred(ref(), ref(), clock))
                 }
             },
             batchCredentialIssuance = run {

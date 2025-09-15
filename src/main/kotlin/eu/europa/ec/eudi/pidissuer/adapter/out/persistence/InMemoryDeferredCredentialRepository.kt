@@ -23,8 +23,10 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreDeferredCredential
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.slf4j.LoggerFactory
-import kotlin.time.Clock
-import kotlin.time.Instant
+import java.time.Clock
+import java.time.Instant
+import kotlin.time.toJavaInstant
+import kotlin.time.toKotlinInstant
 
 /**
  * Represents the state of the deferred issuance. Holds the response encryption as specified in initial request
@@ -38,6 +40,7 @@ data class DeferredState(
 private val log = LoggerFactory.getLogger(InMemoryDeferredCredentialRepository::class.java)
 class InMemoryDeferredCredentialRepository(
     private val data: MutableMap<TransactionId, DeferredState> = mutableMapOf(),
+    private val clock: Clock,
 ) {
 
     private val mutex = Mutex()
@@ -47,13 +50,13 @@ class InMemoryDeferredCredentialRepository(
             mutex.withLock(this) {
                 if (data.containsKey(transactionId)) {
                     val deferredPersist = data[transactionId]
-                    if (deferredPersist?.issued != null && Clock.System.now() > deferredPersist.notIssuedBefore) {
+                    if (deferredPersist?.issued != null && clock.instant() > deferredPersist.notIssuedBefore) {
                         LoadDeferredCredentialResult.Found(deferredPersist.issued)
                     } else {
                         LoadDeferredCredentialResult.IssuancePending(
                             CredentialResponse.Deferred(
                                 transactionId,
-                                deferredPersist!!.notIssuedBefore - Clock.System.now(),
+                                deferredPersist!!.notIssuedBefore.toKotlinInstant() - clock.instant().toKotlinInstant(),
                             ),
                         )
                     }
@@ -64,13 +67,10 @@ class InMemoryDeferredCredentialRepository(
     val storeDeferredCredential: StoreDeferredCredential =
         StoreDeferredCredential { transactionId, credential, notIssuedBefore ->
             mutex.withLock(this) {
-
                 if (data.containsKey(transactionId)) {
                     require(data[transactionId] == null) { "Oops!! $transactionId already exists" }
                 }
-
-                data[transactionId] = DeferredState(credential, notIssuedBefore)
-
+                data[transactionId] = DeferredState(credential, notIssuedBefore.toJavaInstant())
                 log.info("Stored $transactionId -> $credential ")
             }
         }
