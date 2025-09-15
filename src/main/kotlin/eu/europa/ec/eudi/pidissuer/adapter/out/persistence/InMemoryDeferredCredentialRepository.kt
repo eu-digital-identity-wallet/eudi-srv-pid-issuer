@@ -48,19 +48,17 @@ class InMemoryDeferredCredentialRepository(
     val loadDeferredCredentialByTransactionId: LoadDeferredCredentialByTransactionId =
         LoadDeferredCredentialByTransactionId { transactionId ->
             mutex.withLock(this) {
-                if (data.containsKey(transactionId)) {
-                    val deferredPersist = data[transactionId]
-                    if (deferredPersist?.issued != null && clock.instant() > deferredPersist.notIssuedBefore) {
-                        LoadDeferredCredentialResult.Found(deferredPersist.issued)
-                    } else {
-                        LoadDeferredCredentialResult.IssuancePending(
-                            CredentialResponse.Deferred(
-                                transactionId,
-                                deferredPersist!!.notIssuedBefore.toKotlinInstant() - clock.instant().toKotlinInstant(),
-                            ),
-                        )
-                    }
-                } else LoadDeferredCredentialResult.InvalidTransactionId
+                val deferredPersist = data[transactionId]
+                when {
+                    deferredPersist == null -> LoadDeferredCredentialResult.InvalidTransactionId
+                    clock.instant() > deferredPersist.notIssuedBefore -> LoadDeferredCredentialResult.Found(deferredPersist.issued)
+                    else -> LoadDeferredCredentialResult.IssuancePending(
+                        CredentialResponse.Deferred(
+                            transactionId,
+                            deferredPersist.notIssuedBefore.toKotlinInstant() - clock.instant().toKotlinInstant(),
+                        ),
+                    )
+                }
             }
         }
 

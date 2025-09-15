@@ -72,7 +72,7 @@ class EncryptDeferredResponseNimbus(
     ): Either<Throwable, DeferredCredentialResponse.IssuancePendingEncrypted> = Either.catch {
         fun JWTClaimsSet.Builder.toJwtClaims(plain: DeferredCredentialResponse.IssuancePendingPlain) {
             with(plain) {
-                claim(TRANSACTION_ID, transactionId.value)
+                claim(TRANSACTION_ID, transactionId)
                 claim(INTERVAL, interval)
             }
         }

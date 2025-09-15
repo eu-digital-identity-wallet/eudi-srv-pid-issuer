@@ -63,11 +63,13 @@ enum class GetDeferredCredentialErrorTypeTo {
 
 sealed interface DeferredCredentialResponse {
 
+    @Serializable
     data class IssuancePendingPlain(
-        @SerialName("transaction_id") val transactionId: TransactionId,
+        @SerialName("transaction_id") val transactionId: String,
         val interval: Long,
     ) : DeferredCredentialResponse
 
+    @Serializable
     data class IssuancePendingEncrypted(val jwt: String) : DeferredCredentialResponse
 
     /**
@@ -131,10 +133,12 @@ sealed interface DeferredCredentialResponse {
     /**
      * Deferred response is encrypted.
      */
+    @Serializable
     data class EncryptedJwtIssued(
         val jwt: String,
     ) : DeferredCredentialResponse
 
+    @Serializable
     data class FailedTO(
         @SerialName("error") @Required val type: GetDeferredCredentialErrorTypeTo,
         @SerialName("error_description") val errorDescription: String? = null,
@@ -223,7 +227,7 @@ class GetDeferredCredential(
             is LoadDeferredCredentialResult.InvalidTransactionId -> raise(GetDeferredCredentialError.InvalidTransactionId)
             is LoadDeferredCredentialResult.IssuancePending -> {
                 val plain = DeferredCredentialResponse.IssuancePendingPlain(
-                    loadDeferredCredentialResult.deferred.transactionId,
+                    loadDeferredCredentialResult.deferred.transactionId.value,
                     loadDeferredCredentialResult.deferred.interval.inWholeSeconds,
                 )
 

@@ -1282,7 +1282,7 @@ internal class WalletApiDeferredIssuanceResponseEncryptionOptionalTest : BaseWal
 
         val defTransactionId = assertNotNull(getDeferredCredentialResponse.transactionId)
         val defInterval = assertNotNull(getDeferredCredentialResponse.interval)
-        assertEquals(transactionId, defTransactionId.value)
+        assertEquals(transactionId, defTransactionId)
     }
 }
 
