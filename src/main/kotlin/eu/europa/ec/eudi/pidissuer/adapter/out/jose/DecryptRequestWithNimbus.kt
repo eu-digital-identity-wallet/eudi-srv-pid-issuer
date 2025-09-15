@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
+import arrow.core.Either
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
@@ -31,9 +32,13 @@ import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError
 import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.*
 
 internal inline fun <reified T> Raise<RequestEncryptionError>.decryptCredentialRequest(
-    jwt: EncryptedJWT,
+    jwt: String,
     credentialIssuerMetadata: CredentialIssuerMetaData,
 ): T {
+    val encryptedJwt = Either.catch {
+        EncryptedJWT.parse(jwt)
+    }.mapLeft { UnparseableEncryptedRequest(it) }
+        .bind()
     val (encryptionKeys, methodsSupported, compressionMethodsSupported) =
         when (val requestEncryption = credentialIssuerMetadata.credentialRequestEncryption) {
             is CredentialRequestEncryption.Optional -> {
@@ -45,24 +50,24 @@ internal inline fun <reified T> Raise<RequestEncryptionError>.decryptCredentialR
             is CredentialRequestEncryption.NotSupported -> raise(RequestEncryptionNotSupported)
         }
 
-    ensure(methodsSupported.any { it == jwt.header.encryptionMethod }) {
-        UnsupportedEncryptionMethod(jwt.header.encryptionMethod, methodsSupported)
+    ensure(methodsSupported.any { it == encryptedJwt.header.encryptionMethod }) {
+        UnsupportedEncryptionMethod(encryptedJwt.header.encryptionMethod, methodsSupported)
     }
-    jwt.header.compressionAlgorithm?.let { compressionAlgorithm ->
+    encryptedJwt.header.compressionAlgorithm?.let { compressionAlgorithm ->
         ensureNotNull(compressionMethodsSupported) {
             RequestCompressionNotSupported
         }
         ensure(compressionMethodsSupported.any { it.name == compressionAlgorithm.name }) {
-            UnsupportedRequestCompressionMethod(jwt.header.compressionAlgorithm, compressionMethodsSupported)
+            UnsupportedRequestCompressionMethod(encryptedJwt.header.compressionAlgorithm, compressionMethodsSupported)
         }
     }
 
     val processor = DefaultJWTProcessor<SecurityContext>()
     processor.jweKeySelector = JWEDecryptionKeySelector(
-        jwt.header.algorithm,
-        jwt.header.encryptionMethod,
+        encryptedJwt.header.algorithm,
+        encryptedJwt.header.encryptionMethod,
         ImmutableJWKSet(encryptionKeys),
     )
-    val claims = processor.process(jwt, null)
+    val claims = processor.process(encryptedJwt, null)
     return jsonSupport.decodeFromString<T>(JSONObjectUtils.toJSONString(claims.toJSONObject()))
 }

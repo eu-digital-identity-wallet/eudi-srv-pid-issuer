@@ -288,10 +288,7 @@ class IssueCredential(
         credentialRequestJwt: String,
     ): IssueCredentialResponse =
         either {
-            val parsedJwt = Either.catch { EncryptedJWT.parse(credentialRequestJwt) }
-                .mapLeft { UnparseableEncryptedRequest(it) }
-                .bind()
-            val request = decryptCredentialRequest(parsedJwt, credentialIssuerMetadata)
+            val request: CredentialRequestTO = decryptCredentialRequest(credentialRequestJwt, credentialIssuerMetadata)
             invoke(authorizationContext, request)
         }.getOrElse { error ->
             error.toTO()

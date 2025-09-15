@@ -172,8 +172,7 @@ class GetDeferredCredential(
     suspend fun fromEncryptedRequest(
         requestJwt: String,
     ): DeferredCredentialResponse = either {
-        val parsedJwt = EncryptedJWT.parse(requestJwt)
-        val requestTO: DeferredCredentialRequestTO = decryptCredentialRequest(parsedJwt, credentialIssuerMetadata)
+        val requestTO: DeferredCredentialRequestTO = decryptCredentialRequest(requestJwt, credentialIssuerMetadata)
         invoke(requestTO)
     }.getOrElse { error ->
         error.toTO()
