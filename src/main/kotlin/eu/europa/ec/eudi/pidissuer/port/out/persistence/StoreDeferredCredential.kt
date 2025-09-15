@@ -22,7 +22,7 @@ import kotlin.time.Instant
 fun interface StoreDeferredCredential {
     suspend operator fun invoke(
         transactionId: TransactionId,
-        credential: CredentialResponse.Issued?,
+        credential: CredentialResponse.Issued,
         notIssuedBefore: Instant,
     )
 }

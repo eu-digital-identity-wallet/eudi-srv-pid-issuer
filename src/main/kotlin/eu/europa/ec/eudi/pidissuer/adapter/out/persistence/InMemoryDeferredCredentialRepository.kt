@@ -33,7 +33,7 @@ import kotlin.time.toKotlinInstant
  * and the issued credential. If issuance is still pending [issued] is null.
  */
 data class DeferredState(
-    val issued: CredentialResponse.Issued?,
+    val issued: CredentialResponse.Issued,
     val notIssuedBefore: Instant,
 )
 
