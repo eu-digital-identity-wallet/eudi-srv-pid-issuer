@@ -117,7 +117,6 @@ import java.time.Clock
 import java.time.Duration
 import java.util.*
 import kotlin.time.Duration.Companion.days
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 import kotlin.time.toKotlinDuration
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IssuingCountry as EhicIssuingCountry
@@ -666,7 +665,7 @@ fun beans(clock: Clock) = beans {
         )
     }
     bean {
-        GetDeferredCredential(ref(), ref())
+        GetDeferredCredential(ref(), ref(), ref())
     }
     bean {
         CreateCredentialsOffer(ref(), credentialsOfferUri)
@@ -680,7 +679,7 @@ fun beans(clock: Clock) = beans {
             .associateBy { Vct(it.vct) }
             .mapValues { it.value.resource }
         val metaDataApi = MetaDataApi(ref(), ref(), typeMetadata)
-        val walletApi = WalletApi(ref(), ref(), ref(), ref(), ref(), ref())
+        val walletApi = WalletApi(ref(), ref(), ref(), ref(), ref())
         val issuerUi = IssuerUi(credentialsOfferUri, ref(), ref(), ref())
         val issuerApi = IssuerApi(ref())
         metaDataApi.route.and(walletApi.route).and(issuerUi.router).and(issuerApi.router)

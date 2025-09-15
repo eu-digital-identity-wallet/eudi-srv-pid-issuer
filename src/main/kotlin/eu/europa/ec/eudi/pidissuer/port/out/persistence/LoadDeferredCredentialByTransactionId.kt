@@ -16,16 +16,16 @@
 package eu.europa.ec.eudi.pidissuer.port.out.persistence
 
 import eu.europa.ec.eudi.pidissuer.domain.CredentialResponse
-import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.domain.TransactionId
 
 sealed interface LoadDeferredCredentialResult {
     data class Found(
         val credential: CredentialResponse.Issued,
-        val responseEncryption: RequestedResponseEncryption,
     ) : LoadDeferredCredentialResult
     data object InvalidTransactionId : LoadDeferredCredentialResult
-    data object IssuancePending : LoadDeferredCredentialResult
+    data class IssuancePending(
+        val deferred: CredentialResponse.Deferred,
+    ) : LoadDeferredCredentialResult
 }
 
 fun interface LoadDeferredCredentialByTransactionId {

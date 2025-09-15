@@ -23,4 +23,8 @@ internal object OpenId4VciSpec {
     val ZIP_ALGORITHMS = setOf("DEF")
 
     const val KEY_ATTESTATION_JWT_TYPE = "key-attestation+jwt"
+
+    const val TRANSACTION_ID = "transaction_id"
+    const val INTERVAL = "interval"
+    const val NOTIFICATION_ID = "notification_id"
 }

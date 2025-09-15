@@ -17,12 +17,17 @@ package eu.europa.ec.eudi.pidissuer.port.out.jose
 
 import arrow.core.Either
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
-import eu.europa.ec.eudi.pidissuer.port.input.DeferredCredentialSuccessResponse
+import eu.europa.ec.eudi.pidissuer.port.input.DeferredCredentialResponse
 
-fun interface EncryptDeferredResponse {
+interface EncryptDeferredResponse {
 
     operator fun invoke(
-        response: DeferredCredentialSuccessResponse.PlainTO,
+        response: DeferredCredentialResponse.PlainTO,
         parameters: RequestedResponseEncryption.Required,
-    ): Either<Throwable, DeferredCredentialSuccessResponse.EncryptedJwtIssued>
+    ): Either<Throwable, DeferredCredentialResponse.EncryptedJwtIssued>
+
+    operator fun invoke(
+        response: DeferredCredentialResponse.IssuancePendingPlain,
+        parameters: RequestedResponseEncryption.Required,
+    ): Either<Throwable, DeferredCredentialResponse.IssuancePendingEncrypted>
 }
