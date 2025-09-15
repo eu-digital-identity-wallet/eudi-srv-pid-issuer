@@ -32,8 +32,9 @@ import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec.INTERVAL
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec.NOTIFICATION_ID
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec.TRANSACTION_ID
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
-import eu.europa.ec.eudi.pidissuer.port.input.DeferredCredentialResponse
+import eu.europa.ec.eudi.pidissuer.port.input.IssuancePendingTO
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
+import eu.europa.ec.eudi.pidissuer.port.input.IssuedTO
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptDeferredResponse
 import kotlinx.serialization.json.*
@@ -52,39 +53,37 @@ class EncryptDeferredResponseNimbus(
     private val encryptResponse = EncryptResponse(issuer, clock)
 
     override fun invoke(
-        response: DeferredCredentialResponse.PlainTO,
+        response: IssuedTO,
         parameters: RequestedResponseEncryption.Required,
-    ): Either<Throwable, DeferredCredentialResponse.EncryptedJwtIssued> = Either.catch {
-        fun JWTClaimsSet.Builder.toJwtClaims(plain: DeferredCredentialResponse.PlainTO) {
+    ): Either<Throwable, EncryptedJWT> = Either.catch {
+        fun JWTClaimsSet.Builder.toJwtClaims(plain: IssuedTO) {
             with(plain) {
                 credentials(plain.credentials)
                 notificationId?.let { claim(NOTIFICATION_ID, it) }
             }
         }
 
-        val jwt = encryptResponse(parameters) { toJwtClaims(response) }.getOrThrow()
-        DeferredCredentialResponse.EncryptedJwtIssued(jwt)
+        encryptResponse(parameters) { toJwtClaims(response) }.getOrThrow()
     }
 
     override fun invoke(
-        response: DeferredCredentialResponse.IssuancePendingPlain,
+        response: IssuancePendingTO,
         parameters: RequestedResponseEncryption.Required,
-    ): Either<Throwable, DeferredCredentialResponse.IssuancePendingEncrypted> = Either.catch {
-        fun JWTClaimsSet.Builder.toJwtClaims(plain: DeferredCredentialResponse.IssuancePendingPlain) {
+    ): Either<Throwable, EncryptedJWT> = Either.catch {
+        fun JWTClaimsSet.Builder.toJwtClaims(plain: IssuancePendingTO) {
             with(plain) {
                 claim(TRANSACTION_ID, transactionId)
                 claim(INTERVAL, interval)
             }
         }
 
-        val jwt = encryptResponse(parameters) { toJwtClaims(response) }.getOrThrow()
-        DeferredCredentialResponse.IssuancePendingEncrypted(jwt)
+        encryptResponse(parameters) { toJwtClaims(response) }.getOrThrow()
     }
 
     /**
      * Populates the 'credentials' claim.
      */
-    private fun JWTClaimsSet.Builder.credentials(credentials: List<DeferredCredentialResponse.PlainTO.CredentialTO>) {
+    private fun JWTClaimsSet.Builder.credentials(credentials: List<IssuedTO.CredentialTO>) {
         val value = credentials.map {
             JSONObjectUtils.parse(Json.encodeToString(it))
         }
@@ -116,7 +115,7 @@ class EncryptCredentialResponseNimbus(
         }
 
         val jwt = encryptResponse(parameters) { toJwtClaims(response) }.getOrThrow()
-        IssueCredentialResponse.EncryptedJwtIssued(jwt)
+        IssueCredentialResponse.EncryptedJwtIssued(jwt.serialize())
     }
 
     /**
@@ -138,13 +137,12 @@ private class EncryptResponse(
     operator fun invoke(
         parameters: RequestedResponseEncryption.Required,
         responseAsJwtClaims: JWTClaimsSet.Builder.() -> Unit,
-    ): Either<Throwable, String> = Either.catch {
+    ): Either<Throwable, EncryptedJWT> = Either.catch {
         val jweHeader = parameters.asHeader()
         val jwtClaimSet = asJwtClaimSet(clock.instant(), responseAsJwtClaims)
 
         EncryptedJWT(jweHeader, jwtClaimSet)
             .apply { encrypt(parameters.encryptionJwk) }
-            .serialize()
     }
 
     private fun RequestedResponseEncryption.Required.asHeader() =

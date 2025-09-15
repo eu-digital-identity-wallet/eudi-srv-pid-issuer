@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.Either
 import arrow.core.NonEmptySet
+import arrow.core.raise.fold
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
@@ -223,38 +224,42 @@ private suspend fun IssueCredentialResponse.toServerResponse(): ServerResponse =
 
 private suspend fun DeferredCredentialResponse.toServerResponse(): ServerResponse =
     when (this) {
-        is DeferredCredentialResponse.EncryptedJwtIssued ->
-            ServerResponse
-                .ok()
-                .cacheControl(CacheControl.noStore())
-                .contentType(APPLICATION_JWT)
-                .bodyValueAndAwait(jwt)
-
-        is DeferredCredentialResponse.PlainTO ->
-            ServerResponse
-                .ok()
-                .cacheControl(CacheControl.noStore())
-                .json()
-                .bodyValueAndAwait(this)
-
-        is DeferredCredentialResponse.IssuancePendingPlain ->
-            ServerResponse
-                .status(HttpStatus.ACCEPTED)
-                .cacheControl(CacheControl.noStore())
-                .json()
-                .bodyValueAndAwait(this)
-
-        is DeferredCredentialResponse.IssuancePendingEncrypted ->
-            ServerResponse
-                .status(HttpStatus.ACCEPTED)
-                .cacheControl(CacheControl.noStore())
-                .contentType(APPLICATION_JWT)
-                .bodyValueAndAwait(jwt)
-
-        is DeferredCredentialResponse.FailedTO ->
+        is DeferredCredentialResponse.Issued -> content.fold(
+            ifLeft = { json ->
+                ServerResponse
+                    .ok()
+                    .cacheControl(CacheControl.noStore())
+                    .json()
+                    .bodyValueAndAwait(json)
+            },
+            ifRight = { jwt ->
+                ServerResponse
+                    .ok()
+                    .cacheControl(CacheControl.noStore())
+                    .contentType(APPLICATION_JWT)
+                    .bodyValueAndAwait(jwt.serialize())
+            },
+        )
+        is DeferredCredentialResponse.IssuancePending -> content.fold(
+            ifLeft = { json ->
+                ServerResponse
+                    .status(HttpStatus.ACCEPTED)
+                    .cacheControl(CacheControl.noStore())
+                    .json()
+                    .bodyValueAndAwait(json)
+            },
+            ifRight = { jwt ->
+                ServerResponse
+                    .status(HttpStatus.ACCEPTED)
+                    .cacheControl(CacheControl.noStore())
+                    .contentType(APPLICATION_JWT)
+                    .bodyValueAndAwait(jwt.serialize())
+            },
+        )
+        is DeferredCredentialResponse.Failed ->
             ServerResponse
                 .badRequest()
                 .cacheControl(CacheControl.noStore())
                 .json()
-                .bodyValueAndAwait(this)
+                .bodyValueAndAwait(this.content)
     }

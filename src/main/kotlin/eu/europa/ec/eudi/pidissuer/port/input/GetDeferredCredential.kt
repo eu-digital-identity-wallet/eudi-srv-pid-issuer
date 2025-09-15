@@ -15,10 +15,13 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
+import arrow.core.Either
 import arrow.core.getOrElse
+import arrow.core.left
 import arrow.core.raise.Raise
 import arrow.core.raise.either
 import arrow.core.raise.ensure
+import arrow.core.right
 import com.nimbusds.jwt.EncryptedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.decryptCredentialRequest
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
@@ -61,88 +64,79 @@ enum class GetDeferredCredentialErrorTypeTo {
     INVALID_CREDENTIAL_REQUEST,
 }
 
-sealed interface DeferredCredentialResponse {
+typealias JsonOrEncryptedJwt<JSON> = Either<JSON, EncryptedJWT>
 
-    @Serializable
-    data class IssuancePendingPlain(
-        @SerialName("transaction_id") val transactionId: String,
-        val interval: Long,
-    ) : DeferredCredentialResponse
+@Serializable
+data class IssuancePendingTO(
+    @SerialName("transaction_id") val transactionId: String,
+    val interval: Long,
+)
 
-    @Serializable
-    data class IssuancePendingEncrypted(val jwt: String) : DeferredCredentialResponse
+@Serializable
+data class IssuedTO(
+    val credentials: List<CredentialTO>,
+    @SerialName("notification_id") val notificationId: String? = null,
+) {
+    init {
+        require(credentials.isNotEmpty()) {
+            "credentials must not be empty"
+        }
+    }
+
+    companion object {
+        /**
+         * Multiple credentials have been issued.
+         */
+        operator fun invoke(
+            credentials: JsonArray,
+            notificationId: String?,
+        ): IssuedTO = IssuedTO(
+            credentials = credentials.map { CredentialTO(it) },
+            notificationId = notificationId,
+        )
+    }
 
     /**
-     * Deferred response is plain, no encryption
+     * A single issued Credential.
      */
     @Serializable
-    data class PlainTO(
-        val credentials: List<CredentialTO>,
-        @SerialName("notification_id") val notificationId: String? = null,
-    ) : DeferredCredentialResponse {
+    @JvmInline
+    value class CredentialTO(val value: JsonObject) {
         init {
-            require(credentials.isNotEmpty()) {
-                "credentials must not be empty"
+            val credential = requireNotNull(value["credential"]) {
+                "value must have a 'credential' property"
+            }
+
+            require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
+                "credential must be either a JsonObjects or a string JsonPrimitive"
             }
         }
 
         companion object {
-            /**
-             * Multiple credentials have been issued.
-             */
             operator fun invoke(
-                credentials: JsonArray,
-                notificationId: String?,
-            ): PlainTO = PlainTO(
-                credentials = credentials.map { CredentialTO(it) },
-                notificationId = notificationId,
-            )
-        }
-
-        /**
-         * A single issued Credential.
-         */
-        @Serializable
-        @JvmInline
-        value class CredentialTO(val value: JsonObject) {
-            init {
-                val credential = requireNotNull(value["credential"]) {
-                    "value must have a 'credential' property"
-                }
-
-                require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
-                    "credential must be either a JsonObjects or a string JsonPrimitive"
-                }
-            }
-
-            companion object {
-                operator fun invoke(
-                    credential: JsonElement,
-                    builder: JsonObjectBuilder.() -> Unit = { },
-                ): CredentialTO =
-                    CredentialTO(
-                        buildJsonObject {
-                            put("credential", credential)
-                            builder()
-                        },
-                    )
-            }
+                credential: JsonElement,
+                builder: JsonObjectBuilder.() -> Unit = { },
+            ): CredentialTO =
+                CredentialTO(
+                    buildJsonObject {
+                        put("credential", credential)
+                        builder()
+                    },
+                )
         }
     }
+}
 
-    /**
-     * Deferred response is encrypted.
-     */
-    @Serializable
-    data class EncryptedJwtIssued(
-        val jwt: String,
-    ) : DeferredCredentialResponse
+@Serializable
+data class FailedTO(
+    @SerialName("error") @Required val type: GetDeferredCredentialErrorTypeTo,
+    @SerialName("error_description") val errorDescription: String? = null,
+)
 
-    @Serializable
-    data class FailedTO(
-        @SerialName("error") @Required val type: GetDeferredCredentialErrorTypeTo,
-        @SerialName("error_description") val errorDescription: String? = null,
-    ) : DeferredCredentialResponse
+sealed interface DeferredCredentialResponse {
+    data class IssuancePending(val content: JsonOrEncryptedJwt<IssuancePendingTO>) : DeferredCredentialResponse
+    data class Issued(val content: JsonOrEncryptedJwt<IssuedTO>) : DeferredCredentialResponse
+    data class Failed(val content: FailedTO) : DeferredCredentialResponse
 }
 
 @Serializable
@@ -152,7 +146,7 @@ sealed interface GetDeferredCredentialError {
     data class InvalidEncryptionParameters(val error: Throwable) : GetDeferredCredentialError
 }
 
-private fun GetDeferredCredentialError.toTO(): DeferredCredentialResponse.FailedTO {
+private fun GetDeferredCredentialError.toTO(): DeferredCredentialResponse.Failed {
     val (type, description) = when (this) {
         is GetDeferredCredentialError.InvalidTransactionId ->
             GetDeferredCredentialErrorTypeTo.INVALID_TRANSACTION_ID to null
@@ -161,7 +155,7 @@ private fun GetDeferredCredentialError.toTO(): DeferredCredentialResponse.Failed
             GetDeferredCredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS to
                 "Invalid encryption parameters: ${error.message}"
     }
-    return DeferredCredentialResponse.FailedTO(type, description)
+    return DeferredCredentialResponse.Failed(FailedTO(type, description))
 }
 
 /**
@@ -226,37 +220,42 @@ class GetDeferredCredential(
         when (loadDeferredCredentialResult) {
             is LoadDeferredCredentialResult.InvalidTransactionId -> raise(GetDeferredCredentialError.InvalidTransactionId)
             is LoadDeferredCredentialResult.IssuancePending -> {
-                val plain = DeferredCredentialResponse.IssuancePendingPlain(
+                val plain = IssuancePendingTO(
                     loadDeferredCredentialResult.deferred.transactionId.value,
                     loadDeferredCredentialResult.deferred.interval.inWholeSeconds,
                 )
 
                 when (credentialResponseEncryption) {
-                    RequestedResponseEncryption.NotRequired -> plain
-                    is RequestedResponseEncryption.Required ->
-                        encryptCredentialResponse(
+                    RequestedResponseEncryption.NotRequired -> DeferredCredentialResponse.IssuancePending(plain.left())
+                    is RequestedResponseEncryption.Required -> {
+                        val jwt = encryptCredentialResponse(
                             plain,
                             credentialResponseEncryption,
                         ).getOrThrow()
+                        DeferredCredentialResponse.IssuancePending(jwt.right())
+                    }
                 }
             }
             is LoadDeferredCredentialResult.Found -> {
-                val plain = DeferredCredentialResponse.PlainTO(
+                val plain = IssuedTO(
                     JsonArray(loadDeferredCredentialResult.credential.credentials),
                     loadDeferredCredentialResult.credential.notificationId?.value,
                 )
 
                 when (credentialResponseEncryption) {
-                    RequestedResponseEncryption.NotRequired -> plain
-                    is RequestedResponseEncryption.Required -> encryptCredentialResponse(
-                        plain,
-                        credentialResponseEncryption,
-                    ).getOrThrow()
+                    RequestedResponseEncryption.NotRequired -> DeferredCredentialResponse.Issued(plain.left())
+                    is RequestedResponseEncryption.Required -> {
+                        val jwt = encryptCredentialResponse(
+                            plain,
+                            credentialResponseEncryption,
+                        ).getOrThrow()
+                        DeferredCredentialResponse.Issued(jwt.right())
+                    }
                 }
             }
         }
 }
-private fun RequestEncryptionError.toTO(): DeferredCredentialResponse.FailedTO {
+private fun RequestEncryptionError.toTO(): DeferredCredentialResponse.Failed {
     val (type, description) = when (this) {
         is UnparseableEncryptedRequest ->
             GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Encrypted request cannot be parsed as a JWT"
@@ -283,5 +282,5 @@ private fun RequestEncryptionError.toTO(): DeferredCredentialResponse.FailedTO {
                 "Unsupported credential request compression method $compressionAlgorithm, " +
                 "supported methods: $compressionMethodsSupported"
     }
-    return DeferredCredentialResponse.FailedTO(type, description)
+    return DeferredCredentialResponse.Failed(FailedTO(type, description))
 }

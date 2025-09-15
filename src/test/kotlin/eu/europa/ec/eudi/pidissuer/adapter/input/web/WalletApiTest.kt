@@ -1276,7 +1276,7 @@ internal class WalletApiDeferredIssuanceResponseEncryptionOptionalTest : BaseWal
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isAccepted()
-            .expectBody<DeferredCredentialResponse.IssuancePendingPlain>()
+            .expectBody<IssuancePendingTO>()
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 

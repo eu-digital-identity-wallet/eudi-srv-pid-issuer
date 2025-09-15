@@ -16,18 +16,20 @@
 package eu.europa.ec.eudi.pidissuer.port.out.jose
 
 import arrow.core.Either
+import com.nimbusds.jwt.EncryptedJWT
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
-import eu.europa.ec.eudi.pidissuer.port.input.DeferredCredentialResponse
+import eu.europa.ec.eudi.pidissuer.port.input.IssuancePendingTO
+import eu.europa.ec.eudi.pidissuer.port.input.IssuedTO
 
 interface EncryptDeferredResponse {
 
     operator fun invoke(
-        response: DeferredCredentialResponse.PlainTO,
+        response: IssuedTO,
         parameters: RequestedResponseEncryption.Required,
-    ): Either<Throwable, DeferredCredentialResponse.EncryptedJwtIssued>
+    ): Either<Throwable, EncryptedJWT>
 
     operator fun invoke(
-        response: DeferredCredentialResponse.IssuancePendingPlain,
+        response: IssuancePendingTO,
         parameters: RequestedResponseEncryption.Required,
-    ): Either<Throwable, DeferredCredentialResponse.IssuancePendingEncrypted>
+    ): Either<Throwable, EncryptedJWT>
 }
