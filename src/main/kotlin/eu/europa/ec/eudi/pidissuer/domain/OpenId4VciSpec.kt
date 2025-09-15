@@ -27,4 +27,6 @@ internal object OpenId4VciSpec {
     const val TRANSACTION_ID = "transaction_id"
     const val INTERVAL = "interval"
     const val NOTIFICATION_ID = "notification_id"
+
+    const val CREDENTIAL_RESPONSE_ENCRYPTION = "credential_response_encryption"
 }

@@ -27,6 +27,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.jose.decryptCredentialRequest
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.CredentialRequestEncryption
+import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.domain.TransactionId
 import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.RequestCompressionNotSupported
@@ -47,8 +48,8 @@ import org.slf4j.LoggerFactory
 
 @Serializable
 data class DeferredCredentialRequestTO(
-    @Required @SerialName("transaction_id") val transactionId: String,
-    @SerialName("credential_response_encryption")
+    @Required @SerialName(OpenId4VciSpec.TRANSACTION_ID) val transactionId: String,
+    @SerialName(OpenId4VciSpec.CREDENTIAL_RESPONSE_ENCRYPTION)
     val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
 )
 
@@ -68,14 +69,14 @@ typealias JsonOrEncryptedJwt<JSON> = Either<JSON, EncryptedJWT>
 
 @Serializable
 data class IssuancePendingTO(
-    @SerialName("transaction_id") val transactionId: String,
-    val interval: Long,
+    @SerialName(OpenId4VciSpec.TRANSACTION_ID) val transactionId: String,
+    @SerialName(OpenId4VciSpec.INTERVAL) val interval: Long,
 )
 
 @Serializable
 data class IssuedTO(
     val credentials: List<CredentialTO>,
-    @SerialName("notification_id") val notificationId: String? = null,
+    @SerialName(OpenId4VciSpec.NOTIFICATION_ID) val notificationId: String? = null,
 ) {
     init {
         require(credentials.isNotEmpty()) {
