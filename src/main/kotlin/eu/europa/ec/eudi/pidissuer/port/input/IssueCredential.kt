@@ -22,7 +22,6 @@ import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
-import com.nimbusds.jwt.EncryptedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.decryptCredentialRequest
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*

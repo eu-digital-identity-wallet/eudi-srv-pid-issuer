@@ -62,7 +62,6 @@ class EncryptDeferredResponseNimbus(
     ): Either<Throwable, EncryptedJWT> = Either.catch {
         encryptResponse(response, parameters).getOrThrow()
     }
-
 }
 
 /**
