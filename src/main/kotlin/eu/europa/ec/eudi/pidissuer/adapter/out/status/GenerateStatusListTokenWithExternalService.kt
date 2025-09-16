@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.status
 
 import arrow.core.Either
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
 import kotlinx.serialization.Required
@@ -29,18 +30,19 @@ import org.springframework.web.reactive.function.client.awaitBody
 import org.springframework.web.reactive.function.client.awaitExchange
 import java.net.URI
 import java.net.URL
-import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import kotlin.time.Instant
 
 internal class GenerateStatusListTokenWithExternalService(
     private val webClient: WebClient,
     private val serviceUrl: URL,
     private val apiKey: String,
+    private val clock: Clock,
 ) : GenerateStatusListToken {
 
     override suspend fun invoke(
         type: String,
-        expiration: ZonedDateTime,
+        expiration: Instant,
     ): Either<Throwable, StatusListToken> = Either.catch {
         require(type.isNotBlank()) { "type cannot be blank" }
 
@@ -56,7 +58,7 @@ internal class GenerateStatusListTokenWithExternalService(
                     LinkedMultiValueMap<String, String>().apply {
                         add("country", "FC")
                         add("doctype", type)
-                        add("expiry_date", expiration.format(DateTimeFormatter.ISO_LOCAL_DATE))
+                        add("expiry_date", with(clock) { expiration.toZonedDateTime().format(DateTimeFormatter.ISO_LOCAL_DATE) })
                     },
                 ),
             )

@@ -19,6 +19,7 @@ import arrow.core.nonEmptyListOf
 import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.util.JSONObjectUtils
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAssurancePlaceOfBirth
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.port.input.Username
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
@@ -41,7 +42,6 @@ import org.springframework.web.reactive.function.client.awaitBody
 import java.time.Year
 import java.util.*
 import kotlin.math.ceil
-import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 
 private val log = LoggerFactory.getLogger(GetPidDataFromKeyCloak::class.java)

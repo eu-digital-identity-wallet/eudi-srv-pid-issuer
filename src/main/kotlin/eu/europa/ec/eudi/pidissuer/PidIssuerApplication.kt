@@ -61,8 +61,7 @@ import eu.europa.ec.eudi.sdjwt.vc.Vct
 import io.ktor.http.*
 import io.netty.handler.ssl.SslContextBuilder
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
-import kotlinx.coroutines.flow.single
-import kotlinx.coroutines.flow.timeout
+import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
@@ -107,7 +106,6 @@ import org.springframework.security.web.server.authorization.HttpStatusServerAcc
 import org.springframework.security.web.server.authorization.ServerWebExchangeDelegatingServerAccessDeniedHandler
 import org.springframework.util.unit.DataSize
 import org.springframework.web.reactive.function.client.WebClient
-import org.springframework.web.reactive.function.client.bodyToFlow
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
 import reactor.netty.transport.ProxyProvider
@@ -116,7 +114,6 @@ import java.net.URL
 import java.security.KeyStore
 import java.security.cert.X509Certificate
 import java.util.*
-import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
@@ -125,7 +122,6 @@ import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 import kotlin.time.toJavaDuration
 import kotlin.time.toJavaInstant
-import kotlin.time.toKotlinInstant
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IssuingCountry as EhicIssuingCountry
 
 private val log = LoggerFactory.getLogger(PidIssuerApplication::class.java)
@@ -427,6 +423,7 @@ fun beans(clock: Clock) = beans {
                 webClient = ref(),
                 serviceUrl = serviceUrl,
                 apiKey = env.getRequiredProperty("issuer.statusList.service.apiKey"),
+                ref(),
             )
         }
     }
@@ -528,15 +525,9 @@ fun beans(clock: Clock) = beans {
                         getPidData = ref(),
                         clock = clock,
                         credentialIssuerId = issuerPublicUrl,
-                        calculateExpiresAt = { iat -> (iat + expiresIn.toJavaDuration()).toInstant().toKotlinInstant() },
-                        calculateNotUseBefore = notUseBefore?.let { duration ->
-                            {
-                                    iat ->
-                                iat.plusSeconds(duration.toJavaDuration().seconds).toInstant().toKotlinInstant()
-                            }
-                        },
-                        notificationsEnabled = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled")
-                            ?: true,
+                        calculateExpiresAt = { iat -> iat + expiresIn },
+                        calculateNotUseBefore = notUseBefore?.let { duration -> { iat -> iat + duration } },
+                        notificationsEnabled = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled") ?: true,
                         generateNotificationId = ref(),
                         storeIssuedCredentials = ref(),
                         validateProofs = ref(),
@@ -707,9 +698,9 @@ fun beans(clock: Clock) = beans {
                     .uri(env.getRequiredProperty("issuer.authorizationServer.metadata"))
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
-                    .bodyToFlow<String>()
-                    .timeout(5L.seconds)
-                    .single()
+                    .bodyToMono(String::class.java)
+                    .timeout(5.seconds.toJavaDuration())
+                    .awaitSingle()
                 OIDCProviderMetadata.parse(metadata)
             }.dPoPJWSAlgs?.toSet() ?: emptySet()
         }.getOrElse {

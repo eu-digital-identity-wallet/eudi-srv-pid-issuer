@@ -44,6 +44,7 @@ import eu.europa.ec.eudi.pidissuer.PidIssuerApplicationTest
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPConfigurationProperties
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.CredentialRequestEncryption
@@ -58,8 +59,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Month
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.todayIn
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import org.springframework.beans.factory.annotation.Autowired
@@ -84,7 +83,6 @@ import java.net.URI
 import java.security.cert.X509Certificate
 import java.util.*
 import kotlin.test.*
-import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
@@ -152,7 +150,7 @@ internal class BaseWalletApiTest {
 
         @Bean
         @Primary
-        fun getPidData(): GetPidData =
+        fun getPidData(clock: Clock): GetPidData =
             GetPidData {
                 val pid = Pid(
                     familyName = FamilyName("Surname"),
@@ -168,7 +166,7 @@ internal class BaseWalletApiTest {
                 )
                 val issuingCountry = IsoCountry("GR")
                 val pidMetaData = PidMetaData(
-                    issuanceDate = Clock.System.todayIn(TimeZone.currentSystemDefault()),
+                    issuanceDate = with(clock) { now().toLocalDate() },
                     expiryDate = LocalDate(2030, 11, 10),
                     documentNumber = null,
                     issuingAuthority = IssuingAuthority.MemberState(issuingCountry),

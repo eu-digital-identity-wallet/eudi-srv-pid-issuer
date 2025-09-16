@@ -15,10 +15,10 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import org.springframework.web.server.CoWebFilter
 import org.springframework.web.server.CoWebFilterChain
 import org.springframework.web.server.ServerWebExchange
-import kotlin.time.Clock
 
 /**
  * [CoWebFilter] that generates a new DPoP Nonce for DPoP authenticated web requests and explicitly configured paths.

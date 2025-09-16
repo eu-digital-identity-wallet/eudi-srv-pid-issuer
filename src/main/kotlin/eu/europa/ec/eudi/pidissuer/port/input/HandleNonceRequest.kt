@@ -15,11 +15,11 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlin.time.Clock
 import kotlin.time.Duration
 
 /**

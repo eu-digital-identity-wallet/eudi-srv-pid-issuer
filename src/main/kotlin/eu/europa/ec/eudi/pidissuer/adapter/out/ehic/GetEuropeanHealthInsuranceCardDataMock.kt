@@ -15,11 +15,11 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.ehic
 
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toJavaZoneId
 import java.time.ZonedDateTime
 import java.util.*
-import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.toJavaInstant
 
