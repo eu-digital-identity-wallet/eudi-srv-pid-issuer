@@ -252,7 +252,7 @@ internal class IssueSdJwtVcPid(
     ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Handling issuance request ...")
 
-        val timezone = TimeZone.currentSystemDefault() // .toJavaZoneId()
+        val timezone = TimeZone.currentSystemDefault()
         val holderPubKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.now()).bind()
         val (pid, pidMetaData) = getPidData(authorizationContext).bind()
         val issuedAt = ZonedDateTime.ofInstant(clock.now().toJavaInstant(), ZoneId.systemDefault())
