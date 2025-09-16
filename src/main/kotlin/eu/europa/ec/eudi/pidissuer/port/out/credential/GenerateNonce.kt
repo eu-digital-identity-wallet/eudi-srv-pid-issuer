@@ -15,8 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.credential
 
-import java.time.Duration
-import java.time.Instant
+import kotlin.time.Duration
+import kotlin.time.Instant
 
 /**
  * Generates a new Nonce that expires after a specific [Duration].

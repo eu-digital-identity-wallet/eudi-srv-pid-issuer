@@ -18,8 +18,8 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
 import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
-import java.time.Duration
-import java.time.Instant
+import kotlin.time.Duration
+import kotlin.time.Instant
 
 /**
  * Properties for configuring DPoP.
@@ -32,8 +32,8 @@ data class DPoPConfigurationProperties(
 ) {
     init {
         require(JWSAlgorithm.Family.SIGNATURE.containsAll(algorithms)) { "'algorithms' contains invalid values" }
-        require(!proofMaxAge.isZero && !proofMaxAge.isNegative) { "'proofMaxAge' must be positive" }
-        require(!cachePurgeInterval.isZero && !cachePurgeInterval.isNegative) { "'cachePurgeInterval' must be positive" }
+        require(proofMaxAge.isPositive()) { "'proofMaxAge' must be positive" }
+        require(cachePurgeInterval.isPositive()) { "'cachePurgeInterval' must be positive" }
     }
 }
 

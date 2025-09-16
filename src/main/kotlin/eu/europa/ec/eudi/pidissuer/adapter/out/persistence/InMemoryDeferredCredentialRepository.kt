@@ -23,10 +23,8 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreDeferredCredential
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.slf4j.LoggerFactory
-import java.time.Clock
-import java.time.Instant
-import kotlin.time.toJavaInstant
-import kotlin.time.toKotlinInstant
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 /**
  * Represents the state of the deferred issuance. Holds the response encryption as specified in initial request
@@ -51,11 +49,11 @@ class InMemoryDeferredCredentialRepository(
                 val deferredPersist = data[transactionId]
                 when {
                     deferredPersist == null -> LoadDeferredCredentialResult.InvalidTransactionId
-                    clock.instant() > deferredPersist.notIssuedBefore -> LoadDeferredCredentialResult.Found(deferredPersist.issued)
+                    clock.now() > deferredPersist.notIssuedBefore -> LoadDeferredCredentialResult.Found(deferredPersist.issued)
                     else -> LoadDeferredCredentialResult.IssuancePending(
                         CredentialResponse.Deferred(
                             transactionId,
-                            deferredPersist.notIssuedBefore.toKotlinInstant() - clock.instant().toKotlinInstant(),
+                            deferredPersist.notIssuedBefore - clock.now(),
                         ),
                     )
                 }
@@ -68,7 +66,7 @@ class InMemoryDeferredCredentialRepository(
                 if (data.containsKey(transactionId)) {
                     require(data[transactionId] == null) { "Oops!! $transactionId already exists" }
                 }
-                data[transactionId] = DeferredState(credential, notIssuedBefore.toJavaInstant())
+                data[transactionId] = DeferredState(credential, notIssuedBefore)
                 log.info("Stored $transactionId -> $credential ")
             }
         }

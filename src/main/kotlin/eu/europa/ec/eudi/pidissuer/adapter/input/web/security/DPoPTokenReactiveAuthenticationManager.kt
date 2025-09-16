@@ -36,8 +36,8 @@ import org.springframework.security.oauth2.core.OAuth2TokenIntrospectionClaimNam
 import org.springframework.security.oauth2.server.resource.introspection.BadOpaqueTokenException
 import org.springframework.security.oauth2.server.resource.introspection.SpringReactiveOpaqueTokenIntrospector
 import reactor.core.publisher.Mono
-import java.time.Clock
-import java.time.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 /**
  * [ReactiveAuthenticationManager] implementing DPoP authentication.
@@ -61,7 +61,7 @@ class DPoPTokenReactiveAuthenticationManager(
                     val principal = introspect(authentication.accessToken)
                     val issuer = principal.issuer()
                     val thumbprint = principal.jwkThumbprint()
-                    val dpopNonce = dpopNonce.verifyDPoPNonce(authentication.dpop.nonce(), clock.instant())
+                    val dpopNonce = dpopNonce.verifyDPoPNonce(authentication.dpop.nonce(), clock.now())
                     verify(authentication, issuer, thumbprint, dpopNonce)
                     authentication.authenticate(principal)
                 }

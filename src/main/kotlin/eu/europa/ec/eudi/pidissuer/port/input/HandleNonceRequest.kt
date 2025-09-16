@@ -19,8 +19,8 @@ import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import java.time.Clock
-import java.time.Duration
+import kotlin.time.Clock
+import kotlin.time.Duration
 
 /**
  * Response to a Nonce Request.
@@ -38,5 +38,5 @@ internal class HandleNonceRequest(
     private val cNonceExpiresIn: Duration,
     private val generateNonce: GenerateNonce,
 ) {
-    suspend operator fun invoke(): NonceResponseTO = NonceResponseTO(generateNonce(clock.instant(), cNonceExpiresIn))
+    suspend operator fun invoke(): NonceResponseTO = NonceResponseTO(generateNonce(clock.now(), cNonceExpiresIn))
 }

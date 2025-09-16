@@ -22,7 +22,6 @@ import eu.europa.ec.eudi.pidissuer.domain.ClaimDefinition
 import id.walt.mdoc.dataelement.DataElement
 import id.walt.mdoc.dataelement.toDataElement
 import id.walt.mdoc.doc.MDocBuilder
-import kotlinx.datetime.toKotlinLocalDate
 import kotlin.time.Instant
 
 internal class DefaultEncodePidInCbor(issuerSigningKey: IssuerSigningKey) : EncodePidInCbor {
@@ -47,7 +46,7 @@ internal class DefaultEncodePidInCbor(issuerSigningKey: IssuerSigningKey) : Enco
 private fun MDocBuilder.addItemsToSign(pid: Pid) {
     addItemToSign(MsoMdocPidClaims.FamilyName, pid.familyName.value.toDataElement())
     addItemToSign(MsoMdocPidClaims.GivenName, pid.givenName.value.toDataElement())
-    addItemToSign(MsoMdocPidClaims.BirthDate, pid.birthDate.toKotlinLocalDate().toDataElement())
+    addItemToSign(MsoMdocPidClaims.BirthDate, pid.birthDate.toDataElement())
     val birthPlace = pid.birthPlace?.let { birthPlace ->
         listOfNotNull(birthPlace.locality?.value, birthPlace.region?.value, birthPlace.country?.value)
             .joinToString(separator = ", ")
@@ -81,7 +80,7 @@ private fun MDocBuilder.addItemsToSign(pid: Pid) {
 
 private fun MDocBuilder.addItemsToSign(metaData: PidMetaData) {
     metaData.personalAdministrativeNumber?.let { addItemToSign(MsoMdocPidClaims.PersonalAdministrativeNumber, it.value.toDataElement()) }
-    addItemToSign(MsoMdocPidClaims.ExpiryDate, metaData.expiryDate.toKotlinLocalDate().toDataElement())
+    addItemToSign(MsoMdocPidClaims.ExpiryDate, metaData.expiryDate.toDataElement())
     when (val issuingAuthority = metaData.issuingAuthority) {
         is IssuingAuthority.MemberState ->
             addItemToSign(MsoMdocPidClaims.IssuingAuthority, issuingAuthority.code.value.toDataElement())
@@ -91,7 +90,7 @@ private fun MDocBuilder.addItemsToSign(metaData: PidMetaData) {
     addItemToSign(MsoMdocPidClaims.IssuingCountry, metaData.issuingCountry.value.toDataElement())
     metaData.documentNumber?.let { addItemToSign(MsoMdocPidClaims.DocumentNumber, it.value.toDataElement()) }
     metaData.issuingJurisdiction?.let { addItemToSign(MsoMdocPidClaims.IssuingJurisdiction, it.toDataElement()) }
-    metaData.issuanceDate?.let { addItemToSign(MsoMdocPidClaims.IssuanceDate, it.toKotlinLocalDate().toDataElement()) }
+    metaData.issuanceDate?.let { addItemToSign(MsoMdocPidClaims.IssuanceDate, it.toDataElement()) }
 }
 
 private fun MDocBuilder.addItemToSign(claim: ClaimDefinition, value: DataElement) {

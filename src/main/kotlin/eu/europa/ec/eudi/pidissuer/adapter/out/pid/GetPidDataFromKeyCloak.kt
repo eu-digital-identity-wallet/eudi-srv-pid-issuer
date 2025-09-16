@@ -23,6 +23,11 @@ import eu.europa.ec.eudi.pidissuer.port.input.Username
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.toJavaLocalDate
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonIgnoreUnknownKeys
@@ -33,9 +38,11 @@ import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
-import java.time.*
+import java.time.Year
 import java.util.*
 import kotlin.math.ceil
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
 
 private val log = LoggerFactory.getLogger(GetPidDataFromKeyCloak::class.java)
 
@@ -212,15 +219,15 @@ class GetPidDataFromKeyCloak(
     }
 
     private fun genPidMetaData(): PidMetaData {
-        val issuanceDate = LocalDate.now(clock)
+        val issuanceDate = clock.now() // .toLocalDateTime(TimeZone.currentSystemDefault())
         return PidMetaData(
             personalAdministrativeNumber = AdministrativeNumber(UUID.randomUUID().toString()),
-            expiryDate = issuanceDate.plusDays(100),
+            expiryDate = (issuanceDate + 100.days).toLocalDateTime(TimeZone.currentSystemDefault()).date,
             issuingAuthority = IssuingAuthority.AdministrativeAuthority("${issuerCountry.value} Administrative authority"),
             issuingCountry = issuerCountry,
             documentNumber = DocumentNumber(UUID.randomUUID().toString()),
             issuingJurisdiction = issuingJurisdiction,
-            issuanceDate = issuanceDate,
+            issuanceDate = issuanceDate.toLocalDateTime(TimeZone.currentSystemDefault()).date,
             trustAnchor = null,
         )
     }
@@ -229,9 +236,19 @@ class GetPidDataFromKeyCloak(
         val birthDate = requireNotNull(userInfo.birthDate) {
             "missing required attribute 'birthDate'"
         }.let { LocalDate.parse(it) }
-        val ageInYears = Duration.between(birthDate.atStartOfDay(clock.zone), ZonedDateTime.now(clock))
-            .takeIf { !it.isZero && !it.isNegative }
-            ?.let { ceil(it.toDays().toDouble() / 365).toUInt() }
+
+        val ageInYears = run {
+            val birthInstant = birthDate.atStartOfDayIn(TimeZone.currentSystemDefault())
+
+            val duration = clock.now() - birthInstant
+            duration.takeIf { duration.isPositive() }
+                ?.let { age ->
+                    ceil(age.inWholeDays.toDouble() / 365)
+                        .toInt()
+                        .takeIf { it > 0 }?.toUInt()
+                }
+        }
+
         val birthPlace = userInfo.placeOfBirth?.let { placeOfBirth ->
             if (null != placeOfBirth.country || null != placeOfBirth.region || null != placeOfBirth.locality) {
                 PlaceOfBirth(
@@ -263,7 +280,7 @@ class GetPidDataFromKeyCloak(
             mobilePhoneNumber = null,
             ageOver18 = userInfo.ageOver18 ?: false,
             ageInYears = ageInYears,
-            ageBirthYear = Year.from(birthDate),
+            ageBirthYear = Year.from(birthDate.toJavaLocalDate()),
         )
 
         val pidMetaData = genPidMetaData()

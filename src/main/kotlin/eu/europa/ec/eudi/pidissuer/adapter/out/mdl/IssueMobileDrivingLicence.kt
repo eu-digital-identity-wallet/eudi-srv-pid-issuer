@@ -35,10 +35,9 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
-import java.time.Clock
 import java.util.*
+import kotlin.time.Clock
 import kotlin.time.Duration
-import kotlin.time.toKotlinInstant
 
 val MobileDrivingLicenceV1Scope: Scope = Scope(mdlDocType(1u))
 
@@ -348,7 +347,7 @@ internal class IssueMobileDrivingLicence(
     ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Issuing mDL")
         val holderKeys = with(jwkExtensions()) {
-            validateProofs(request.unvalidatedProofs, supportedCredential, clock.instant()).bind()
+            validateProofs(request.unvalidatedProofs, supportedCredential, clock.now()).bind()
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
         }
         val licence = getMobileDrivingLicenceData(authorizationContext).bind()
@@ -356,7 +355,7 @@ internal class IssueMobileDrivingLicence(
             IssueCredentialError.Unexpected("Unable to fetch mDL data")
         }
 
-        val issuedAt = clock.instant().toKotlinInstant()
+        val issuedAt = clock.now()
         val expiresAt = issuedAt + validityDuration
 
         val issuedCredentials = holderKeys.parMap(Dispatchers.Default, 4) { holderKey ->
@@ -378,7 +377,7 @@ internal class IssueMobileDrivingLicence(
                     "${familyName.latin.value} ${givenName.latin.value}"
                 },
                 holderPublicKeys = holderKeys,
-                issuedAt = clock.instant(),
+                issuedAt = clock.now(),
                 notificationId = notificationId,
             ),
         )

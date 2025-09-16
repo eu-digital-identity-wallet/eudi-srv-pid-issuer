@@ -16,8 +16,8 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.NonEmptyList
+import kotlinx.datetime.LocalDate
 import java.net.URI
-import java.time.LocalDate
 import java.time.Year
 import java.util.regex.Pattern
 
@@ -210,7 +210,7 @@ data class PidMetaData(
 ) {
     init {
         issuanceDate?.let {
-            require(it.isBefore(expiryDate)) { "Issuance date should be before expiry date" }
+            require(it < expiryDate) { "Issuance date should be before expiry date" }
         }
 
         if (issuingAuthority is IssuingAuthority.MemberState) {

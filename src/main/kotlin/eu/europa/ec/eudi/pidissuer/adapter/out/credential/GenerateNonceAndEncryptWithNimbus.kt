@@ -24,9 +24,10 @@ import com.nimbusds.openid.connect.sdk.Nonce
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import java.time.Duration
-import java.time.Instant
 import java.util.*
+import kotlin.time.Duration
+import kotlin.time.Instant
+import kotlin.time.toJavaInstant
 
 /**
  * Generates a Nonce and encrypts it as a [EncryptedJWT] with Nimbus.
@@ -54,8 +55,8 @@ internal class GenerateNonceAndEncryptWithNimbus(
                     issuer(issuer.externalForm)
                     audience(issuer.externalForm)
                     claim("nonce", generator())
-                    issueTime(Date.from(generatedAt))
-                    expirationTime(Date.from(expiresAt))
+                    issueTime(Date.from(generatedAt.toJavaInstant()))
+                    expirationTime(Date.from(expiresAt.toJavaInstant()))
                 }
                 .build(),
         ).apply {

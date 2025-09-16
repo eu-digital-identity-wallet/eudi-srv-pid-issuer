@@ -30,7 +30,8 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import java.time.Instant
+import kotlin.time.Instant
+import kotlin.time.toKotlinInstant
 
 /**
  * Decrypts an [EncryptedJWT] using Nimbus and verifies it's still active.
@@ -67,7 +68,7 @@ internal class DecryptNonceWithNimbusAndVerify(
                 val jwt = EncryptedJWT.parse(it)
                 val claimSet = processor.process(jwt, null)
                 val expiresAt = requireNotNull(claimSet.expirationTime) { "expirationTime is required" }
-                at < expiresAt.toInstant()
+                at < expiresAt.toInstant().toKotlinInstant()
             }.getOrElse { false }
         } ?: false
 }

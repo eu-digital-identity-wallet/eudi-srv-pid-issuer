@@ -25,7 +25,7 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException
 import org.springframework.security.web.server.ServerAuthenticationEntryPoint
 import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Mono
-import java.time.Clock
+import kotlin.time.Clock
 
 /**
  * [ServerAuthenticationEntryPoint] implementation used to commence authentication of a protected resource using DPoP.
@@ -68,7 +68,7 @@ class DPoPTokenServerAuthenticationEntryPoint(
                 when (error) {
                     is DPoPTokenError.UseDPoPNonce -> {
                         check(dpopNonce is DPoPNoncePolicy.Enforcing)
-                        dpopNonce.generateDPoPNonce(clock.instant())
+                        dpopNonce.generateDPoPNonce(clock.now())
                     }
                     else -> null
                 }

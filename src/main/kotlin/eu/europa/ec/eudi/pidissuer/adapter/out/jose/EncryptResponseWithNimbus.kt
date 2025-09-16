@@ -36,8 +36,9 @@ import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptDeferredResponse
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
-import java.time.Clock
-import java.util.*
+import java.util.Date
+import kotlin.time.Clock
+import kotlin.time.toJavaInstant
 
 /**
  * Implementation of [EncryptDeferredResponse] using Nimbus.
@@ -99,7 +100,7 @@ private class EncryptResponse(
         val baseClaims = JWTClaimsSet.parse(claimsJson)
         val jwtClaimSet = JWTClaimsSet.Builder(baseClaims)
             .issuer(issuer.externalForm)
-            .issueTime(Date.from(clock.instant()))
+            .issueTime(Date.from(clock.now().toJavaInstant()))
             .apply(customize)
             .build()
 

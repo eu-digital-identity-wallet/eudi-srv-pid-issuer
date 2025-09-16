@@ -61,7 +61,8 @@ import eu.europa.ec.eudi.sdjwt.vc.Vct
 import io.ktor.http.*
 import io.netty.handler.ssl.SslContextBuilder
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
-import kotlinx.coroutines.reactor.awaitSingle
+import kotlinx.coroutines.flow.single
+import kotlinx.coroutines.flow.timeout
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
@@ -106,6 +107,7 @@ import org.springframework.security.web.server.authorization.HttpStatusServerAcc
 import org.springframework.security.web.server.authorization.ServerWebExchangeDelegatingServerAccessDeniedHandler
 import org.springframework.util.unit.DataSize
 import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.reactive.function.client.bodyToFlow
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
 import reactor.netty.transport.ProxyProvider
@@ -113,12 +115,17 @@ import java.net.URI
 import java.net.URL
 import java.security.KeyStore
 import java.security.cert.X509Certificate
-import java.time.Clock
-import java.time.Duration
 import java.util.*
+import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 import kotlin.time.toJavaDuration
-import kotlin.time.toKotlinDuration
+import kotlin.time.toJavaInstant
+import kotlin.time.toKotlinInstant
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IssuingCountry as EhicIssuingCountry
 
 private val log = LoggerFactory.getLogger(PidIssuerApplication::class.java)
@@ -226,8 +233,8 @@ fun beans(clock: Clock) = beans {
                 val key = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate()
                 val certificate = X509CertificateUtils.generateSelfSigned(
                     Issuer(issuerPublicUrl.value.host),
-                    Date.from(clock.instant()),
-                    Date.from(clock.instant() + 365.days.toJavaDuration()),
+                    Date.from(clock.now().toJavaInstant()),
+                    Date.from(clock.now().toJavaInstant() + 365.days.toJavaDuration()),
                     key.toECPublicKey(),
                     key.toECPrivateKey(),
                 )
@@ -352,7 +359,7 @@ fun beans(clock: Clock) = beans {
     bean(::DefaultGenerateQrCode)
     bean(::HandleNotificationRequest)
     bean {
-        val cNonceExpiresIn = env.duration("issuer.cnonce.expiration") ?: Duration.ofMinutes(5L)
+        val cNonceExpiresIn = env.duration("issuer.cnonce.expiration") ?: 5L.toDuration(DurationUnit.MINUTES)
         HandleNonceRequest(clock, cNonceExpiresIn, ref())
     }
     bean {
@@ -478,7 +485,7 @@ fun beans(clock: Clock) = beans {
             credentialResponseEncryption = env.credentialResponseEncryption(),
             specificCredentialIssuers = buildList {
                 if (enableMsoMdocPid) {
-                    val duration = env.duration("issuer.pid.mso_mdoc.encoder.duration")?.toKotlinDuration() ?: 30.days
+                    val duration = env.duration("issuer.pid.mso_mdoc.encoder.duration") ?: 30.days
                     val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
                         "issuer.pid.mso_mdoc.jwtProofs.supportedSigningAlgorithms",
                         JWSAlgorithm::parse,
@@ -502,7 +509,7 @@ fun beans(clock: Clock) = beans {
                 }
 
                 if (enableSdJwtVcPid) {
-                    val expiresIn = env.duration("issuer.pid.sd_jwt_vc.duration") ?: Duration.ofDays(30L)
+                    val expiresIn = env.duration("issuer.pid.sd_jwt_vc.duration") ?: 30.days
                     val notUseBefore = env.duration("issuer.pid.sd_jwt_vc.notUseBefore")
                     val keyAttestationRequirement = keyAttestationRequirement("issuer.pid.sd_jwt_vc")
 
@@ -521,11 +528,11 @@ fun beans(clock: Clock) = beans {
                         getPidData = ref(),
                         clock = clock,
                         credentialIssuerId = issuerPublicUrl,
-                        calculateExpiresAt = { iat -> (iat + expiresIn).toInstant() },
+                        calculateExpiresAt = { iat -> (iat + expiresIn.toJavaDuration()).toInstant().toKotlinInstant() },
                         calculateNotUseBefore = notUseBefore?.let { duration ->
                             {
                                     iat ->
-                                iat.plusSeconds(duration.seconds).toInstant()
+                                iat.plusSeconds(duration.toJavaDuration().seconds).toInstant().toKotlinInstant()
                             }
                         },
                         notificationsEnabled = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled")
@@ -543,7 +550,7 @@ fun beans(clock: Clock) = beans {
                 }
 
                 if (enableMobileDrivingLicence) {
-                    val duration = env.duration("issuer.mdl.mso_mdoc.encoder.duration")?.toKotlinDuration() ?: 5.days
+                    val duration = env.duration("issuer.mdl.mso_mdoc.encoder.duration") ?: 5.days
                     val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
                         "issuer.mdl.jwtProofs.supportedSigningAlgorithms",
                         JWSAlgorithm::parse,
@@ -700,9 +707,9 @@ fun beans(clock: Clock) = beans {
                     .uri(env.getRequiredProperty("issuer.authorizationServer.metadata"))
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
-                    .bodyToMono(String::class.java)
-                    .timeout(Duration.ofSeconds(5L))
-                    .awaitSingle()
+                    .bodyToFlow<String>()
+                    .timeout(5L.seconds)
+                    .single()
                 OIDCProviderMetadata.parse(metadata)
             }.dPoPJWSAlgs?.toSet() ?: emptySet()
         }.getOrElse {
@@ -712,8 +719,8 @@ fun beans(clock: Clock) = beans {
             if (it.isEmpty()) log.warn("DPoP support will not be enabled. Authorization Server does not support DPoP.")
             else log.info("DPoP support will be enabled. Supported algorithms: $it")
         }
-        val proofMaxAge = env.duration("issuer.dpop.proof-max-age") ?: Duration.ofMinutes(1L)
-        val cachePurgeInterval = env.duration("issuer.dpop.cache-purge-interval") ?: Duration.ofMinutes(10L)
+        val proofMaxAge = env.duration("issuer.dpop.proof-max-age") ?: 1L.minutes
+        val cachePurgeInterval = env.duration("issuer.dpop.cache-purge-interval") ?: 10L.minutes
         val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
 
         DPoPConfigurationProperties(algorithms, proofMaxAge, cachePurgeInterval, realm)
@@ -725,7 +732,7 @@ fun beans(clock: Clock) = beans {
     val enableDPoPNonce = env.getProperty<Boolean>("issuer.dpop.nonce.enabled") ?: true
     bean<DPoPNoncePolicy>(isLazyInit = true) {
         if (enableDPoPNonce) {
-            val dpopNonceExpiresIn = env.duration("issuer.dpop.nonce.expiration") ?: Duration.ofMinutes(5L)
+            val dpopNonceExpiresIn = env.duration("issuer.dpop.nonce.expiration") ?: 5L.minutes
             DPoPNoncePolicy.Enforcing(ref(), ref(), dpopNonceExpiresIn)
         } else {
             DPoPNoncePolicy.Disabled
@@ -845,10 +852,10 @@ fun beans(clock: Clock) = beans {
                 val dPoPFilter = run {
                     val dPoPVerifier = DPoPProtectedResourceRequestVerifier(
                         dPoPProperties.algorithms,
-                        dPoPProperties.proofMaxAge.toSeconds(),
+                        dPoPProperties.proofMaxAge.inWholeSeconds,
                         DefaultDPoPSingleUseChecker(
-                            dPoPProperties.proofMaxAge.toSeconds(),
-                            dPoPProperties.cachePurgeInterval.toSeconds(),
+                            dPoPProperties.proofMaxAge.inWholeSeconds,
+                            dPoPProperties.cachePurgeInterval.inWholeSeconds,
                         ),
                     )
 
@@ -1029,7 +1036,7 @@ private fun <T> Environment.readNonEmptySet(key: String, f: (String) -> T?): Non
 }
 
 private fun Environment.duration(key: String): Duration? =
-    getProperty(key)?.let { Duration.parse(it) }?.takeUnless { it.isNegative || it.isZero }
+    getProperty(key)?.let { Duration.parse(it) }?.takeIf { it.isPositive() }
 
 internal fun HttpsUrl.appendPath(path: String): HttpsUrl =
     HttpsUrl.unsafe(
@@ -1195,6 +1202,6 @@ class PidIssuerApplication
 
 fun main(args: Array<String>) {
     runApplication<PidIssuerApplication>(*args) {
-        addInitializers(beans(Clock.systemDefaultZone()).initializer())
+        addInitializers(beans(Clock.System).initializer())
     }
 }

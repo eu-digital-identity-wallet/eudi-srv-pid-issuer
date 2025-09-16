@@ -39,10 +39,10 @@ import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
 import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
 import java.net.URI
 import java.security.cert.*
-import java.time.Instant
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
+import kotlin.time.Instant
 
 internal val SkipRevocation: PKIXParameters.() -> Unit = { isRevocationEnabled = false }
 

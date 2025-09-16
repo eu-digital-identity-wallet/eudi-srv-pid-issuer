@@ -18,7 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 import org.springframework.web.server.CoWebFilter
 import org.springframework.web.server.CoWebFilterChain
 import org.springframework.web.server.ServerWebExchange
-import java.time.Clock
+import kotlin.time.Clock
 
 /**
  * [CoWebFilter] that generates a new DPoP Nonce for DPoP authenticated web requests and explicitly configured paths.
@@ -31,7 +31,7 @@ class DPoPNonceWebFilter(
     override suspend fun filter(exchange: ServerWebExchange, chain: CoWebFilterChain) {
         val request = exchange.request
         if (request.path.pathWithinApplication().value() in paths) {
-            val newDPoPNonce = dpopNonce.generateDPoPNonce(clock.instant())
+            val newDPoPNonce = dpopNonce.generateDPoPNonce(clock.now())
             val response = exchange.response
             response.headers["DPoP-Nonce"] = newDPoPNonce
         }
