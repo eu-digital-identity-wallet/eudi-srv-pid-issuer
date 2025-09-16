@@ -17,13 +17,13 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.Either
 import arrow.core.NonEmptySet
+import arrow.core.raise.fold
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
-import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import kotlinx.coroutines.async
@@ -47,7 +47,6 @@ internal class WalletApi(
     private val getPidData: GetPidData,
     private val handleNotificationRequest: HandleNotificationRequest,
     private val handleNonceRequest: HandleNonceRequest,
-    private val metadata: CredentialIssuerMetaData,
 ) {
 
     val route = coRouter {
@@ -63,7 +62,7 @@ internal class WalletApi(
         )
         POST(
             DEFERRED_ENDPOINT,
-            contentType(MediaType.APPLICATION_JSON) and accept(MediaType.APPLICATION_JSON),
+            contentType(MediaType.APPLICATION_JSON, APPLICATION_JWT) and accept(MediaType.APPLICATION_JSON, APPLICATION_JWT),
             this@WalletApi::handleGetDeferredCredential,
         )
         POST(
@@ -101,33 +100,18 @@ internal class WalletApi(
     }
 
     private suspend fun handleGetDeferredCredential(req: ServerRequest): ServerResponse = coroutineScope {
-        val requestTO = req.awaitBody<DeferredCredentialRequestTO>()
-        getDeferredCredential(requestTO)
-            .fold(
-                ifRight = { deferredResponse ->
-                    when (deferredResponse) {
-                        is DeferredCredentialSuccessResponse.EncryptedJwtIssued ->
-                            ServerResponse
-                                .ok()
-                                .cacheControl(CacheControl.noStore())
-                                .contentType(APPLICATION_JWT)
-                                .bodyValueAndAwait(deferredResponse.jwt)
-
-                        is DeferredCredentialSuccessResponse.PlainTO ->
-                            ServerResponse
-                                .ok()
-                                .cacheControl(CacheControl.noStore())
-                                .json()
-                                .bodyValueAndAwait(deferredResponse)
-                    }
-                },
-                ifLeft = { error ->
-                    ServerResponse.badRequest()
-                        .cacheControl(CacheControl.noStore())
-                        .json()
-                        .bodyValueAndAwait(error)
-                },
-            )
+        val response = when (req.headers().contentType().getOrNull()) {
+            MediaType.APPLICATION_JSON -> {
+                val request = req.awaitBody<DeferredCredentialRequestTO>()
+                getDeferredCredential.fromPlainRequest(request)
+            }
+            APPLICATION_JWT -> {
+                val jwt = req.awaitBody<String>()
+                getDeferredCredential.fromEncryptedRequest(jwt)
+            }
+            else -> error("Unexpected content-type")
+        }
+        response.toServerResponse()
     }
 
     private suspend fun handleHelloHolder(req: ServerRequest): ServerResponse = coroutineScope {
@@ -236,4 +220,46 @@ private suspend fun IssueCredentialResponse.toServerResponse(): ServerResponse =
                 .cacheControl(CacheControl.noStore())
                 .json()
                 .bodyValueAndAwait(this)
+    }
+
+private suspend fun DeferredCredentialResponse.toServerResponse(): ServerResponse =
+    when (this) {
+        is DeferredCredentialResponse.Issued -> content.fold(
+            ifLeft = { json ->
+                ServerResponse
+                    .ok()
+                    .cacheControl(CacheControl.noStore())
+                    .json()
+                    .bodyValueAndAwait(json)
+            },
+            ifRight = { jwt ->
+                ServerResponse
+                    .ok()
+                    .cacheControl(CacheControl.noStore())
+                    .contentType(APPLICATION_JWT)
+                    .bodyValueAndAwait(jwt.serialize())
+            },
+        )
+        is DeferredCredentialResponse.IssuancePending -> content.fold(
+            ifLeft = { json ->
+                ServerResponse
+                    .status(HttpStatus.ACCEPTED)
+                    .cacheControl(CacheControl.noStore())
+                    .json()
+                    .bodyValueAndAwait(json)
+            },
+            ifRight = { jwt ->
+                ServerResponse
+                    .status(HttpStatus.ACCEPTED)
+                    .cacheControl(CacheControl.noStore())
+                    .contentType(APPLICATION_JWT)
+                    .bodyValueAndAwait(jwt.serialize())
+            },
+        )
+        is DeferredCredentialResponse.Failed ->
+            ServerResponse
+                .badRequest()
+                .cacheControl(CacheControl.noStore())
+                .json()
+                .bodyValueAndAwait(this.content)
     }

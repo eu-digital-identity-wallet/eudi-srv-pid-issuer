@@ -16,13 +16,13 @@
 package eu.europa.ec.eudi.pidissuer.port.out.persistence
 
 import eu.europa.ec.eudi.pidissuer.domain.CredentialResponse
-import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.domain.TransactionId
+import kotlin.time.Instant
 
 fun interface StoreDeferredCredential {
     suspend operator fun invoke(
         transactionId: TransactionId,
-        credential: CredentialResponse.Issued?,
-        credentialResponseEncryption: RequestedResponseEncryption,
+        credential: CredentialResponse.Issued,
+        notIssuedBefore: Instant,
     )
 }
