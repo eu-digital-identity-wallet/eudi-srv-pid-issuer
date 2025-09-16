@@ -219,7 +219,7 @@ class GetPidDataFromKeyCloak(
     }
 
     private fun genPidMetaData(): PidMetaData {
-        val issuanceDate = clock.now() // .toLocalDateTime(TimeZone.currentSystemDefault())
+        val issuanceDate = clock.now()
         return PidMetaData(
             personalAdministrativeNumber = AdministrativeNumber(UUID.randomUUID().toString()),
             expiryDate = (issuanceDate + 100.days).toLocalDateTime(TimeZone.currentSystemDefault()).date,
