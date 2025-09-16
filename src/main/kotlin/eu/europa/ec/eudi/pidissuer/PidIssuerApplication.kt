@@ -34,11 +34,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CredentialRequestFactory
-import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DecryptNonceWithNimbusAndVerify
-import eu.europa.ec.eudi.pidissuer.adapter.out.credential.DefaultResolveCredentialRequestByCredentialIdentifier
-import eu.europa.ec.eudi.pidissuer.adapter.out.credential.GenerateNonceAndEncryptWithNimbus
-import eu.europa.ec.eudi.pidissuer.adapter.out.credential.NonceEncryptionKey
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.GetEuropeanHealthInsuranceCardDataMock
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IssueSdJwtVcEuropeanHealthInsuranceCard
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
@@ -118,8 +114,6 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.DurationUnit
-import kotlin.time.toDuration
 import kotlin.time.toJavaDuration
 import kotlin.time.toJavaInstant
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IssuingCountry as EhicIssuingCountry
@@ -355,7 +349,7 @@ fun beans(clock: Clock) = beans {
     bean(::DefaultGenerateQrCode)
     bean(::HandleNotificationRequest)
     bean {
-        val cNonceExpiresIn = env.duration("issuer.cnonce.expiration") ?: 5L.toDuration(DurationUnit.MINUTES)
+        val cNonceExpiresIn = env.duration("issuer.cnonce.expiration") ?: 5.minutes
         HandleNonceRequest(clock, cNonceExpiresIn, ref())
     }
     bean {
@@ -710,8 +704,8 @@ fun beans(clock: Clock) = beans {
             if (it.isEmpty()) log.warn("DPoP support will not be enabled. Authorization Server does not support DPoP.")
             else log.info("DPoP support will be enabled. Supported algorithms: $it")
         }
-        val proofMaxAge = env.duration("issuer.dpop.proof-max-age") ?: 1L.minutes
-        val cachePurgeInterval = env.duration("issuer.dpop.cache-purge-interval") ?: 10L.minutes
+        val proofMaxAge = env.duration("issuer.dpop.proof-max-age") ?: 1.minutes
+        val cachePurgeInterval = env.duration("issuer.dpop.cache-purge-interval") ?: 10.minutes
         val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
 
         DPoPConfigurationProperties(algorithms, proofMaxAge, cachePurgeInterval, realm)
@@ -723,7 +717,7 @@ fun beans(clock: Clock) = beans {
     val enableDPoPNonce = env.getProperty<Boolean>("issuer.dpop.nonce.enabled") ?: true
     bean<DPoPNoncePolicy>(isLazyInit = true) {
         if (enableDPoPNonce) {
-            val dpopNonceExpiresIn = env.duration("issuer.dpop.nonce.expiration") ?: 5L.minutes
+            val dpopNonceExpiresIn = env.duration("issuer.dpop.nonce.expiration") ?: 5.minutes
             DPoPNoncePolicy.Enforcing(ref(), ref(), dpopNonceExpiresIn)
         } else {
             DPoPNoncePolicy.Disabled
