@@ -47,13 +47,14 @@ class InMemoryDeferredCredentialRepository(
         LoadDeferredCredentialByTransactionId { transactionId ->
             mutex.withLock(this) {
                 val deferredPersist = data[transactionId]
+                val now = clock.now()
                 when {
                     deferredPersist == null -> LoadDeferredCredentialResult.InvalidTransactionId
-                    clock.now() > deferredPersist.notIssuedBefore -> LoadDeferredCredentialResult.Found(deferredPersist.issued)
+                    now > deferredPersist.notIssuedBefore -> LoadDeferredCredentialResult.Found(deferredPersist.issued)
                     else -> LoadDeferredCredentialResult.IssuancePending(
                         CredentialResponse.Deferred(
                             transactionId,
-                            deferredPersist.notIssuedBefore - clock.now(),
+                            deferredPersist.notIssuedBefore - now,
                         ),
                     )
                 }

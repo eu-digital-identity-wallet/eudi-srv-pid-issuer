@@ -115,7 +115,6 @@ import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
-import kotlin.time.toJavaInstant
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IssuingCountry as EhicIssuingCountry
 
 private val log = LoggerFactory.getLogger(PidIssuerApplication::class.java)
@@ -223,8 +222,8 @@ fun beans(clock: Clock) = beans {
                 val key = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate()
                 val certificate = X509CertificateUtils.generateSelfSigned(
                     Issuer(issuerPublicUrl.value.host),
-                    Date.from(clock.now().toJavaInstant()),
-                    Date.from(clock.now().toJavaInstant() + 365.days.toJavaDuration()),
+                    clock.now().toJavaDate(),
+                    (clock.now() + 365.days).toJavaDate(),
                     key.toECPublicKey(),
                     key.toECPrivateKey(),
                 )
@@ -417,7 +416,7 @@ fun beans(clock: Clock) = beans {
                 webClient = ref(),
                 serviceUrl = serviceUrl,
                 apiKey = env.getRequiredProperty("issuer.statusList.service.apiKey"),
-                ref(),
+                clock = ref(),
             )
         }
     }

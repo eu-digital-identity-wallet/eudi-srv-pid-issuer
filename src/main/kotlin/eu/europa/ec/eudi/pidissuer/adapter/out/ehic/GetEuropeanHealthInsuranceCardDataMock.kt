@@ -16,12 +16,8 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.ehic
 
 import eu.europa.ec.eudi.pidissuer.domain.Clock
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toJavaZoneId
-import java.time.ZonedDateTime
 import java.util.*
 import kotlin.time.Duration.Companion.days
-import kotlin.time.toJavaInstant
 
 class GetEuropeanHealthInsuranceCardDataMock(
     private val clock: Clock,
@@ -44,16 +40,8 @@ class GetEuropeanHealthInsuranceCardDataMock(
                 id = AuthenticSource.Id("Uber-GR"),
                 name = Name("Uber Health Insurance"),
             ),
-            endingDate = ZonedDateTime
-                .ofInstant(
-                    endingDate.toJavaInstant(),
-                    clock.now().toJavaInstant().atZone(TimeZone.currentSystemDefault().toJavaZoneId()).zone,
-                ),
-            startingDate = ZonedDateTime
-                .ofInstant(
-                    startingDate.toJavaInstant(),
-                    clock.now().toJavaInstant().atZone(TimeZone.currentSystemDefault().toJavaZoneId()).zone,
-                ),
+            endingDate = with(clock) { endingDate.toZonedDateTime() },
+            startingDate = with(clock) { startingDate.toZonedDateTime() },
             documentNumber = DocumentNumber(UUID.randomUUID().toString()),
         )
     }

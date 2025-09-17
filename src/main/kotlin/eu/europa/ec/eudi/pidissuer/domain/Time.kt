@@ -23,6 +23,7 @@ import kotlinx.datetime.toJavaZoneId
 import kotlinx.datetime.toKotlinTimeZone
 import kotlinx.datetime.toLocalDateTime
 import java.time.ZonedDateTime
+import java.util.Date
 import kotlin.time.Instant
 import kotlin.time.toJavaInstant
 import kotlin.time.toKotlinInstant
@@ -50,3 +51,6 @@ interface Clock {
         fun fixed(now: ZonedDateTime): Clock = fixed(now.toInstant().toKotlinInstant(), now.zone.toKotlinTimeZone())
     }
 }
+
+fun Date.toKotlinInstant(): Instant = toInstant().toKotlinInstant()
+fun Instant.toJavaDate(): Date = Date.from(toJavaInstant())

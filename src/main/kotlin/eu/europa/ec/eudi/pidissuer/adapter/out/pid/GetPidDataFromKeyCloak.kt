@@ -25,10 +25,6 @@ import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
-import kotlinx.datetime.toJavaLocalDate
-import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonIgnoreUnknownKeys
@@ -39,7 +35,6 @@ import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
-import java.time.Year
 import java.util.*
 import kotlin.math.ceil
 import kotlin.time.Duration.Companion.days
@@ -219,15 +214,19 @@ class GetPidDataFromKeyCloak(
     }
 
     private fun genPidMetaData(): PidMetaData {
-        val issuanceDate = clock.now()
+        val (issuanceDate, expiryDate) = with(clock) {
+            val now = now()
+            now.toLocalDate() to (now + 100.days).toLocalDate()
+        }
+
         return PidMetaData(
             personalAdministrativeNumber = AdministrativeNumber(UUID.randomUUID().toString()),
-            expiryDate = (issuanceDate + 100.days).toLocalDateTime(TimeZone.currentSystemDefault()).date,
+            expiryDate = expiryDate,
             issuingAuthority = IssuingAuthority.AdministrativeAuthority("${issuerCountry.value} Administrative authority"),
             issuingCountry = issuerCountry,
             documentNumber = DocumentNumber(UUID.randomUUID().toString()),
             issuingJurisdiction = issuingJurisdiction,
-            issuanceDate = issuanceDate.toLocalDateTime(TimeZone.currentSystemDefault()).date,
+            issuanceDate = issuanceDate,
             trustAnchor = null,
         )
     }
@@ -238,15 +237,9 @@ class GetPidDataFromKeyCloak(
         }.let { LocalDate.parse(it) }
 
         val ageInYears = run {
-            val birthInstant = birthDate.atStartOfDayIn(TimeZone.currentSystemDefault())
-
-            val duration = clock.now() - birthInstant
-            duration.takeIf { duration.isPositive() }
-                ?.let { age ->
-                    ceil(age.inWholeDays.toDouble() / 365)
-                        .toInt()
-                        .takeIf { it > 0 }?.toUInt()
-                }
+            val age = with(clock) { now() - birthDate.atStartOfDay() }
+            if (age.isPositive()) ceil(age.inWholeDays / 365.0).toUInt()
+            else null
         }
 
         val birthPlace = userInfo.placeOfBirth?.let { placeOfBirth ->
@@ -280,7 +273,6 @@ class GetPidDataFromKeyCloak(
             mobilePhoneNumber = null,
             ageOver18 = userInfo.ageOver18 ?: false,
             ageInYears = ageInYears,
-            ageBirthYear = Year.from(birthDate.toJavaLocalDate()),
         )
 
         val pidMetaData = genPidMetaData()

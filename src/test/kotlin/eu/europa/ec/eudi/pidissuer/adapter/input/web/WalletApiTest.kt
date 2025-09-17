@@ -51,6 +51,7 @@ import eu.europa.ec.eudi.pidissuer.domain.CredentialRequestEncryption
 import eu.europa.ec.eudi.pidissuer.domain.CredentialRequestEncryptionSupportedParameters
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
 import eu.europa.ec.eudi.pidissuer.domain.Scope
+import eu.europa.ec.eudi.pidissuer.domain.toJavaDate
 import eu.europa.ec.eudi.pidissuer.loadResource
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
@@ -87,7 +88,6 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
-import kotlin.time.toJavaInstant
 
 /**
  * Base class for [WalletApi] tests.
@@ -126,7 +126,7 @@ internal class BaseWalletApiTest {
             .build()
         val claims = JWTClaimsSet.Builder()
             .audience(audience.externalForm)
-            .issueTime(Date.from(clock.now().toJavaInstant()))
+            .issueTime(clock.now().toJavaDate())
             .claim("nonce", nonce)
             .build()
         val jwt = SignedJWT(header, claims)
@@ -1486,7 +1486,8 @@ private suspend fun keyAttestationJWT(
     keyStorageConstraints: List<String> = listOf("iso_18045_high"),
     userAuthorizationConstraints: List<String> = listOf("iso_18045_high"),
     cNonce: String? = null,
-    expiresAt: Instant = Clock.System.now().plus(1.days),
+    clock: Clock = Clock.System,
+    expiresAt: Instant = clock.now() + 1.days,
     includeExpiresAt: Boolean = true,
     extraKeys: () -> List<ECKey>,
 ): SignedJWT {
@@ -1506,7 +1507,7 @@ private suspend fun keyAttestationJWT(
 
     val builder = JWTClaimsSet.Builder()
     if (includeExpiresAt) {
-        builder.expirationTime(Date(expiresAt.toEpochMilliseconds()))
+        builder.expirationTime(expiresAt.toJavaDate())
     }
     val claimsSet = builder
         .issueTime(Date())

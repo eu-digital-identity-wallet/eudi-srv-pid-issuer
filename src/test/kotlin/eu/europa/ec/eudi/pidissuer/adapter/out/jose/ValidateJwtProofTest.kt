@@ -40,7 +40,6 @@ import kotlinx.coroutines.withContext
 import java.security.cert.X509Certificate
 import java.util.*
 import kotlin.test.*
-import kotlin.time.toJavaInstant
 
 internal class ValidateJwtProofTest {
 
@@ -262,7 +261,7 @@ internal class ValidateJwtProofTest {
 
         val claims = JWTClaimsSet.Builder()
             .audience(issuer.externalForm)
-            .issueTime(Date.from(clock.now().toJavaInstant()))
+            .issueTime(clock.now().toJavaDate())
             .claim("nonce", nonce)
             .build()
 

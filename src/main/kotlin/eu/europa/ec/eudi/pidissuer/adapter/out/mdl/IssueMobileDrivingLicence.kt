@@ -376,7 +376,7 @@ internal class IssueMobileDrivingLicence(
                     "${familyName.latin.value} ${givenName.latin.value}"
                 },
                 holderPublicKeys = holderKeys,
-                issuedAt = clock.now(),
+                issuedAt = issuedAt,
                 notificationId = notificationId,
             ),
         )

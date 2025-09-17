@@ -355,7 +355,7 @@ internal class IssueMsoMdocPid(
                     "${familyName.value} ${givenName.value}"
                 },
                 holderPublicKeys = holderPubKeys,
-                issuedAt = clock.now(),
+                issuedAt = issuedAt,
                 notificationId = notificationId,
             ),
         )

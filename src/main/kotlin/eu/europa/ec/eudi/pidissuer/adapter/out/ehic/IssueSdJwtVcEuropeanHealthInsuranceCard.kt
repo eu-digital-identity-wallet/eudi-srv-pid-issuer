@@ -38,12 +38,8 @@ import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
 import kotlinx.coroutines.Dispatchers
 import org.slf4j.LoggerFactory
-import java.time.ZoneId
-import java.time.ZonedDateTime
 import java.util.*
 import kotlin.time.Duration
-import kotlin.time.toJavaDuration
-import kotlin.time.toJavaInstant
 
 private val EuropeanHealthInsuranceCardScope: Scope = Scope("urn:eudi:ehic:1:dc+sd-jwt")
 
@@ -217,10 +213,11 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
     ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Issuing DC4EU EHIC")
 
-        val holderPublicKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.now()).bind()
+        val now = clock.now()
+        val holderPublicKeys = validateProofs(request.unvalidatedProofs, supportedCredential, now).bind()
         val ehic = getEuropeanHealthInsuranceCardData()
-        val dateOfIssuance = ZonedDateTime.ofInstant(clock.now().toJavaInstant(), ZoneId.systemDefault())
-        val dateOfExpiry = dateOfIssuance + validity.toJavaDuration()
+        val dateOfIssuance = now
+        val dateOfExpiry = dateOfIssuance + validity
 
         val issuedCredentials = holderPublicKeys.parMap(Dispatchers.Default, 4) {
             encode(ehic, authorizationContext.username, it, dateOfIssuance = dateOfIssuance, dateOfExpiry = dateOfExpiry).bind()
