@@ -218,7 +218,5 @@
         }
       ]
     }
-  ],
-  "schema_uri": "https://qa-issuer.wwwallet.org/ehic-schema",
-  "schema_uri#integrity": "sha256-cNS2ajPr6pfZztE0K5YK4h7EiS73PCj1/v/3Vf1zd1E="
+  ]
 }
