@@ -35,13 +35,14 @@ import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps.serialize
 import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObject
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
-import kotlinx.serialization.json.*
-import java.security.MessageDigest
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
-import kotlin.io.encoding.Base64
 import kotlin.time.Instant
 import kotlin.time.toJavaInstant
 
@@ -65,7 +66,6 @@ sealed interface EncodeEuropeanHealthInsuranceCardInSdJwtVc {
         ): EncodeEuropeanHealthInsuranceCardInSdJwtVc = JwsJsonFlattenedEncoder(
             digestsHashAlgorithm,
             issuerSigningKey,
-            integrityHashAlgorithm,
             vct,
             credentialIssuerId,
             typeMetadata,
@@ -81,7 +81,6 @@ sealed interface EncodeEuropeanHealthInsuranceCardInSdJwtVc {
         ): EncodeEuropeanHealthInsuranceCardInSdJwtVc = CompactEncoder(
             digestsHashAlgorithm,
             issuerSigningKey,
-            integrityHashAlgorithm,
             vct,
             credentialIssuerId,
             typeMetadata,
@@ -92,24 +91,15 @@ sealed interface EncodeEuropeanHealthInsuranceCardInSdJwtVc {
 private class JwsJsonFlattenedEncoder(
     digestsHashAlgorithm: HashAlgorithm,
     issuerSigningKey: IssuerSigningKey,
-    private val integrityHashAlgorithm: IntegrityHashAlgorithm,
     private val vct: SdJwtVcType,
     private val credentialIssuerId: CredentialIssuerId,
-    private val typeMetadata: SdJwtVcTypeMetadata,
+    typeMetadata: SdJwtVcTypeMetadata,
 ) : EncodeEuropeanHealthInsuranceCardInSdJwtVc {
     init {
         require(typeMetadata.vct.value == vct.value)
     }
 
-    private val issuer: SdJwtIssuer<SignedJWT> by lazy {
-        val factory = SdJwtFactory(digestsHashAlgorithm)
-        val signer = ECDSASigner(issuerSigningKey.key)
-        NimbusSdJwtOps.issuer(factory, signer, issuerSigningKey.signingAlgorithm) {
-            type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
-            keyID(issuerSigningKey.key.keyID)
-            x509CertChain(issuerSigningKey.key.x509CertChain)
-        }
-    }
+    private val issuer: SdJwtIssuer<SignedJWT> by lazy { issuerSigningKey.issuer(digestsHashAlgorithm) }
 
     override suspend operator fun invoke(
         ehic: EuropeanHealthInsuranceCard,
@@ -120,16 +110,9 @@ private class JwsJsonFlattenedEncoder(
     ): Either<IssueCredentialError, JsonElement> = either {
         require(dateOfExpiry >= dateOfIssuance)
 
-        val (vctm, vctmIntegrity) = run {
-            val encodedTypeMetadata = Json.encodeToString(typeMetadata)
-            val vctm = Base64UrlNoPadding.encode(encodedTypeMetadata.encodeToByteArray())
-            val vctmIntegiry = "${integrityHashAlgorithm.id}-${Base64.encode(integrityHashAlgorithm.digest(encodedTypeMetadata))}"
-            vctm to vctmIntegiry
-        }
         val spec =
             sdJwt(
                 vct,
-                vctmIntegrity,
                 ehic,
                 holder,
                 holderPublicKey,
@@ -149,9 +132,6 @@ private class JwsJsonFlattenedEncoder(
             }
         val updatedUnprotectedHeader = buildJsonObject {
             existingUnprotectedHeader?.forEach { put(it.key, it.value) }
-            putJsonArray("vctm") {
-                add(vctm)
-            }
         }
         val updatedSerialized = buildJsonObject {
             serialized.forEach { put(it.key, it.value) }
@@ -162,41 +142,18 @@ private class JwsJsonFlattenedEncoder(
     }
 }
 
-private fun IntegrityHashAlgorithm.digest(input: String): ByteArray {
-    val encodedInput = input.encodeToByteArray()
-    return when (this) {
-        IntegrityHashAlgorithm.SHA_256 -> MessageDigest.getInstance("SHA-256").digest(encodedInput)
-        IntegrityHashAlgorithm.SHA_384 -> MessageDigest.getInstance("SHA-384").digest(encodedInput)
-        IntegrityHashAlgorithm.SHA_512 -> MessageDigest.getInstance("SHA-512").digest(encodedInput)
-    }
-}
-
 private class CompactEncoder(
     digestsHashAlgorithm: HashAlgorithm,
     issuerSigningKey: IssuerSigningKey,
-    private val integrityHashAlgorithm: IntegrityHashAlgorithm,
     private val vct: SdJwtVcType,
     private val credentialIssuerId: CredentialIssuerId,
-    private val typeMetadata: SdJwtVcTypeMetadata,
+    typeMetadata: SdJwtVcTypeMetadata,
 ) : EncodeEuropeanHealthInsuranceCardInSdJwtVc {
     init {
         require(typeMetadata.vct.value == vct.value)
     }
 
-    private val issuer: SdJwtIssuer<SignedJWT> by lazy {
-        val factory = SdJwtFactory(digestsHashAlgorithm)
-        val signer = ECDSASigner(issuerSigningKey.key)
-        val vctm = run {
-            val encodedTypeMetadata = Json.encodeToString(typeMetadata)
-            Base64UrlNoPadding.encode(encodedTypeMetadata.encodeToByteArray())
-        }
-        NimbusSdJwtOps.issuer(factory, signer, issuerSigningKey.signingAlgorithm) {
-            type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
-            keyID(issuerSigningKey.key.keyID)
-            x509CertChain(issuerSigningKey.key.x509CertChain)
-            customParam("vctm", listOf(vctm))
-        }
-    }
+    private val issuer: SdJwtIssuer<SignedJWT> by lazy { issuerSigningKey.issuer(digestsHashAlgorithm) }
 
     override suspend operator fun invoke(
         ehic: EuropeanHealthInsuranceCard,
@@ -207,14 +164,9 @@ private class CompactEncoder(
     ): Either<IssueCredentialError, JsonElement> = either {
         require(dateOfExpiry >= dateOfIssuance)
 
-        val vctmIntegrity = run {
-            val encodedTypeMetadata = Json.encodeToString(typeMetadata)
-            "${integrityHashAlgorithm.id}-${Base64.encode(integrityHashAlgorithm.digest(encodedTypeMetadata))}"
-        }
         val spec =
             sdJwt(
                 vct,
-                vctmIntegrity,
                 ehic,
                 holder,
                 holderPublicKey,
@@ -232,7 +184,6 @@ private class CompactEncoder(
 
 private fun sdJwt(
     vct: SdJwtVcType,
-    vctmIntegrity: String,
     ehic: EuropeanHealthInsuranceCard,
     holder: Username,
     holderPublicKey: JWK,
@@ -244,7 +195,6 @@ private fun sdJwt(
 
     return sdJwt {
         claim(SdJwtVcSpec.VCT, vct.value)
-        claim(SdJwtVcSpec.VCT_INTEGRITY, vctmIntegrity)
         claim(RFC7519.JWT_ID, UUID.randomUUID().toString())
         claim(RFC7519.SUBJECT, holder)
         claim(RFC7519.ISSUER, credentialIssuerId.externalForm)
@@ -277,5 +227,14 @@ private fun sdJwt(
             claim(EuropeanHealthInsuranceCardClaims.StartingDate.name, formatter.format(it.withZoneSameInstant(ZoneOffset.UTC)))
         }
         sdClaim(EuropeanHealthInsuranceCardClaims.DocumentNumber.name, ehic.documentNumber.value)
+    }
+}
+private fun IssuerSigningKey.issuer(digestsHashAlgorithm: HashAlgorithm): SdJwtIssuer<SignedJWT> {
+    val factory = SdJwtFactory(digestsHashAlgorithm)
+    val signer = ECDSASigner(key)
+    return NimbusSdJwtOps.issuer(factory, signer, signingAlgorithm) {
+        type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
+        keyID(key.keyID)
+        x509CertChain(key.x509CertChain)
     }
 }
