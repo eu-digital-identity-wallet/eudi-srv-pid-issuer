@@ -108,22 +108,9 @@ private class JwsJsonFlattenedEncoder(
         dateOfIssuance: Instant,
         dateOfExpiry: Instant,
     ): Either<IssueCredentialError, JsonElement> = either {
-        require(dateOfExpiry >= dateOfIssuance)
-
-        val spec =
-            sdJwt(
-                vct,
-                ehic,
-                holder,
-                holderPublicKey,
-                credentialIssuerId,
-                dateOfIssuance = dateOfIssuance,
-                dateOfExpiry = dateOfExpiry,
-            )
-        val sdJwt =
-            catch({ issuer.issue(spec).getOrThrow() }) {
-                raise(IssueCredentialError.Unexpected("Unable to create SD-JWT VC", it))
-            }
+        val sdJwt = catch({
+            createSdJwt(issuer, vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
+        }) { raise(IssueCredentialError.Unexpected("Unable to create SD-JWT VC", it)) }
 
         val serialized = sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)
         val existingUnprotectedHeader =
@@ -162,22 +149,10 @@ private class CompactEncoder(
         dateOfIssuance: Instant,
         dateOfExpiry: Instant,
     ): Either<IssueCredentialError, JsonElement> = either {
-        require(dateOfExpiry >= dateOfIssuance)
+        val sdJwt = catch({
+            createSdJwt(issuer, vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
+        }) { raise(IssueCredentialError.Unexpected("Unable to create SD-JWT VC", it)) }
 
-        val spec =
-            sdJwt(
-                vct,
-                ehic,
-                holder,
-                holderPublicKey,
-                credentialIssuerId,
-                dateOfIssuance = dateOfIssuance,
-                dateOfExpiry = dateOfExpiry,
-            )
-        val sdJwt =
-            catch({ issuer.issue(spec).getOrThrow() }) {
-                raise(IssueCredentialError.Unexpected("Unable to create SD-JWT VC", it))
-            }
         JsonPrimitive(sdJwt.serialize())
     }
 }
@@ -237,4 +212,27 @@ private fun IssuerSigningKey.issuer(digestsHashAlgorithm: HashAlgorithm): SdJwtI
         keyID(key.keyID)
         x509CertChain(key.x509CertChain)
     }
+}
+private suspend fun createSdJwt(
+    issuer: SdJwtIssuer<SignedJWT>,
+    vct: SdJwtVcType,
+    ehic: EuropeanHealthInsuranceCard,
+    holder: Username,
+    holderPublicKey: JWK,
+    credentialIssuerId: CredentialIssuerId,
+    dateOfIssuance: Instant,
+    dateOfExpiry: Instant,
+): SdJwt<SignedJWT> {
+    require(dateOfExpiry >= dateOfIssuance)
+
+    val spec = sdJwt(
+        vct = vct,
+        ehic = ehic,
+        holder = holder,
+        holderPublicKey = holderPublicKey,
+        credentialIssuerId = credentialIssuerId,
+        dateOfIssuance = dateOfIssuance,
+        dateOfExpiry = dateOfExpiry,
+    )
+    return issuer.issue(spec).getOrThrow()
 }
