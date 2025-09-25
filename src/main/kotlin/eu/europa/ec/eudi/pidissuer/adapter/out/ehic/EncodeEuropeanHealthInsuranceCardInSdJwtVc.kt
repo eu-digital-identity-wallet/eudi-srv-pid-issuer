@@ -25,7 +25,6 @@ import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
-import eu.europa.ec.eudi.pidissuer.domain.IntegrityHashAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.Username
@@ -59,7 +58,6 @@ sealed interface EncodeEuropeanHealthInsuranceCardInSdJwtVc {
         fun jwsJsonFlattened(
             digestsHashAlgorithm: HashAlgorithm,
             issuerSigningKey: IssuerSigningKey,
-            integrityHashAlgorithm: IntegrityHashAlgorithm,
             vct: SdJwtVcType,
             credentialIssuerId: CredentialIssuerId,
             typeMetadata: SdJwtVcTypeMetadata,
@@ -74,7 +72,6 @@ sealed interface EncodeEuropeanHealthInsuranceCardInSdJwtVc {
         fun compact(
             digestsHashAlgorithm: HashAlgorithm,
             issuerSigningKey: IssuerSigningKey,
-            integrityHashAlgorithm: IntegrityHashAlgorithm,
             vct: SdJwtVcType,
             credentialIssuerId: CredentialIssuerId,
             typeMetadata: SdJwtVcTypeMetadata,

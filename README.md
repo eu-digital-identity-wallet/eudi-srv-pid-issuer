@@ -274,12 +274,7 @@ Default value: `P30D`
 Variable: `ISSUER_EHIC_ENCODER_DIGESTS_HASHALGORITHM`  
 Description: Hash algorithm used to calculate the disclosure digests of European Health Insurance Cards issued in *SD-JWT VC* format.    
 Allowed values: `sha-256`, `sha-384`, `sha-512`, `sha3-256`, `sha3-384`, `sha3-512`   
-Default value: `sha-256`
-
-Variable: `ISSUER_EHIC_ENCODER_INTEGRITY_HASHALGORITHM`  
-Description: Hash algorithm used to calculate Sub-Resource Integrity for the `vctm` of European Health Insurance Cards issued in *SD-JWT VC* format.     
-Allowed values: `sha-256`, `sha-384`, `sha-512`  
-Default value: `sha-256`
+Default value: `sha-256`  
 
 Variable: `ISSUER_EHIC_NOTIFICATIONS_ENABLED`    
 Description: Whether to enabled Notifications Endpoint support for European Health Insurance Cards issued in *SD-JWT VC* format.    

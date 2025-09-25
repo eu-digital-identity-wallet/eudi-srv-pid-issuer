@@ -560,9 +560,6 @@ fun beans(clock: Clock) = beans {
                     val digestHashAlgorithm = env.getProperty<HashAlgorithm>(
                         "issuer.ehic.encoder.digests.hashAlgorithm",
                     ) ?: HashAlgorithm.SHA_256
-                    val integrityHashAlgorithm = env.getProperty<IntegrityHashAlgorithm>(
-                        "issuer.ehic.encoder.integrity.hashAlgorithm",
-                    ) ?: IntegrityHashAlgorithm.SHA_256
                     val validity = Duration.parse(env.getProperty("issuer.ehic.validity", "P30D"))
                     val typeMetadata = ClassPathResource("/vct/ehic.json").inputStream.use {
                         Json.decodeFromStream<SdJwtVcTypeMetadata>(it)
@@ -578,7 +575,6 @@ fun beans(clock: Clock) = beans {
                     val ehicJwsJsonFlattenedIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.jwsJsonFlattened(
                         issuerSigningKey = ref<IssuerSigningKey>(),
                         digestsHashAlgorithm = digestHashAlgorithm,
-                        integrityHashAlgorithm = integrityHashAlgorithm,
                         credentialIssuerId = issuerPublicUrl,
                         typeMetadata = typeMetadata,
                         clock = ref(),
@@ -600,7 +596,6 @@ fun beans(clock: Clock) = beans {
                     val ehicCompactIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.compact(
                         issuerSigningKey = ref<IssuerSigningKey>(),
                         digestsHashAlgorithm = digestHashAlgorithm,
-                        integrityHashAlgorithm = integrityHashAlgorithm,
                         credentialIssuerId = issuerPublicUrl,
                         typeMetadata = typeMetadata,
                         clock = ref(),

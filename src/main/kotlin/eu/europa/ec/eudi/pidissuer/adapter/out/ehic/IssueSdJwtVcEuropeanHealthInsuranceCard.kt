@@ -249,7 +249,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
         fun jwsJsonFlattened(
             issuerSigningKey: IssuerSigningKey,
             digestsHashAlgorithm: HashAlgorithm,
-            integrityHashAlgorithm: IntegrityHashAlgorithm,
             credentialIssuerId: CredentialIssuerId,
             typeMetadata: SdJwtVcTypeMetadata,
             clock: Clock,
@@ -277,7 +276,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                 EncodeEuropeanHealthInsuranceCardInSdJwtVc.jwsJsonFlattened(
                     digestsHashAlgorithm,
                     issuerSigningKey,
-                    integrityHashAlgorithm,
                     EuropeanHealthInsuranceCardVct,
                     credentialIssuerId,
                     typeMetadata,
@@ -294,7 +292,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
         fun compact(
             issuerSigningKey: IssuerSigningKey,
             digestsHashAlgorithm: HashAlgorithm,
-            integrityHashAlgorithm: IntegrityHashAlgorithm,
             credentialIssuerId: CredentialIssuerId,
             typeMetadata: SdJwtVcTypeMetadata,
             clock: Clock,
@@ -322,7 +319,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                 EncodeEuropeanHealthInsuranceCardInSdJwtVc.compact(
                     digestsHashAlgorithm,
                     issuerSigningKey,
-                    integrityHashAlgorithm,
                     EuropeanHealthInsuranceCardVct,
                     credentialIssuerId,
                     typeMetadata,
