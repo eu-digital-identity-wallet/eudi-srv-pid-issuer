@@ -36,9 +36,9 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import java.security.interfaces.ECPublicKey
-import java.time.Instant
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
+import kotlin.time.Instant
 
 /**
  * Validator for JWT Proofs.

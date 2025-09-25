@@ -42,14 +42,16 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 import kotlin.io.encoding.Base64
+import kotlin.time.Instant
+import kotlin.time.toJavaInstant
 
 sealed interface EncodeEuropeanHealthInsuranceCardInSdJwtVc {
     suspend operator fun invoke(
         ehic: EuropeanHealthInsuranceCard,
         holder: Username,
         holderPublicKey: JWK,
-        dateOfIssuance: ZonedDateTime,
-        dateOfExpiry: ZonedDateTime,
+        dateOfIssuance: Instant,
+        dateOfExpiry: Instant,
     ): Either<IssueCredentialError, JsonElement>
 
     companion object {
@@ -113,8 +115,8 @@ private class JwsJsonFlattenedEncoder(
         ehic: EuropeanHealthInsuranceCard,
         holder: Username,
         holderPublicKey: JWK,
-        dateOfIssuance: ZonedDateTime,
-        dateOfExpiry: ZonedDateTime,
+        dateOfIssuance: Instant,
+        dateOfExpiry: Instant,
     ): Either<IssueCredentialError, JsonElement> = either {
         require(dateOfExpiry >= dateOfIssuance)
 
@@ -200,8 +202,8 @@ private class CompactEncoder(
         ehic: EuropeanHealthInsuranceCard,
         holder: Username,
         holderPublicKey: JWK,
-        dateOfIssuance: ZonedDateTime,
-        dateOfExpiry: ZonedDateTime,
+        dateOfIssuance: Instant,
+        dateOfExpiry: Instant,
     ): Either<IssueCredentialError, JsonElement> = either {
         require(dateOfExpiry >= dateOfIssuance)
 
@@ -235,8 +237,8 @@ private fun sdJwt(
     holder: Username,
     holderPublicKey: JWK,
     credentialIssuerId: CredentialIssuerId,
-    dateOfIssuance: ZonedDateTime,
-    dateOfExpiry: ZonedDateTime,
+    dateOfIssuance: Instant,
+    dateOfExpiry: Instant,
 ): SdJwtObject {
     val formatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
 
@@ -246,20 +248,23 @@ private fun sdJwt(
         claim(RFC7519.JWT_ID, UUID.randomUUID().toString())
         claim(RFC7519.SUBJECT, holder)
         claim(RFC7519.ISSUER, credentialIssuerId.externalForm)
-        claim(RFC7519.ISSUED_AT, dateOfIssuance.toEpochSecond())
+        claim(RFC7519.ISSUED_AT, dateOfIssuance.epochSeconds)
         cnf(holderPublicKey)
-        claim(RFC7519.EXPIRATION_TIME, dateOfExpiry.toEpochSecond())
-        claim(RFC7519.NOT_BEFORE, dateOfIssuance.toEpochSecond())
+        claim(RFC7519.EXPIRATION_TIME, dateOfExpiry.epochSeconds)
+        claim(RFC7519.NOT_BEFORE, dateOfIssuance.epochSeconds)
         sdClaim(EuropeanHealthInsuranceCardClaims.PersonalAdministrativeNumber.name, ehic.personalAdministrativeNumber.value)
         claim(EuropeanHealthInsuranceCardClaims.IssuingCountry.name, ehic.issuingCountry.value)
         objClaim(EuropeanHealthInsuranceCardClaims.IssuingAuthority.attribute.name) {
             claim(EuropeanHealthInsuranceCardClaims.IssuingAuthority.Id.name, ehic.issuingAuthority.id.value)
             claim(EuropeanHealthInsuranceCardClaims.IssuingAuthority.Name.name, ehic.issuingAuthority.name.value)
         }
-        claim(EuropeanHealthInsuranceCardClaims.DateOfExpiry.name, formatter.format(dateOfExpiry.withZoneSameInstant(ZoneOffset.UTC)))
+        claim(
+            EuropeanHealthInsuranceCardClaims.DateOfExpiry.name,
+            formatter.format(ZonedDateTime.ofInstant(dateOfExpiry.toJavaInstant(), ZoneOffset.UTC)),
+        )
         claim(
             EuropeanHealthInsuranceCardClaims.DateOfIssuance.name,
-            formatter.format(dateOfIssuance.withZoneSameInstant(ZoneOffset.UTC)),
+            formatter.format(ZonedDateTime.ofInstant(dateOfIssuance.toJavaInstant(), ZoneOffset.UTC)),
         )
         objClaim(EuropeanHealthInsuranceCardClaims.AuthenticSource.attribute.name) {
             claim(EuropeanHealthInsuranceCardClaims.AuthenticSource.Id.name, ehic.authenticSource.id.value)

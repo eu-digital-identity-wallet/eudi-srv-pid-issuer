@@ -19,18 +19,18 @@ import arrow.core.nonEmptyListOf
 import arrow.core.nonEmptySetOf
 import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidMsoMdocV1
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import kotlinx.coroutines.test.runTest
-import java.time.Clock
 import kotlin.test.*
 
 class ValidateProofTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
-    private val clock = Clock.systemDefaultZone()
+    private val clock = Clock.System
     private val verifyKeyAttestation = VerifyKeyAttestation(
         verifyNonce = { _, _ ->
             fail("VerifyCNonce should not have been invoked")
@@ -58,7 +58,7 @@ class ValidateProofTest {
                     nonEmptySetOf(JWSAlgorithm.ES256),
                     KeyAttestationRequirement.NotRequired,
                 ),
-                clock.instant(),
+                clock.now(),
             )
 
         assert(result.isLeft())

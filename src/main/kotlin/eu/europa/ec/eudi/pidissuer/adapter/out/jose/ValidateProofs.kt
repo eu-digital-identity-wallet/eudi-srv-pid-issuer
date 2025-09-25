@@ -28,7 +28,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
 import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
 import kotlinx.coroutines.coroutineScope
-import java.time.Instant
+import kotlin.time.Instant
 
 /**
  * Validators for Proofs.

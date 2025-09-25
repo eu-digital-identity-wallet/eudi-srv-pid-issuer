@@ -35,11 +35,8 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
-import java.time.Clock
-import java.util.*
 import java.util.Locale.ENGLISH
 import kotlin.time.Duration
-import kotlin.time.toKotlinInstant
 
 val PidMsoMdocScope: Scope = Scope("eu.europa.ec.eudi.pid_mso_mdoc")
 
@@ -325,7 +322,7 @@ internal class IssueMsoMdocPid(
     ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Handling issuance request ...")
         val holderPubKeys = with(jwkExtensions()) {
-            validateProofs(request.unvalidatedProofs, supportedCredential, clock.instant())
+            validateProofs(request.unvalidatedProofs, supportedCredential, clock.now())
                 .bind()
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
         }
@@ -333,7 +330,7 @@ internal class IssueMsoMdocPid(
         val pidData = getPidData(authorizationContext)
         val (pid, pidMetaData) = pidData.bind()
 
-        val issuedAt = clock.instant().toKotlinInstant()
+        val issuedAt = clock.now()
         val expiresAt = issuedAt + validityDuration
 
         val issuedCredentials = holderPubKeys.parMap(Dispatchers.Default, 4) { holderKey ->
@@ -358,7 +355,7 @@ internal class IssueMsoMdocPid(
                     "${familyName.value} ${givenName.value}"
                 },
                 holderPublicKeys = holderPubKeys,
-                issuedAt = clock.instant(),
+                issuedAt = issuedAt,
                 notificationId = notificationId,
             ),
         )

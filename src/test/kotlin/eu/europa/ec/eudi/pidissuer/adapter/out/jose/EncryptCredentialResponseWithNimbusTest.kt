@@ -33,13 +33,13 @@ import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
-import java.time.Clock
 import java.util.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -48,7 +48,7 @@ import kotlin.test.fail
 internal class EncryptCredentialResponseWithNimbusTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
-    private val clock = Clock.systemDefaultZone()
+    private val clock = Clock.System
     private val encrypter = EncryptCredentialResponseNimbus(issuer, clock)
     private val jacksonObjectMapper: ObjectMapper by lazy { jacksonObjectMapper() }
 

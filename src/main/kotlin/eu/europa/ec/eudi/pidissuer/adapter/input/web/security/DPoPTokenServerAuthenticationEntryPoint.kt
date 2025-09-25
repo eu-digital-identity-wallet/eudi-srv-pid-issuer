@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
 import com.nimbusds.oauth2.sdk.token.AccessTokenType
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import kotlinx.coroutines.reactor.awaitSingleOrNull
 import kotlinx.coroutines.reactor.mono
 import org.springframework.http.HttpHeaders
@@ -25,7 +26,6 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException
 import org.springframework.security.web.server.ServerAuthenticationEntryPoint
 import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Mono
-import java.time.Clock
 
 /**
  * [ServerAuthenticationEntryPoint] implementation used to commence authentication of a protected resource using DPoP.
@@ -68,7 +68,7 @@ class DPoPTokenServerAuthenticationEntryPoint(
                 when (error) {
                     is DPoPTokenError.UseDPoPNonce -> {
                         check(dpopNonce is DPoPNoncePolicy.Enforcing)
-                        dpopNonce.generateDPoPNonce(clock.instant())
+                        dpopNonce.generateDPoPNonce(clock.now())
                     }
                     else -> null
                 }

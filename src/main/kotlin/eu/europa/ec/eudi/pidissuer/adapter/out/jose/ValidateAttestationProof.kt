@@ -19,7 +19,7 @@ import arrow.core.Either
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import java.time.Instant
+import kotlin.time.Instant
 
 internal class ValidateAttestationProof(
     private val verifyKeyAttestation: VerifyKeyAttestation,

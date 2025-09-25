@@ -26,8 +26,10 @@ import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
+import eu.europa.ec.eudi.pidissuer.domain.toJavaDate
 import eu.europa.ec.eudi.pidissuer.port.input.IssuancePendingTO
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
 import eu.europa.ec.eudi.pidissuer.port.input.IssuedTO
@@ -36,8 +38,6 @@ import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptDeferredResponse
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
-import java.time.Clock
-import java.util.*
 
 /**
  * Implementation of [EncryptDeferredResponse] using Nimbus.
@@ -99,7 +99,7 @@ private class EncryptResponse(
         val baseClaims = JWTClaimsSet.parse(claimsJson)
         val jwtClaimSet = JWTClaimsSet.Builder(baseClaims)
             .issuer(issuer.externalForm)
-            .issueTime(Date.from(clock.instant()))
+            .issueTime(clock.now().toJavaDate())
             .apply(customize)
             .build()
 

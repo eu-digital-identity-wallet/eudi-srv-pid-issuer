@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer
 
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.annotation.Configuration
@@ -22,7 +23,6 @@ import org.springframework.context.annotation.Primary
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.core.annotation.AliasFor
 import org.springframework.test.context.ContextConfiguration
-import java.time.Clock
 import kotlin.reflect.KClass
 
 /**
@@ -51,6 +51,6 @@ internal annotation class PidIssuerApplicationTest(
  */
 internal class BeansDslApplicationContextInitializer : ApplicationContextInitializer<GenericApplicationContext> {
     override fun initialize(applicationContext: GenericApplicationContext) {
-        beans(Clock.systemDefaultZone()).initializer().initialize(applicationContext)
+        beans(Clock.System).initializer().initialize(applicationContext)
     }
 }

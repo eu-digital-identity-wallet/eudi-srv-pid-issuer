@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.credential
 
-import java.time.Instant
+import kotlin.time.Instant
 
 /**
  * Verifies a Nonce value is valid at a specific [Instant].

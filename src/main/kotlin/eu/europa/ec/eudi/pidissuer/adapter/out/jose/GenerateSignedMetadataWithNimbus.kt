@@ -21,11 +21,11 @@ import com.nimbusds.jose.crypto.Ed25519Signer
 import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.util.JSONObjectUtils
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
 import eu.europa.ec.eudi.pidissuer.port.out.jose.GenerateSignedMetadata
 import kotlinx.serialization.json.*
-import java.time.Clock
 
 /**
  * Key used to sign metadata.
@@ -88,7 +88,7 @@ internal class GenerateSignedMetadataWithNimbus(
 ) : GenerateSignedMetadata {
     override fun invoke(metadata: JsonObject): String {
         val payload = (metadata - "signed_metadata").buildUpon {
-            put("iat", clock.instant().epochSecond)
+            put("iat", clock.now().epochSeconds)
             put("iss", signingKey.issuer)
             put("sub", credentialIssuerId.externalForm)
         }.toPayload()
