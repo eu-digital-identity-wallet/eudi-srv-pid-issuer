@@ -33,7 +33,6 @@ import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps.asJwsJsonObject
 import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps.serialize
 import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObject
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
-import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -60,13 +59,11 @@ sealed interface EncodeEuropeanHealthInsuranceCardInSdJwtVc {
             issuerSigningKey: IssuerSigningKey,
             vct: SdJwtVcType,
             credentialIssuerId: CredentialIssuerId,
-            typeMetadata: SdJwtVcTypeMetadata,
         ): EncodeEuropeanHealthInsuranceCardInSdJwtVc = JwsJsonFlattenedEncoder(
             digestsHashAlgorithm,
             issuerSigningKey,
             vct,
             credentialIssuerId,
-            typeMetadata,
         )
 
         fun compact(
@@ -74,13 +71,11 @@ sealed interface EncodeEuropeanHealthInsuranceCardInSdJwtVc {
             issuerSigningKey: IssuerSigningKey,
             vct: SdJwtVcType,
             credentialIssuerId: CredentialIssuerId,
-            typeMetadata: SdJwtVcTypeMetadata,
         ): EncodeEuropeanHealthInsuranceCardInSdJwtVc = CompactEncoder(
             digestsHashAlgorithm,
             issuerSigningKey,
             vct,
             credentialIssuerId,
-            typeMetadata,
         )
     }
 }
@@ -90,12 +85,7 @@ private class JwsJsonFlattenedEncoder(
     issuerSigningKey: IssuerSigningKey,
     private val vct: SdJwtVcType,
     private val credentialIssuerId: CredentialIssuerId,
-    typeMetadata: SdJwtVcTypeMetadata,
 ) : EncodeEuropeanHealthInsuranceCardInSdJwtVc {
-    init {
-        require(typeMetadata.vct.value == vct.value)
-    }
-
     private val issuer: SdJwtIssuer<SignedJWT> by lazy { issuerSigningKey.issuer(digestsHashAlgorithm) }
 
     override suspend operator fun invoke(
@@ -106,7 +96,7 @@ private class JwsJsonFlattenedEncoder(
         dateOfExpiry: Instant,
     ): Either<IssueCredentialError, JsonElement> = either {
         val sdJwt = catch({
-            createSdJwt(issuer, vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
+            issuer.createSdJwt(vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
         }) { raise(IssueCredentialError.Unexpected("Unable to create SD-JWT VC", it)) }
 
         val serialized = sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)
@@ -131,12 +121,7 @@ private class CompactEncoder(
     issuerSigningKey: IssuerSigningKey,
     private val vct: SdJwtVcType,
     private val credentialIssuerId: CredentialIssuerId,
-    typeMetadata: SdJwtVcTypeMetadata,
 ) : EncodeEuropeanHealthInsuranceCardInSdJwtVc {
-    init {
-        require(typeMetadata.vct.value == vct.value)
-    }
-
     private val issuer: SdJwtIssuer<SignedJWT> by lazy { issuerSigningKey.issuer(digestsHashAlgorithm) }
 
     override suspend operator fun invoke(
@@ -147,7 +132,7 @@ private class CompactEncoder(
         dateOfExpiry: Instant,
     ): Either<IssueCredentialError, JsonElement> = either {
         val sdJwt = catch({
-            createSdJwt(issuer, vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
+            issuer.createSdJwt(vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
         }) { raise(IssueCredentialError.Unexpected("Unable to create SD-JWT VC", it)) }
 
         JsonPrimitive(sdJwt.serialize())
@@ -201,6 +186,7 @@ private fun sdJwt(
         sdClaim(EuropeanHealthInsuranceCardClaims.DocumentNumber.name, ehic.documentNumber.value)
     }
 }
+
 private fun IssuerSigningKey.issuer(digestsHashAlgorithm: HashAlgorithm): SdJwtIssuer<SignedJWT> {
     val factory = SdJwtFactory(digestsHashAlgorithm)
     val signer = ECDSASigner(key)
@@ -210,8 +196,8 @@ private fun IssuerSigningKey.issuer(digestsHashAlgorithm: HashAlgorithm): SdJwtI
         x509CertChain(key.x509CertChain)
     }
 }
-private suspend fun createSdJwt(
-    issuer: SdJwtIssuer<SignedJWT>,
+
+private suspend fun SdJwtIssuer<SignedJWT>.createSdJwt(
     vct: SdJwtVcType,
     ehic: EuropeanHealthInsuranceCard,
     holder: Username,
@@ -231,5 +217,6 @@ private suspend fun createSdJwt(
         dateOfIssuance = dateOfIssuance,
         dateOfExpiry = dateOfExpiry,
     )
-    return issuer.issue(spec).getOrThrow()
+
+    return issue(spec).getOrThrow()
 }

@@ -52,7 +52,6 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
-import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
 import eu.europa.ec.eudi.sdjwt.vc.Vct
 import io.ktor.http.*
 import io.netty.handler.ssl.SslContextBuilder
@@ -60,7 +59,6 @@ import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromStream
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties
@@ -75,7 +73,6 @@ import org.springframework.context.support.beans
 import org.springframework.core.env.Environment
 import org.springframework.core.env.getProperty
 import org.springframework.core.env.getRequiredProperty
-import org.springframework.core.io.ClassPathResource
 import org.springframework.core.io.DefaultResourceLoader
 import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.Resource
@@ -561,9 +558,6 @@ fun beans(clock: Clock) = beans {
                         "issuer.ehic.encoder.digests.hashAlgorithm",
                     ) ?: HashAlgorithm.SHA_256
                     val validity = Duration.parse(env.getProperty("issuer.ehic.validity", "P30D"))
-                    val typeMetadata = ClassPathResource("/vct/ehic.json").inputStream.use {
-                        Json.decodeFromStream<SdJwtVcTypeMetadata>(it)
-                    }
                     val ehicNotificationsEnabled = env.getProperty<Boolean>("issuer.ehic.notifications.enabled") ?: true
                     val issuingCountry = EhicIssuingCountry(env.getProperty("issuer.ehic.issuingCountry", "GR"))
                     val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
@@ -576,7 +570,6 @@ fun beans(clock: Clock) = beans {
                         issuerSigningKey = ref<IssuerSigningKey>(),
                         digestsHashAlgorithm = digestHashAlgorithm,
                         credentialIssuerId = issuerPublicUrl,
-                        typeMetadata = typeMetadata,
                         clock = ref(),
                         validity = validity,
                         validateProofs = ref(),
@@ -597,7 +590,6 @@ fun beans(clock: Clock) = beans {
                         issuerSigningKey = ref<IssuerSigningKey>(),
                         digestsHashAlgorithm = digestHashAlgorithm,
                         credentialIssuerId = issuerPublicUrl,
-                        typeMetadata = typeMetadata,
                         clock = ref(),
                         validity = validity,
                         validateProofs = ref(),
