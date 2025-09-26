@@ -15,7 +15,7 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 
 ## Overview
 
-An implementation of a credential issuing service, according to [OpenId4VCI - draft15](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-15.html).
+An implementation of a credential issuing service, according to [OpenId4VCI - v1.0](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html).
 
 The service provides generic support for `mso_mdoc` and `SD-JWT-VC` formats using PID, mDL, and European Health Insurance Card as an example
 and requires the use of a suitable OAuth 2.0 server.
