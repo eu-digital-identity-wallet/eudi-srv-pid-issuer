@@ -35,7 +35,6 @@ import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
-import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
 import kotlinx.coroutines.Dispatchers
 import org.slf4j.LoggerFactory
 import java.util.*
@@ -249,9 +248,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
         fun jwsJsonFlattened(
             issuerSigningKey: IssuerSigningKey,
             digestsHashAlgorithm: HashAlgorithm,
-            integrityHashAlgorithm: IntegrityHashAlgorithm,
             credentialIssuerId: CredentialIssuerId,
-            typeMetadata: SdJwtVcTypeMetadata,
             clock: Clock,
             validity: Duration,
             validateProofs: ValidateProofs,
@@ -277,10 +274,8 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                 EncodeEuropeanHealthInsuranceCardInSdJwtVc.jwsJsonFlattened(
                     digestsHashAlgorithm,
                     issuerSigningKey,
-                    integrityHashAlgorithm,
                     EuropeanHealthInsuranceCardVct,
                     credentialIssuerId,
-                    typeMetadata,
                 ),
                 clock,
                 validity,
@@ -294,9 +289,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
         fun compact(
             issuerSigningKey: IssuerSigningKey,
             digestsHashAlgorithm: HashAlgorithm,
-            integrityHashAlgorithm: IntegrityHashAlgorithm,
             credentialIssuerId: CredentialIssuerId,
-            typeMetadata: SdJwtVcTypeMetadata,
             clock: Clock,
             validity: Duration,
             validateProofs: ValidateProofs,
@@ -322,10 +315,8 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                 EncodeEuropeanHealthInsuranceCardInSdJwtVc.compact(
                     digestsHashAlgorithm,
                     issuerSigningKey,
-                    integrityHashAlgorithm,
                     EuropeanHealthInsuranceCardVct,
                     credentialIssuerId,
-                    typeMetadata,
                 ),
                 clock,
                 validity,
