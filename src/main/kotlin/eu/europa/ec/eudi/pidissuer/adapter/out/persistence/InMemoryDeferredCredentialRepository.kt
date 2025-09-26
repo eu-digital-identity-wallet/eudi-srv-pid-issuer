@@ -15,8 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.persistence
 
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.CredentialResponse
-import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.domain.TransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadDeferredCredentialByTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadDeferredCredentialResult
@@ -24,19 +24,21 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreDeferredCredential
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.slf4j.LoggerFactory
+import kotlin.time.Instant
 
 /**
  * Represents the state of the deferred issuance. Holds the response encryption as specified in initial request
  * and the issued credential. If issuance is still pending [issued] is null.
  */
 data class DeferredState(
-    val responseEncryption: RequestedResponseEncryption,
-    val issued: CredentialResponse.Issued?,
+    val issued: CredentialResponse.Issued,
+    val notIssuedBefore: Instant,
 )
 
 private val log = LoggerFactory.getLogger(InMemoryDeferredCredentialRepository::class.java)
 class InMemoryDeferredCredentialRepository(
     private val data: MutableMap<TransactionId, DeferredState> = mutableMapOf(),
+    private val clock: Clock,
 ) {
 
     private val mutex = Mutex()
@@ -44,25 +46,28 @@ class InMemoryDeferredCredentialRepository(
     val loadDeferredCredentialByTransactionId: LoadDeferredCredentialByTransactionId =
         LoadDeferredCredentialByTransactionId { transactionId ->
             mutex.withLock(this) {
-                if (data.containsKey(transactionId)) {
-                    val deferredPersist = data[transactionId]
-                    if (deferredPersist?.issued != null) {
-                        LoadDeferredCredentialResult.Found(deferredPersist.issued, deferredPersist.responseEncryption)
-                    } else
-                        LoadDeferredCredentialResult.IssuancePending
-                } else LoadDeferredCredentialResult.InvalidTransactionId
+                val deferredPersist = data[transactionId]
+                val now = clock.now()
+                when {
+                    deferredPersist == null -> LoadDeferredCredentialResult.InvalidTransactionId
+                    now > deferredPersist.notIssuedBefore -> LoadDeferredCredentialResult.Found(deferredPersist.issued)
+                    else -> LoadDeferredCredentialResult.IssuancePending(
+                        CredentialResponse.Deferred(
+                            transactionId,
+                            deferredPersist.notIssuedBefore - now,
+                        ),
+                    )
+                }
             }
         }
 
     val storeDeferredCredential: StoreDeferredCredential =
-        StoreDeferredCredential { transactionId, credential, responseEncryption ->
+        StoreDeferredCredential { transactionId, credential, notIssuedBefore ->
             mutex.withLock(this) {
-
                 if (data.containsKey(transactionId)) {
                     require(data[transactionId] == null) { "Oops!! $transactionId already exists" }
                 }
-                data[transactionId] = DeferredState(responseEncryption, credential)
-
+                data[transactionId] = DeferredState(credential, notIssuedBefore)
                 log.info("Stored $transactionId -> $credential ")
             }
         }

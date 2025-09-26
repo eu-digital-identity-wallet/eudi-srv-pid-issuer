@@ -19,7 +19,7 @@ import arrow.core.Either
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import java.time.Instant
+import kotlin.time.Instant
 
 internal class ValidateAttestationProof(
     private val verifyKeyAttestation: VerifyKeyAttestation,
@@ -35,6 +35,11 @@ internal class ValidateAttestationProof(
         }
         check(proofType is ProofType.Attestation)
         val keyAttestationJWT = KeyAttestationJWT(unvalidatedProof.jwt)
+
+        require(keyAttestationJWT.jwt.header.algorithm in proofType.signingAlgorithmsSupported) {
+            "Key attestation signing algorithm '${keyAttestationJWT.jwt.header.algorithm}' is not supported, " +
+                "must be one of: ${proofType.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
+        }
 
         credentialKeyAndNonce(keyAttestationJWT, proofType, at)
     }.mapLeft { IssueCredentialError.InvalidProof("Invalid proof Attestation", it) }

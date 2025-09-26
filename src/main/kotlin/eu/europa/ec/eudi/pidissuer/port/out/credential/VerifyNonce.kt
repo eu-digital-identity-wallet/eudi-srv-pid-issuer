@@ -15,12 +15,12 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.credential
 
-import java.time.Instant
+import kotlin.time.Instant
 
 /**
- * Verifies a CNonce value is valid at a specific [Instant].
+ * Verifies a Nonce value is valid at a specific [Instant].
  */
-fun interface VerifyCNonce {
+fun interface VerifyNonce {
     suspend operator fun invoke(value: String?, at: Instant): Boolean
 
     suspend operator fun invoke(values: List<String?>, at: Instant): Boolean =
@@ -32,8 +32,8 @@ fun interface VerifyCNonce {
     companion object {
 
         /**
-         * Gets a [VerifyCNonce] that perform no verification.
+         * Gets a [VerifyNonce] that perform no verification.
          */
-        fun noCNonceRequired(): VerifyCNonce = VerifyCNonce { _, _ -> true }
+        fun noCNonceRequired(): VerifyNonce = VerifyNonce { _, _ -> true }
     }
 }

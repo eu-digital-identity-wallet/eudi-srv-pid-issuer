@@ -16,9 +16,8 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.NonEmptyList
+import kotlinx.datetime.LocalDate
 import java.net.URI
-import java.time.LocalDate
-import java.time.Year
 import java.util.regex.Pattern
 
 @JvmInline
@@ -110,8 +109,6 @@ data class PlaceOfBirth(
  * starting with the '+' symbol as the international code prefix and the country code, followed by numbers only.
  * @param ageOver18 Attesting whether the PID User is currently an adult (true) or a
  * minor (false).
- * @param ageBirthYear The year when the PID User was born. If unknown, approximate
- * year.
  * @param ageInYears The current age of the PID User in years.
  */
 data class Pid(
@@ -135,16 +132,7 @@ data class Pid(
     val mobilePhoneNumber: PhoneNumber? = null,
     val ageOver18: Boolean? = null,
     val ageInYears: UInt? = null,
-    val ageBirthYear: Year? = null,
-) {
-    init {
-        ageBirthYear?.let { year ->
-            require(birthDate.year == year.value) {
-                "Given ageBirthYear = ${year.value} is not equal to year of birthDate $birthDate"
-            }
-        }
-    }
-}
+)
 
 /**
  * Name of the administrative authority that has issued this PID instance,
@@ -210,7 +198,7 @@ data class PidMetaData(
 ) {
     init {
         issuanceDate?.let {
-            require(it.isBefore(expiryDate)) { "Issuance date should be before expiry date" }
+            require(it < expiryDate) { "Issuance date should be before expiry date" }
         }
 
         if (issuingAuthority is IssuingAuthority.MemberState) {

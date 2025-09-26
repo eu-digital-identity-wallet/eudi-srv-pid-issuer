@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.NonEmptyList
+import arrow.core.nonEmptySetOf
 import arrow.core.toNonEmptyListOrNull
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.JOSEObjectType
@@ -31,21 +32,21 @@ import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.mobileDrivingLicenceV1
 import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.loadResource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import java.security.cert.X509Certificate
-import java.time.Clock
 import java.util.*
 import kotlin.test.*
 
 internal class ValidateJwtProofTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
-    private val clock = Clock.systemDefaultZone()
+    private val clock = Clock.System
     private val verifyKeyAttestation = VerifyKeyAttestation(
-        verifyCNonce = { _, _ ->
+        verifyNonce = { _, _ ->
             fail("VerifyCNonce should not have been invoked")
         },
     )
@@ -67,7 +68,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
-                clock.instant(),
+                clock.now(),
             )
 
         assert(result.isLeft())
@@ -82,7 +83,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
-                clock.instant(),
+                clock.now(),
             )
 
         assert(result.isLeft())
@@ -101,7 +102,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
-                clock.instant(),
+                clock.now(),
             )
 
         assertTrue { result.isLeft() }
@@ -119,7 +120,7 @@ internal class ValidateJwtProofTest {
         validateJwtProof(
             UnvalidatedProof.Jwt(signedJwt.serialize()),
             credentialConfiguration,
-            clock.instant(),
+            clock.now(),
         ).fold(
             ifLeft = { fail("Unexpected $it", it.cause) },
             ifRight = { credentialKey ->
@@ -140,7 +141,7 @@ internal class ValidateJwtProofTest {
         validateJwtProof(
             UnvalidatedProof.Jwt(signedJwt.serialize()),
             credentialConfiguration,
-            clock.instant(),
+            clock.now(),
         ).fold(
             ifLeft = { fail("Unexpected $it", it.cause) },
             ifRight = { credentialKey ->
@@ -161,7 +162,7 @@ internal class ValidateJwtProofTest {
         validateJwtProof(
             UnvalidatedProof.Jwt(signedJwt.serialize()),
             credentialConfiguration,
-            clock.instant(),
+            clock.now(),
         ).fold(
             ifLeft = { fail("Unexpected $it", it.cause) },
             ifRight = { credentialKey ->
@@ -184,7 +185,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
-                clock.instant(),
+                clock.now(),
             )
 
         assertTrue { result.isLeft() }
@@ -203,7 +204,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
-                clock.instant(),
+                clock.now(),
             )
 
         assertTrue { result.isLeft() }
@@ -221,7 +222,27 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 credentialConfiguration,
-                clock.instant(),
+                clock.now(),
+            )
+
+        assertTrue { result.isLeft() }
+    }
+
+    @Test
+    internal fun `proof validation fails with unsupported 'alg' in header`() = runTest {
+        val key = loadKey()
+        val signedJwt =
+            generateSignedJwt(key, "nonce") {
+                jwk(key.toPublicJWK())
+            }
+        val result =
+            validateJwtProof(
+                UnvalidatedProof.Jwt(signedJwt.serialize()),
+                mobileDrivingLicenceV1(
+                    nonEmptySetOf(JWSAlgorithm.ES512),
+                    KeyAttestationRequirement.NotRequired,
+                ),
+                clock.now(),
             )
 
         assertTrue { result.isLeft() }
@@ -240,7 +261,7 @@ internal class ValidateJwtProofTest {
 
         val claims = JWTClaimsSet.Builder()
             .audience(issuer.externalForm)
-            .issueTime(Date.from(clock.instant()))
+            .issueTime(clock.now().toJavaDate())
             .claim("nonce", nonce)
             .build()
 

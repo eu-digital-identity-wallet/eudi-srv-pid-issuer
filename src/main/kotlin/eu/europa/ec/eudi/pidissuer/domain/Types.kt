@@ -21,8 +21,8 @@ import org.slf4j.LoggerFactory
 import java.net.MalformedURLException
 import java.net.URI
 import java.net.URL
-import java.time.Instant
 import java.util.*
+import kotlin.time.Instant
 
 private val logHttpsUrl = LoggerFactory.getLogger(HttpsUrl::class.java)
 
@@ -36,7 +36,7 @@ value class HttpsUrl private constructor(val value: URL) {
         fun of(url: String): HttpsUrl? =
             try {
                 of(URL(url))
-            } catch (e: MalformedURLException) {
+            } catch (_: MalformedURLException) {
                 null
             }
 
@@ -151,3 +151,6 @@ enum class IntegrityHashAlgorithm(val id: String) {
     SHA_384("sha384"),
     SHA_512("sha512"),
 }
+
+@JvmInline
+value class CoseAlgorithm(val value: Int)

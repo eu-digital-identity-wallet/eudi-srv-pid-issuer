@@ -129,7 +129,7 @@ class IssuerUi(
                     }.buildString(),
             )
 
-        val credentialIssuerMetadata = credentialIssuer.appendPath("/.well-known/openid-credential-issuer")
+        val credentialIssuerMetadata = credentialIssuer.wellKnown("openid-credential-issuer")
         val authorizationServerMetadata = authorizationServer.wellKnown("oauth-authorization-server")
         val sdJwtVcIssuerMetadata = credentialIssuer.wellKnown("jwt-vc-issuer")
         val pidSdJwtVcTypeMetadata = credentialIssuer.appendPath("/type-metadata/urn:eudi:pid:1")

@@ -24,10 +24,11 @@ import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
-import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyCNonce
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
+import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
 import kotlinx.coroutines.coroutineScope
-import java.time.Instant
+import kotlin.time.Instant
 
 /**
  * Validators for Proofs.
@@ -35,7 +36,7 @@ import java.time.Instant
 internal class ValidateProofs(
     private val validateJwtProof: ValidateJwtProof,
     private val validateAttestationProof: ValidateAttestationProof,
-    private val verifyCNonce: VerifyCNonce,
+    private val verifyNonce: VerifyNonce,
     private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
 ) {
 
@@ -43,7 +44,7 @@ internal class ValidateProofs(
         unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
-    ): Either<InvalidProof, NonEmptyList<JWK>> = coroutineScope {
+    ): Either<IssueCredentialError, NonEmptyList<JWK>> = coroutineScope {
         either {
             val credentialKeysAndCNonces = unvalidatedProofs.map {
                 when (it) {
@@ -51,14 +52,14 @@ internal class ValidateProofs(
                         validateJwtProof(it, credentialConfiguration, at).bind()
                     is UnvalidatedProof.Attestation ->
                         validateAttestationProof(it, credentialConfiguration, at).bind()
-                    is UnvalidatedProof.LdpVp -> raise(InvalidProof("Supporting only JWT proof"))
+                    is UnvalidatedProof.DiVp -> raise(InvalidProof("Supporting only JWT proof"))
                 }
             }
 
             val cnonces = credentialKeysAndCNonces.map { it.second }.toNonEmptyListOrNull()
             checkNotNull(cnonces)
-            ensure(verifyCNonce(cnonces, at)) {
-                InvalidProof("CNonce is not valid")
+            ensure(verifyNonce(cnonces, at)) {
+                InvalidNonce("CNonce is not valid")
             }
 
             val jwks = credentialKeysAndCNonces.map {

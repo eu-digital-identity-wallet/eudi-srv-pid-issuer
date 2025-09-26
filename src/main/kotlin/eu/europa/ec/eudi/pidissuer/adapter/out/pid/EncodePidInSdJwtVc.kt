@@ -42,8 +42,8 @@ import kotlinx.serialization.json.JsonElement
 import org.slf4j.LoggerFactory
 import java.net.URL
 import java.security.cert.X509Certificate
-import java.time.Instant
 import kotlin.io.encoding.Base64
+import kotlin.time.Instant
 
 private val log = LoggerFactory.getLogger(EncodePidInSdJwtVc::class.java)
 
@@ -132,9 +132,9 @@ private fun selectivelyDisclosed(
         // Always disclosed claims
         //
         claim(RFC7519.ISSUER, credentialIssuerId.externalForm)
-        claim(RFC7519.ISSUED_AT, iat.epochSecond)
-        nbf?.let { claim(RFC7519.NOT_BEFORE, it.epochSecond) }
-        claim(RFC7519.EXPIRATION_TIME, exp.epochSecond)
+        claim(RFC7519.ISSUED_AT, iat.epochSeconds)
+        nbf?.let { claim(RFC7519.NOT_BEFORE, it.epochSeconds) }
+        claim(RFC7519.EXPIRATION_TIME, exp.epochSeconds)
         cnf(holderPubKey)
         claim(SdJwtVcSpec.VCT, vct.value)
         statusListToken?.let {
@@ -177,8 +177,8 @@ private fun selectivelyDisclosed(
         pidMetaData.personalAdministrativeNumber?.let { sdClaim(SdJwtVcPidClaims.PersonalAdministrativeNumber.name, it.value) }
         pid.portrait?.let {
             val encodedBytes = when (it) {
-                is PortraitImage.JPEG -> Base64.Default.encode(it.value)
-                is PortraitImage.JPEG2000 -> Base64.Default.encode(it.value)
+                is PortraitImage.JPEG -> Base64.encode(it.value)
+                is PortraitImage.JPEG2000 -> Base64.encode(it.value)
             }
             val url = "data:image/jpeg;base64,$encodedBytes"
             sdClaim(SdJwtVcPidClaims.Picture.name, url)
@@ -192,7 +192,7 @@ private fun selectivelyDisclosed(
             pid.ageOver18?.let { sdClaim(SdJwtVcPidClaims.AgeEqualOrOver.Over18.name, it) }
         }
         pid.ageInYears?.let { sdClaim(SdJwtVcPidClaims.AgeInYears.name, it.toInt()) }
-        pid.ageBirthYear?.let { sdClaim(SdJwtVcPidClaims.AgeBirthYear.name, it.value.toString()) }
+        sdClaim(SdJwtVcPidClaims.AgeBirthYear.name, pid.birthDate.year.toString())
 
         sdClaim(SdJwtVcPidClaims.DateOfExpiry.name, pidMetaData.expiryDate.toString())
         sdClaim(SdJwtVcPidClaims.IssuingAuthority.name, pidMetaData.issuingAuthority.valueAsString())

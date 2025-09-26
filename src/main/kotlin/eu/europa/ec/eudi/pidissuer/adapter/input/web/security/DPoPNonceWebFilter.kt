@@ -15,38 +15,26 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
-import kotlinx.coroutines.reactor.awaitSingleOrNull
-import org.springframework.security.core.context.ReactiveSecurityContextHolder
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import org.springframework.web.server.CoWebFilter
 import org.springframework.web.server.CoWebFilterChain
 import org.springframework.web.server.ServerWebExchange
 
 /**
- * [WebFilter] that checks if new DPoP Nonce values must be generated for DPoP authenticated web requests.
+ * [CoWebFilter] that generates a new DPoP Nonce for DPoP authenticated web requests and explicitly configured paths.
  */
 class DPoPNonceWebFilter(
     private val dpopNonce: DPoPNoncePolicy.Enforcing,
+    private val clock: Clock,
+    private val paths: List<String>,
 ) : CoWebFilter() {
-    override suspend fun filter(
-        exchange: ServerWebExchange,
-        chain: CoWebFilterChain,
-    ) {
+    override suspend fun filter(exchange: ServerWebExchange, chain: CoWebFilterChain) {
         val request = exchange.request
-        if (request.headers.contains("DPoP")) {
-            val authentication = ReactiveSecurityContextHolder.getContext()
-                .awaitSingleOrNull()
-                ?.authentication
-
-            if (authentication is DPoPTokenAuthentication) {
-                val currentDPoPNonce = dpopNonce.loadActiveDPoPNonce(authentication.accessToken)
-                if (currentDPoPNonce == null) {
-                    val newDPoPNonce = dpopNonce.generateDPoPNonce(authentication.accessToken)
-                    val response = exchange.response
-                    response.headers["DPoP-Nonce"] = newDPoPNonce.nonce.value
-                }
-            }
+        if (request.path.pathWithinApplication().value() in paths) {
+            val newDPoPNonce = dpopNonce.generateDPoPNonce(clock.now())
+            val response = exchange.response
+            response.headers["DPoP-Nonce"] = newDPoPNonce
         }
-
         chain.filter(exchange)
     }
 }

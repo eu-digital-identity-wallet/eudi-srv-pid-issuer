@@ -16,5 +16,17 @@
 package eu.europa.ec.eudi.pidissuer.domain
 
 internal object OpenId4VciSpec {
-    const val VERSION = "draft 15"
+    const val VERSION = "v1"
+
+    const val SIGNED_METADATA_JWT_TYPE = "openidvci-issuer-metadata+jwt"
+
+    val ZIP_ALGORITHMS = setOf("DEF")
+
+    const val KEY_ATTESTATION_JWT_TYPE = "key-attestation+jwt"
+
+    const val TRANSACTION_ID = "transaction_id"
+    const val INTERVAL = "interval"
+    const val NOTIFICATION_ID = "notification_id"
+
+    const val CREDENTIAL_RESPONSE_ENCRYPTION = "credential_response_encryption"
 }

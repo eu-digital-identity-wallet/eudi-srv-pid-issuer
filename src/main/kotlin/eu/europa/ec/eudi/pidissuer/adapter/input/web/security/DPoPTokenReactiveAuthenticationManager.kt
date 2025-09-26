@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
 import arrow.core.NonFatal
+import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.oauth2.sdk.dpop.JWKThumbprintConfirmation
 import com.nimbusds.oauth2.sdk.dpop.verifiers.AccessTokenValidationException
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPIssuer
@@ -23,6 +24,8 @@ import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPProtectedResourceRequestVerifi
 import com.nimbusds.oauth2.sdk.dpop.verifiers.InvalidDPoPProofException
 import com.nimbusds.oauth2.sdk.id.ClientID
 import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
+import com.nimbusds.openid.connect.sdk.Nonce
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.reactor.mono
 import net.minidev.json.JSONObject
@@ -34,6 +37,7 @@ import org.springframework.security.oauth2.core.OAuth2TokenIntrospectionClaimNam
 import org.springframework.security.oauth2.server.resource.introspection.BadOpaqueTokenException
 import org.springframework.security.oauth2.server.resource.introspection.SpringReactiveOpaqueTokenIntrospector
 import reactor.core.publisher.Mono
+import kotlin.time.Instant
 
 /**
  * [ReactiveAuthenticationManager] implementing DPoP authentication.
@@ -44,6 +48,7 @@ class DPoPTokenReactiveAuthenticationManager(
     private val introspector: SpringReactiveOpaqueTokenIntrospector,
     private val verifier: DPoPProtectedResourceRequestVerifier,
     private val dpopNonce: DPoPNoncePolicy,
+    private val clock: Clock,
 ) : ReactiveAuthenticationManager {
 
     /**
@@ -56,7 +61,7 @@ class DPoPTokenReactiveAuthenticationManager(
                     val principal = introspect(authentication.accessToken)
                     val issuer = principal.issuer()
                     val thumbprint = principal.jwkThumbprint()
-                    val dpopNonce = dpopNonce.getActiveOrGenerateNew(authentication.accessToken)
+                    val dpopNonce = dpopNonce.verifyDPoPNonce(authentication.dpop.nonce(), clock.now())
                     verify(authentication, issuer, thumbprint, dpopNonce)
                     authentication.authenticate(principal)
                 }
@@ -86,7 +91,7 @@ class DPoPTokenReactiveAuthenticationManager(
         authentication: DPoPTokenAuthentication,
         issuer: DPoPIssuer,
         thumbprint: JWKThumbprintConfirmation,
-        dpopNonce: DPoPNonce?,
+        dpopNonce: Nonce?,
     ) {
         try {
             verifier.verify(
@@ -96,11 +101,11 @@ class DPoPTokenReactiveAuthenticationManager(
                 authentication.dpop,
                 authentication.accessToken,
                 thumbprint,
-                dpopNonce?.nonce,
+                dpopNonce,
             )
         } catch (exception: InvalidDPoPProofException) {
             val error = if (exception.message?.contains("nonce", ignoreCase = true) == true) {
-                DPoPTokenError.useDPoPNonce("Invalid DPoP proof '${exception.message}'.", authentication.accessToken)
+                DPoPTokenError.useDPoPNonce("Invalid DPoP proof '${exception.message}'.")
             } else {
                 DPoPTokenError.invalidToken("Invalid DPoP proof '${exception.message}'.")
             }
@@ -149,3 +154,29 @@ private fun OAuth2AuthenticatedPrincipal.jwkThumbprint(): JWKThumbprintConfirmat
         else throw exception
     }
 }
+
+/**
+ * Tries to extract the 'nonce' claim from this [SignedJWT].
+ */
+private fun SignedJWT.nonce(): String? =
+    try {
+        jwtClaimsSet.getStringClaim("nonce")
+    } catch (exception: Exception) {
+        if (NonFatal(exception))
+            throw OAuth2AuthenticationException(DPoPTokenError.invalidToken("Invalid DPoP proof"))
+        else throw exception
+    }
+
+/**
+ * Checks if the provided value is a valid DPoP Nonce per the configured policy.
+ */
+private suspend fun DPoPNoncePolicy.verifyDPoPNonce(unverified: String?, now: Instant): Nonce? =
+    when (this) {
+        DPoPNoncePolicy.Disabled ->
+            if (unverified != null) throw OAuth2AuthenticationException(DPoPTokenError.invalidToken("DPoP Nonce is not allowed"))
+            else null
+
+        is DPoPNoncePolicy.Enforcing ->
+            if (verifyDPoPNonce(unverified, now)) Nonce(unverified)
+            else throw OAuth2AuthenticationException(DPoPTokenError.useDPoPNonce("Invalid DPoP proof."))
+    }

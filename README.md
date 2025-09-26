@@ -15,7 +15,7 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 
 ## Overview
 
-An implementation of a credential issuing service, according to [OpenId4VCI - draft15](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-15.html).
+An implementation of a credential issuing service, according to [OpenId4VCI - v1.0](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html).
 
 The service provides generic support for `mso_mdoc` and `SD-JWT-VC` formats using PID, mDL, and European Health Insurance Card as an example
 and requires the use of a suitable OAuth 2.0 server.
@@ -274,12 +274,7 @@ Default value: `P30D`
 Variable: `ISSUER_EHIC_ENCODER_DIGESTS_HASHALGORITHM`  
 Description: Hash algorithm used to calculate the disclosure digests of European Health Insurance Cards issued in *SD-JWT VC* format.    
 Allowed values: `sha-256`, `sha-384`, `sha-512`, `sha3-256`, `sha3-384`, `sha3-512`   
-Default value: `sha-256`
-
-Variable: `ISSUER_EHIC_ENCODER_INTEGRITY_HASHALGORITHM`  
-Description: Hash algorithm used to calculate Sub-Resource Integrity for the `vctm` of European Health Insurance Cards issued in *SD-JWT VC* format.     
-Allowed values: `sha-256`, `sha-384`, `sha-512`  
-Default value: `sha-256`
+Default value: `sha-256`  
 
 Variable: `ISSUER_EHIC_NOTIFICATIONS_ENABLED`    
 Description: Whether to enabled Notifications Endpoint support for European Health Insurance Cards issued in *SD-JWT VC* format.    
@@ -411,7 +406,7 @@ Default value: `pid-issuer`
 
 Variable: `ISSUER_DPOP_NONCE_ENABLED`  
 Description: Whether Nonce values are required for DPoP authentication    
-Default value: `false`
+Default value: `true`
 
 Variable: `ISSUER_DPOP_NONCE_EXPIRATION`  
 Description: Duration after which Nonce values for DPoP authentication expire    
@@ -437,7 +432,61 @@ Variable: `ISSUER_STATUSLIST_SERVICE_URI`
 Description: URI of the service used to generate Status List Tokens  
 
 Variable: `ISSUER_STATUSLIST_SERVICE_APIKEY`  
-Description: API Key of the service used to generate Status List Tokens  
+Description: API Key of the service used to generate Status List Tokens
+
+Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS`  
+Description: Whether to generate a new, or use an existing key-pair for credential request encryption.    
+Possible values: `GenerateRandom`, `LoadFromKeystore`  
+Default value: `GenerateRandom`
+
+Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_KEYSTORE`   
+Description: Location of the keystore from which to load the key-pair for credential request encryption. Uses Spring Resource URL syntax.  
+Default value: N/A
+
+Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_KEYSTORE_TYPE`   
+Description: Type of the keystore from which to load the key-pair for credential request encryption.  
+Default value: N/A
+
+Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_KEYSTORE_PASSWORD`   
+Description: Password of the keystore from which to load the key-pair for credential request encryption.  
+Default value: N/A  
+
+Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_ALIAS`  
+Description: Alias of the key-pair for credential request encryption.    
+Default value: N/A  
+
+Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_PASSWORD`  
+Description: Password of the key-pair for credential request encryption.  
+Default value: N/A
+
+Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_ALGORITHM`  
+Description: The algorithm of the key for credential request encryption.  
+Default value: N/A
+
+Variable: `ISSUER_NONCE_ENCRYPTION_KEY`  
+Description: Whether to generate a new, or use an existing EC key-pair for nonce encryption.      
+Possible values: `GenerateRandom`, `LoadFromKeystore`    
+Default value: `GenerateRandom`
+
+Variable: `ISSUER_NONCE_ENCRYPTION_KEY_KEYSTORE`  
+Description: Location of the keystore from which to load the EC key-pair for nonce encryption. Uses Spring Resource URL syntax.  
+Default value: N/A
+
+Variable: `ISSUER_NONCE_ENCRYPTION_KEY_KEYSTORE_TYPE`  
+Description: Type of the keystore from which to load the EC key-pair for nonce encryption.  
+Default value: N/A
+
+Variable: `ISSUER_NONCE_ENCRYPTION_KEY_KEYSTORE_PASSWORD`  
+Description: Password of the keystore from which to load the EC key-pair for nonce encryption.  
+Default value: N/A
+
+Variable: `ISSUER_NONCE_ENCRYPTION_KEY_ALIAS`  
+Description: Alias of the EC key-pair for nonce encryption.  
+Default value: N/A
+
+Variable: `ISSUER_NONCE_ENCRYPTION_KEY_PASSWORD`  
+Description: Password of the EC key-pair for nonce encryption.  
+Default value: N/A
 
 ### Metadata configuration
 

@@ -33,13 +33,13 @@ import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
-import java.time.Clock
 import java.util.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -48,7 +48,7 @@ import kotlin.test.fail
 internal class EncryptCredentialResponseWithNimbusTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
-    private val clock = Clock.systemDefaultZone()
+    private val clock = Clock.System
     private val encrypter = EncryptCredentialResponseNimbus(issuer, clock)
     private val jacksonObjectMapper: ObjectMapper by lazy { jacksonObjectMapper() }
 
@@ -56,10 +56,11 @@ internal class EncryptCredentialResponseWithNimbusTest {
     internal fun `encrypt response with RSA`() = runTest {
         val key = RSAKeyGenerator(2048, false)
             .keyUse(KeyUse.ENCRYPTION)
+            .algorithm(JWEAlgorithm.RSA_OAEP_256)
             .keyID("rsa-jwt")
             .generate()
         val jwk = key.toPublicJWK()
-        val parameters = RequestedResponseEncryption.Required(jwk, JWEAlgorithm.RSA_OAEP_512)
+        val parameters = RequestedResponseEncryption.Required(jwk)
         val unencrypted = IssueCredentialResponse.PlainTO(
             credentials = listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("credential"))),
             transactionId = null,
@@ -73,10 +74,11 @@ internal class EncryptCredentialResponseWithNimbusTest {
     internal fun `encrypt response with ECDH`() = runTest {
         val key = ECKeyGenerator(Curve.P_521)
             .keyUse(KeyUse.ENCRYPTION)
+            .algorithm(JWEAlgorithm.ECDH_ES)
             .keyID("ec-jwt")
             .generate()
         val jwk = key.toPublicJWK()
-        val parameters = RequestedResponseEncryption.Required(jwk, JWEAlgorithm.ECDH_ES_A256KW)
+        val parameters = RequestedResponseEncryption.Required(jwk)
         val unencrypted = IssueCredentialResponse.PlainTO(
             credentials = listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("credential"))),
             transactionId = null,

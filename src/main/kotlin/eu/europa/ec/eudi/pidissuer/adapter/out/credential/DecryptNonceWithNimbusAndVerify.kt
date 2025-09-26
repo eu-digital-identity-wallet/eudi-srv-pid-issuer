@@ -16,12 +16,9 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.credential
 
 import arrow.core.raise.result
-import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JOSEObjectType
-import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.crypto.factories.DefaultJWEDecrypterFactory
 import com.nimbusds.jose.jwk.JWKSet
-import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
 import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
 import com.nimbusds.jose.proc.JWEDecryptionKeySelector
@@ -31,28 +28,25 @@ import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
-import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyCNonce
+import eu.europa.ec.eudi.pidissuer.domain.toKotlinInstant
+import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import java.time.Instant
+import kotlin.time.Instant
 
 /**
  * Decrypts an [EncryptedJWT] using Nimbus and verifies it's still active.
  */
-internal class DecryptCNonceWithNimbusAndVerify(
+internal class DecryptNonceWithNimbusAndVerify(
     private val issuer: CredentialIssuerId,
-    private val decryptionKey: RSAKey,
-) : VerifyCNonce {
-    init {
-        require(decryptionKey.isPrivate) { "a private key is required for decryption" }
-    }
-
+    private val decryptionKey: NonceEncryptionKey,
+) : VerifyNonce {
     private val processor = DefaultJWTProcessor<SecurityContext>()
         .apply {
-            jweTypeVerifier = DefaultJOSEObjectTypeVerifier(JOSEObjectType("cnonce+jwt"))
+            jweTypeVerifier = DefaultJOSEObjectTypeVerifier(JOSEObjectType("nonce+jwt"))
             jweKeySelector = JWEDecryptionKeySelector(
-                JWEAlgorithm.RSA_OAEP_512,
-                EncryptionMethod.XC20P,
-                ImmutableJWKSet(JWKSet(decryptionKey)),
+                decryptionKey.algorithm,
+                decryptionKey.method,
+                ImmutableJWKSet(JWKSet(decryptionKey.encryptionKey)),
             )
             jweDecrypterFactory = DefaultJWEDecrypterFactory()
                 .apply {
@@ -64,7 +58,7 @@ internal class DecryptCNonceWithNimbusAndVerify(
                     .issuer(issuer.externalForm)
                     .audience(issuer.externalForm)
                     .build(),
-                setOf("iss", "aud", "cnonce", "iat", "exp"),
+                setOf("iss", "aud", "nonce", "iat", "exp"),
             )
         }
 
@@ -74,7 +68,7 @@ internal class DecryptCNonceWithNimbusAndVerify(
                 val jwt = EncryptedJWT.parse(it)
                 val claimSet = processor.process(jwt, null)
                 val expiresAt = requireNotNull(claimSet.expirationTime) { "expirationTime is required" }
-                at < expiresAt.toInstant()
+                at < expiresAt.toKotlinInstant()
             }.getOrElse { false }
         } ?: false
 }

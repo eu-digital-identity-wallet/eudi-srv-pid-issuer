@@ -27,6 +27,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
@@ -38,10 +39,8 @@ import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
-import java.time.Clock
-import java.time.Instant
-import java.time.ZonedDateTime
 import java.util.*
+import kotlin.time.Instant
 
 val PidSdJwtVcScope: Scope = Scope("eu.europa.ec.eudi.pid_vc_sd_jwt")
 
@@ -202,7 +201,7 @@ fun pidSdJwtVcV1(
         ),
     )
 
-typealias TimeDependant<F> = (ZonedDateTime) -> F
+typealias TimeDependant<F> = (Instant) -> F
 
 private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
 
@@ -246,32 +245,30 @@ internal class IssueSdJwtVcPid(
     ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Handling issuance request ...")
 
-        val holderPubKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.instant()).bind()
+        val holderPubKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.now()).bind()
         val (pid, pidMetaData) = getPidData(authorizationContext).bind()
-
-        val issuedAt = ZonedDateTime.now(clock)
+        val issuedAt = clock.now()
         val expiresAt = calculateExpiresAt(issuedAt)
         val notBefore = calculateNotUseBefore?.invoke(issuedAt)
 
-        ensure(expiresAt > issuedAt.toInstant()) {
+        ensure(expiresAt > issuedAt) {
             Unexpected("exp should be after iat")
         }
         notBefore?.let {
-            ensure(it > issuedAt.toInstant()) {
+            ensure(it > issuedAt) {
                 Unexpected("nbf should be after iat")
             }
         }
-        ensure(
-            null == pidMetaData.issuanceDate ||
-                null == notBefore ||
-                pidMetaData.issuanceDate.atStartOfDay(clock.zone).toInstant() <= notBefore,
-        ) {
-            Unexpected("date_of_issuance must not be after nbf")
+        if (null != pidMetaData.issuanceDate && null != notBefore) {
+            val issuanceDateAtStartOfDay = with(clock) { pidMetaData.issuanceDate.atStartOfDay() }
+            ensure(issuanceDateAtStartOfDay <= notBefore) {
+                Unexpected("date_of_issuance must not be after nbf")
+            }
         }
 
         val issuedCredentials = holderPubKeys.parMap(Dispatchers.Default, 4) { holderPubKey ->
             val statusListToken = generateStatusListToken?.let {
-                it(supportedCredential.type.value, expiresAt.atZone(clock.zone))
+                it(supportedCredential.type.value, expiresAt)
                     .getOrElse { error ->
                         raise(Unexpected("Unable to generate Status List Token", error))
                     }
@@ -280,7 +277,7 @@ internal class IssueSdJwtVcPid(
                 pid,
                 pidMetaData,
                 holderPubKey,
-                issuedAt = issuedAt.toInstant(),
+                issuedAt = issuedAt,
                 expiresAt = expiresAt,
                 notBefore = notBefore,
                 statusListToken,
@@ -302,7 +299,7 @@ internal class IssueSdJwtVcPid(
                     "${familyName.value} ${givenName.value}"
                 },
                 holderPublicKeys = holderPubKeys,
-                issuedAt = clock.instant(),
+                issuedAt = issuedAt,
                 notificationId = notificationId,
             ),
         )

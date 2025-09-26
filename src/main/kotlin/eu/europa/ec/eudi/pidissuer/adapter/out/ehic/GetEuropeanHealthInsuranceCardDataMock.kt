@@ -15,11 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.ehic
 
-import java.time.Clock
-import java.time.ZonedDateTime
-import java.util.UUID
+import eu.europa.ec.eudi.pidissuer.domain.Clock
+import java.util.*
 import kotlin.time.Duration.Companion.days
-import kotlin.time.toJavaDuration
 
 class GetEuropeanHealthInsuranceCardDataMock(
     private val clock: Clock,
@@ -27,9 +25,9 @@ class GetEuropeanHealthInsuranceCardDataMock(
 ) : GetEuropeanHealthInsuranceCardData {
 
     override suspend fun invoke(): EuropeanHealthInsuranceCard {
-        val now = ZonedDateTime.now(clock)
-        val endingDate = now + 365.days.toJavaDuration()
-        val startingDate = endingDate - (5 * 31).days.toJavaDuration()
+        val now = clock.now()
+        val endingDate = now + 365.days
+        val startingDate = endingDate - (5 * 31).days
 
         return EuropeanHealthInsuranceCard(
             personalAdministrativeNumber = PersonalAdministrativeNumber(UUID.randomUUID().toString()),
@@ -42,8 +40,8 @@ class GetEuropeanHealthInsuranceCardDataMock(
                 id = AuthenticSource.Id("Uber-GR"),
                 name = Name("Uber Health Insurance"),
             ),
-            endingDate = endingDate,
-            startingDate = startingDate,
+            endingDate = with(clock) { endingDate.toZonedDateTime() },
+            startingDate = with(clock) { startingDate.toZonedDateTime() },
             documentNumber = DocumentNumber(UUID.randomUUID().toString()),
         )
     }
