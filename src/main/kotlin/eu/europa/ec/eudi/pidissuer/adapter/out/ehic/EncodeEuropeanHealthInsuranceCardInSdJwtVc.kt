@@ -35,8 +35,6 @@ import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObject
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -99,20 +97,7 @@ private class JwsJsonFlattenedEncoder(
             issuer.createSdJwt(vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
         }) { raise(IssueCredentialError.Unexpected("Unable to create SD-JWT VC", it)) }
 
-        val serialized = sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)
-        val existingUnprotectedHeader =
-            catch({ serialized[RFC7515.JWS_JSON_HEADER]?.jsonObject }) {
-                raise(IssueCredentialError.Unexpected("Unable to get unprotected header of SD-JWT VC", it))
-            }
-        val updatedUnprotectedHeader = buildJsonObject {
-            existingUnprotectedHeader?.forEach { put(it.key, it.value) }
-        }
-        val updatedSerialized = buildJsonObject {
-            serialized.forEach { put(it.key, it.value) }
-            put(RFC7515.JWS_JSON_HEADER, updatedUnprotectedHeader)
-        }
-
-        updatedSerialized
+        sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)
     }
 }
 
