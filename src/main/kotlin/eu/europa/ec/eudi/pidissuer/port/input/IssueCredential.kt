@@ -22,6 +22,7 @@ import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
+import com.nimbusds.jose.JWEAlgorithm
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.decryptCredentialRequest
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -131,6 +132,11 @@ sealed interface RequestEncryptionError {
     data object RequestEncryptionIsRequired : RequestEncryptionError
 
     data object ResponseEncryptionRequiresEncryptedRequest : RequestEncryptionError
+
+    data class UnsupportedEncryptionAlgorithm(
+        val encryptionAlgorithm: JWEAlgorithm,
+        val algorithmsSupported: NonEmptySet<JWEAlgorithm>,
+    ) : RequestEncryptionError
 
     data class UnsupportedEncryptionMethod(
         val encryptionMethod: EncryptionMethod,
@@ -683,6 +689,10 @@ private fun RequestEncryptionError.toTO(): IssueCredentialResponse.FailedTO {
 
         is ResponseEncryptionRequiresEncryptedRequest ->
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential response encryption requires an encrypted credential request"
+
+        is UnsupportedEncryptionAlgorithm ->
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
+                "Unsupported encryption method $encryptionAlgorithm, supported methods: $algorithmsSupported"
 
         is UnsupportedEncryptionMethod ->
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
