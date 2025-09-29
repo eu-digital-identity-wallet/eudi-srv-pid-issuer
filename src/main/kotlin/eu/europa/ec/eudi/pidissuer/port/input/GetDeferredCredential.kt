@@ -270,6 +270,10 @@ private fun RequestEncryptionError.toTO(): DeferredCredentialResponse.Failed {
             GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
                 "Credential response encryption requires an encrypted credential request"
 
+        is RequestEncryptionError.UnsupportedEncryptionAlgorithm ->
+            GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
+                "Unsupported encryption method $encryptionAlgorithm, supported methods: $algorithmsSupported"
+
         is UnsupportedEncryptionMethod ->
             GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
                 "Unsupported encryption method $encryptionMethod, supported methods: $methodsSupported"
