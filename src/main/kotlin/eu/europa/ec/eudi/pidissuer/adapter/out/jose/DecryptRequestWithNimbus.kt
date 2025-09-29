@@ -65,14 +65,14 @@ private fun <T> CredentialRequestEncryptionSupportedParameters.decrypt(
                 }
 
                 ensure(encryptionMethod in methodsSupported) {
-                    UnsupportedEncryptionMethod(encryptedJwt.header.encryptionMethod, methodsSupported)
+                    UnsupportedEncryptionMethod(encryptionMethod, methodsSupported)
                 }
                 compressionAlgorithm?.let { compressionAlgorithm ->
                     ensureNotNull(compressionMethodsSupported) {
                         RequestCompressionNotSupported
                     }
                     ensure(compressionAlgorithm in compressionMethodsSupported) {
-                        UnsupportedRequestCompressionMethod(encryptedJwt.header.compressionAlgorithm, compressionMethodsSupported)
+                        UnsupportedRequestCompressionMethod(compressionAlgorithm, compressionMethodsSupported)
                     }
                 }
             }
