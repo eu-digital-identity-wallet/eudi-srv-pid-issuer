@@ -485,7 +485,6 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
     fun `fails when key_attestation is included when not required`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
         val previousCNonce = generateNonce(clock.now(), 5L.minutes)
-
         val jwtProofSigningKey = ECKeyGenerator(Curve.P_256).generate()
 
         val extraKeysNo = 3
@@ -519,7 +518,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
             .let { assertNotNull(it.responseBody) }
 
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
-        assertEquals("Invalid proof JWT", response.errorDescription)
+        assertEquals("Invalid proof JWT: JWT Proof cannot contain `key_attestation`", response.errorDescription)
     }
 
     @Test
@@ -590,6 +589,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
             proofSigningKey = jwtProofSigningKey,
             keyStorageConstraints = listOf("iso_18045_enhanced-basic"),
             userAuthorizationConstraints = listOf("iso_18045_enhanced-basic"),
+            cNonce = keyAttestationCNonce,
         ) {
             (0..<extraKeysNo).map {
                 ECKeyGenerator(Curve.P_256).generate()
@@ -620,7 +620,10 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
             .let { assertNotNull(it.responseBody) }
 
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
-        assertEquals("Invalid proof JWT", response.errorDescription)
+        assertEquals(
+            "Invalid proof JWT: The provided key storage's attack resistance does not match the expected one.",
+            response.errorDescription,
+        )
     }
 
     @Test
@@ -700,7 +703,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
             .let { assertNotNull(it.responseBody) }
 
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
-        assertEquals("Invalid proof JWT", response.errorDescription)
+        assertEquals("Invalid proof JWT: JWT missing required claims: [exp]", response.errorDescription)
 
         // ///////////////////////////
         // key attestation expired //
@@ -709,7 +712,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
         keyAttestationJwt = keyAttestationJWT(
             proofSigningKey = jwtProofSigningKey,
             cNonce = keyAttestationCNonce,
-            expiresAt = Clock.System.now().minus(3L.minutes),
+            expiresAt = clock.now().minus(3L.minutes),
         ) {
             (0..<extraKeysNo).map {
                 ECKeyGenerator(Curve.P_256).generate()
@@ -733,7 +736,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
             .let { assertNotNull(it.responseBody) }
 
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
-        assertEquals("Invalid proof JWT", response.errorDescription)
+        assertEquals("Invalid proof JWT: Expired JWT", response.errorDescription)
     }
 
     @Test
@@ -814,7 +817,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
         val proofs = keyAttestationJWT(
             proofSigningKey = jwtProofSigningKey,
             cNonce = keyAttestationCNonce,
-            expiresAt = Clock.System.now().minus(3L.minutes),
+            expiresAt = clock.now().minus(3L.minutes),
         ) {
             (0..<extraKeysNo).map {
                 ECKeyGenerator(Curve.P_256).generate()
@@ -835,7 +838,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
             .let { assertNotNull(it.responseBody) }
 
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
-        assertEquals("Invalid proof Attestation", response.errorDescription)
+        assertEquals("Invalid proof Attestation: Expired JWT", response.errorDescription)
     }
 
     @Test
@@ -863,7 +866,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
             .let { assertNotNull(it.responseBody) }
 
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
-        assertEquals("Invalid proof Attestation", response.errorDescription)
+        assertEquals("Invalid proof Attestation: Key attestation does not contain a c_nonce.", response.errorDescription)
 
         val jwtProofCNonce = generateNonce(clock.now(), 5L.minutes)
         val proofs = jwtProof(credentialIssuerMetadata.id, clock, jwtProofCNonce, jwtProofSigningKey) {
@@ -884,7 +887,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
             .let { assertNotNull(it.responseBody) }
 
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
-        assertEquals("Invalid proof JWT", response.errorDescription)
+        assertEquals("Invalid proof JWT: Key attestation does not contain a c_nonce.", response.errorDescription)
     }
 
     @Test
@@ -982,7 +985,10 @@ internal class WalletApiResponseEncryptionRequiredTest : BaseWalletApiTest() {
             .let { assertNotNull(it.responseBody) }
 
         assertEquals(CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS, response.type)
-        assertEquals("Invalid Credential Response Encryption Parameters", response.errorDescription)
+        assertEquals(
+            "Invalid Credential Response Encryption Parameters: credential response encryption is required",
+            response.errorDescription,
+        )
     }
 
     /**
@@ -1142,7 +1148,10 @@ internal class WalletApiResponseEncryptionRequiredTest : BaseWalletApiTest() {
             .let { assertNotNull(it.responseBody) }
 
         assertEquals(CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS, response.type)
-        assertEquals("Invalid Credential Response Encryption Parameters", response.errorDescription)
+        assertEquals(
+            "Invalid Credential Response Encryption Parameters: credential response encryption is required",
+            response.errorDescription,
+        )
     }
 
     /**

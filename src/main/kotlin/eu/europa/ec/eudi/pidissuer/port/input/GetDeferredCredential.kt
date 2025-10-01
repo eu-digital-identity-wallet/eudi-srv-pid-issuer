@@ -35,6 +35,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.RequestEncr
 import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.RequestEncryptionNotSupported
 import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.ResponseEncryptionRequiresEncryptedRequest
 import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.UnparseableEncryptedRequest
+import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.UnsupportedEncryptionAlgorithm
 import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.UnsupportedEncryptionMethod
 import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.UnsupportedRequestCompressionMethod
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptDeferredResponse
@@ -154,7 +155,7 @@ private fun GetDeferredCredentialError.toTO(): DeferredCredentialResponse.Failed
 
         is GetDeferredCredentialError.InvalidEncryptionParameters ->
             GetDeferredCredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS to
-                "Invalid encryption parameters: ${error.message}"
+                errorDescriptionWithErrorCauseDescription("Invalid encryption parameters", error)
     }
     return DeferredCredentialResponse.Failed(FailedTO(type, description))
 }
@@ -258,7 +259,8 @@ class GetDeferredCredential(
 private fun RequestEncryptionError.toTO(): DeferredCredentialResponse.Failed {
     val (type, description) = when (this) {
         is UnparseableEncryptedRequest ->
-            GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Encrypted request cannot be parsed as a JWT"
+            GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
+                errorDescriptionWithErrorCauseDescription("Encrypted request cannot be parsed as a JWT", cause)
 
         is RequestEncryptionIsRequired ->
             GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request encryption is required"
@@ -270,7 +272,7 @@ private fun RequestEncryptionError.toTO(): DeferredCredentialResponse.Failed {
             GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
                 "Credential response encryption requires an encrypted credential request"
 
-        is RequestEncryptionError.UnsupportedEncryptionAlgorithm ->
+        is UnsupportedEncryptionAlgorithm ->
             GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
                 "Unsupported encryption method $encryptionAlgorithm, supported methods: $algorithmsSupported"
 
