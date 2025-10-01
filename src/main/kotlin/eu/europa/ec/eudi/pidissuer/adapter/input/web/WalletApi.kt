@@ -93,23 +93,42 @@ internal class WalletApi(
         } catch (error: ServerWebInputException) {
             IssueCredentialResponse.FailedTO(
                 type = CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST,
-                errorDescription = "Request body could not be parsed",
+                errorDescription = buildString {
+                    append("Request body could not be parsed")
+                    if (error.message.isNotBlank()) {
+                        append(": ${error.message}")
+                    }
+                },
             )
         }
         return response.toServerResponse()
     }
 
     private suspend fun handleGetDeferredCredential(req: ServerRequest): ServerResponse = coroutineScope {
-        val response = when (req.headers().contentType().getOrNull()) {
-            MediaType.APPLICATION_JSON -> {
-                val request = req.awaitBody<DeferredCredentialRequestTO>()
-                getDeferredCredential.fromPlainRequest(request)
+        val response = try {
+            when (req.headers().contentType().getOrNull()) {
+                MediaType.APPLICATION_JSON -> {
+                    val request = req.awaitBody<DeferredCredentialRequestTO>()
+                    getDeferredCredential.fromPlainRequest(request)
+                }
+                APPLICATION_JWT -> {
+                    val jwt = req.awaitBody<String>()
+                    getDeferredCredential.fromEncryptedRequest(jwt)
+                }
+                else -> error("Unexpected content-type")
             }
-            APPLICATION_JWT -> {
-                val jwt = req.awaitBody<String>()
-                getDeferredCredential.fromEncryptedRequest(jwt)
-            }
-            else -> error("Unexpected content-type")
+        } catch (error: ServerWebInputException) {
+            DeferredCredentialResponse.Failed(
+                FailedTO(
+                    type = GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST,
+                    errorDescription = buildString {
+                        append("Request body could not be parsed")
+                        if (error.message.isNotBlank()) {
+                            append(": ${error.message}")
+                        }
+                    },
+                ),
+            )
         }
         response.toServerResponse()
     }

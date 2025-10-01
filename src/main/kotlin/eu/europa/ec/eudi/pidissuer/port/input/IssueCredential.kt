@@ -646,19 +646,23 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
             CredentialErrorTypeTo.INVALID_PROOF to "The Credential Request must include Proof of Possession"
 
         is InvalidProof ->
-            (CredentialErrorTypeTo.INVALID_PROOF to msg)
+            CredentialErrorTypeTo.INVALID_PROOF to
+                errorDescriptionWithErrorCauseDescription(msg, cause)
 
         is InvalidNonce ->
-            (CredentialErrorTypeTo.INVALID_NONCE to msg)
+            CredentialErrorTypeTo.INVALID_NONCE to
+                errorDescriptionWithErrorCauseDescription(msg, cause)
 
         is InvalidEncryptionParameters ->
-            CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS to "Invalid Credential Response Encryption Parameters"
+            CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS to
+                errorDescriptionWithErrorCauseDescription("Invalid Credential Response Encryption Parameters", error)
 
         is WrongScope ->
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Wrong scope. Expected ${expected.value}"
 
         is Unexpected ->
-            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "$msg${cause?.message?.let { " : $it" } ?: ""}"
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
+                errorDescriptionWithErrorCauseDescription(msg, cause)
 
         is MissingBothCredentialConfigurationIdAndCredentialIdentifier ->
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Either 'format' or 'credential_identifier' must be provided"
@@ -671,15 +675,24 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
 
         is InvalidClaims ->
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
-                "'claims' does not have the expected structure${error.message?.let { " : $it" } ?: ""}"
+                errorDescriptionWithErrorCauseDescription("'claims' does not have the expected structure", error)
     }
     return IssueCredentialResponse.FailedTO(type, description)
 }
 
+internal fun errorDescriptionWithErrorCauseDescription(description: String, cause: Throwable?): String =
+    buildString {
+        append(description)
+        if (null != cause && !cause.message.isNullOrBlank()) {
+            append(": ${cause.message}")
+        }
+    }
+
 private fun RequestEncryptionError.toTO(): IssueCredentialResponse.FailedTO {
     val (type, description) = when (this) {
         is UnparseableEncryptedRequest ->
-            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Encrypted request cannot be parsed as a JWT"
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
+                errorDescriptionWithErrorCauseDescription("Encrypted request cannot be parsed as a JWT", cause)
 
         is RequestEncryptionIsRequired ->
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request encryption is required"
