@@ -437,12 +437,77 @@
     {
       "path": [
         "age_equal_or_over",
+        "12"
+      ],
+      "display": [
+        {
+          "lang": "en",
+          "label": "Age Over 12"
+        }
+      ],
+      "sd": "always"
+    },
+    {
+      "path": [
+        "age_equal_or_over",
+        "14"
+      ],
+      "display": [
+        {
+          "lang": "en",
+          "label": "Age Over 14"
+        }
+      ],
+      "sd": "always"
+    },
+    {
+      "path": [
+        "age_equal_or_over",
+        "16"
+      ],
+      "display": [
+        {
+          "lang": "en",
+          "label": "Age Over 16"
+        }
+      ],
+      "sd": "always"
+    },
+    {
+      "path": [
+        "age_equal_or_over",
         "18"
       ],
       "display": [
         {
           "lang": "en",
           "label": "Age Over 18"
+        }
+      ],
+      "sd": "always"
+    },
+    {
+      "path": [
+        "age_equal_or_over",
+        "21"
+      ],
+      "display": [
+        {
+          "lang": "en",
+          "label": "Age Over 21"
+        }
+      ],
+      "sd": "always"
+    },
+    {
+      "path": [
+        "age_equal_or_over",
+        "65"
+      ],
+      "display": [
+        {
+          "lang": "en",
+          "label": "Age Over 65"
         }
       ],
       "sd": "always"
