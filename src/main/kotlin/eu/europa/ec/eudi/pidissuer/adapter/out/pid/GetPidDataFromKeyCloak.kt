@@ -36,7 +36,7 @@ import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
 import java.util.*
-import kotlin.math.ceil
+import kotlin.math.floor
 import kotlin.time.Duration.Companion.days
 
 private val log = LoggerFactory.getLogger(GetPidDataFromKeyCloak::class.java)
@@ -238,7 +238,7 @@ class GetPidDataFromKeyCloak(
 
         val ageInYears = run {
             val age = with(clock) { now() - birthDate.atStartOfDay() }
-            if (age.isPositive()) ceil(age.inWholeDays / 365.0).toUInt()
+            if (age.isPositive()) floor(age.inWholeDays / 365.0).toUInt()
             else null
         }
 
