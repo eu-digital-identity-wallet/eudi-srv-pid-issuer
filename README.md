@@ -521,7 +521,7 @@ Example: `urn:eudi:pid:1`
 
 Variable: `ISSUER_SD_JWT_VC_TYPE_METADATA_XX_RESOURCE` (e.g. `ISSUER_SD_JWT_VC_TYPE_METADATA_0_RESOURCE`)  
 Description: Resource of the type metadata, using spring framework resource notation 
-Example: `classpath:/vct/pid_arf18.json` or `file:///vct/pid_arf18.json`
+Example: `classpath:/vct/pid_v1.2.json` or `file:///vct/pid_v1.2.json`
 
 ### Proxy configuration
 

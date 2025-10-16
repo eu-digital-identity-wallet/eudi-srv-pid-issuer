@@ -107,9 +107,6 @@ data class PlaceOfBirth(
  * in conformance with [RFC 5322].
  * @param mobilePhoneNumber Mobile telephone number of the User to whom the person identification data relates,
  * starting with the '+' symbol as the international code prefix and the country code, followed by numbers only.
- * @param ageOver18 Attesting whether the PID User is currently an adult (true) or a
- * minor (false).
- * @param ageInYears The current age of the PID User in years.
  */
 data class Pid(
     val familyName: FamilyName,
@@ -130,8 +127,6 @@ data class Pid(
     val sex: IsoGender? = null,
     val emailAddress: EmailAddress? = null,
     val mobilePhoneNumber: PhoneNumber? = null,
-    val ageOver18: Boolean? = null,
-    val ageInYears: UInt? = null,
 )
 
 /**

@@ -73,9 +73,6 @@ private fun MDocBuilder.addItemsToSign(pid: Pid) {
     pid.sex?.let { addItemToSign(MsoMdocPidClaims.Sex, it.value.toDataElement()) }
     pid.emailAddress?.let { addItemToSign(MsoMdocPidClaims.EmailAddress, it.toDataElement()) }
     pid.mobilePhoneNumber?.let { addItemToSign(MsoMdocPidClaims.MobilePhoneNumberAttribute, it.value.toDataElement()) }
-    pid.ageOver18?.let { addItemToSign(MsoMdocPidClaims.AgeOver18, it.toDataElement()) }
-    pid.ageInYears?.let { addItemToSign(MsoMdocPidClaims.AgeInYears, it.toDataElement()) }
-    addItemToSign(MsoMdocPidClaims.AgeBirthYear, pid.birthDate.year.toDataElement())
 }
 
 private fun MDocBuilder.addItemsToSign(metaData: PidMetaData) {

@@ -162,7 +162,6 @@ internal class BaseWalletApiTest {
                         locality = City("Athens"),
                     ),
                     nationalities = nonEmptyListOf(Nationality("GR")),
-                    ageOver18 = true,
                 )
                 val issuingCountry = IsoCountry("GR")
                 val pidMetaData = PidMetaData(
