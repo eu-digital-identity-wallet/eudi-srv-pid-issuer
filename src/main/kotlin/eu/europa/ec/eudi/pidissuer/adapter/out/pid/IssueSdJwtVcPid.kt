@@ -44,24 +44,6 @@ import kotlin.time.Instant
 
 val PidSdJwtVcScope: Scope = Scope("eu.europa.ec.eudi.pid_vc_sd_jwt")
 
-internal object SdJwtVcPidAgeEqualOrOver : IsAttribute {
-    const val NAME = "age_equal_or_over"
-
-    override val attribute: ClaimDefinition
-        get() = ClaimDefinition(
-            path = ClaimPath.claim(NAME),
-            mandatory = false,
-            display = mapOf(Locale.ENGLISH to "Age Equal or Over"),
-            nested = listOf(Over18),
-        )
-
-    val Over18 = ClaimDefinition(
-        path = ClaimPath.claim(NAME).claim("18"),
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Age Over 18"),
-    )
-}
-
 internal object SdJwtVcPidClaims {
 
     val FamilyName = OidcFamilyName
@@ -77,17 +59,6 @@ internal object SdJwtVcPidClaims {
         display = mapOf(Locale.ENGLISH to "Sex"),
     )
     val Nationalities = OidcAssuranceNationalities
-    val AgeBirthYear = ClaimDefinition(
-        path = ClaimPath.claim("age_birth_year"),
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Age Year of Birth"),
-    )
-    val AgeEqualOrOver = SdJwtVcPidAgeEqualOrOver
-    val AgeInYears = ClaimDefinition(
-        path = ClaimPath.claim("age_in_years"),
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Age in Years"),
-    )
     val IssuingAuthority = ClaimDefinition(
         path = ClaimPath.claim("issuing_authority"),
         mandatory = true,
@@ -166,9 +137,6 @@ internal object SdJwtVcPidClaims {
         DocumentNumber,
         IssuingJurisdiction,
         DateOfIssuance,
-        AgeEqualOrOver.attribute,
-        AgeInYears,
-        AgeBirthYear,
         TrustAnchor,
     )
 }

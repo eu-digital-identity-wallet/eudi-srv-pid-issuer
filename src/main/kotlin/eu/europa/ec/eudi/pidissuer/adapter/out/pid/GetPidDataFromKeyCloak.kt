@@ -36,7 +36,6 @@ import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
 import java.util.*
-import kotlin.math.floor
 import kotlin.time.Duration.Companion.days
 
 private val log = LoggerFactory.getLogger(GetPidDataFromKeyCloak::class.java)
@@ -143,7 +142,6 @@ class GetPidDataFromKeyCloak(
                     gender = user.attributes["gender"]?.firstOrNull()?.toUInt(),
                     genderAsString = user.attributes["gender_as_string"]?.firstOrNull(),
                     placeOfBirth = user.birthPlace(),
-                    ageOver18 = user.attributes["age_over_18"]?.firstOrNull()?.toBoolean(),
                     picture = null,
                     nationality = user.attributes["nationality"]?.firstOrNull(),
                 )
@@ -236,12 +234,6 @@ class GetPidDataFromKeyCloak(
             "missing required attribute 'birthDate'"
         }.let { LocalDate.parse(it) }
 
-        val ageInYears = run {
-            val age = with(clock) { now() - birthDate.atStartOfDay() }
-            if (age.isPositive()) floor(age.inWholeDays / 365.0).toUInt()
-            else null
-        }
-
         val birthPlace = userInfo.placeOfBirth?.let { placeOfBirth ->
             if (null != placeOfBirth.country || null != placeOfBirth.region || null != placeOfBirth.locality) {
                 PlaceOfBirth(
@@ -271,8 +263,6 @@ class GetPidDataFromKeyCloak(
             sex = userInfo.gender?.let { IsoGender(it) },
             emailAddress = userInfo.email,
             mobilePhoneNumber = null,
-            ageOver18 = userInfo.ageOver18 ?: false,
-            ageInYears = ageInYears,
         )
 
         val pidMetaData = genPidMetaData()
@@ -303,7 +293,6 @@ private data class UserInfo(
     val gender: UInt? = null,
     val genderAsString: String? = null,
     val placeOfBirth: OidcAssurancePlaceOfBirth? = null,
-    val ageOver18: Boolean? = null,
     val picture: String? = null,
     val nationality: String? = null,
 )

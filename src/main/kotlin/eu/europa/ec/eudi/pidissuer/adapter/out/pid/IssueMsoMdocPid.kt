@@ -80,24 +80,6 @@ internal object MsoMdocPidClaims {
         mandatory = false,
         display = mapOf(ENGLISH to "Sex"),
     )
-    val AgeOver18 = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "age_over_18",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Age Over 18"),
-    )
-    val AgeBirthYear = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "age_birth_year",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Age Year of Birth"),
-    )
-    val AgeInYears = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "age_in_years",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Age in Years"),
-    )
     val Nationality = ClaimDefinition(
         PidMsoMdocNamespace,
         "nationality",
@@ -247,9 +229,6 @@ internal object MsoMdocPidClaims {
         DocumentNumber,
         IssuingJurisdiction,
         IssuanceDate,
-        AgeOver18,
-        AgeInYears,
-        AgeBirthYear,
         TrustAnchor,
     )
 }
