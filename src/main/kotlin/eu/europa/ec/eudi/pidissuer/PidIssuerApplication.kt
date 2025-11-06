@@ -38,6 +38,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.credential.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.GetEuropeanHealthInsuranceCardDataMock
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IssueSdJwtVcEuropeanHealthInsuranceCard
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential.IssueLearningCredential
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryIssuedCredentialRepository
@@ -208,6 +209,7 @@ fun beans(clock: Clock) = beans {
     val credentialsOfferUri = env.getRequiredProperty("issuer.credentialOffer.uri")
     val enableStatusList = env.getProperty<Boolean>("issuer.statusList.enabled") ?: false
     val enableEhic = env.getProperty<Boolean>("issuer.ehic.enabled") ?: true
+    val enableLearningCredential = env.getProperty<Boolean>("issuer.learningCredential.enabled") ?: true
 
     //
     // Signing key
@@ -604,7 +606,38 @@ fun beans(clock: Clock) = beans {
                         keyAttestationRequirement = keyAttestationRequirement,
                     )
                     add(ehicCompactIssuer)
-                    add(ehicCompactIssuer.asDeferred(ref(), ref(), clock))
+                    add(ehicCompactIssuer.asDeferred(ref(), ref(), ref()))
+                }
+
+                if (enableLearningCredential) {
+                    val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
+                        "issuer.learningCredential.jwtProofs.supportedSigningAlgorithms",
+                        JWSAlgorithm::parse,
+                    )
+                    val keyAttestationRequirement = keyAttestationRequirement("issuer.learningCredential")
+                    val validity = Duration.parse(env.getProperty("issuer.learningCredential.validity", "P30D"))
+                    val digestHashAlgorithm = env.getProperty<HashAlgorithm>(
+                        "issuer.learningCredential.sdJwtVc.encoder.digests.hashAlgorithm",
+                    ) ?: HashAlgorithm.SHA_256
+
+                    val notificationsEnabled = env.getProperty<Boolean>("issuer.learningCredential.notifications.enabled") ?: true
+
+                    val sdJwtVcCompactIssuer = IssueLearningCredential.sdJwtVcCompact(
+                        ref<IssuerSigningKey>(),
+                        jwtProofsSupportedSigningAlgorithms,
+                        keyAttestationRequirement,
+                        ref(),
+                        ref(),
+                        ref(),
+                        validity,
+                        digestHashAlgorithm,
+                        issuerPublicUrl,
+                        if (notificationsEnabled) ref() else null,
+                        ref(),
+                    )
+
+                    add(sdJwtVcCompactIssuer)
+                    add(sdJwtVcCompactIssuer.asDeferred(ref(), ref(), ref()))
                 }
             },
             batchCredentialIssuance = run {

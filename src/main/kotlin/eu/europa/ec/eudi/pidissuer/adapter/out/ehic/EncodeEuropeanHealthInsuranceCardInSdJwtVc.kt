@@ -18,12 +18,10 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.ehic
 import arrow.core.Either
 import arrow.core.raise.catch
 import arrow.core.raise.either
-import com.nimbusds.jose.JOSEObjectType
-import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
+import eu.europa.ec.eudi.pidissuer.adapter.out.sdJwtVcIssuer
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
@@ -84,7 +82,7 @@ private class JwsJsonFlattenedEncoder(
     private val vct: SdJwtVcType,
     private val credentialIssuerId: CredentialIssuerId,
 ) : EncodeEuropeanHealthInsuranceCardInSdJwtVc {
-    private val issuer: SdJwtIssuer<SignedJWT> by lazy { issuerSigningKey.issuer(digestsHashAlgorithm) }
+    private val issuer: SdJwtIssuer<SignedJWT> by lazy { issuerSigningKey.sdJwtVcIssuer(digestsHashAlgorithm) }
 
     override suspend operator fun invoke(
         ehic: EuropeanHealthInsuranceCard,
@@ -107,7 +105,7 @@ private class CompactEncoder(
     private val vct: SdJwtVcType,
     private val credentialIssuerId: CredentialIssuerId,
 ) : EncodeEuropeanHealthInsuranceCardInSdJwtVc {
-    private val issuer: SdJwtIssuer<SignedJWT> by lazy { issuerSigningKey.issuer(digestsHashAlgorithm) }
+    private val issuer: SdJwtIssuer<SignedJWT> by lazy { issuerSigningKey.sdJwtVcIssuer(digestsHashAlgorithm) }
 
     override suspend operator fun invoke(
         ehic: EuropeanHealthInsuranceCard,
@@ -169,16 +167,6 @@ private fun sdJwt(
             claim(EuropeanHealthInsuranceCardClaims.StartingDate.name, formatter.format(it.withZoneSameInstant(ZoneOffset.UTC)))
         }
         sdClaim(EuropeanHealthInsuranceCardClaims.DocumentNumber.name, ehic.documentNumber.value)
-    }
-}
-
-private fun IssuerSigningKey.issuer(digestsHashAlgorithm: HashAlgorithm): SdJwtIssuer<SignedJWT> {
-    val factory = SdJwtFactory(digestsHashAlgorithm)
-    val signer = ECDSASigner(key)
-    return NimbusSdJwtOps.issuer(factory, signer, signingAlgorithm) {
-        type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
-        keyID(key.keyID)
-        x509CertChain(key.x509CertChain)
     }
 }
 
