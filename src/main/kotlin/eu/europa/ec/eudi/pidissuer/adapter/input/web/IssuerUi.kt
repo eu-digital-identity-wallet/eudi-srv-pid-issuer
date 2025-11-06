@@ -133,12 +133,16 @@ class IssuerUi(
         val authorizationServerMetadata = authorizationServer.wellKnown("oauth-authorization-server")
         val sdJwtVcIssuerMetadata = credentialIssuer.wellKnown("jwt-vc-issuer")
         val pidSdJwtVcTypeMetadata = credentialIssuer.appendPath("/type-metadata/urn:eudi:pid:1")
+        val learningCredentialSdJwtVcTypeMetadata = credentialIssuer.appendPath(
+            "/type-metadata/urn:eu.europa.ec.eudi:learning:credential:1",
+        )
 
         return mapOf(
             "credential_issuer_metadata" to credentialIssuerMetadata.externalForm,
             "authorization_server_metadata" to authorizationServerMetadata.externalForm,
             "sdjwt_vc_issuer_metadata" to sdJwtVcIssuerMetadata.externalForm,
             "pid_sdjwt_vc_type_metadata" to pidSdJwtVcTypeMetadata.externalForm,
+            "learning_credential_sdjwt_vc_type_metadata" to learningCredentialSdJwtVcTypeMetadata.externalForm,
         )
     }
 
