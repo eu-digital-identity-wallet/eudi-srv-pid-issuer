@@ -56,6 +56,7 @@ internal class ValidateAttestationProof(
             expectExpirationClaim = false,
             at = at,
         ).getOrThrow()
+        requireNotNull(nonce) { "Key attestation does not contain a c_nonce." }
 
         return CredentialKey.AttestedKeys(attestedKeys) to nonce
     }

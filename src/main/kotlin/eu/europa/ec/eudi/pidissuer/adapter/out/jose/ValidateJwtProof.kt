@@ -66,16 +66,17 @@ internal class ValidateJwtProof(
         at: Instant,
     ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey, String?>> = Either.catch {
         val signedJwt = SignedJWT.parse(unvalidatedProof.jwt)
+        val nonce = requireNotNull(signedJwt.jwtClaimsSet.getStringClaim("nonce")) { "Missing 'nonce'" }
         require(signedJwt.header.algorithm in proofType.signingAlgorithmsSupported) {
             "JWT proof signing algorithm '${signedJwt.header.algorithm}' is not supported, " +
                 "must be one of: ${proofType.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
         }
-        val (algorithm, credentialKey) = algorithmAndCredentialKey(signedJwt, proofType, verifyKeyAttestation, at)
+        val (algorithm, credentialKey) = algorithmAndCredentialKey(signedJwt, proofType, verifyKeyAttestation, nonce, at)
         val keySelector = keySelector(signedJwt, credentialKey, algorithm)
         val processor = processor(credentialIssuerId, keySelector)
-        val claimSet = processor.process(signedJwt, null)
+        processor.process(signedJwt, null)
 
-        credentialKey to claimSet.getStringClaim("nonce")
+        credentialKey to nonce
     }.mapLeft { IssueCredentialError.InvalidProof("Invalid proof JWT", it) }
 }
 
@@ -83,6 +84,7 @@ private suspend fun algorithmAndCredentialKey(
     signedJwt: SignedJWT,
     proofType: ProofType.Jwt,
     verifyKeyAttestation: VerifyKeyAttestation,
+    expectedKeyAttestationNonce: String,
     at: Instant,
 ): Pair<JWSAlgorithm, CredentialKey> {
     val supported = proofType.signingAlgorithmsSupported
@@ -110,7 +112,7 @@ private suspend fun algorithmAndCredentialKey(
         kid == null && jwk != null && keyAttestation == null && x5c.isNullOrEmpty() -> CredentialKey.Jwk(jwk)
         kid == null && jwk == null && keyAttestation == null && !x5c.isNullOrEmpty() -> CredentialKey.X5c.parseDer(x5c).getOrThrow()
         jwk == null && keyAttestation != null && x5c.isNullOrEmpty() -> {
-            CredentialKey.AttestedKeys.fromKeyAttestation(keyAttestation, proofType, verifyKeyAttestation, at)
+            CredentialKey.AttestedKeys.fromKeyAttestation(keyAttestation, proofType, verifyKeyAttestation, expectedKeyAttestationNonce, at)
         }
 
         else -> error("public key(s) must be provided in one of 'kid', 'jwk', 'x5c' or 'key_attestation'")
@@ -125,6 +127,7 @@ private suspend fun CredentialKey.AttestedKeys.Companion.fromKeyAttestation(
     keyAttestation: String,
     proofJwt: ProofType.Jwt,
     verifyKeyAttestation: VerifyKeyAttestation,
+    expectedNonce: String,
     at: Instant,
 ): CredentialKey.AttestedKeys {
     require(proofJwt.keyAttestationRequirement is KeyAttestationRequirement.Required) {
@@ -135,13 +138,16 @@ private suspend fun CredentialKey.AttestedKeys.Companion.fromKeyAttestation(
         "Key attestation signing algorithm '${keyAttestationJWT.jwt.header.algorithm}' is not supported, " +
             "must be one of: ${proofJwt.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
     }
-    val (attestedKeys, _) = verifyKeyAttestation(
+    val (attestedKeys, nonce) = verifyKeyAttestation(
         keyAttestation = keyAttestationJWT,
         signingAlgorithmsSupported = proofJwt.signingAlgorithmsSupported,
         keyAttestationRequirement = proofJwt.keyAttestationRequirement,
         expectExpirationClaim = true,
         at = at,
     ).getOrThrow()
+    if (null != nonce) {
+        require(expectedNonce == nonce) { "Key Attestation 'nonce' does not match JWT Proof 'nonce'" }
+    }
 
     return CredentialKey.AttestedKeys(attestedKeys)
 }
