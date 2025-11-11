@@ -62,13 +62,11 @@ internal class DecryptNonceWithNimbusAndVerify(
             )
         }
 
-    override suspend fun invoke(value: String?, at: Instant): Boolean =
-        value?.let {
-            result {
-                val jwt = EncryptedJWT.parse(it)
-                val claimSet = processor.process(jwt, null)
-                val expiresAt = requireNotNull(claimSet.expirationTime) { "expirationTime is required" }
-                at < expiresAt.toKotlinInstant()
-            }.getOrElse { false }
-        } ?: false
+    override suspend fun invoke(value: String, at: Instant): Boolean =
+        result {
+            val jwt = EncryptedJWT.parse(value)
+            val claimSet = processor.process(jwt, null)
+            val expiresAt = requireNotNull(claimSet.expirationTime) { "expirationTime is required" }
+            at < expiresAt.toKotlinInstant()
+        }.getOrElse { false }
 }

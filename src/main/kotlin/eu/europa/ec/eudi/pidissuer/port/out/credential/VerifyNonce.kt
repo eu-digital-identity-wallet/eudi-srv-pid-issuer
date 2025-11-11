@@ -21,9 +21,9 @@ import kotlin.time.Instant
  * Verifies a Nonce value is valid at a specific [Instant].
  */
 fun interface VerifyNonce {
-    suspend operator fun invoke(value: String?, at: Instant): Boolean
+    suspend operator fun invoke(value: String, at: Instant): Boolean
 
-    suspend operator fun invoke(values: List<String?>, at: Instant): Boolean =
+    suspend operator fun invoke(values: List<String>, at: Instant): Boolean =
         when (values.distinct().size) {
             1 -> this(values.first(), at)
             else -> false

@@ -51,7 +51,7 @@ internal class ValidateJwtProof(
         unvalidatedProof: UnvalidatedProof.Jwt,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
-    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey, String?>> = either {
+    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey, String>> = either {
         val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.JWT]
         ensureNotNull(proofType) {
             IssueCredentialError.InvalidProof("credential configuration '${credentialConfiguration.id.value}' doesn't support 'jwt' proofs")
@@ -64,7 +64,7 @@ internal class ValidateJwtProof(
         unvalidatedProof: UnvalidatedProof.Jwt,
         proofType: ProofType.Jwt,
         at: Instant,
-    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey, String?>> = Either.catch {
+    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey, String>> = Either.catch {
         val signedJwt = SignedJWT.parse(unvalidatedProof.jwt)
         val nonce = requireNotNull(signedJwt.jwtClaimsSet.getStringClaim("nonce")) { "Missing 'nonce'" }
         require(signedJwt.header.algorithm in proofType.signingAlgorithmsSupported) {
