@@ -211,14 +211,11 @@ fun beans(clock: Clock) = beans {
     val enableEhic = env.getProperty<Boolean>("issuer.ehic.enabled") ?: true
     val enableLearningCredential = env.getProperty<Boolean>("issuer.learningCredential.enabled") ?: true
 
-    //
-    // Signing key
-    //
-    bean(isLazyInit = true) {
-        val signingKey = when (env.getProperty<KeyOption>("issuer.signing-key")) {
+    fun getIssuerSigningKey(prefix: String): IssuerSigningKey {
+        val signingKey = when (env.getProperty<KeyOption>(prefix)) {
             null, KeyOption.GenerateRandom -> {
-                log.info("Generating random signing key and self-signed certificate for issuance")
-                val key = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate()
+                log.info("Generating random signing key and self-signed certificate for '$prefix'")
+                val key = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-$prefix").generate()
                 val certificate = X509CertificateUtils.generateSelfSigned(
                     Issuer(issuerPublicUrl.value.host),
                     clock.now().toJavaDate(),
@@ -232,12 +229,12 @@ fun beans(clock: Clock) = beans {
             }
 
             KeyOption.LoadFromKeystore -> {
-                log.info("Loading signing key and certificate for issuance from keystore")
-                loadJwkFromKeystore(env, "issuer.signing-key")
+                log.info("Loading signing key and certificate for issuance from keystore for '$prefix'")
+                loadJwkFromKeystore(env, prefix)
             }
         }
         require(signingKey is ECKey) { "Only ECKeys are supported for signing" }
-        IssuerSigningKey(signingKey)
+        return IssuerSigningKey(signingKey)
     }
 
     //
@@ -332,16 +329,14 @@ fun beans(clock: Clock) = beans {
         )
     }
     bean<EncodePidInCbor>(isLazyInit = true) {
-        val issuerSigningKey = ref<IssuerSigningKey>()
-        DefaultEncodePidInCbor(issuerSigningKey)
+        DefaultEncodePidInCbor(getIssuerSigningKey("issuer.pid.mso_mdoc.signing-key"))
     }
 
     bean {
         GetMobileDrivingLicenceDataMock()
     }
     bean<EncodeMobileDrivingLicenceInCbor>(isLazyInit = true) {
-        val issuerSigningKey = ref<IssuerSigningKey>()
-        DefaultEncodeMobileDrivingLicenceInCbor(issuerSigningKey)
+        DefaultEncodeMobileDrivingLicenceInCbor(getIssuerSigningKey("issuer.mdl.signing-key"))
     }
 
     bean(::DefaultGenerateQrCode)
@@ -510,10 +505,9 @@ fun beans(clock: Clock) = beans {
                         JWSAlgorithm::parse,
                     )
 
-                    val issuerSigningKey = ref<IssuerSigningKey>()
                     val issueSdJwtVcPid = IssueSdJwtVcPid(
                         hashAlgorithm = digestsHashAlgorithm,
-                        issuerSigningKey = issuerSigningKey,
+                        issuerSigningKey = getIssuerSigningKey("issuer.pid.sd_jwt_vc.signing-key"),
                         getPidData = ref(),
                         clock = clock,
                         credentialIssuerId = issuerPublicUrl,
@@ -568,8 +562,9 @@ fun beans(clock: Clock) = beans {
                     )
                     val keyAttestationRequirement = keyAttestationRequirement("issuer.ehic")
 
+                    val issuerSigningKey = getIssuerSigningKey("issuer.ehic.signing-key")
                     val ehicJwsJsonFlattenedIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.jwsJsonFlattened(
-                        issuerSigningKey = ref<IssuerSigningKey>(),
+                        issuerSigningKey = issuerSigningKey,
                         digestsHashAlgorithm = digestHashAlgorithm,
                         credentialIssuerId = issuerPublicUrl,
                         clock = ref(),
@@ -589,7 +584,7 @@ fun beans(clock: Clock) = beans {
                     add(ehicJwsJsonFlattenedIssuer.asDeferred(ref(), ref(), clock))
 
                     val ehicCompactIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.compact(
-                        issuerSigningKey = ref<IssuerSigningKey>(),
+                        issuerSigningKey = issuerSigningKey,
                         digestsHashAlgorithm = digestHashAlgorithm,
                         credentialIssuerId = issuerPublicUrl,
                         clock = ref(),
