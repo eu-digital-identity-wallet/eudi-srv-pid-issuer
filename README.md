@@ -168,6 +168,31 @@ Variable: `ISSUER_PID_MSO_MDOC_ENABLED`
 Description: Whether to enable support for PID issuance in *MSO MDOC* format  
 Default value: `true`
 
+Variable: `ISSUER_PID_MSO_MDOC_SIGNING_KEY`  
+Description: Whether to generate a new, or use an existing key-pair for signing MSO MDOC PIDs.    
+Possible values: `GenerateRandom`, `LoadFromKeystore`  
+Default value: `GenerateRandom`
+
+Variable: `ISSUER_PID_MSO_MDOC_SIGNING_KEY_KEYSTORE`  
+Description: Location of the keystore from which to load the key-pair for signing MSO MDOC PIDs. Uses Spring Resource URL syntax.       
+Default value: N/A
+
+Variable: `ISSUER_PID_MSO_MDOC_SIGNING_KEY_KEYSTORE_TYPE`  
+Description: Type of the keystore from which to load the key-pair for signing MSO MDOC PIDs.       
+Default value: N/A
+
+Variable: `ISSUER_PID_MSO_MDOC_SIGNING_KEY_KEYSTORE_PASSWORD`  
+Description: Password of the keystore from which to load the key-pair for signing MSO MDOC PIDs.       
+Default value: N/A
+
+Variable: `ISSUER_PID_MSO_MDOC_SIGNING_KEY_ALIAS`  
+Description: Alias of the key-pair for signing MSO MDOC PIDs.       
+Default value: N/A
+
+Variable: `ISSUER_PID_MSO_MDOC_SIGNING_KEY_PASSWORD`  
+Description: Password of the key-pair for signing MSO MDOC PIDs.       
+Default value: N/A
+
 Variable: `ISSUER_PID_MSO_MDOC_ENCODER_DURATION`    
 Description: Configures the validity of issued PIDs in *MSO MDOC* format. Uses Period syntax. 
 Default value: `P30D`
@@ -195,6 +220,31 @@ Default value: N/A
 Variable: `ISSUER_PID_SD_JWT_VC_ENABLED`  
 Description: Whether to enable support for PID issuance in *SD JWT VC* format.  
 Default value: `true`
+
+Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY`  
+Description: Whether to generate a new, or use an existing key-pair for signing SD JWT VC PIDs.    
+Possible values: `GenerateRandom`, `LoadFromKeystore`  
+Default value: `GenerateRandom`
+
+Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY_KEYSTORE`  
+Description: Location of the keystore from which to load the key-pair for signing SD JWT VC PIDs. Uses Spring Resource URL syntax.       
+Default value: N/A
+
+Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY_KEYSTORE_TYPE`  
+Description: Type of the keystore from which to load the key-pair for signing SD JWT VC PIDs.       
+Default value: N/A
+
+Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY_KEYSTORE_PASSWORD`  
+Description: Password of the keystore from which to load the key-pair for signing SD JWT VC PIDs.       
+Default value: N/A
+
+Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY_ALIAS`  
+Description: Alias of the key-pair for signing SD JWT VC PIDs.       
+Default value: N/A
+
+Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY_PASSWORD`  
+Description: Password of the key-pair for signing SD JWT VC PIDs.       
+Default value: N/A
 
 Variable: `ISSUER_PID_SD_JWT_VC_DURATION`  
 Description: Configures the validity of issued PIDs in *SD JWT VC* format. Uses Period syntax.  
@@ -235,11 +285,36 @@ Default value: `GR`
 
 Variable: `ISSUER_PID_ISSUINGJURISDICTION`  
 Description: Country subdivision code of the jurisdiction issuing the PID  
-Default value: `GR-I`  
+Default value: `GR-I`
 
 Variable: `ISSUER_MDL_ENABLED`    
 Description: Whether to enable support for issuing mDL.    
 Default value: `true`
+
+Variable: `ISSUER_MDL_SIGNING_KEY`  
+Description: Whether to generate a new, or use an existing key-pair for signing mDLs.    
+Possible values: `GenerateRandom`, `LoadFromKeystore`  
+Default value: `GenerateRandom`
+
+Variable: `ISSUER_MDL_SIGNING_KEY_KEYSTORE`  
+Description: Location of the keystore from which to load the key-pair for signing mDLs. Uses Spring Resource URL syntax.       
+Default value: N/A
+
+Variable: `ISSUER_MDL_SIGNING_KEY_KEYSTORE_TYPE`  
+Description: Type of the keystore from which to load the key-pair for signing mDLs.       
+Default value: N/A
+
+Variable: `ISSUER_MDL_SIGNING_KEY_KEYSTORE_PASSWORD`  
+Description: Password of the keystore from which to load the key-pair for signing mDLs.       
+Default value: N/A
+
+Variable: `ISSUER_MDL_SIGNING_KEY_ALIAS`  
+Description: Alias of the key-pair for signing mDLs.       
+Default value: N/A
+
+Variable: `ISSUER_MDL_SIGNING_KEY_PASSWORD`  
+Description: Password of the key-pair for signing mDLs.       
+Default value: N/A
 
 Variable: `ISSUER_MDL_MSO_MDOC_ENCODER_DURATION`    
 Description: Configures the validity of issued mDLs when using the internal encoder. Uses Period syntax. 
@@ -269,6 +344,31 @@ Default value: N/A
 Variable: `ISSUER_EHIC_ENABLED`    
 Description: Whether to enabled support for issuing European Health Insurance Cards in *SD-JWT VC* format.    
 Default value: `true`
+
+Variable: `ISSUER_EHIC_SIGNING_KEY`  
+Description: Whether to generate a new, or use an existing key-pair for signing EHICs.    
+Possible values: `GenerateRandom`, `LoadFromKeystore`  
+Default value: `GenerateRandom`
+
+Variable: `ISSUER_EHIC_SIGNING_KEY_KEYSTORE`  
+Description: Location of the keystore from which to load the key-pair for signing EHICs. Uses Spring Resource URL syntax.       
+Default value: N/A
+
+Variable: `ISSUER_EHIC_SIGNING_KEY_KEYSTORE_TYPE`  
+Description: Type of the keystore from which to load the key-pair for signing EHICs.       
+Default value: N/A
+
+Variable: `ISSUER_EHIC_SIGNING_KEY_KEYSTORE_PASSWORD`  
+Description: Password of the keystore from which to load the key-pair for signing EHICs.       
+Default value: N/A
+
+Variable: `ISSUER_EHIC_SIGNING_KEY_ALIAS`  
+Description: Alias of the key-pair for signing EHICs.       
+Default value: N/A
+
+Variable: `ISSUER_EHIC_SIGNING_KEY_PASSWORD`  
+Description: Password of the key-pair for signing EHICs.       
+Default value: N/A
 
 Variable: `ISSUER_EHIC_VALIDITY`    
 Description: Validity of European Health Insurance Cards issued in *SD-JWT VC* format. Uses Period syntax.      
@@ -339,31 +439,6 @@ Default value: N/A
 Variable: `ISSUER_CREDENTIALOFFER_URI`    
 Description: URI to use when generating Credential Offers.    
 Default value: `openid-credential-offer://`
-
-Variable: `ISSUER_SIGNING_KEY`  
-Description: Whether to generate a new, or use an existing key-pair for signing verifiable credentials.    
-Possible values: `GenerateRandom`, `LoadFromKeystore`  
-Default value: `GenerateRandom`
-
-Variable: `ISSUER_SIGNING_KEY_KEYSTORE`  
-Description: Location of the keystore from which to load the key-pair for signing verifiable credentials. Uses Spring Resource URL syntax.       
-Default value: N/A
-
-Variable: `ISSUER_SIGNING_KEY_KEYSTORE_TYPE`  
-Description: Type of the keystore from which to load the key-pair for signing verifiable credentials.       
-Default value: N/A
-
-Variable: `ISSUER_SIGNING_KEY_KEYSTORE_PASSWORD`  
-Description: Password of the keystore from which to load the key-pair for signing verifiable credentials.       
-Default value: N/A
-
-Variable: `ISSUER_SIGNING_KEY_ALIAS`  
-Description: Alias of the key-pair for signing verifiable credentials.       
-Default value: N/A
-
-Variable: `ISSUER_SIGNING_KEY_PASSWORD`  
-Description: Password of the key-pair for signing verifiable credentials.       
-Default value: N/A
 
 Variable: `ISSUER_METADATA_SIGNED_METADATA_ENABLED`  
 Description: Whether to enable support for signed metadata or not.  
