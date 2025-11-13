@@ -36,6 +36,8 @@ data class KeyAttestationJWT private constructor(
     val keyStorage: List<AttackPotentialResistance>?,
     val userAuthentication: List<AttackPotentialResistance>?,
 ) {
+    val nonce: String?
+        get() = jwt.jwtClaimsSet.getStringClaim("nonce")
 
     companion object {
         operator fun invoke(value: String): KeyAttestationJWT = KeyAttestationJWT(SignedJWT.parse(value))

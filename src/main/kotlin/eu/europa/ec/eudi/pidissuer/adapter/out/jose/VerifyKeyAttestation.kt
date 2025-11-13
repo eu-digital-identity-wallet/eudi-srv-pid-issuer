@@ -36,7 +36,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationJWT
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
-import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
 import java.net.URI
 import java.security.cert.*
 import kotlin.time.Duration
@@ -50,7 +49,6 @@ internal class VerifyKeyAttestation(
     private val trustAnchors: NonEmptyList<X509Certificate>? = null,
     private val verifyAttestedKey: VerifyAttestedKey? = null,
     private val maxSkew: Duration = 30.seconds,
-    private val verifyNonce: VerifyNonce,
 ) {
     suspend operator fun invoke(
         keyAttestation: KeyAttestationJWT,
@@ -58,14 +56,13 @@ internal class VerifyKeyAttestation(
         keyAttestationRequirement: KeyAttestationRequirement.Required,
         expectExpirationClaim: Boolean,
         at: Instant,
-    ): Either<Throwable, Pair<NonEmptyList<JWK>, String>> = either {
+    ): Either<Throwable, Pair<NonEmptyList<JWK>, String?>> = either {
         with(keyAttestation) {
             val algorithm = extractSupportedAlgorithm(signingAlgorithmsSupported)
             val key = extractSigningKey()
                 .ensureCompatibleWith(algorithm)
                 .ensureIsPublicAsymmetricKey()
 
-            val nonce = verifyCNonce(at)
             verifySignature(key, algorithm, expectExpirationClaim)
             ensureMeetsKeyAttestationRequirements(keyAttestationRequirement, nonce)
 
@@ -90,17 +87,6 @@ internal class VerifyKeyAttestation(
             }
             else -> error("Invalid Key attestation : No signing key found in one of 'kid' or 'x5c'. 'trust_chain not yet supported'")
         }
-    }
-
-    private suspend fun KeyAttestationJWT.verifyCNonce(at: Instant): String {
-        val nonce = jwt.jwtClaimsSet.getStringClaim("nonce")
-        requireNotNull(nonce) {
-            "Key attestation does not contain a c_nonce."
-        }
-        require(verifyNonce(nonce, at)) {
-            "Invalid c_nonce provided in key attestation JWT"
-        }
-        return nonce
     }
 
     private fun KeyAttestationJWT.verifySignature(
@@ -132,7 +118,7 @@ internal class VerifyKeyAttestation(
 
     private suspend fun KeyAttestationJWT.ensureMeetsKeyAttestationRequirements(
         keyAttestationRequirement: KeyAttestationRequirement.Required,
-        nonce: String,
+        nonce: String?,
     ) {
         // if key storage constraints are expected, the passed key attestation must meet these constraints
         keyAttestationRequirement.keyStorage?.let {
