@@ -325,7 +325,7 @@ Example: `ES256`
 
 Variable: `ISSUER_LEARNINGCREDENTIA_KEY_ATTESTATIONS_REQUIRED`      
 Description: Boolean property that when set to true makes key attestations mandatory in proofs sent for Learning Credential attestation issuance. A key attestation is expected in a JWT proof or as a proof itself.  
-Default value: `true`
+Default value: `false`
 
 Variable: `ISSUER_LEARNINGCREDENTIA_KEY_ATTESTATIONS_CONSTRAINTS_KEY_STORAGE`      
 Description: Comma separated list of strings. Each string specifies an accepted level of attack resistance protection regarding the storage of keys included in a key attestation.  
