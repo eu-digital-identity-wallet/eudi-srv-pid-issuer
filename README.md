@@ -17,8 +17,8 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 
 An implementation of a credential issuing service, according to [OpenId4VCI - v1.0](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html).
 
-The service provides generic support for `mso_mdoc` and `SD-JWT-VC` formats using PID, mDL, and European Health Insurance Card as an example
-and requires the use of a suitable OAuth 2.0 server.
+The service provides generic support for `mso_mdoc` and `SD-JWT-VC` formats using PID, mDL, European Health Insurance Card, and Learning Credential
+as an example and requires the use of a suitable OAuth 2.0 server.
 
 | Credential/Attestation         | Format    |
 |--------------------------------|-----------|
@@ -26,6 +26,7 @@ and requires the use of a suitable OAuth 2.0 server.
 | PID                            | SD-JWT VC |
 | mDL                            | mso_mdoc  | 
 | European Health Insurance Card | SD-JWT VC |
+| Learning Credential            | SD-JWT VC |
 
 ### OpenId4VCI coverage
 
@@ -62,6 +63,7 @@ The Realm *pid-issuer-realm*:
 - defines *eu.europa.ec.eudi.pid_mso_mdoc* scope for requesting PID issuance in MSO MDOC format
 - defines *org.iso.18013.5.1.mDL* scope for requesting mDL issuance in MSO MDOC format
 - defines *urn:eudi:ehic:1:dc+sd-jwt* scope for requesting European Health Insurance Card issuance in SD-JWT VC format
+- defines *urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt* scope for requesting Learning Credential issuance in SD-JWT VC format
 - defines *wallet-dev* and *pid-issuer-srv* clients
 - contains sample user with credentials: tneal / password
 
@@ -298,6 +300,39 @@ Default value: N/A
 
 Variable: `ISSUER_EHIC_KEY_ATTESTATIONS_CONSTRAINTS_USER_AUTHENTICATION`      
 Description: Comma separated list of strings. Each string specifies an accepted level of attack resistance protection regarding the authentication of user when using the keys included in the key attestation. 
+Default value: N/A
+
+Variable: `ISSUER_LEARNINGCREDENTIAL_ENABLED`    
+Description: Whether to enabled support for issuing Learning Credentials.    
+Default value: `true`  
+
+Variable: `ISSUER_LEARNINGCREDENTIAL_SDJWTVC_ENCODER_DIGESTS_HASHALGORITHM`  
+Description: Hash algorithm used to calculate the disclosure digests of Learning Credentials issued in *SD-JWT VC* format.    
+Allowed values: `sha-256`, `sha-384`, `sha-512`, `sha3-256`, `sha3-384`, `sha3-512`   
+Default value: `sha-256`
+
+Variable: `ISSUER_LEARNINGCREDENTIAL_VALIDITY`    
+Description: Validity of Learning Credentials issued. Uses Period syntax.      
+Default value: `P30D`
+
+Variable: `ISSUER_LEARNINGCREDENTIAL_NOTIFICATIONS_ENABLED`    
+Description: Whether to enabled Notifications Endpoint support for issued Learning Credentials.    
+Default value: `true`
+
+Variable: `ISSUER_LEARNINGCREDENTIAL_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`      
+Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
+Example: `ES256`
+
+Variable: `ISSUER_LEARNINGCREDENTIA_KEY_ATTESTATIONS_REQUIRED`      
+Description: Boolean property that when set to true makes key attestations mandatory in proofs sent for Learning Credential attestation issuance. A key attestation is expected in a JWT proof or as a proof itself.  
+Default value: `false`
+
+Variable: `ISSUER_LEARNINGCREDENTIA_KEY_ATTESTATIONS_CONSTRAINTS_KEY_STORAGE`      
+Description: Comma separated list of strings. Each string specifies an accepted level of attack resistance protection regarding the storage of keys included in a key attestation.  
+Default value: N/A
+
+Variable: `ISSUER_LEARNINGCREDENTIA_KEY_ATTESTATIONS_CONSTRAINTS_USER_AUTHENTICATION`      
+Description: Comma separated list of strings. Each string specifies an accepted level of attack resistance protection regarding the authentication of user when using the keys included in the key attestation.     
 Default value: N/A
 
 Variable: `ISSUER_CREDENTIALOFFER_URI`    

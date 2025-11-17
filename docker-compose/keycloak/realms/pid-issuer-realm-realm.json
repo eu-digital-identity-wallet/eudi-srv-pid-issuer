@@ -514,6 +514,12 @@
       "roles": [
         "eid-holder-natural-person"
       ]
+    },
+    {
+      "clientScope": "urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt",
+      "roles": [
+        "eid-holder-natural-person"
+      ]
     }
   ],
   "clientScopeMappings": {
@@ -740,7 +746,8 @@
         "eu.europa.ec.eudi.pid_vc_sd_jwt",
         "eu.europa.ec.eudi.pid_mso_mdoc",
         "org.iso.18013.5.1.mDL",
-        "urn:eudi:ehic:1:dc+sd-jwt"
+        "urn:eudi:ehic:1:dc+sd-jwt",
+        "urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt"
       ]
     },
     {
@@ -1049,7 +1056,8 @@
         "eu.europa.ec.eudi.pid_vc_sd_jwt",
         "eu.europa.ec.eudi.pid_mso_mdoc",
         "org.iso.18013.5.1.mDL",
-        "urn:eudi:ehic:1:dc+sd-jwt"
+        "urn:eudi:ehic:1:dc+sd-jwt",
+        "urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt"
       ]
     }
   ],
@@ -1804,6 +1812,71 @@
       ]
     },
     {
+      "id": "a8343436-0d15-41fe-ba13-4a3ae774c82b",
+      "name": "urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt",
+      "description": "",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "gui.order": "",
+        "consent.screen.text": "Do you consent to issue Learning Credential?"
+      },
+      "protocolMappers": [
+        {
+          "id": "cbd1155b-7b4a-452d-8549-9c5f55a3f56b",
+          "name": "given name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "aggregate.attrs": "false",
+            "userinfo.token.claim": "true",
+            "multivalued": "false",
+            "user.attribute": "firstName",
+            "id.token.claim": "false",
+            "access.token.claim": "false",
+            "claim.name": "given_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "c88d8a20-76f0-48a2-98a9-9b98ca457c06",
+          "name": "family name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "aggregate.attrs": "false",
+            "userinfo.token.claim": "true",
+            "multivalued": "false",
+            "user.attribute": "lastName",
+            "id.token.claim": "false",
+            "access.token.claim": "false",
+            "claim.name": "family_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "4497e782-0a1f-46d7-95ab-da0b6cddabd2",
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "aggregate.attrs": "false",
+            "userinfo.token.claim": "true",
+            "multivalued": "false",
+            "user.attribute": "email",
+            "id.token.claim": "false",
+            "access.token.claim": "false",
+            "claim.name": "email",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
       "id": "00bf2e53-5336-47ef-819f-3f1823a2cc81",
       "name": "roles",
       "description": "OpenID Connect scope for add user roles to the access token",
@@ -1860,7 +1933,8 @@
     "eu.europa.ec.eudi.pid_mso_mdoc",
     "eu.europa.ec.eudi.pid_vc_sd_jwt",
     "org.iso.18013.5.1.mDL",
-    "urn:eudi:ehic:1:dc+sd-jwt"
+    "urn:eudi:ehic:1:dc+sd-jwt",
+    "urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt"
   ],
   "browserSecurityHeaders": {
     "contentSecurityPolicyReportOnly": "",

@@ -16,11 +16,19 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out
 
 import COSE.AlgorithmID
+import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jose.util.X509CertUtils
+import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.sdjwt.HashAlgorithm
+import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
+import eu.europa.ec.eudi.sdjwt.SdJwtFactory
+import eu.europa.ec.eudi.sdjwt.SdJwtIssuer
+import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import id.walt.mdoc.COSECryptoProviderKeyInfo
 import id.walt.mdoc.SimpleCOSECryptoProvider
 import java.security.cert.X509Certificate
@@ -67,3 +75,13 @@ internal fun IssuerSigningKey.cryptoProvider(): SimpleCOSECryptoProvider {
 
 internal val IssuerSigningKey.certificate: X509Certificate
     get() = X509CertUtils.parse(key.x509CertChain.first().decode())
+
+internal fun IssuerSigningKey.sdJwtVcIssuer(digestsHashAlgorithm: HashAlgorithm): SdJwtIssuer<SignedJWT> {
+    val factory = SdJwtFactory(digestsHashAlgorithm)
+    val signer = ECDSASigner(key)
+    return NimbusSdJwtOps.issuer(factory, signer, signingAlgorithm) {
+        type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
+        keyID(key.keyID)
+        x509CertChain(key.x509CertChain)
+    }
+}
