@@ -85,6 +85,7 @@ private class EncodeLearningCredentialInSdJwtVcCompact(
             claim(RFC7519.ISSUED_AT, issuedAt.epochSeconds)
             claim(RFC7519.EXPIRATION_TIME, expiresAt.epochSeconds)
             claim(SdJwtVcSpec.VCT, vct.value)
+            cnf(holderKey.toPublicJWK())
             with(learningCredential) {
                 with(issuer) {
                     claim(SdJwtVcClaims.IssuingAuthority.name, name.value)
