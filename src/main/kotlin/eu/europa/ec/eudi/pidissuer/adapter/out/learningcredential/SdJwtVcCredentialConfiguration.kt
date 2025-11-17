@@ -24,6 +24,20 @@ import eu.europa.ec.eudi.pidissuer.domain.*
 import java.util.*
 
 object SdJwtVcClaims {
+    val IssuingAuthority: ClaimDefinition = ClaimDefinition(
+        path = ClaimPath.claim("issuing_authority"),
+        mandatory = true,
+        display = mapOf(
+            Locale.ENGLISH to "Issuing Authority",
+        ),
+    )
+    val IssuingCountry: ClaimDefinition = ClaimDefinition(
+        path = ClaimPath.claim("issuing_country"),
+        mandatory = true,
+        display = mapOf(
+            Locale.ENGLISH to "Issuing Country",
+        ),
+    )
     val DateOfIssuance: ClaimDefinition = ClaimDefinition(
         path = ClaimPath.claim("date_of_issuance"),
         mandatory = true,
@@ -66,20 +80,6 @@ object SdJwtVcClaims {
             Locale.ENGLISH to "Achievement Description",
         ),
     )
-    val CreditFramework: ClaimDefinition = ClaimDefinition(
-        path = ClaimPath.claim("credit_received_framework"),
-        mandatory = false,
-        display = mapOf(
-            Locale.ENGLISH to "Credit Framework",
-        ),
-    )
-    val CreditPoints: ClaimDefinition = ClaimDefinition(
-        path = ClaimPath.claim("credit_received_points"),
-        mandatory = false,
-        display = mapOf(
-            Locale.ENGLISH to "Credit Points",
-        ),
-    )
     val LearningOutcomes = ClaimDefinition(
         path = ClaimPath.claim("learning_outcomes"),
         mandatory = false,
@@ -96,14 +96,14 @@ object SdJwtVcClaims {
     )
 
     fun all(): NonEmptyList<ClaimDefinition> = nonEmptyListOf(
+        IssuingAuthority,
+        IssuingCountry,
         DateOfIssuance,
         DateOfExpiry,
         FamilyName,
         GivenName,
         AchievementTitle,
         AchievementDescription,
-        CreditFramework,
-        CreditPoints,
         LearningOutcomes,
         AssessmentGrade,
     )

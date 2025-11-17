@@ -631,7 +631,6 @@ fun beans(clock: Clock) = beans {
                         ref(),
                         validity,
                         digestHashAlgorithm,
-                        issuerPublicUrl,
                         if (notificationsEnabled) ref() else null,
                         ref(),
                     )

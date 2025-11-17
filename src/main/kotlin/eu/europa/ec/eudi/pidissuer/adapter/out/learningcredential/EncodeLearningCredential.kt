@@ -22,7 +22,6 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.sdJwtVcIssuer
-import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.Format
 import eu.europa.ec.eudi.pidissuer.domain.SD_JWT_VC_FORMAT
 import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType
@@ -36,6 +35,7 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.time.Instant
 import kotlin.time.toJavaInstant
+import kotlin.uuid.Uuid
 
 interface EncodeLearningCredential {
 
@@ -54,12 +54,10 @@ interface EncodeLearningCredential {
             digestsHashAlgorithm: HashAlgorithm,
             issuerSigningKey: IssuerSigningKey,
             vct: SdJwtVcType,
-            credentialIssuerId: CredentialIssuerId,
         ): EncodeLearningCredential = EncodeLearningCredentialInSdJwtVcCompact(
             digestsHashAlgorithm,
             issuerSigningKey,
             vct,
-            credentialIssuerId,
         )
     }
 }
@@ -68,7 +66,6 @@ private class EncodeLearningCredentialInSdJwtVcCompact(
     digestsHashAlgorithm: HashAlgorithm,
     issuerSigningKey: IssuerSigningKey,
     private val vct: SdJwtVcType,
-    private val credentialIssuerId: CredentialIssuerId,
 ) : EncodeLearningCredential {
     override val format: Format = SD_JWT_VC_FORMAT
     override val type: String = vct.value
@@ -84,11 +81,18 @@ private class EncodeLearningCredentialInSdJwtVcCompact(
         val formatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
 
         val spec = sdJwt {
+            claim(RFC7519.JWT_ID, Uuid.random().toHexDashString())
             claim(RFC7519.ISSUED_AT, issuedAt.epochSeconds)
             claim(RFC7519.EXPIRATION_TIME, expiresAt.epochSeconds)
             claim(SdJwtVcSpec.VCT, vct.value)
-            claim(RFC7519.ISSUER, credentialIssuerId.externalForm)
             with(learningCredential) {
+                with(issuer) {
+                    claim(SdJwtVcClaims.IssuingAuthority.name, name.value)
+                    claim(SdJwtVcClaims.IssuingCountry.name, country.code)
+                    if (null != uri) {
+                        claim(RFC7519.ISSUER, uri.externalForm)
+                    }
+                }
                 claim(
                     SdJwtVcClaims.DateOfIssuance.name,
                     formatter.format(ZonedDateTime.ofInstant(dateOfIssuance.toJavaInstant(), ZoneOffset.UTC)),
@@ -104,10 +108,6 @@ private class EncodeLearningCredentialInSdJwtVcCompact(
                 claim(SdJwtVcClaims.AchievementTitle.name, achievementTitle.value)
                 if (null != achievementDescription) {
                     claim(SdJwtVcClaims.AchievementDescription.name, achievementDescription.value)
-                }
-                if (null != credits) {
-                    sdClaim(SdJwtVcClaims.CreditFramework.name, credits.framework.value)
-                    sdClaim(SdJwtVcClaims.CreditPoints.name, credits.points.value)
                 }
                 if (null != learningOutcomes) {
                     sdArrClaim(SdJwtVcClaims.LearningOutcomes.name) {

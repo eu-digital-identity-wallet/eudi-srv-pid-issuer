@@ -110,7 +110,6 @@ internal class IssueLearningCredential(
             getPidData: GetPidData,
             validity: Duration,
             digestsHashAlgorithm: HashAlgorithm,
-            credentialIssuerId: CredentialIssuerId,
             generateNotificationId: GenerateNotificationId?,
             storeIssuedCredentials: StoreIssuedCredentials,
         ): IssueLearningCredential {
@@ -134,7 +133,6 @@ internal class IssueLearningCredential(
                     digestsHashAlgorithm,
                     issuerSigningKey,
                     credentialConfiguration.type,
-                    credentialIssuerId,
                 ),
                 generateNotificationId,
                 storeIssuedCredentials,

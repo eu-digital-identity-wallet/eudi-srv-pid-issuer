@@ -16,6 +16,8 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential
 
 import arrow.core.NonEmptyList
+import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.IsoAlpha2CountryCode
+import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import kotlin.time.Instant
 
 @JvmInline
@@ -27,30 +29,30 @@ value class NonBlankString(val value: String) {
     override fun toString(): String = value
 }
 
+data class Issuer(
+    val name: Name,
+    val country: IsoAlpha2CountryCode,
+    val uri: HttpsUrl? = null,
+) {
+    typealias Name = NonBlankString
+}
+
 typealias FamilyName = NonBlankString
 typealias GivenName = NonBlankString
 typealias AchievementTitle = NonBlankString
 typealias AchievementDescription = NonBlankString
 
-data class Credits(
-    val framework: Framework,
-    val points: Points,
-) {
-    typealias Framework = NonBlankString
-    typealias Points = NonBlankString
-}
-
 typealias LearningOutcome = NonBlankString
 typealias AssessmentGrade = NonBlankString
 
 data class LearningCredential(
+    val issuer: Issuer,
     val dateOfIssuance: Instant,
     val dateOfExpiry: Instant? = null,
     val familyName: FamilyName,
     val givenName: GivenName,
     val achievementTitle: AchievementTitle,
     val achievementDescription: AchievementDescription? = null,
-    val credits: Credits? = null,
     val learningOutcomes: NonEmptyList<LearningOutcome>? = null,
     val assessmentGrade: AssessmentGrade? = null,
 ) {
