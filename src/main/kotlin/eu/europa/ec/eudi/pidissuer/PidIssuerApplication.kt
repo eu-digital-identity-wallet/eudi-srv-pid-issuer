@@ -202,6 +202,8 @@ data class HttpProxy(
     }
 }
 
+private const val keystoreDefaultLocation = "/keystore.jks"
+
 fun beans(clock: Clock) = beans {
     val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl", removeTrailingSlash = true)
     val enableMobileDrivingLicence = env.getProperty("issuer.mdl.enabled", true)
@@ -211,6 +213,34 @@ fun beans(clock: Clock) = beans {
     val enableStatusList = env.getProperty<Boolean>("issuer.statusList.enabled") ?: false
     val enableEhic = env.getProperty<Boolean>("issuer.ehic.enabled") ?: true
     val enableLearningCredential = env.getProperty<Boolean>("issuer.learningCredential.enabled") ?: true
+
+    val issuerKeystore: KeyStore by lazy {
+        val keystoreLocation = env.getRequiredProperty("issuer.keystore.file")
+        log.info("Will try to load Keystore from: '{}'", keystoreLocation)
+        val keystoreResource = DefaultResourceLoader().getResource(keystoreLocation).some()
+            .filter { it.exists() }
+            .recover {
+                log.warn(
+                    "Could not find Keystore at '{}'. Fallback to '{}'",
+                    keystoreLocation,
+                    keystoreDefaultLocation,
+                )
+                FileSystemResource(keystoreDefaultLocation).some()
+                    .filter { it.exists() }
+                    .bind()
+            }
+            .getOrNull()
+        checkNotNull(keystoreResource) { "Could not load Keystore either from '$keystoreLocation' or '$keystoreDefaultLocation'" }
+
+        val keystoreType = env.getProperty("issuer.keystore.type", KeyStore.getDefaultType())
+        val keystorePassword = env.getProperty("issuer.keystore.password")?.takeIf { it.isNotBlank() }
+
+        keystoreResource.inputStream.use { inputStream ->
+            val keystore = KeyStore.getInstance(keystoreType)
+            keystore.load(inputStream, keystorePassword?.toCharArray())
+            keystore
+        }
+    }
 
     fun getIssuerSigningKey(prefix: String): IssuerSigningKey {
         val signingKey = when (env.getProperty<KeyOption>(prefix)) {
@@ -231,11 +261,62 @@ fun beans(clock: Clock) = beans {
 
             KeyOption.LoadFromKeystore -> {
                 log.info("Loading signing key and certificate for issuance from keystore for '$prefix'")
-                loadJwkFromKeystore(env, prefix)
+                issuerKeystore.loadJwk(env, prefix)
             }
         }
         require(signingKey is ECKey) { "Only ECKeys are supported for signing" }
         return IssuerSigningKey(signingKey)
+    }
+
+    fun credentialRequestEncryption(): CredentialRequestEncryption {
+        val isSupported = env.getProperty<Boolean>("issuer.credentialRequestEncryption.supported") ?: false
+        return if (!isSupported) {
+            CredentialRequestEncryption.NotSupported
+        } else {
+            val key = when (env.getProperty<KeyOption>("issuer.credentialRequestEncryption.jwks")) {
+                null, KeyOption.GenerateRandom -> {
+                    log.info("Generating random encryption key for Credential Request Encryption")
+                    ECKeyGenerator(Curve.P_256)
+                        .keyID(UUID.randomUUID().toString())
+                        .keyUse(KeyUse.ENCRYPTION)
+                        .algorithm(JWEAlgorithm.ECDH_ES)
+                        .generate()
+                }
+                KeyOption.LoadFromKeystore -> {
+                    log.info("Loading encryption key for Credential Request Encryption from keystore")
+                    val keyAlgorithm = env.getProperty<String>("issuer.credentialRequestEncryption.jwks.algorithm")?.let {
+                        JWEAlgorithm.parse(it)
+                    } ?: error("Missing or invalid 'issuer.credentialRequestEncryption.jwks.algorithm' property")
+
+                    when (val loadedJwk = issuerKeystore.loadJwk(env, "issuer.credentialRequestEncryption.jwks")) {
+                        is ECKey -> {
+                            ECKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
+                        }
+                        is RSAKey -> {
+                            RSAKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
+                        }
+                        else -> error("unsupported key type '${loadedJwk.javaClass}'")
+                    }
+                }
+            }
+
+            val parameters = CredentialRequestEncryptionSupportedParameters(
+                encryptionKeys = JWKSet(key),
+                methodsSupported = env.readNonEmptySet(
+                    "issuer.credentialRequestEncryption.encryptionMethods",
+                    EncryptionMethod::parse,
+                ),
+                zipAlgorithmsSupported = env.readNonEmptySet(
+                    "issuer.credentialRequestEncryption.zipAlgorithmsSupported",
+                ) { CompressionAlgorithm(it) },
+            )
+            val isRequired = env.getProperty<Boolean>("issuer.credentialRequestEncryption.required") ?: false
+            if (!isRequired) {
+                CredentialRequestEncryption.Optional(parameters)
+            } else {
+                CredentialRequestEncryption.Required(parameters)
+            }
+        }
     }
 
     //
@@ -250,7 +331,7 @@ fun beans(clock: Clock) = beans {
 
             KeyOption.LoadFromKeystore -> {
                 log.info("Loading Nonce encryption key from keystore")
-                val nonceEncryptionKey = loadJwkFromKeystore(env, "issuer.nonce.encryption-key")
+                val nonceEncryptionKey = issuerKeystore.loadJwk(env, "issuer.nonce.encryption-key")
                 require(nonceEncryptionKey is ECKey) { "Only ECKey are supported for encryption" }
                 nonceEncryptionKey
             }
@@ -273,7 +354,7 @@ fun beans(clock: Clock) = beans {
 
             KeyOption.LoadFromKeystore -> {
                 log.info("Loading signing key and certificate for metadata from keystore")
-                loadJwkFromKeystore(env, "issuer.metadata.signed-metadata.signing-key")
+                issuerKeystore.loadJwk(env, "issuer.metadata.signed-metadata.signing-key")
             }
         }
 
@@ -466,7 +547,7 @@ fun beans(clock: Clock) = beans {
             notificationEndpoint = issuerPublicUrl.appendPath(WalletApi.NOTIFICATION_ENDPOINT),
             nonceEndpoint = issuerPublicUrl.appendPath(WalletApi.NONCE_ENDPOINT),
             authorizationServers = listOf(env.readRequiredUrl("issuer.authorizationServer.publicUrl")),
-            credentialRequestEncryption = env.credentialRequestEncryption(),
+            credentialRequestEncryption = credentialRequestEncryption(),
             credentialResponseEncryption = env.credentialResponseEncryption(),
             specificCredentialIssuers = buildList {
                 if (enableMsoMdocPid) {
@@ -737,7 +818,7 @@ fun beans(clock: Clock) = beans {
          * A prefix of SCOPE_xyz will grant a SimpleAuthority(xyz)
          * if there is a scope xyz
          *
-         * Note that on the OAUTH2 server we set xyz as te scope
+         * Note that on the OAUTH2 server we set xyz as the scope
          * and not SCOPE_xyz
          */
         fun Scope.springConvention() = "SCOPE_$value"
@@ -950,55 +1031,6 @@ private fun BeanDefinitionDsl.keyAttestationRequirement(attestationPropertyPrefi
     )
 }
 
-private fun Environment.credentialRequestEncryption(): CredentialRequestEncryption {
-    val isSupported = getProperty<Boolean>("issuer.credentialRequestEncryption.supported") ?: false
-    return if (!isSupported) {
-        CredentialRequestEncryption.NotSupported
-    } else {
-        val key = when (getProperty<KeyOption>("issuer.credentialRequestEncryption.jwks")) {
-            null, KeyOption.GenerateRandom -> {
-                ECKeyGenerator(Curve.P_256)
-                    .keyID(UUID.randomUUID().toString())
-                    .keyUse(KeyUse.ENCRYPTION)
-                    .algorithm(JWEAlgorithm.ECDH_ES)
-                    .generate()
-            }
-            KeyOption.LoadFromKeystore -> {
-                val keyAlgorithm = getProperty<String>("issuer.credentialRequestEncryption.jwks.algorithm")?.let {
-                    JWEAlgorithm.parse(it)
-                } ?: error("Missing or invalid 'issuer.credentialRequestEncryption.jwks.algorithm' property")
-
-                when (val loadedJwk = loadJwkFromKeystore(this, "issuer.credentialRequestEncryption.jwks")) {
-                    is ECKey -> {
-                        ECKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
-                    }
-                    is RSAKey -> {
-                        RSAKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
-                    }
-                    else -> error("unsupported key type '${loadedJwk.javaClass}'")
-                }
-            }
-        }
-
-        val parameters = CredentialRequestEncryptionSupportedParameters(
-            encryptionKeys = JWKSet(key),
-            methodsSupported = readNonEmptySet(
-                "issuer.credentialRequestEncryption.encryptionMethods",
-                EncryptionMethod::parse,
-            ),
-            zipAlgorithmsSupported = readNonEmptySet(
-                "issuer.credentialRequestEncryption.zipAlgorithmsSupported",
-            ) { CompressionAlgorithm(it) },
-        )
-        val isRequired = getProperty<Boolean>("issuer.credentialRequestEncryption.required") ?: false
-        if (!isRequired) {
-            CredentialRequestEncryption.Optional(parameters)
-        } else {
-            CredentialRequestEncryption.Required(parameters)
-        }
-    }
-}
-
 private fun Environment.credentialResponseEncryption(): CredentialResponseEncryption {
     val isSupported = getProperty<Boolean>("issuer.credentialResponseEncryption.supported") ?: false
     return if (!isSupported) {
@@ -1059,22 +1091,17 @@ internal fun HttpsUrl.appendPath(path: String): HttpsUrl =
             .toUriString(),
     )
 
-private const val keystoreDefaultLocation = "/keystore.jks"
-
 /**
  * Loads a key pair alongside its associated certificate chain as a JWK.
  *
  * This method expects to find the following properties in the provided [environment].
- * - [prefix].keystore -> location of the keystore as a Spring [Resource] URL
- * - [prefix].keystore.type -> type of the keystore, e.g. JKS
- * - [prefix].keystore.password -> password used to open the keystore
  * - [prefix].alias -> alias of the key pair to load
  * - [prefix].password -> password of the key pair
  *
- * In case no keystore is found in the configured location, this methods tries to find a keystore at the location `/keystore.jks`.
+ * @receiver the [KeyStore] from which to load the [JWK]
  */
 @Suppress("SameParameterValue")
-private fun loadJwkFromKeystore(environment: Environment, prefix: String): JWK {
+private fun KeyStore.loadJwk(environment: Environment, prefix: String): JWK {
     fun property(property: String): String =
         when {
             prefix.isBlank() -> property
@@ -1099,42 +1126,17 @@ private fun loadJwkFromKeystore(environment: Environment, prefix: String): JWK {
         }
     }
 
-    val keystoreResource = run {
-        val keystoreLocation = environment.getRequiredProperty(property("keystore"))
-        log.info("Will try to load Keystore from: '{}'", keystoreLocation)
-        val keystoreResource = DefaultResourceLoader().getResource(keystoreLocation).some()
-            .filter { it.exists() }
-            .recover {
-                log.warn(
-                    "Could not find Keystore at '{}'. Fallback to '{}'",
-                    keystoreLocation,
-                    keystoreDefaultLocation,
-                )
-                FileSystemResource(keystoreDefaultLocation).some()
-                    .filter { it.exists() }
-                    .bind()
-            }
-            .getOrNull()
-        checkNotNull(keystoreResource) { "Could not load Keystore either from '$keystoreLocation' or '$keystoreDefaultLocation'" }
-    }
-
-    val keystoreType = environment.getProperty(property("keystore.type"), KeyStore.getDefaultType())
-    val keystorePassword = environment.getProperty(property("keystore.password"))?.takeIf { it.isNotBlank() }
     val keyAlias = environment.getRequiredProperty(property("alias"))
     val keyPassword = environment.getProperty(property("password"))?.takeIf { it.isNotBlank() }
 
-    return keystoreResource.inputStream.use { inputStream ->
-        val keystore = KeyStore.getInstance(keystoreType)
-        keystore.load(inputStream, keystorePassword?.toCharArray())
-        val jwk = JWK.load(keystore, keyAlias, keyPassword?.toCharArray())
-        val chain = keystore.getCertificateChain(keyAlias).orEmpty()
-            .map { certificate -> certificate as X509Certificate }
-            .toList()
+    val jwk = JWK.load(this, keyAlias, keyPassword?.toCharArray())
+    val chain = getCertificateChain(keyAlias).orEmpty()
+        .map { certificate -> certificate as X509Certificate }
+        .toList()
 
-        when {
-            chain.isNotEmpty() -> jwk.withCertificateChain(chain)
-            else -> jwk
-        }
+    return when {
+        chain.isNotEmpty() -> jwk.withCertificateChain(chain)
+        else -> jwk
     }
 }
 

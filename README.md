@@ -164,6 +164,18 @@ Variable: `ISSUER_CREDENTIALRESPONSEENCRYPTION_ENCRYPTIONMETHODS`
 Description: Comma separated list of supported encryption method for credential response encryption.      
 Default value: `A128GCM`
 
+Variable: `ISSUER_KEYSTORE_FILE`  
+Description: Location of the keystore from which to load key-pairs and certificates. Uses Spring Resource URL syntax.       
+Default value: N/A
+
+Variable: `ISSUER_KEYSTORE_TYPE`  
+Description: Type of the keystore from which to load key-pairs and certificates.       
+Default value: N/A
+
+Variable: `ISSUER_KEYSTORE_PASSWORD`  
+Description: Password of the keystore from which to load key-pairs and certificates.   
+Default value: N/A
+
 Variable: `ISSUER_PID_MSO_MDOC_ENABLED`  
 Description: Whether to enable support for PID issuance in *MSO MDOC* format  
 Default value: `true`
@@ -172,18 +184,6 @@ Variable: `ISSUER_PID_MSO_MDOC_SIGNING_KEY`
 Description: Whether to generate a new, or use an existing key-pair for signing MSO MDOC PIDs.    
 Possible values: `GenerateRandom`, `LoadFromKeystore`  
 Default value: `GenerateRandom`
-
-Variable: `ISSUER_PID_MSO_MDOC_SIGNING_KEY_KEYSTORE`  
-Description: Location of the keystore from which to load the key-pair for signing MSO MDOC PIDs. Uses Spring Resource URL syntax.       
-Default value: N/A
-
-Variable: `ISSUER_PID_MSO_MDOC_SIGNING_KEY_KEYSTORE_TYPE`  
-Description: Type of the keystore from which to load the key-pair for signing MSO MDOC PIDs.       
-Default value: N/A
-
-Variable: `ISSUER_PID_MSO_MDOC_SIGNING_KEY_KEYSTORE_PASSWORD`  
-Description: Password of the keystore from which to load the key-pair for signing MSO MDOC PIDs.       
-Default value: N/A
 
 Variable: `ISSUER_PID_MSO_MDOC_SIGNING_KEY_ALIAS`  
 Description: Alias of the key-pair for signing MSO MDOC PIDs.       
@@ -225,18 +225,6 @@ Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY`
 Description: Whether to generate a new, or use an existing key-pair for signing SD JWT VC PIDs.    
 Possible values: `GenerateRandom`, `LoadFromKeystore`  
 Default value: `GenerateRandom`
-
-Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY_KEYSTORE`  
-Description: Location of the keystore from which to load the key-pair for signing SD JWT VC PIDs. Uses Spring Resource URL syntax.       
-Default value: N/A
-
-Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY_KEYSTORE_TYPE`  
-Description: Type of the keystore from which to load the key-pair for signing SD JWT VC PIDs.       
-Default value: N/A
-
-Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY_KEYSTORE_PASSWORD`  
-Description: Password of the keystore from which to load the key-pair for signing SD JWT VC PIDs.       
-Default value: N/A
 
 Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY_ALIAS`  
 Description: Alias of the key-pair for signing SD JWT VC PIDs.       
@@ -296,18 +284,6 @@ Description: Whether to generate a new, or use an existing key-pair for signing 
 Possible values: `GenerateRandom`, `LoadFromKeystore`  
 Default value: `GenerateRandom`
 
-Variable: `ISSUER_MDL_SIGNING_KEY_KEYSTORE`  
-Description: Location of the keystore from which to load the key-pair for signing mDLs. Uses Spring Resource URL syntax.       
-Default value: N/A
-
-Variable: `ISSUER_MDL_SIGNING_KEY_KEYSTORE_TYPE`  
-Description: Type of the keystore from which to load the key-pair for signing mDLs.       
-Default value: N/A
-
-Variable: `ISSUER_MDL_SIGNING_KEY_KEYSTORE_PASSWORD`  
-Description: Password of the keystore from which to load the key-pair for signing mDLs.       
-Default value: N/A
-
 Variable: `ISSUER_MDL_SIGNING_KEY_ALIAS`  
 Description: Alias of the key-pair for signing mDLs.       
 Default value: N/A
@@ -349,18 +325,6 @@ Variable: `ISSUER_EHIC_SIGNING_KEY`
 Description: Whether to generate a new, or use an existing key-pair for signing EHICs.    
 Possible values: `GenerateRandom`, `LoadFromKeystore`  
 Default value: `GenerateRandom`
-
-Variable: `ISSUER_EHIC_SIGNING_KEY_KEYSTORE`  
-Description: Location of the keystore from which to load the key-pair for signing EHICs. Uses Spring Resource URL syntax.       
-Default value: N/A
-
-Variable: `ISSUER_EHIC_SIGNING_KEY_KEYSTORE_TYPE`  
-Description: Type of the keystore from which to load the key-pair for signing EHICs.       
-Default value: N/A
-
-Variable: `ISSUER_EHIC_SIGNING_KEY_KEYSTORE_PASSWORD`  
-Description: Password of the keystore from which to load the key-pair for signing EHICs.       
-Default value: N/A
 
 Variable: `ISSUER_EHIC_SIGNING_KEY_ALIAS`  
 Description: Alias of the key-pair for signing EHICs.       
@@ -411,18 +375,6 @@ Variable: `ISSUER_LEARNINGCREDENTIAL_SIGNING_KEY`
 Description: Whether to generate a new, or use an existing key-pair for signing Learning Credentials.    
 Possible values: `GenerateRandom`, `LoadFromKeystore`  
 Default value: `GenerateRandom`
-
-Variable: `ISSUER_LEARNINGCREDENTIAL_SIGNING_KEY_KEYSTORE`  
-Description: Location of the keystore from which to load the key-pair for signing Learning Credentials. Uses Spring Resource URL syntax.       
-Default value: N/A
-
-Variable: `ISSUER_LEARNINGCREDENTIAL_SIGNING_KEY_KEYSTORE_TYPE`  
-Description: Type of the keystore from which to load the key-pair for signing Learning Credentials.       
-Default value: N/A
-
-Variable: `ISSUER_LEARNINGCREDENTIAL_SIGNING_KEY_KEYSTORE_PASSWORD`  
-Description: Password of the keystore from which to load the key-pair for signing Learning Credentials.       
-Default value: N/A
 
 Variable: `ISSUER_LEARNINGCREDENTIAL_SIGNING_KEY_ALIAS`  
 Description: Alias of the key-pair for signing Learning Credentials.       
@@ -477,18 +429,6 @@ Variable: `ISSUER_METADATA_SIGNED_METADATA_SIGNING_KEY`
 Description: Whether to generate a new, or use an existing key-pair for signing metadata.    
 Possible values: `GenerateRandom`, `LoadFromKeystore`  
 Default value: `GenerateRandom`
-
-Variable: `ISSUER_METADATA_SIGNED_METADATA_SIGNING_KEY_KEYSTORE`  
-Description: Location of the keystore from which to load the key-pair for signing metadata. Uses Spring Resource URL syntax.       
-Default value: N/A
-
-Variable: `ISSUER_METADATA_SIGNED_METADATA_SIGNING_KEY_KEYSTORE_TYPE`  
-Description: Type of the keystore from which to load the key-pair for signing metadata.       
-Default value: N/A
-
-Variable: `ISSUER_METADATA_SIGNED_METADATA_SIGNING_KEY_KEYSTORE_PASSWORD`  
-Description: Password of the keystore from which to load the key-pair for signing metadata.       
-Default value: N/A
 
 Variable: `ISSUER_METADATA_SIGNED_METADATA_SIGNING_KEY_ALIAS`  
 Description: Alias of the key-pair for signing metadata.       
@@ -584,18 +524,6 @@ Description: Whether to generate a new, or use an existing key-pair for credenti
 Possible values: `GenerateRandom`, `LoadFromKeystore`  
 Default value: `GenerateRandom`
 
-Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_KEYSTORE`   
-Description: Location of the keystore from which to load the key-pair for credential request encryption. Uses Spring Resource URL syntax.  
-Default value: N/A
-
-Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_KEYSTORE_TYPE`   
-Description: Type of the keystore from which to load the key-pair for credential request encryption.  
-Default value: N/A
-
-Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_KEYSTORE_PASSWORD`   
-Description: Password of the keystore from which to load the key-pair for credential request encryption.  
-Default value: N/A  
-
 Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_ALIAS`  
 Description: Alias of the key-pair for credential request encryption.    
 Default value: N/A  
@@ -612,18 +540,6 @@ Variable: `ISSUER_NONCE_ENCRYPTION_KEY`
 Description: Whether to generate a new, or use an existing EC key-pair for nonce encryption.      
 Possible values: `GenerateRandom`, `LoadFromKeystore`    
 Default value: `GenerateRandom`
-
-Variable: `ISSUER_NONCE_ENCRYPTION_KEY_KEYSTORE`  
-Description: Location of the keystore from which to load the EC key-pair for nonce encryption. Uses Spring Resource URL syntax.  
-Default value: N/A
-
-Variable: `ISSUER_NONCE_ENCRYPTION_KEY_KEYSTORE_TYPE`  
-Description: Type of the keystore from which to load the EC key-pair for nonce encryption.  
-Default value: N/A
-
-Variable: `ISSUER_NONCE_ENCRYPTION_KEY_KEYSTORE_PASSWORD`  
-Description: Password of the keystore from which to load the EC key-pair for nonce encryption.  
-Default value: N/A
 
 Variable: `ISSUER_NONCE_ENCRYPTION_KEY_ALIAS`  
 Description: Alias of the EC key-pair for nonce encryption.  
