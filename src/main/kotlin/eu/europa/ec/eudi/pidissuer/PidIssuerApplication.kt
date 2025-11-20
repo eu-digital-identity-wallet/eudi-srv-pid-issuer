@@ -605,6 +605,7 @@ fun beans(clock: Clock) = beans {
                 }
 
                 if (enableLearningCredential) {
+                    val issuerSigningKey = getIssuerSigningKey("issuer.learningCredential.signing-key")
                     val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
                         "issuer.learningCredential.jwtProofs.supportedSigningAlgorithms",
                         JWSAlgorithm::parse,
@@ -618,7 +619,7 @@ fun beans(clock: Clock) = beans {
                     val notificationsEnabled = env.getProperty<Boolean>("issuer.learningCredential.notifications.enabled") ?: true
 
                     val sdJwtVcCompactIssuer = IssueLearningCredential.sdJwtVcCompact(
-                        ref<IssuerSigningKey>(),
+                        issuerSigningKey,
                         jwtProofsSupportedSigningAlgorithms,
                         keyAttestationRequirement,
                         ref(),
