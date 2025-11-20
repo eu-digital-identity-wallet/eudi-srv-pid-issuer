@@ -407,6 +407,31 @@ Variable: `ISSUER_LEARNINGCREDENTIAL_ENABLED`
 Description: Whether to enabled support for issuing Learning Credentials.    
 Default value: `true`  
 
+Variable: `ISSUER_LEARNINGCREDENTIAL_SIGNING_KEY`  
+Description: Whether to generate a new, or use an existing key-pair for signing Learning Credentials.    
+Possible values: `GenerateRandom`, `LoadFromKeystore`  
+Default value: `GenerateRandom`
+
+Variable: `ISSUER_LEARNINGCREDENTIAL_SIGNING_KEY_KEYSTORE`  
+Description: Location of the keystore from which to load the key-pair for signing Learning Credentials. Uses Spring Resource URL syntax.       
+Default value: N/A
+
+Variable: `ISSUER_LEARNINGCREDENTIAL_SIGNING_KEY_KEYSTORE_TYPE`  
+Description: Type of the keystore from which to load the key-pair for signing Learning Credentials.       
+Default value: N/A
+
+Variable: `ISSUER_LEARNINGCREDENTIAL_SIGNING_KEY_KEYSTORE_PASSWORD`  
+Description: Password of the keystore from which to load the key-pair for signing Learning Credentials.       
+Default value: N/A
+
+Variable: `ISSUER_LEARNINGCREDENTIAL_SIGNING_KEY_ALIAS`  
+Description: Alias of the key-pair for signing Learning Credentials.       
+Default value: N/A
+
+Variable: `ISSUER_LEARNINGCREDENTIAL_SIGNING_KEY_PASSWORD`  
+Description: Password of the key-pair for signing Learning Credentials.       
+Default value: N/A
+
 Variable: `ISSUER_LEARNINGCREDENTIAL_SDJWTVC_ENCODER_DIGESTS_HASHALGORITHM`  
 Description: Hash algorithm used to calculate the disclosure digests of Learning Credentials issued in *SD-JWT VC* format.    
 Allowed values: `sha-256`, `sha-384`, `sha-512`, `sha3-256`, `sha3-384`, `sha3-512`   
