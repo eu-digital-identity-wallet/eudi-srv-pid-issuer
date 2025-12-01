@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 import com.nimbusds.jose.jwk.JWKSet
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
+import eu.europa.ec.eudi.pidissuer.port.input.GetProtectedResourceMetadata
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
 import eu.europa.ec.eudi.sdjwt.vc.Vct
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +37,7 @@ class MetaDataApi(
     private val getCredentialIssuerMetaData: GetCredentialIssuerMetaData,
     private val credentialIssuerMetaData: CredentialIssuerMetaData,
     private val typeMetadata: Map<Vct, Resource>,
+    private val getProtectedResourceMetadata: GetProtectedResourceMetadata,
 ) {
 
     val route = coRouter {
@@ -52,6 +54,9 @@ class MetaDataApi(
             handleGetJwtVcIssuerJwks()
         }
         GET(TYPE_METADATA, accept(MediaType.APPLICATION_JSON), ::handleGetSdJwtVcTypeMetadata)
+        GET(WELL_KNOWN_PROTECTED_RESOURCE_METADATA, accept(MediaType.APPLICATION_JSON)) {
+            handleGetProtectedResourceMetadata()
+        }
     }
 
     private suspend fun handleGetUnsignedCredentialIssuerMetaData(): ServerResponse =
@@ -93,11 +98,18 @@ class MetaDataApi(
             ?: ServerResponse.notFound().buildAndAwait()
     }
 
+    private suspend fun handleGetProtectedResourceMetadata(): ServerResponse =
+        ServerResponse
+            .ok()
+            .json()
+            .bodyValueAndAwait(getProtectedResourceMetadata.unsigned())
+
     companion object {
         const val WELL_KNOWN_OPENID_CREDENTIAL_ISSUER = "/.well-known/openid-credential-issuer"
         const val WELL_KNOWN_JWT_VC_ISSUER = "/.well-known/jwt-vc-issuer"
         const val PUBLIC_KEYS = "/public_keys.jwks"
         const val TYPE_METADATA = "/type-metadata/{vct}"
+        const val WELL_KNOWN_PROTECTED_RESOURCE_METADATA = "/.well-known/oauth-protected-resource"
     }
 }
 

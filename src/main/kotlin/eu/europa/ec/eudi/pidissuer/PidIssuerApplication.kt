@@ -680,6 +680,14 @@ fun beans(clock: Clock) = beans {
     bean {
         CreateCredentialsOffer(ref(), credentialsOfferUri)
     }
+    bean {
+        GetProtectedResourceMetadata(
+            ref(),
+            ref(),
+            issuerPublicUrl.appendPath(MetaDataApi.PUBLIC_KEYS),
+            ref(),
+        )
+    }
 
     //
     // Routes
@@ -688,7 +696,7 @@ fun beans(clock: Clock) = beans {
         val typeMetadata = ref<SdJwtVcProperties>().typeMetadata
             .associateBy { Vct(it.vct) }
             .mapValues { it.value.resource }
-        val metaDataApi = MetaDataApi(ref(), ref(), typeMetadata)
+        val metaDataApi = MetaDataApi(ref(), ref(), typeMetadata, ref())
         val walletApi = WalletApi(ref(), ref(), ref(), ref(), ref())
         val issuerUi = IssuerUi(credentialsOfferUri, ref(), ref(), ref())
         val issuerApi = IssuerApi(ref())
@@ -767,6 +775,7 @@ fun beans(clock: Clock) = beans {
                 authorize(MetaDataApi.WELL_KNOWN_JWT_VC_ISSUER, permitAll)
                 authorize(MetaDataApi.PUBLIC_KEYS, permitAll)
                 authorize(MetaDataApi.TYPE_METADATA, permitAll)
+                authorize(MetaDataApi.WELL_KNOWN_PROTECTED_RESOURCE_METADATA, permitAll)
                 authorize(IssuerUi.GENERATE_CREDENTIALS_OFFER, permitAll)
                 authorize(IssuerApi.CREATE_CREDENTIALS_OFFER, permitAll)
                 authorize("", permitAll)
