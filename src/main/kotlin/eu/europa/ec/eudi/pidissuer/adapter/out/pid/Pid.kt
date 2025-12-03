@@ -81,7 +81,7 @@ data class PlaceOfBirth(
  * @param givenName Current first name(s), including middle name(s), of the PID User.
  * @param birthDate Day, month, and year on which the PID User was born.
  * If unknown, approximate date of birth.
- * @param birthPlace The country as an alpha-2 country code as specified in ISO 3166-1,
+ * @param placeOfBirth The country as an alpha-2 country code as specified in ISO 3166-1,
  * or the state, province, district, or local area or the municipality, city, town,
  * or village where the user to whom the PID User was born.
  * @param nationalities One or more alpha-2 country codes as specified in ISO 3166-1,
@@ -112,7 +112,7 @@ data class Pid(
     val familyName: FamilyName,
     val givenName: GivenName,
     val birthDate: LocalDate,
-    val birthPlace: PlaceOfBirth? = null,
+    val placeOfBirth: PlaceOfBirth? = null,
     val nationalities: NonEmptyList<Nationality>,
     val residentAddress: Address? = null,
     val residentCountry: IsoCountry? = null,

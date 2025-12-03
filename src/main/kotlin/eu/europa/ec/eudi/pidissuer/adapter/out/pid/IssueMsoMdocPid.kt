@@ -104,11 +104,11 @@ internal object MsoMdocPidClaims {
         mandatory = true,
         display = mapOf(ENGLISH to "Issuance Authority"),
     )
-    val BirthPlace = ClaimDefinition(
+    val PlaceOfBirth = ClaimDefinition(
         PidMsoMdocNamespace,
-        "birth_place",
+        "place_of_birth",
         mandatory = true,
-        display = mapOf(ENGLISH to "Birth Place"),
+        display = mapOf(ENGLISH to "Place of Birth"),
     )
     val ResidenceAddress = ClaimDefinition(
         PidMsoMdocNamespace,
@@ -207,7 +207,7 @@ internal object MsoMdocPidClaims {
         FamilyName,
         GivenName,
         BirthDate,
-        BirthPlace,
+        PlaceOfBirth,
         Nationality,
         ResidenceAddress,
         ResidenceCountry,

@@ -152,7 +152,7 @@ private fun selectivelyDisclosed(
         sdClaim(SdJwtVcPidClaims.FamilyName.name, pid.familyName.value)
         sdClaim(SdJwtVcPidClaims.GivenName.name, pid.givenName.value)
         sdClaim(SdJwtVcPidClaims.BirthDate.name, pid.birthDate.toString())
-        pid.birthPlace?.let { birthPlace ->
+        pid.placeOfBirth?.let { birthPlace ->
             sdObjClaim(SdJwtVcPidClaims.PlaceOfBirth.attribute.name) {
                 birthPlace.country?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Country.name, it.value) }
                 birthPlace.region?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Region.name, it.value) }
