@@ -200,7 +200,7 @@ data class PidMetaData(
     val issuingJurisdiction: IsoCountrySubdivision? = null,
     val issuanceDate: LocalDate? = null,
     val trustAnchor: URI? = null,
-    val attestationLegalCategory: AttestationLegalCategory? = "PID",
+    val attestationLegalCategory: AttestationLegalCategory? = null,
 ) {
     init {
         issuanceDate?.let {

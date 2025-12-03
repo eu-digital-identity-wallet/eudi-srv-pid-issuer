@@ -226,6 +226,7 @@ class GetPidDataFromKeyCloak(
             issuingJurisdiction = issuingJurisdiction,
             issuanceDate = issuanceDate,
             trustAnchor = null,
+            attestationLegalCategory = null,
         )
     }
 
