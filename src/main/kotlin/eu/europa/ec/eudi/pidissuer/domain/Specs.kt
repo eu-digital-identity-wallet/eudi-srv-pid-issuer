@@ -40,8 +40,6 @@ object RFC9728 {
     const val JWKS_URI: String = "jwks_uri"
     const val SCOPES_SUPPORTED: String = "scopes_supported"
     const val BEARER_METHODS_SUPPORTED: String = "bearer_methods_supported"
-    const val RESOURCE_SIGNING_ALGORITHMS_SUPPORTED: String = "resource_signing_alg_values_supported"
-    const val AUTHORIZATION_DETAILS_TYPES_SUPPORTED: String = "authorization_details_types_supported"
     const val DPOP_SIGNING_ALGORITHMS_SUPPORTED: String = "dpop_signing_alg_values_supported"
     const val DPOP_BOUND_ACCESS_TOKEN_REQUIRED: String = "dpop_bound_access_tokens_required"
 

@@ -16,8 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPConfigurationProperties
-import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import eu.europa.ec.eudi.pidissuer.domain.RFC9728
@@ -44,8 +42,6 @@ data class ProtectedResourceMetadataTO(
     @SerialName(RFC9728.JWKS_URI) val jwksUri: String? = null,
     @SerialName(RFC9728.SCOPES_SUPPORTED) val scopesSupported: List<String>? = null,
     @SerialName(RFC9728.BEARER_METHODS_SUPPORTED) val bearerMethodsSupported: List<BearerMethodTO>? = null,
-    @SerialName(RFC9728.RESOURCE_SIGNING_ALGORITHMS_SUPPORTED) val resourceSigningAlgorithmsSupported: List<String>? = null,
-    @SerialName(RFC9728.AUTHORIZATION_DETAILS_TYPES_SUPPORTED) val authorizationDetailsTypesSupported: List<String>? = null,
     @SerialName(RFC9728.DPOP_SIGNING_ALGORITHMS_SUPPORTED) val dpopSigningAlgorithmsSupported: List<String>? = null,
     @SerialName(RFC9728.DPOP_BOUND_ACCESS_TOKEN_REQUIRED) val dpopBoundAccessTokenRequired: Boolean? = null,
 
@@ -53,7 +49,6 @@ data class ProtectedResourceMetadataTO(
 
 class GetProtectedResourceMetadata(
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
-    private val signingKey: IssuerSigningKey,
     private val jwksUri: HttpsUrl,
     private val dPoPConfigurationProperties: DPoPConfigurationProperties,
 ) {
@@ -64,8 +59,6 @@ class GetProtectedResourceMetadata(
             jwksUri = jwksUri.externalForm,
             scopesSupported = credentialIssuerMetadata.specificCredentialIssuers.map { it.supportedCredential.scope.value }.distinct(),
             bearerMethodsSupported = listOf(BearerMethodTO.HEADER),
-            resourceSigningAlgorithmsSupported = listOf(signingKey.signingAlgorithm.name),
-            authorizationDetailsTypesSupported = emptyList(),
             dpopSigningAlgorithmsSupported = dPoPConfigurationProperties.algorithms.map { it.name }.distinct().takeIf { it.isNotEmpty() },
             dpopBoundAccessTokenRequired = false,
         )

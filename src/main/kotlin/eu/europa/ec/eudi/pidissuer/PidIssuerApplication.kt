@@ -683,7 +683,6 @@ fun beans(clock: Clock) = beans {
     bean {
         GetProtectedResourceMetadata(
             ref(),
-            ref(),
             issuerPublicUrl.appendPath(MetaDataApi.PUBLIC_KEYS),
             ref(),
         )
