@@ -433,6 +433,18 @@
         }
       ],
       "sd": "always"
+    },
+    {
+      "path": [
+        "attestation_legal_category"
+      ],
+      "display": [
+        {
+          "lang": "en",
+          "label": "Attestation Legal Category"
+        }
+      ],
+      "sd": "always"
     }
   ]
 }
