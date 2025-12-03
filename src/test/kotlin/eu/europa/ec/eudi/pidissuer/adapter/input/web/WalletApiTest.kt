@@ -143,7 +143,7 @@ internal class BaseWalletApiTest {
                     familyName = FamilyName("Surname"),
                     givenName = GivenName("Firstname"),
                     birthDate = LocalDate(1989, Month.AUGUST, 22),
-                    birthPlace = PlaceOfBirth(
+                    placeOfBirth = PlaceOfBirth(
                         country = IsoCountry("GR"),
                         region = State("Attica"),
                         locality = City("Athens"),

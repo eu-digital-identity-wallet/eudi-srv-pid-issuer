@@ -152,7 +152,7 @@ private fun selectivelyDisclosed(
         sdClaim(SdJwtVcPidClaims.FamilyName.name, pid.familyName.value)
         sdClaim(SdJwtVcPidClaims.GivenName.name, pid.givenName.value)
         sdClaim(SdJwtVcPidClaims.BirthDate.name, pid.birthDate.toString())
-        pid.birthPlace?.let { birthPlace ->
+        pid.placeOfBirth?.let { birthPlace ->
             sdObjClaim(SdJwtVcPidClaims.PlaceOfBirth.attribute.name) {
                 birthPlace.country?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Country.name, it.value) }
                 birthPlace.region?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Region.name, it.value) }
@@ -195,6 +195,7 @@ private fun selectivelyDisclosed(
         pidMetaData.documentNumber?.let { sdClaim(SdJwtVcPidClaims.DocumentNumber.name, it.value) }
         pidMetaData.issuingJurisdiction?.let { sdClaim(SdJwtVcPidClaims.IssuingJurisdiction.name, it) }
         pidMetaData.issuanceDate?.let { sdClaim(SdJwtVcPidClaims.DateOfIssuance.name, it.toString()) }
+        pidMetaData.attestationLegalCategory?.let { sdClaim(SdJwtVcPidClaims.AttestationLegalCategory.name, it) }
     }
 
 private fun Pid.oidcAddressClaim(): OidcAddressClaim? =

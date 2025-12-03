@@ -20,6 +20,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.MsoMdocSigner
 import eu.europa.ec.eudi.pidissuer.domain.ClaimDefinition
 import id.walt.mdoc.dataelement.DataElement
+import id.walt.mdoc.dataelement.MapKey
 import id.walt.mdoc.dataelement.toDataElement
 import id.walt.mdoc.doc.MDocBuilder
 import kotlin.time.Instant
@@ -47,12 +48,18 @@ private fun MDocBuilder.addItemsToSign(pid: Pid) {
     addItemToSign(MsoMdocPidClaims.FamilyName, pid.familyName.value.toDataElement())
     addItemToSign(MsoMdocPidClaims.GivenName, pid.givenName.value.toDataElement())
     addItemToSign(MsoMdocPidClaims.BirthDate, pid.birthDate.toDataElement())
-    val birthPlace = pid.birthPlace?.let { birthPlace ->
-        listOfNotNull(birthPlace.locality?.value, birthPlace.region?.value, birthPlace.country?.value)
-            .joinToString(separator = ", ")
-            .takeIf { it.isNotBlank() }
-    } ?: "Not known"
-    addItemToSign(MsoMdocPidClaims.BirthPlace, birthPlace.toDataElement())
+    val placeOfBirth =
+        if (null != pid.placeOfBirth)
+            buildMap {
+                pid.placeOfBirth.country?.let { put(MapKey("country"), it.value.toDataElement()) }
+                pid.placeOfBirth.region?.let { put(MapKey("region"), it.value.toDataElement()) }
+                pid.placeOfBirth.locality?.let { put(MapKey("locality"), it.value.toDataElement()) }
+            }.toDataElement()
+        else
+            buildMap {
+                put(MapKey("locality"), "Not known".toDataElement())
+            }.toDataElement()
+    addItemToSign(MsoMdocPidClaims.PlaceOfBirth, placeOfBirth)
     addItemToSign(MsoMdocPidClaims.Nationality, pid.nationalities.map { it.value.toDataElement() }.toDataElement())
     pid.residentAddress?.let { addItemToSign(MsoMdocPidClaims.ResidenceAddress, it.toDataElement()) }
     pid.residentCountry?.let { addItemToSign(MsoMdocPidClaims.ResidenceCountry, it.value.toDataElement()) }
@@ -88,6 +95,7 @@ private fun MDocBuilder.addItemsToSign(metaData: PidMetaData) {
     metaData.documentNumber?.let { addItemToSign(MsoMdocPidClaims.DocumentNumber, it.value.toDataElement()) }
     metaData.issuingJurisdiction?.let { addItemToSign(MsoMdocPidClaims.IssuingJurisdiction, it.toDataElement()) }
     metaData.issuanceDate?.let { addItemToSign(MsoMdocPidClaims.IssuanceDate, it.toDataElement()) }
+    metaData.attestationLegalCategory?.let { addItemToSign(MsoMdocPidClaims.AttestationLegalCategory, it.toDataElement()) }
 }
 
 private fun MDocBuilder.addItemToSign(claim: ClaimDefinition, value: DataElement) {

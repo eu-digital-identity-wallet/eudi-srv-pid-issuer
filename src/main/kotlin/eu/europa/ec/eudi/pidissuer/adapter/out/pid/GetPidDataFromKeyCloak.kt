@@ -113,7 +113,7 @@ class GetPidDataFromKeyCloak(
             }
         }
 
-        fun UserRepresentation.birthPlace(): OidcAssurancePlaceOfBirth? {
+        fun UserRepresentation.placeOfBirth(): OidcAssurancePlaceOfBirth? {
             val birthPlace = attributes["birth_place"]?.firstOrNull()
             val birthCountry = attributes["birth_country"]?.firstOrNull()
             val birthState = attributes["birth_state"]?.firstOrNull()
@@ -141,7 +141,7 @@ class GetPidDataFromKeyCloak(
                     birthDate = user.attributes["birthdate"]?.firstOrNull(),
                     gender = user.attributes["gender"]?.firstOrNull()?.toUInt(),
                     genderAsString = user.attributes["gender_as_string"]?.firstOrNull(),
-                    placeOfBirth = user.birthPlace(),
+                    placeOfBirth = user.placeOfBirth(),
                     picture = null,
                     nationality = user.attributes["nationality"]?.firstOrNull(),
                 )
@@ -226,6 +226,7 @@ class GetPidDataFromKeyCloak(
             issuingJurisdiction = issuingJurisdiction,
             issuanceDate = issuanceDate,
             trustAnchor = null,
+            attestationLegalCategory = null,
         )
     }
 
@@ -248,7 +249,7 @@ class GetPidDataFromKeyCloak(
             familyName = FamilyName(userInfo.familyName),
             givenName = GivenName(userInfo.givenName),
             birthDate = birthDate,
-            birthPlace = birthPlace,
+            placeOfBirth = birthPlace,
             nationalities = nonEmptyListOf(nationality),
             residentAddress = userInfo.address?.formatted,
             residentCountry = userInfo.address?.country?.let { IsoCountry(it) },

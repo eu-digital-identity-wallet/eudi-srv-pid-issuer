@@ -81,7 +81,7 @@ data class PlaceOfBirth(
  * @param givenName Current first name(s), including middle name(s), of the PID User.
  * @param birthDate Day, month, and year on which the PID User was born.
  * If unknown, approximate date of birth.
- * @param birthPlace The country as an alpha-2 country code as specified in ISO 3166-1,
+ * @param placeOfBirth The country as an alpha-2 country code as specified in ISO 3166-1,
  * or the state, province, district, or local area or the municipality, city, town,
  * or village where the user to whom the PID User was born.
  * @param nationalities One or more alpha-2 country codes as specified in ISO 3166-1,
@@ -112,7 +112,7 @@ data class Pid(
     val familyName: FamilyName,
     val givenName: GivenName,
     val birthDate: LocalDate,
-    val birthPlace: PlaceOfBirth? = null,
+    val placeOfBirth: PlaceOfBirth? = null,
     val nationalities: NonEmptyList<Nationality>,
     val residentAddress: Address? = null,
     val residentCountry: IsoCountry? = null,
@@ -168,6 +168,15 @@ sealed interface PortraitImage {
 typealias IsoCountrySubdivision = String
 
 /**
+ * Indication that a PID has indeed been issued as a PID. Note: According to Annex V point a) and Annex VII point
+ * a) of the [European Digital Identity Regulation] an indication, at least in a form suitable for automated processing,
+ * that the attestation has been issued as a QEAA or Pub-EAA SHALL be defined. PID Rulebook adds this as an optional
+ * attribute for PIDs as well, so PID Providers are able to ensure that PIDs can be validated by Relying Parties in
+ * the same manner as QEAAs.
+ */
+typealias AttestationLegalCategory = String
+
+/**
  * @param personalAdministrativeNumber A number assigned by the PID Provider for audit control or other purposes.
  * @param expiryDate Date (and possibly time) when the PID will expire.
  * @param issuingAuthority Name of the administrative authority that has issued this PID instance,
@@ -180,6 +189,7 @@ typealias IsoCountrySubdivision = String
  * @param issuanceDate Date (and possibly time) when the PID was issued.
  * @param trustAnchor This attribute indicates at least the URL at which a machine-readable version of the trust
  * anchor to be used for verifying the PID can be found or looked up
+ * @param attestationLegalCategory This attribute indicates that a PID has indeed been issued as a PID.
  */
 data class PidMetaData(
     val personalAdministrativeNumber: AdministrativeNumber? = null,
@@ -190,6 +200,7 @@ data class PidMetaData(
     val issuingJurisdiction: IsoCountrySubdivision? = null,
     val issuanceDate: LocalDate? = null,
     val trustAnchor: URI? = null,
+    val attestationLegalCategory: AttestationLegalCategory? = null,
 ) {
     init {
         issuanceDate?.let {
