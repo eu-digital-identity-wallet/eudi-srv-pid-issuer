@@ -656,8 +656,6 @@ pid-issuer supports [RFC9728: Protected Resource Metadata](https://www.rfc-edito
 * `jwks_uri`: URL where the signing keys used by pid-issuer can be retrieved from
 * `scopes_supported`: OAuth 2.0 client scopes supported by pid-issuer
 * `bearer_methods_supported`: Methods supported by pid-issuer for sending an OAuth 2.0 Bearer Access Token
-* `resource_signing_alg_values_supported` JWS Algorithms used by pid-issuer to sign issued Credentials
-* `authorization_details_types_supported`: Authorization Details types supported by pid-issuer
 * `dpop_signing_alg_values_supported`: DPoP Access Token JWS Algorithms supported by pid-issuer
 * `dpop_bound_access_tokens_required`: Whether pid-issuer requires DPoP Access Tokens
 
