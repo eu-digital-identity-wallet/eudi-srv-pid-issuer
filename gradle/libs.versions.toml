@@ -27,6 +27,7 @@ kotlinx-datetime = "0.7.1-0.6.x-compat"
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 arrow-core = { module = "io.arrow-kt:arrow-core", version.ref = "arrow" }
+arrow-core-serialization = { module = "io.arrow-kt:arrow-core-serialization", version.ref = "arrow" }
 arrow-fx-coroutines = { module = "io.arrow-kt:arrow-fx-coroutines", version.ref = "arrow" }
 nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbusJoseJwt" }
 nimbus-oauth2 = { module = "com.nimbusds:oauth2-oidc-sdk", version.ref = "nimbusOAuth2" }

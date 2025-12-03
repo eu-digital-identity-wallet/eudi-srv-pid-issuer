@@ -10,6 +10,7 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 * [How to use docker](#how-to-use-docker)
 * [Configuration](#configuration)
 * [Endpoints](#endpoints)
+* [Protected Resource Metadata](#protected-resource-metadata)
 * [How to contribute](#how-to-contribute)
 * [License](#license)
 
@@ -624,6 +625,12 @@ the EC Key alias.
 curl http://localhost:8080/.well-known/openid-credential-issuer | jq .
 ```
 
+### Protected Resource Metadata
+
+```bash
+curl http://localhost:8080/.well-known/oauth-protected-resource | jq .
+```
+
 ### Credential Endpoint
 
 ### Credentials Offer
@@ -639,6 +646,33 @@ curl http://localhost:8080/issuer/credentialsOffer | jq .
 ```bash
 curl http://localhost:8080/type-metadata/urn:eudi:pid:1
 ```
+
+## Protected Resource Metadata
+
+pid-issuer supports [RFC9728: Protected Resource Metadata](https://www.rfc-editor.org/rfc/rfc9728.html), and provides the following metadata:
+
+* `resource`: The public URL of pid-issuer
+* `authorization_servers`: URLs of the Authorization Servers used by pid-issuer
+* `scopes_supported`: OAuth 2.0 client scopes supported by pid-issuer
+* `bearer_methods_supported`: Methods supported by pid-issuer for sending an OAuth 2.0 Bearer Access Token
+* `dpop_signing_alg_values_supported`: DPoP Access Token JWS Algorithms supported by pid-issuer
+* `dpop_bound_access_tokens_required`: Whether pid-issuer requires DPoP Access Tokens
+
+pid-issuer exposes Protected Resource Metadata at `/.well-known/oauth-protected-resource`. Per Section 3 of [RFC9728: Protected Resource Metadata](https://www.rfc-editor.org/rfc/rfc9728.html):
+
+> Protected resources supporting metadata MUST make a JSON document containing metadata as specified in Section 2 available
+> at a URL formed by inserting a well-known URI string into the protected resource's resource identifier between the host
+> component and the path and/or query components, if any. By default, the well-known URI string used is
+> /.well-known/oauth-protected-resource. The syntax and semantics of .well-known are defined in RFC8615.
+
+When pid-issuer is not deployed under the root path, a reverse proxy must be configured appropriately to rewrite the
+Protected Resource Metadata well-known URL to what pid-issuer exposes.
+
+For instance:
+
+Public URL of pid-issuer is: `https://example.com/pid-issuer`  
+Protected Resource Metadata URL is `https://example.com/.well-known/oauth-protected-resource/pid-issuer`  
+Reverse Proxy rewritten Protected Resource Metadata URL is: `https://example.com/pid-issuer/.well-known/oauth-protected-resource`
 
 ## How to contribute
 

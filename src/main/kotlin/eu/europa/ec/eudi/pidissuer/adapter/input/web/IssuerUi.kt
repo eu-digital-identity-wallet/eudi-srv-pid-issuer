@@ -130,6 +130,7 @@ class IssuerUi(
             )
 
         val credentialIssuerMetadata = credentialIssuer.wellKnown("openid-credential-issuer")
+        val protectedResourceMetadata = credentialIssuer.wellKnown("oauth-protected-resource")
         val authorizationServerMetadata = authorizationServer.wellKnown("oauth-authorization-server")
         val sdJwtVcIssuerMetadata = credentialIssuer.wellKnown("jwt-vc-issuer")
         val pidSdJwtVcTypeMetadata = credentialIssuer.appendPath("/type-metadata/urn:eudi:pid:1")
@@ -139,6 +140,7 @@ class IssuerUi(
 
         return mapOf(
             "credential_issuer_metadata" to credentialIssuerMetadata.externalForm,
+            "protected_resource_metadata" to protectedResourceMetadata.externalForm,
             "authorization_server_metadata" to authorizationServerMetadata.externalForm,
             "sdjwt_vc_issuer_metadata" to sdJwtVcIssuerMetadata.externalForm,
             "pid_sdjwt_vc_type_metadata" to pidSdJwtVcTypeMetadata.externalForm,
