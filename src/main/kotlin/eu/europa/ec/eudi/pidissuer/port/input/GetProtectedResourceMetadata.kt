@@ -23,7 +23,6 @@ import arrow.core.serialization.NonEmptyListSerializer
 import arrow.core.toNonEmptyListOrNull
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPConfigurationProperties
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
-import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import eu.europa.ec.eudi.pidissuer.domain.RFC9728
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -46,7 +45,6 @@ enum class BearerMethodTO {
 data class ProtectedResourceMetadataTO(
     @Required @SerialName(RFC9728.RESOURCE) val resource: String,
     @SerialName(RFC9728.AUTHORIZATION_SERVERS) val authorizationServers: NonEmptyList<String>? = null,
-    @SerialName(RFC9728.JWKS_URI) val jwksUri: String? = null,
     @SerialName(RFC9728.SCOPES_SUPPORTED) val scopesSupported: NonEmptyList<String>? = null,
     @SerialName(RFC9728.BEARER_METHODS_SUPPORTED) val bearerMethodsSupported: NonEmptyList<BearerMethodTO>? = null,
     @SerialName(RFC9728.DPOP_SIGNING_ALGORITHMS_SUPPORTED) val dpopSigningAlgorithmsSupported: NonEmptyList<String>? = null,
@@ -56,14 +54,12 @@ data class ProtectedResourceMetadataTO(
 
 class GetProtectedResourceMetadata(
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
-    private val jwksUri: HttpsUrl,
     private val dPoPConfigurationProperties: DPoPConfigurationProperties,
 ) {
     fun unsigned(): ProtectedResourceMetadataTO =
         ProtectedResourceMetadataTO(
             resource = credentialIssuerMetadata.id.externalForm,
             authorizationServers = credentialIssuerMetadata.authorizationServers.map { it.externalForm }.toNonEmptyListOrNull(),
-            jwksUri = jwksUri.externalForm,
             scopesSupported = credentialIssuerMetadata.specificCredentialIssuers.map {
                 it.supportedCredential.scope.value
             }.distinct().toNonEmptyListOrNull(),

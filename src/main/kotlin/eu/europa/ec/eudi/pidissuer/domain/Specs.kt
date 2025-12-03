@@ -37,7 +37,6 @@ internal object OpenId4VciSpec {
 object RFC9728 {
     const val RESOURCE: String = "resource"
     const val AUTHORIZATION_SERVERS: String = "authorization_servers"
-    const val JWKS_URI: String = "jwks_uri"
     const val SCOPES_SUPPORTED: String = "scopes_supported"
     const val BEARER_METHODS_SUPPORTED: String = "bearer_methods_supported"
     const val DPOP_SIGNING_ALGORITHMS_SUPPORTED: String = "dpop_signing_alg_values_supported"

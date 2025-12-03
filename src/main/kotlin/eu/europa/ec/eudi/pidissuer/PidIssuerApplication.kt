@@ -680,13 +680,7 @@ fun beans(clock: Clock) = beans {
     bean {
         CreateCredentialsOffer(ref(), credentialsOfferUri)
     }
-    bean {
-        GetProtectedResourceMetadata(
-            ref(),
-            issuerPublicUrl.appendPath(MetaDataApi.PUBLIC_KEYS),
-            ref(),
-        )
-    }
+    bean(::GetProtectedResourceMetadata)
 
     //
     // Routes
