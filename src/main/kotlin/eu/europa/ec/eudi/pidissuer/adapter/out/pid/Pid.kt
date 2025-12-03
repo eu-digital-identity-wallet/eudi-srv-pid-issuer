@@ -168,6 +168,15 @@ sealed interface PortraitImage {
 typealias IsoCountrySubdivision = String
 
 /**
+ * Indication that a PID has indeed been issued as a PID. Note: According to Annex V point a) and Annex VII point
+ * a) of the [European Digital Identity Regulation] an indication, at least in a form suitable for automated processing,
+ * that the attestation has been issued as a QEAA or Pub-EAA SHALL be defined. PID Rulebook adds this as an optional
+ * attribute for PIDs as well, so PID Providers are able to ensure that PIDs can be validated by Relying Parties in
+ * the same manner as QEAAs.
+ */
+typealias AttestationLegalCategory = String
+
+/**
  * @param personalAdministrativeNumber A number assigned by the PID Provider for audit control or other purposes.
  * @param expiryDate Date (and possibly time) when the PID will expire.
  * @param issuingAuthority Name of the administrative authority that has issued this PID instance,
@@ -180,6 +189,7 @@ typealias IsoCountrySubdivision = String
  * @param issuanceDate Date (and possibly time) when the PID was issued.
  * @param trustAnchor This attribute indicates at least the URL at which a machine-readable version of the trust
  * anchor to be used for verifying the PID can be found or looked up
+ * @param attestationLegalCategory This attribute indicates that a PID has indeed been issued as a PID.
  */
 data class PidMetaData(
     val personalAdministrativeNumber: AdministrativeNumber? = null,
@@ -190,6 +200,7 @@ data class PidMetaData(
     val issuingJurisdiction: IsoCountrySubdivision? = null,
     val issuanceDate: LocalDate? = null,
     val trustAnchor: URI? = null,
+    val attestationLegalCategory: AttestationLegalCategory? = "PID",
 ) {
     init {
         issuanceDate?.let {

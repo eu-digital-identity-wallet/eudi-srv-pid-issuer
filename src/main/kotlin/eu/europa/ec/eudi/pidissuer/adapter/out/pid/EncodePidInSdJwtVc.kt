@@ -195,6 +195,7 @@ private fun selectivelyDisclosed(
         pidMetaData.documentNumber?.let { sdClaim(SdJwtVcPidClaims.DocumentNumber.name, it.value) }
         pidMetaData.issuingJurisdiction?.let { sdClaim(SdJwtVcPidClaims.IssuingJurisdiction.name, it) }
         pidMetaData.issuanceDate?.let { sdClaim(SdJwtVcPidClaims.DateOfIssuance.name, it.toString()) }
+        pidMetaData.attestationLegalCategory?.let { sdClaim(SdJwtVcPidClaims.AttestationLegalCategory.name, it) }
     }
 
 private fun Pid.oidcAddressClaim(): OidcAddressClaim? =

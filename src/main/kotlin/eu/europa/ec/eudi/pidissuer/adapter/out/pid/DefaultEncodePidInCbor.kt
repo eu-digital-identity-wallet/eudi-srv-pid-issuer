@@ -95,6 +95,7 @@ private fun MDocBuilder.addItemsToSign(metaData: PidMetaData) {
     metaData.documentNumber?.let { addItemToSign(MsoMdocPidClaims.DocumentNumber, it.value.toDataElement()) }
     metaData.issuingJurisdiction?.let { addItemToSign(MsoMdocPidClaims.IssuingJurisdiction, it.toDataElement()) }
     metaData.issuanceDate?.let { addItemToSign(MsoMdocPidClaims.IssuanceDate, it.toDataElement()) }
+    metaData.attestationLegalCategory?.let { addItemToSign(MsoMdocPidClaims.AttestationLegalCategory, it.toDataElement()) }
 }
 
 private fun MDocBuilder.addItemToSign(claim: ClaimDefinition, value: DataElement) {

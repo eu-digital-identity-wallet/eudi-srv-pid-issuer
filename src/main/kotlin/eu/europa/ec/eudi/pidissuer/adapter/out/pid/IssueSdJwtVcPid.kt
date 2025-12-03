@@ -116,6 +116,13 @@ internal object SdJwtVcPidClaims {
             Locale.ENGLISH to "Trust Anchor",
         ),
     )
+    val AttestationLegalCategory = ClaimDefinition(
+        path = ClaimPath.claim("attestation_legal_category"),
+        mandatory = false,
+        display = mapOf(
+            Locale.ENGLISH to "Attestation Legal Category",
+        ),
+    )
 
     fun all(): List<ClaimDefinition> = listOf(
         FamilyName,
@@ -138,6 +145,7 @@ internal object SdJwtVcPidClaims {
         IssuingJurisdiction,
         DateOfIssuance,
         TrustAnchor,
+        AttestationLegalCategory,
     )
 }
 

@@ -202,6 +202,14 @@ internal object MsoMdocPidClaims {
             ENGLISH to "Trust Anchor",
         ),
     )
+    val AttestationLegalCategory = ClaimDefinition(
+        PidMsoMdocNamespace,
+        "attestation_legal_category",
+        mandatory = false,
+        display = mapOf(
+            ENGLISH to "Attestation Legal Category",
+        ),
+    )
 
     fun all(): List<ClaimDefinition> = listOf(
         FamilyName,
@@ -230,6 +238,7 @@ internal object MsoMdocPidClaims {
         IssuingJurisdiction,
         IssuanceDate,
         TrustAnchor,
+        AttestationLegalCategory,
     )
 }
 
