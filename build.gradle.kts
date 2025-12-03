@@ -42,6 +42,7 @@ dependencies {
     implementation(libs.arrow.core) {
         because("Functional programming support")
     }
+    implementation(libs.arrow.core.serialization)
     implementation(libs.arrow.fx.coroutines)
     implementation(libs.nimbus.jose.jwt)
     implementation(libs.eudi.sdjwt) {
