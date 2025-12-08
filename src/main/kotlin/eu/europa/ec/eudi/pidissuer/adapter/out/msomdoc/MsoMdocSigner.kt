@@ -24,7 +24,6 @@ import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.domain.TokenStatusListSpec
 import id.walt.mdoc.SimpleCOSECryptoProvider
 import id.walt.mdoc.cose.COSECryptoProvider
-import id.walt.mdoc.dataelement.AnyDataElement
 import id.walt.mdoc.dataelement.DataElement
 import id.walt.mdoc.dataelement.MapElement
 import id.walt.mdoc.dataelement.MapKey
@@ -91,12 +90,12 @@ private fun MDocBuilder.sign(
 ): MDoc {
     val mso = MSO.createFor(nameSpacesMap, deviceKeyInfo, docType, validityInfo)
         .let { mso ->
-            mso.toMapElement()
-                .apply {
-                    if (null != statusListToken) {
-                        this[MapKey(TokenStatusListSpec.STATUS)] = statusListToken.toMsoStatus()
-                    }
-                }
+            if (null != statusListToken) {
+                buildMap {
+                    mso.toMapElement().value.entries.forEach { put(it.key, it.value) }
+                    put(MapKey(TokenStatusListSpec.STATUS), statusListToken.toMsoStatus())
+                }.toDataElement()
+            } else mso.toMapElement()
         }
     val issuerAuth = cryptoProvider.sign1(mso.toEncodedCBORElement().toCBOR(), null, null, keyID)
     return build(issuerAuth)
@@ -117,11 +116,3 @@ private fun StatusListToken.toMsoStatus(): MapElement {
         put(MapKey(TokenStatusListSpec.STATUS_LIST), toDateElement())
     }.toDataElement()
 }
-
-/**
- * Adds a new or replaces an existing [DataElement] of this [MapElement], returns the updated [MapElement].
- */
-private operator fun MapElement.set(key: MapKey, newValue: AnyDataElement): MapElement =
-    value.toMutableMap()
-        .apply { this[key] = newValue }
-        .toDataElement()
