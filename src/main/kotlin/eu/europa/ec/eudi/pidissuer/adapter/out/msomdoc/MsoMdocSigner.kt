@@ -78,6 +78,7 @@ private fun deviceKeyInfo(deviceKey: ECKey): DeviceKeyInfo {
  * Build and sign the mdoc document
  * @param validityInfo Validity information of this issued document
  * @param deviceKeyInfo Info of device key, to which this document is bound (holder key)
+ * @param statusListToken Status List Token to include in the document
  * @param cryptoProvider COSE crypto provider impl to use for signing this document
  * @param keyID ID of the key to use for signing, if required by crypto provider
  */
