@@ -20,11 +20,19 @@ import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.cryptoProvider
 import eu.europa.ec.eudi.pidissuer.domain.MsoDocType
+import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
+import eu.europa.ec.eudi.pidissuer.domain.TokenStatusListSpec
 import id.walt.mdoc.SimpleCOSECryptoProvider
+import id.walt.mdoc.cose.COSECryptoProvider
+import id.walt.mdoc.dataelement.AnyDataElement
 import id.walt.mdoc.dataelement.DataElement
 import id.walt.mdoc.dataelement.MapElement
+import id.walt.mdoc.dataelement.MapKey
+import id.walt.mdoc.dataelement.toDataElement
+import id.walt.mdoc.doc.MDoc
 import id.walt.mdoc.doc.MDocBuilder
 import id.walt.mdoc.mso.DeviceKeyInfo
+import id.walt.mdoc.mso.MSO
 import id.walt.mdoc.mso.ValidityInfo
 import kotlinx.datetime.toDeprecatedInstant
 import kotlin.io.encoding.Base64
@@ -44,6 +52,7 @@ internal class MsoMdocSigner<in Credential>(
         deviceKey: ECKey,
         issuedAt: Instant,
         expiresAt: Instant,
+        statusListToken: StatusListToken?,
     ): String {
         require(expiresAt >= issuedAt) { "expiresAt must greater or equal to issuedAt" }
         val validityInfo = ValidityInfo(
@@ -55,7 +64,7 @@ internal class MsoMdocSigner<in Credential>(
         val deviceKeyInfo = deviceKeyInfo(deviceKey)
         val mdoc = MDocBuilder(docType)
             .apply { usage(credential) }
-            .sign(validityInfo, deviceKeyInfo, issuerCryptoProvider, issuerSigningKey.key.keyID)
+            .sign(validityInfo, deviceKeyInfo, statusListToken, issuerCryptoProvider, issuerSigningKey.key.keyID)
         return Base64.UrlSafe.encode(mdoc.issuerSigned.toMapElement().toCBOR())
     }
 }
@@ -65,3 +74,54 @@ private fun deviceKeyInfo(deviceKey: ECKey): DeviceKeyInfo {
     val deviceKeyDataElement: MapElement = DataElement.fromCBOR(key.AsCBOR().EncodeToBytes())
     return DeviceKeyInfo(deviceKeyDataElement, null, null)
 }
+
+/**
+ * Build and sign the mdoc document
+ * @param validityInfo Validity information of this issued document
+ * @param deviceKeyInfo Info of device key, to which this document is bound (holder key)
+ * @param cryptoProvider COSE crypto provider impl to use for signing this document
+ * @param keyID ID of the key to use for signing, if required by crypto provider
+ */
+private fun MDocBuilder.sign(
+    validityInfo: ValidityInfo,
+    deviceKeyInfo: DeviceKeyInfo,
+    statusListToken: StatusListToken?,
+    cryptoProvider: COSECryptoProvider,
+    keyID: String? = null,
+): MDoc {
+    val mso = MSO.createFor(nameSpacesMap, deviceKeyInfo, docType, validityInfo)
+        .let { mso ->
+            mso.toMapElement()
+                .apply {
+                    if (null != statusListToken) {
+                        this[MapKey(TokenStatusListSpec.STATUS)] = statusListToken.toMsoStatus()
+                    }
+                }
+        }
+    val issuerAuth = cryptoProvider.sign1(mso.toEncodedCBORElement().toCBOR(), null, null, keyID)
+    return build(issuerAuth)
+}
+
+/**
+ * Converts this [StatusListToken] to a `Status` Map Element as defined in
+ * [12.3.4 Signing method and structure for MSO](https://github.com/ISOWG10/ISO-18013/blob/main/Working%20Documents/Working%20Draft%20ISO_IEC_18013-5_second-edition_CD_ballot_resolution_v3.pdf)
+ */
+private fun StatusListToken.toMsoStatus(): MapElement {
+    fun StatusListToken.toDateElement(): MapElement =
+        buildMap {
+            put(MapKey(TokenStatusListSpec.IDX), index.toDataElement())
+            put(MapKey(TokenStatusListSpec.URI), statusList.toString().toDataElement())
+        }.toDataElement()
+
+    return buildMap {
+        put(MapKey(TokenStatusListSpec.STATUS_LIST), toDateElement())
+    }.toDataElement()
+}
+
+/**
+ * Adds a new or replaces an existing [DataElement] of this [MapElement], returns the updated [MapElement].
+ */
+private operator fun MapElement.set(key: MapKey, newValue: AnyDataElement): MapElement =
+    value.toMutableMap()
+        .apply { this[key] = newValue }
+        .toDataElement()

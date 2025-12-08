@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
 import arrow.core.Either
 import com.nimbusds.jose.jwk.ECKey
+import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import kotlin.time.Instant
 
@@ -30,5 +31,6 @@ fun interface EncodeMobileDrivingLicenceInCbor {
         holderKey: ECKey,
         issuedAt: Instant,
         expiresAt: Instant,
+        statusListToken: StatusListToken?,
     ): Either<IssueCredentialError.Unexpected, String>
 }

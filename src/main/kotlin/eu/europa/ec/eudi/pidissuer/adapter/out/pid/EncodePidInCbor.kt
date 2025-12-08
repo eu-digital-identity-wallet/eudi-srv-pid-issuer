@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import com.nimbusds.jose.jwk.ECKey
+import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import kotlin.time.Instant
 
 fun interface EncodePidInCbor {
@@ -25,5 +26,6 @@ fun interface EncodePidInCbor {
         holderKey: ECKey,
         issuedAt: Instant,
         expiresAt: Instant,
+        statusListToken: StatusListToken?,
     ): String
 }
