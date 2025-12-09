@@ -90,15 +90,13 @@ private fun MDocBuilder.sign(
     keyID: String? = null,
 ): MDoc {
     val mso = MSO.createFor(nameSpacesMap, deviceKeyInfo, docType, validityInfo)
-        .let { mso ->
-            if (null != statusListToken) {
-                buildMap {
-                    mso.toMapElement().value.entries.forEach { put(it.key, it.value) }
-                    put(MapKey(TokenStatusListSpec.STATUS), statusListToken.toMsoStatus())
-                }.toDataElement()
-            } else mso.toMapElement()
-        }
-    val issuerAuth = cryptoProvider.sign1(mso.toEncodedCBORElement().toCBOR(), null, null, keyID)
+    val payload = if (null != statusListToken) {
+        buildMap {
+            mso.toMapElement().value.entries.forEach { put(it.key, it.value) }
+            put(MapKey(TokenStatusListSpec.STATUS), statusListToken.toMsoStatus())
+        }.toDataElement()
+    } else mso.toMapElement()
+    val issuerAuth = cryptoProvider.sign1(payload.toEncodedCBORElement().toCBOR(), null, null, keyID)
     return build(issuerAuth)
 }
 
@@ -107,13 +105,13 @@ private fun MDocBuilder.sign(
  * [12.3.4 Signing method and structure for MSO](https://github.com/ISOWG10/ISO-18013/blob/main/Working%20Documents/Working%20Draft%20ISO_IEC_18013-5_second-edition_CD_ballot_resolution_v3.pdf)
  */
 private fun StatusListToken.toMsoStatus(): MapElement {
-    fun StatusListToken.toDateElement(): MapElement =
+    fun StatusListToken.toDE(): MapElement =
         buildMap {
             put(MapKey(TokenStatusListSpec.IDX), index.toDataElement())
             put(MapKey(TokenStatusListSpec.URI), statusList.toString().toDataElement())
         }.toDataElement()
 
     return buildMap {
-        put(MapKey(TokenStatusListSpec.STATUS_LIST), toDateElement())
+        put(MapKey(TokenStatusListSpec.STATUS_LIST), toDE())
     }.toDataElement()
 }
