@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.Either
 import arrow.core.NonEmptySet
+import arrow.core.getOrElse
 import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
@@ -29,9 +30,11 @@ import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
+import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
@@ -294,6 +297,7 @@ internal class IssueMsoMdocPid(
     private val storeIssuedCredentials: StoreIssuedCredentials,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.NotRequired,
+    private val generateStatusListToken: GenerateStatusListToken?,
 ) : IssueSpecificCredential {
 
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
@@ -322,7 +326,14 @@ internal class IssueMsoMdocPid(
         val expiresAt = issuedAt + validityDuration
 
         val issuedCredentials = holderPubKeys.parMap(Dispatchers.Default, 4) { holderKey ->
-            encodePidInCbor(pid, pidMetaData, holderKey, issuedAt = issuedAt, expiresAt = expiresAt)
+            val statusListToken = generateStatusListToken?.let {
+                it(supportedCredential.docType, expiresAt)
+                    .getOrElse { error ->
+                        raise(Unexpected("Unable to generate Status List Token", error))
+                    }
+            }
+
+            encodePidInCbor(pid, pidMetaData, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
                 .also {
                     log.info("Issued $it")
                 }

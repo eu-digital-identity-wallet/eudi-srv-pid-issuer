@@ -46,3 +46,13 @@ object RFC9728 {
     const val BEARER_METHOD_BODY: String = "body"
     const val BEARER_METHOD_QUERY: String = "query"
 }
+
+/**
+ * [Token Status List](https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-10.html)
+ */
+object TokenStatusListSpec {
+    const val STATUS: String = "status"
+    const val STATUS_LIST: String = "status_list"
+    const val IDX: String = "idx"
+    const val URI: String = "uri"
+}

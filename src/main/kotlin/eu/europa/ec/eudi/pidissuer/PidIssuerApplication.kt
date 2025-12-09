@@ -492,6 +492,7 @@ fun beans(clock: Clock) = beans {
                         validateProofs = ref(),
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                         keyAttestationRequirement = keyAttestationRequirement,
+                        generateStatusListToken = provider<GenerateStatusListToken>().ifAvailable,
                     )
                     add(issueMsoMdocPid)
                     add(issueMsoMdocPid.asDeferred(ref(), ref(), clock))
@@ -550,6 +551,7 @@ fun beans(clock: Clock) = beans {
                         validateProofs = ref(),
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                         keyAttestationRequirement = keyAttestationRequirement,
+                        generateStatusListToken = provider<GenerateStatusListToken>().ifAvailable,
                     )
                     add(mdlIssuer)
                     add(mdlIssuer.asDeferred(ref(), ref(), clock))

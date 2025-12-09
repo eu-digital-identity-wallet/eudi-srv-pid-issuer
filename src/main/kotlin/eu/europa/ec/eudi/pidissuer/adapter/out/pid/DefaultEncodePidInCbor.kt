@@ -19,6 +19,7 @@ import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.MsoMdocSigner
 import eu.europa.ec.eudi.pidissuer.domain.ClaimDefinition
+import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import id.walt.mdoc.dataelement.DataElement
 import id.walt.mdoc.dataelement.MapKey
 import id.walt.mdoc.dataelement.toDataElement
@@ -41,7 +42,8 @@ internal class DefaultEncodePidInCbor(issuerSigningKey: IssuerSigningKey) : Enco
         holderKey: ECKey,
         issuedAt: Instant,
         expiresAt: Instant,
-    ): String = signer.sign(pid to pidMetaData, holderKey, issuedAt = issuedAt, expiresAt = expiresAt)
+        statusListToken: StatusListToken?,
+    ): String = signer.sign(pid to pidMetaData, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
 }
 
 private fun MDocBuilder.addItemsToSign(pid: Pid) {

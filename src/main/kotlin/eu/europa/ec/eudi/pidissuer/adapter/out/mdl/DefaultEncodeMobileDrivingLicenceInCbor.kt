@@ -22,6 +22,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.ParameterizedRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.MsoMdocSigner
 import eu.europa.ec.eudi.pidissuer.domain.ClaimDefinition
+import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import id.walt.mdoc.dataelement.DataElement
 import id.walt.mdoc.dataelement.toDataElement
@@ -43,9 +44,10 @@ class DefaultEncodeMobileDrivingLicenceInCbor(issuerSigningKey: IssuerSigningKey
         holderKey: ECKey,
         issuedAt: Instant,
         expiresAt: Instant,
+        statusListToken: StatusListToken?,
     ): Either<Unexpected, String> =
         Either.catch {
-            signer.sign(licence, holderKey, issuedAt = issuedAt, expiresAt = expiresAt)
+            signer.sign(licence, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
         }.mapLeft { Unexpected("Failed to encode mDL", it) }
 }
 
