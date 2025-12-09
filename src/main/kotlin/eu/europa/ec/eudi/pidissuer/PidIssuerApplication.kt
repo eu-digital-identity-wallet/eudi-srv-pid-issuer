@@ -290,9 +290,15 @@ fun beans(clock: Clock) = beans {
 
                     when (val loadedJwk = issuerKeystore.loadJwk(env, "issuer.credentialRequestEncryption.jwks")) {
                         is ECKey -> {
+                            require(keyAlgorithm in loadedJwk.supportedJWEAlgorithms) {
+                                "${keyAlgorithm.name} cannot be used with an ECKey"
+                            }
                             ECKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
                         }
                         is RSAKey -> {
+                            require(keyAlgorithm in loadedJwk.supportedJWEAlgorithms) {
+                                "${keyAlgorithm.name} cannot be used with an RSAKey"
+                            }
                             RSAKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
                         }
                         else -> error("unsupported key type '${loadedJwk.javaClass}'")
@@ -300,12 +306,17 @@ fun beans(clock: Clock) = beans {
                 }
             }
 
+            val encryptionMethods = env.readNonEmptySet(
+                "issuer.credentialRequestEncryption.encryptionMethods",
+                EncryptionMethod::parse,
+            )
+            require(key.supportedEncryptionMethods.containsAll(encryptionMethods)) {
+                "Encryption methods: ${encryptionMethods.joinToString { it.name }} cannot be used with the configured encryption key"
+            }
+
             val parameters = CredentialRequestEncryptionSupportedParameters(
                 encryptionKeys = JWKSet(key),
-                methodsSupported = env.readNonEmptySet(
-                    "issuer.credentialRequestEncryption.encryptionMethods",
-                    EncryptionMethod::parse,
-                ),
+                methodsSupported = encryptionMethods,
                 zipAlgorithmsSupported = env.readNonEmptySet(
                     "issuer.credentialRequestEncryption.zipAlgorithmsSupported",
                 ) { CompressionAlgorithm(it) },
