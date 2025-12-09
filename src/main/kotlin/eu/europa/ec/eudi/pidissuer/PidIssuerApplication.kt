@@ -1076,16 +1076,6 @@ private fun loadJwkFromKeystore(environment: Environment, prefix: String): JWK {
             else -> "$prefix.$property"
         }
 
-    fun X509Certificate.isSelfSigned(): Boolean =
-        subjectX500Principal == issuerX500Principal && runCatching {
-            verify(publicKey)
-            true
-        }.getOrElse { false }
-
-    fun List<X509Certificate>.dropRootCA(): List<X509Certificate> =
-        if (size > 1 && last().isSelfSigned()) dropLast(1)
-        else this
-
     fun JWK.withCertificateChain(chain: List<X509Certificate>): JWK {
         require(this.parsedX509CertChain.isNotEmpty()) { "jwk must have a leaf certificate" }
         require(chain.isNotEmpty()) { "chain cannot be empty" }
@@ -1093,7 +1083,7 @@ private fun loadJwkFromKeystore(environment: Environment, prefix: String): JWK {
             "leaf certificate of provided chain does not match leaf certificate of jwk"
         }
 
-        val encodedChain = chain.dropRootCA().map { Base64.encode(it.encoded) }
+        val encodedChain = chain.map { Base64.encode(it.encoded) }
         return when (this) {
             is RSAKey -> RSAKey.Builder(this).x509CertChain(encodedChain).build()
             is ECKey -> ECKey.Builder(this).x509CertChain(encodedChain).build()
