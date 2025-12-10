@@ -745,7 +745,7 @@ fun beans(clock: Clock) = beans {
         }
     }
     bean<AccessTokenType> {
-       env.getProperty<AccessTokenType>("issuer.access-token.type") ?: AccessTokenType.DPoP
+        env.getProperty<AccessTokenType>("issuer.access-token.type") ?: AccessTokenType.DPoP
     }
     bean {
         /*
