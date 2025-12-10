@@ -21,6 +21,7 @@ import arrow.core.NonEmptyList
 import arrow.core.nonEmptyListOf
 import arrow.core.serialization.NonEmptyListSerializer
 import arrow.core.toNonEmptyListOrNull
+import eu.europa.ec.eudi.pidissuer.AccessTokenType
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPConfigurationProperties
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.RFC9728
@@ -55,16 +56,36 @@ data class ProtectedResourceMetadataTO(
 class GetProtectedResourceMetadata(
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
     private val dPoPConfigurationProperties: DPoPConfigurationProperties,
+    private val accessTokenMode: AccessTokenType,
 ) {
     fun unsigned(): ProtectedResourceMetadataTO =
-        ProtectedResourceMetadataTO(
-            resource = credentialIssuerMetadata.id.externalForm,
-            authorizationServers = credentialIssuerMetadata.authorizationServers.map { it.externalForm }.toNonEmptyListOrNull(),
-            scopesSupported = credentialIssuerMetadata.specificCredentialIssuers.map {
-                it.supportedCredential.scope.value
-            }.distinct().toNonEmptyListOrNull(),
-            bearerMethodsSupported = nonEmptyListOf(BearerMethodTO.HEADER),
-            dpopSigningAlgorithmsSupported = dPoPConfigurationProperties.algorithms.map { it.name }.distinct().toNonEmptyListOrNull(),
-            dpopBoundAccessTokenRequired = false,
-        )
+        when (accessTokenMode) {
+            AccessTokenType.DPoP -> ProtectedResourceMetadataTO(
+                resource = credentialIssuerMetadata.id.externalForm,
+                authorizationServers = credentialIssuerMetadata.authorizationServers.map { it.externalForm }.toNonEmptyListOrNull(),
+                scopesSupported = credentialIssuerMetadata.specificCredentialIssuers.map {
+                    it.supportedCredential.scope.value
+                }.distinct().toNonEmptyListOrNull(),
+                dpopSigningAlgorithmsSupported = dPoPConfigurationProperties.algorithms.map { it.name }.distinct().toNonEmptyListOrNull(),
+                dpopBoundAccessTokenRequired = false,
+            )
+            AccessTokenType.Bearer -> ProtectedResourceMetadataTO(
+                resource = credentialIssuerMetadata.id.externalForm,
+                authorizationServers = credentialIssuerMetadata.authorizationServers.map { it.externalForm }.toNonEmptyListOrNull(),
+                scopesSupported = credentialIssuerMetadata.specificCredentialIssuers.map {
+                    it.supportedCredential.scope.value
+                }.distinct().toNonEmptyListOrNull(),
+                bearerMethodsSupported = nonEmptyListOf(BearerMethodTO.HEADER),
+            )
+            AccessTokenType.BearerAndDPoPIfAvailable -> ProtectedResourceMetadataTO(
+                resource = credentialIssuerMetadata.id.externalForm,
+                authorizationServers = credentialIssuerMetadata.authorizationServers.map { it.externalForm }.toNonEmptyListOrNull(),
+                scopesSupported = credentialIssuerMetadata.specificCredentialIssuers.map {
+                    it.supportedCredential.scope.value
+                }.distinct().toNonEmptyListOrNull(),
+                bearerMethodsSupported = nonEmptyListOf(BearerMethodTO.HEADER),
+                dpopSigningAlgorithmsSupported = dPoPConfigurationProperties.algorithms.map { it.name }.distinct().toNonEmptyListOrNull(),
+                dpopBoundAccessTokenRequired = false,
+            )
+        }
 }
