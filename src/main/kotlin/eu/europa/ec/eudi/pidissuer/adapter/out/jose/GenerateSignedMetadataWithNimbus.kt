@@ -20,7 +20,9 @@ import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.crypto.Ed25519Signer
 import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.jwk.*
+import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.JSONObjectUtils
+import eu.europa.ec.eudi.pidissuer.adapter.out.x509.dropRootCA
 import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
@@ -62,7 +64,10 @@ data class MetadataSigningKey(
                 type(JOSEObjectType(OpenId4VciSpec.SIGNED_METADATA_JWT_TYPE))
                 val publicJwk = key.toPublicJWK()
                 if (null != publicJwk.x509CertChain) {
-                    x509CertChain(publicJwk.x509CertChain)
+                    val x5c = publicJwk.parsedX509CertChain
+                        .dropRootCA()
+                        .map { Base64.encode(it.encoded) }
+                    x509CertChain(x5c)
                 } else {
                     jwk(publicJwk)
                 }
