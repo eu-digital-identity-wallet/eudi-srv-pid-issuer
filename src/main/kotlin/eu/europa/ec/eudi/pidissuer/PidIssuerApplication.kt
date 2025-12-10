@@ -865,11 +865,13 @@ fun beans(clock: Clock) = beans {
                     accessDeniedHandler = ServerWebExchangeDelegatingServerAccessDeniedHandler(
                         buildList {
                             if (enableDPoPConfig && dPoPConfigurationProperties != null) {
-                                ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry(
-                                    AuthenticationConverterServerWebExchangeMatcher(
-                                        dPoPConfigurationProperties.dPoPTokenConverter,
+                                add(
+                                    ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry(
+                                        AuthenticationConverterServerWebExchangeMatcher(
+                                            dPoPConfigurationProperties.dPoPTokenConverter,
+                                        ),
+                                        DPoPTokenServerAccessDeniedHandler(dPoPConfigurationProperties.dPoPProperties.realm),
                                     ),
-                                    DPoPTokenServerAccessDeniedHandler(dPoPConfigurationProperties.dPoPProperties.realm),
                                 )
                             }
                             if (enableBearerConfig && bearerConfigurationProperties != null) {
