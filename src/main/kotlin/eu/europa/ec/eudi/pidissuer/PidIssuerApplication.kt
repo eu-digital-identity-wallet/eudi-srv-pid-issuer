@@ -682,7 +682,15 @@ fun beans(clock: Clock) = beans {
     bean {
         CreateCredentialsOffer(ref(), credentialsOfferUri)
     }
-    bean(::GetProtectedResourceMetadata)
+    val accessTokenType = env.getProperty<AccessTokenType>("issuer.access-token.type") ?: AccessTokenType.DPoP
+
+    bean {
+        GetProtectedResourceMetadata(
+            ref(),
+            ref(),
+            accessTokenType,
+        )
+    }
 
     //
     // Routes
@@ -744,9 +752,7 @@ fun beans(clock: Clock) = beans {
             DPoPNoncePolicy.Disabled
         }
     }
-    bean<AccessTokenType> {
-        env.getProperty<AccessTokenType>("issuer.access-token.type") ?: AccessTokenType.DPoP
-    }
+
     bean {
         /*
          * This is a Spring naming convention
@@ -789,8 +795,6 @@ fun beans(clock: Clock) = beans {
             cors {
                 disable()
             }
-
-            val retrieve: AccessTokenType = ref()
 
             val introspectionProperties = ref<OAuth2ResourceServerProperties>()
             val introspector = SpringReactiveOpaqueTokenIntrospector(
@@ -940,7 +944,7 @@ fun beans(clock: Clock) = beans {
                     http.addFilterAfter(bearerTokenFilter, SecurityWebFiltersOrder.AUTHENTICATION)
                 }
             }
-            when (retrieve) {
+            when (accessTokenType) {
                 AccessTokenType.Bearer -> {
                     configureAccessTokenTypes(enableDPoPConfig = false, enableBearerConfig = true)
                 }
