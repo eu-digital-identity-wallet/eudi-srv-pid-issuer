@@ -399,9 +399,13 @@ Description: Password of the key-pair for signing metadata.
 Default value: N/A
 
 Variable: `ISSUER_ACCESS_TOKEN_TYPE`  
-Description: Type of access token to use for protected resource requests.  
-Default value: DPoP  
-Example: DPoP, Bearer, BearerAndDPoPIfAvailable  
+Description: Access tokens accepted by the Credential Issuer.  
+Possible values:
+- `Bearer` - Enables support for Bearer access tokens.
+- `DPoP` - Enables support for DPoP access tokens. The configured Authorization Server must support DPoP access tokens.
+- `BearerAndDPoPIfAvailable` - Enables support for Bearer access tokens, and if the configured Authorization Server supports DPoP access tokens, enables support for DPoP access tokens as well. 
+
+Default value: `DPoP` 
 
 Variable: `ISSUER_KEYCLOAK_SERVER_URL`  
 Description: URL of the Keycloak authorization server  
