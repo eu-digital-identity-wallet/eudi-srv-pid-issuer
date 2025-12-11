@@ -799,6 +799,8 @@ fun beans(clock: Clock) = beans {
             val filters = mutableListOf<Pair<SecurityWebFiltersOrder, WebFilter>>()
 
             if (null != dpopConfigurationProperties) {
+                log.info("Enabling DPoP AccessToken support")
+
                 val enableDPoPNonce = env.getProperty<Boolean>("issuer.dpop.nonce.enabled") ?: true
                 val dpopNonce =
                     if (enableDPoPNonce) {
@@ -861,6 +863,8 @@ fun beans(clock: Clock) = beans {
             }
 
             if (enableBearerTokenAuthentication) {
+                log.info("Enabled Bearer AccessToken support")
+
                 val entryPoint = BearerTokenServerAuthenticationEntryPoint()
                 val tokenConverter = ServerBearerTokenAuthenticationConverter()
 
