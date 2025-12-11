@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
+import arrow.core.NonEmptySet
 import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
 import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
@@ -25,7 +26,7 @@ import kotlin.time.Instant
  * Properties for configuring DPoP.
  */
 data class DPoPConfigurationProperties(
-    val algorithms: Set<JWSAlgorithm>,
+    val algorithms: NonEmptySet<JWSAlgorithm>,
     val proofMaxAge: Duration,
     val cachePurgeInterval: Duration,
     val realm: String?,

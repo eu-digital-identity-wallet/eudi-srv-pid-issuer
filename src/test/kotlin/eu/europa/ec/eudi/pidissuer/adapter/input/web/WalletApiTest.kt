@@ -35,7 +35,6 @@ import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import com.nimbusds.oauth2.sdk.util.JSONUtils
 import eu.europa.ec.eudi.pidissuer.PidIssuerApplicationTest
-import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPConfigurationProperties
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -124,16 +123,6 @@ internal class BaseWalletApiTest {
 
     @TestConfiguration
     class WalletApiTestConfig {
-
-        @Bean
-        @Primary
-        fun dPoPConfigurationProperties(): DPoPConfigurationProperties =
-            DPoPConfigurationProperties(
-                emptySet(),
-                1L.minutes,
-                10L.minutes,
-                null,
-            )
 
         @Bean
         @Primary
