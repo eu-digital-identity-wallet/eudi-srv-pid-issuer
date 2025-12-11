@@ -33,6 +33,7 @@ import kotlin.reflect.KClass
 @SpringBootTest(
     classes = [PidIssuerApplication::class],
     webEnvironment = SpringBootTest.WebEnvironment.MOCK,
+    properties = ["issuer.access-token.type=Bearer"],
 )
 @ContextConfiguration(initializers = [BeansDslApplicationContextInitializer::class])
 internal annotation class PidIssuerApplicationTest(
