@@ -21,7 +21,6 @@ import arrow.core.NonEmptyList
 import arrow.core.nonEmptyListOf
 import arrow.core.serialization.NonEmptyListSerializer
 import arrow.core.toNonEmptyListOrNull
-import eu.europa.ec.eudi.pidissuer.AccessTokenType
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPConfigurationProperties
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.RFC9728
@@ -55,23 +54,14 @@ data class ProtectedResourceMetadataTO(
 
 class GetProtectedResourceMetadata(
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
-    private val dPoPConfigurationProperties: DPoPConfigurationProperties,
-    private val accessTokenMode: AccessTokenType,
+    private val bearerTokenAuthenticationEnabled: Boolean,
+    private val dPoPConfigurationProperties: DPoPConfigurationProperties?,
 ) {
     fun unsigned(): ProtectedResourceMetadataTO {
-        val (dPoPSigningAlgorithmsSupported, dPoPBoundAccessTokenRequired, bearerMethodsSupported) = when (accessTokenMode) {
-            AccessTokenType.DPoP -> {
-                Triple(dPoPConfigurationProperties.algorithms.map { it.name }.distinct().toNonEmptyListOrNull(), true, null)
-            }
-            AccessTokenType.Bearer -> Triple(null, null, nonEmptyListOf(BearerMethodTO.HEADER))
-            AccessTokenType.BearerAndDPoPIfAvailable -> Triple(
-                dPoPConfigurationProperties.algorithms.map {
-                    it.name
-                }.distinct().toNonEmptyListOrNull(),
-                true,
-                nonEmptyListOf(BearerMethodTO.HEADER),
-            )
-        }
+        val bearerMethodsSupported = if (bearerTokenAuthenticationEnabled) nonEmptyListOf(BearerMethodTO.HEADER) else null
+        val dPoPSigningAlgorithmsSupported = dPoPConfigurationProperties?.algorithms?.map { it.name }
+        val dPoPBoundAccessTokenRequired = dPoPConfigurationProperties?.let { !bearerTokenAuthenticationEnabled }
+
         return ProtectedResourceMetadataTO(
             resource = credentialIssuerMetadata.id.externalForm,
             authorizationServers = credentialIssuerMetadata.authorizationServers.map { it.externalForm }.toNonEmptyListOrNull(),
