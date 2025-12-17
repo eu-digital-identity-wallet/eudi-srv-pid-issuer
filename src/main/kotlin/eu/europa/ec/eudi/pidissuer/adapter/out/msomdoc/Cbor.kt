@@ -15,13 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc
 
-import cbor.Cbor as WaltIdCbor
-import kotlinx.serialization.cbor.Cbor as KotlinXSerializationCbor
+import cbor.Cbor
 
-val kotlinXSerializationCbor: KotlinXSerializationCbor = KotlinXSerializationCbor(KotlinXSerializationCbor.CoseCompliant) {
-    ignoreUnknownKeys = true
-}
-
-val waltIdCbor: WaltIdCbor = WaltIdCbor(WaltIdCbor.Default) {
+val cbor: Cbor = Cbor(Cbor.Default) {
+    encodeDefaults = false
     ignoreUnknownKeys = true
 }

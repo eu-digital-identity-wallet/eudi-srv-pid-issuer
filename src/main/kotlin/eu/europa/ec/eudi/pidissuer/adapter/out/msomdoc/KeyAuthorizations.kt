@@ -18,18 +18,12 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc
 import arrow.core.NonEmptyList
 import arrow.core.nonEmptyListOf
 import arrow.core.serialization.NonEmptyListSerializer
+import cbor.Cbor
 import eu.europa.ec.eudi.pidissuer.domain.Iso180135
 import id.walt.mdoc.dataelement.ListElement
 import id.walt.mdoc.dataelement.MapElement
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.encodeToByteArray
-import kotlinx.serialization.encodeToHexString
-import cbor.Cbor as WaltIdCbor
-import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.kotlinXSerializationCbor as myKotlinXSerializationCbor
-import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.waltIdCbor as myWaltIdCbor
-import kotlinx.serialization.cbor.Cbor as KotlinXSerializationCbor
+import kotlinx.serialization.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.cbor as myCbor
 
 typealias NameSpace = String
 
@@ -40,12 +34,9 @@ value class AuthorizedNameSpaces(
 ) {
     constructor(first: NameSpace, vararg rest: NameSpace) : this(nonEmptyListOf(first, *rest))
 
-    fun toCbor(cbor: KotlinXSerializationCbor = myKotlinXSerializationCbor): ByteArray = cbor.encodeToByteArray(this)
-    fun toCborHex(cbor: KotlinXSerializationCbor = myKotlinXSerializationCbor): String = cbor.encodeToHexString(this)
-    fun toListElement(
-        kotlinXSerializationCbor: KotlinXSerializationCbor = myKotlinXSerializationCbor,
-        waltIdCbor: WaltIdCbor = myWaltIdCbor,
-    ): ListElement = waltIdCbor.decodeFromByteArray(toCbor(kotlinXSerializationCbor))
+    fun toCbor(cbor: Cbor = myCbor): ByteArray = cbor.encodeToByteArray(this)
+    fun toCborHex(cbor: Cbor = myCbor): String = cbor.encodeToHexString(this)
+    fun toListElement(cbor: Cbor = myCbor): ListElement = cbor.decodeFromByteArray(toCbor(cbor))
 }
 
 typealias DataElementIdentifier = String
@@ -57,12 +48,9 @@ value class DataElementsArray(
 ) {
     constructor(first: DataElementIdentifier, vararg rest: DataElementIdentifier) : this(nonEmptyListOf(first, *rest))
 
-    fun toCbor(cbor: KotlinXSerializationCbor = myKotlinXSerializationCbor): ByteArray = cbor.encodeToByteArray(this)
-    fun toCborHex(cbor: KotlinXSerializationCbor = myKotlinXSerializationCbor): String = cbor.encodeToHexString(this)
-    fun toListElement(
-        kotlinXSerializationCbor: KotlinXSerializationCbor = myKotlinXSerializationCbor,
-        waltIdCbor: WaltIdCbor = myWaltIdCbor,
-    ): ListElement = waltIdCbor.decodeFromByteArray(toCbor(kotlinXSerializationCbor))
+    fun toCbor(cbor: Cbor = myCbor): ByteArray = cbor.encodeToByteArray(this)
+    fun toCborHex(cbor: Cbor = myCbor): String = cbor.encodeToHexString(this)
+    fun toListElement(cbor: Cbor = myCbor): ListElement = cbor.decodeFromByteArray(toCbor(cbor))
 }
 
 @JvmInline
@@ -77,12 +65,9 @@ value class AuthorizedDataElements(val value: Map<NameSpace, DataElementsArray>)
         require(value.isNotEmpty()) { "AuthorizedDataElements must contain at least one NameSpace" }
     }
 
-    fun toCbor(cbor: KotlinXSerializationCbor = myKotlinXSerializationCbor): ByteArray = cbor.encodeToByteArray(this)
-    fun toCborHex(cbor: KotlinXSerializationCbor = myKotlinXSerializationCbor): String = cbor.encodeToHexString(this)
-    fun toMapElement(
-        kotlinXSerializationCbor: KotlinXSerializationCbor = myKotlinXSerializationCbor,
-        waltIdCbor: WaltIdCbor = myWaltIdCbor,
-    ): MapElement = waltIdCbor.decodeFromByteArray(toCbor(kotlinXSerializationCbor))
+    fun toCbor(cbor: Cbor = myCbor): ByteArray = cbor.encodeToByteArray(this)
+    fun toCborHex(cbor: Cbor = myCbor): String = cbor.encodeToHexString(this)
+    fun toMapElement(cbor: Cbor = myCbor): MapElement = cbor.decodeFromByteArray(toCbor(cbor))
 }
 
 @Serializable
@@ -113,10 +98,7 @@ data class KeyAuthorizations(
         }
     }
 
-    fun toCbor(cbor: KotlinXSerializationCbor = myKotlinXSerializationCbor): ByteArray = cbor.encodeToByteArray(this)
-    fun toCborHex(cbor: KotlinXSerializationCbor = myKotlinXSerializationCbor): String = cbor.encodeToHexString(this)
-    fun toMapElement(
-        kotlinXSerializationCbor: KotlinXSerializationCbor = myKotlinXSerializationCbor,
-        waltIdCbor: WaltIdCbor = myWaltIdCbor,
-    ): MapElement = waltIdCbor.decodeFromByteArray(toCbor(kotlinXSerializationCbor))
+    fun toCbor(cbor: Cbor = myCbor): ByteArray = cbor.encodeToByteArray(this)
+    fun toCborHex(cbor: Cbor = myCbor): String = cbor.encodeToHexString(this)
+    fun toMapElement(cbor: Cbor = myCbor): MapElement = cbor.decodeFromByteArray(toCbor(cbor))
 }
