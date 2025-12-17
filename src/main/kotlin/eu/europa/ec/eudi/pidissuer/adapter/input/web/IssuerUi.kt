@@ -65,7 +65,10 @@ class IssuerUi(
 
     private suspend fun handleDisplayGenerateCredentialsOfferForm(): ServerResponse {
         log.info("Displaying 'Generate Credentials Offer' page")
-        val credentialIds = metadata.credentialConfigurationsSupported.map { it.id.value }
+        val credentialIds = metadata.credentialConfigurationsSupported.groupBy { it.attestationCategory }
+            .mapValues { (_, credentialConfigurations) ->
+                credentialConfigurations.map { it.id.value }
+            }
         val usefulLinks = createUsefulLinks(metadata.id, metadata.authorizationServers[0])
         return ServerResponse.ok()
             .contentType(MediaType.TEXT_HTML)
