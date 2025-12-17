@@ -33,7 +33,6 @@ import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError.Missin
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.net.URI
 
@@ -51,6 +50,11 @@ sealed interface CreateCredentialsOfferError {
      * The provided Credential Unique Ids are not valid.
      */
     data class InvalidCredentialConfigurationId(val id: CredentialConfigurationId) : CreateCredentialsOfferError
+
+    /**
+     * Selected credential configuration ids contain mixing attestation categories.
+     */
+    data object MultipleAttestationCategories : CreateCredentialsOfferError
 
     /**
      * Indicates the Credentials Offer URI cannot be generated.
@@ -152,6 +156,12 @@ private fun Raise<CreateCredentialsOfferError>.validate(
     nonEmptyIds.forEach { id ->
         ensure(id in supportedIds) { InvalidCredentialConfigurationId(id) }
     }
+
+    val supported = metadata.credentialConfigurationsSupported
+    val selectedCategories = nonEmptyIds
+        .map { id -> supported.first { it.id == id }.attestationCategory }.toSet()
+
+    ensure(selectedCategories.size == 1) { CreateCredentialsOfferError.MultipleAttestationCategories }
 
     return nonEmptyIds
 }
