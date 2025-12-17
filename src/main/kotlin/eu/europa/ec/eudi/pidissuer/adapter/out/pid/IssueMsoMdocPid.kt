@@ -280,6 +280,7 @@ internal fun pidMsoMdocV1(
         proofTypesSupported = ProofTypesSupported(
             ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
+        attestationCategory = AttestationCategory.Pid,
     )
 
 /**
