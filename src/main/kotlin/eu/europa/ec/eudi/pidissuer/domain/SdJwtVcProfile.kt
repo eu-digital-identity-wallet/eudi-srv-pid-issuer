@@ -40,6 +40,7 @@ data class SdJwtVcCredentialConfiguration(
     override val display: List<CredentialDisplay>,
     val claims: List<ClaimDefinition>,
     override val proofTypesSupported: ProofTypesSupported = ProofTypesSupported.Empty,
+    override val attestationCategory: AttestationCategory,
 ) : CredentialConfiguration {
     init {
         validateCryptographicBindingsAndProofTypes()
