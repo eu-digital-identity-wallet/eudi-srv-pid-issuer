@@ -281,6 +281,7 @@ internal fun pidMsoMdocV1(
             ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
         policy = MsoMdocPolicy(oneTimeUse = true),
+        attestationCategory = AttestationCategory.PID,
     )
 
 /**

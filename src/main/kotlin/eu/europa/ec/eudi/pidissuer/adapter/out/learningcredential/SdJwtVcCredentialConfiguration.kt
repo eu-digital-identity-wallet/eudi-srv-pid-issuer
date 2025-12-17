@@ -127,4 +127,5 @@ fun LearningCredential.Companion.sdJwtVcCredentialConfiguration(
     ProofTypesSupported(
         ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
     ),
+    attestationCategory = AttestationCategory.EAA,
 )
