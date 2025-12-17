@@ -72,8 +72,8 @@ value class AuthorizedDataElements(val value: Map<NameSpace, DataElementsArray>)
 
 @Serializable
 data class KeyAuthorizations(
-    @SerialName(Iso180135.KEY_AUTHORIZATIONS_NAMESPACES) val authorizedNameSpaces: AuthorizedNameSpaces?,
-    @SerialName(Iso180135.KEY_AUTHORIZATIONS_DATA_ELEMENTS) val dataElements: AuthorizedDataElements?,
+    @SerialName(Iso180135.KEY_AUTHORIZATIONS_NAMESPACES) val authorizedNameSpaces: AuthorizedNameSpaces? = null,
+    @SerialName(Iso180135.KEY_AUTHORIZATIONS_DATA_ELEMENTS) val dataElements: AuthorizedDataElements? = null,
 ) {
     constructor(
         first: NameSpace,
