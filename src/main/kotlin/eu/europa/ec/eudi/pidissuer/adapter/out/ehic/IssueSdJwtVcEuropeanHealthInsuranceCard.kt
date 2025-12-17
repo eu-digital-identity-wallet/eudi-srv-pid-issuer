@@ -183,7 +183,7 @@ private fun europeanHealthInsuranceCardCredentialConfiguration(
         proofTypesSupported = ProofTypesSupported(
             ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
-        attestationCategory = AttestationCategory.EU_QEEA,
+        attestationCategory = AttestationCategory.EuQeaa,
 
     )
 

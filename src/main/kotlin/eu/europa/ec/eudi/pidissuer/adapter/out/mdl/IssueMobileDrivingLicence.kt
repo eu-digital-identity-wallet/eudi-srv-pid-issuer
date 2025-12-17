@@ -318,7 +318,7 @@ internal fun mobileDrivingLicenceV1(
             ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
         policy = MsoMdocPolicy(oneTimeUse = false),
-        attestationCategory = AttestationCategory.EU_QEEA,
+        attestationCategory = AttestationCategory.EuQeaa,
     )
 
 /**

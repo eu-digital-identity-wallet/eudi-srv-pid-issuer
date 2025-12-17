@@ -175,7 +175,7 @@ fun pidSdJwtVcV1(
         proofTypesSupported = ProofTypesSupported(
             ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
-        attestationCategory = AttestationCategory.PID,
+        attestationCategory = AttestationCategory.Pid,
     )
 
 typealias TimeDependant<F> = (Instant) -> F

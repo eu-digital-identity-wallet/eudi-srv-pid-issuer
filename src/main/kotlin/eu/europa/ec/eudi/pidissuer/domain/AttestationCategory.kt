@@ -15,11 +15,10 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
-@Suppress("ktlint:standard:class-naming")
 sealed interface AttestationCategory {
-    data object PID : AttestationCategory
-    data object EU_QEEA : AttestationCategory
-    data object EU_PUB_QEAA : AttestationCategory
-    data object EU_EAA : AttestationCategory
-    data object EAA : AttestationCategory
+    data object Pid : AttestationCategory
+    data object EuQeaa : AttestationCategory
+    data object EuPubQeaa : AttestationCategory
+    data object EuEaa : AttestationCategory
+    data object Eaa : AttestationCategory
 }
