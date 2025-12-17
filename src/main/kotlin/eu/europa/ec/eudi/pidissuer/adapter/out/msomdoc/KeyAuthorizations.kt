@@ -72,25 +72,25 @@ value class AuthorizedDataElements(val value: Map<NameSpace, DataElementsArray>)
 
 @Serializable
 data class KeyAuthorizations(
-    @SerialName(Iso180135.KEY_AUTHORIZATIONS_NAMESPACES) val authorizedNameSpaces: AuthorizedNameSpaces? = null,
+    @SerialName(Iso180135.KEY_AUTHORIZATIONS_NAMESPACES) val nameSpaces: AuthorizedNameSpaces? = null,
     @SerialName(Iso180135.KEY_AUTHORIZATIONS_DATA_ELEMENTS) val dataElements: AuthorizedDataElements? = null,
 ) {
     constructor(
         first: NameSpace,
         vararg rest: NameSpace,
-    ) : this(authorizedNameSpaces = AuthorizedNameSpaces(first, *rest), dataElements = null)
+    ) : this(nameSpaces = AuthorizedNameSpaces(first, *rest), dataElements = null)
 
     constructor(
         first: Pair<NameSpace, DataElementsArray>,
         vararg rest: Pair<NameSpace, DataElementsArray>,
-    ) : this(authorizedNameSpaces = null, dataElements = AuthorizedDataElements(first, *rest))
+    ) : this(nameSpaces = null, dataElements = AuthorizedDataElements(first, *rest))
 
     init {
-        require(null != authorizedNameSpaces || null != dataElements) {
+        require(null != nameSpaces || null != dataElements) {
             "KeyAuthorizations must contain either AuthorizedNameSpaces or AuthorizedDataElements"
         }
-        if (null != authorizedNameSpaces && null != dataElements) {
-            val commonNameSpaces = authorizedNameSpaces.value.toSet().intersect(dataElements.value.keys.toSet())
+        if (null != nameSpaces && null != dataElements) {
+            val commonNameSpaces = nameSpaces.value.toSet().intersect(dataElements.value.keys.toSet())
             require(commonNameSpaces.isEmpty()) {
                 "NameSpaces included in AuthorizedNameSpaces must not be included in AuthorizedDataElements. " +
                     "Non-compliant NameSpaces: ${commonNameSpaces.joinToString()}"

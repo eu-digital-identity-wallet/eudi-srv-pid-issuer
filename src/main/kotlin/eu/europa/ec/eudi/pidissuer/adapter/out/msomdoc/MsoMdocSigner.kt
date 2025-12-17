@@ -72,7 +72,7 @@ internal class MsoMdocSigner<in Credential>(
 private fun deviceKeyInfo(deviceKey: ECKey, authorizedNameSpaces: AuthorizedNameSpaces): DeviceKeyInfo {
     val key = OneKey(deviceKey.toECPublicKey(), null)
     val deviceKeyDataElement: MapElement = DataElement.fromCBOR(key.AsCBOR().EncodeToBytes())
-    val keyAuthorizations = KeyAuthorizations(authorizedNameSpaces = authorizedNameSpaces, dataElements = null).toMapElement()
+    val keyAuthorizations = KeyAuthorizations(nameSpaces = authorizedNameSpaces, dataElements = null).toMapElement()
     return DeviceKeyInfo(deviceKeyDataElement, keyAuthorizations, null)
 }
 
