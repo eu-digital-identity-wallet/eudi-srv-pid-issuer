@@ -20,6 +20,7 @@ import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.GenericRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.ParameterizedRestriction
+import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.AuthorizedNameSpaces
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.MsoMdocSigner
 import eu.europa.ec.eudi.pidissuer.domain.ClaimDefinition
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
@@ -35,6 +36,7 @@ class DefaultEncodeMobileDrivingLicenceInCbor(issuerSigningKey: IssuerSigningKey
     private val signer = MsoMdocSigner<MobileDrivingLicence>(
         issuerSigningKey = issuerSigningKey,
         docType = MobileDrivingLicenceV1DocType,
+        authorizedNameSpaces = AuthorizedNameSpaces(MobileDrivingLicenceV1Namespace),
     ) { licence ->
         addItemsToSign(licence)
     }

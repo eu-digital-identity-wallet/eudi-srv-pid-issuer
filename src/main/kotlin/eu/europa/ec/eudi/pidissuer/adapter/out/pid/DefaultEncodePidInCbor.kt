@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
+import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.AuthorizedNameSpaces
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.MsoMdocSigner
 import eu.europa.ec.eudi.pidissuer.domain.ClaimDefinition
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
@@ -31,6 +32,7 @@ internal class DefaultEncodePidInCbor(issuerSigningKey: IssuerSigningKey) : Enco
     private val signer = MsoMdocSigner<Pair<Pid, PidMetaData>>(
         issuerSigningKey = issuerSigningKey,
         docType = PidMsoMdocV1DocType,
+        authorizedNameSpaces = AuthorizedNameSpaces(PidMsoMdocNamespace),
     ) { (pid, pidMetaData) ->
         addItemsToSign(pid)
         addItemsToSign(pidMetaData)

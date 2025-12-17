@@ -40,6 +40,7 @@ import kotlin.time.Instant
 internal class MsoMdocSigner<in Credential>(
     private val issuerSigningKey: IssuerSigningKey,
     private val docType: MsoDocType,
+    private val authorizedNameSpaces: AuthorizedNameSpaces,
     private val usage: MDocBuilder.(Credential) -> Unit,
 ) {
     private val issuerCryptoProvider: SimpleCOSECryptoProvider by lazy {
@@ -60,7 +61,7 @@ internal class MsoMdocSigner<in Credential>(
             validUntil = expiresAt.toDeprecatedInstant(),
             expectedUpdate = null,
         )
-        val deviceKeyInfo = deviceKeyInfo(deviceKey)
+        val deviceKeyInfo = deviceKeyInfo(deviceKey, authorizedNameSpaces)
         val mdoc = MDocBuilder(docType)
             .apply { usage(credential) }
             .sign(validityInfo, deviceKeyInfo, statusListToken, issuerCryptoProvider, issuerSigningKey.key.keyID)
@@ -68,10 +69,11 @@ internal class MsoMdocSigner<in Credential>(
     }
 }
 
-private fun deviceKeyInfo(deviceKey: ECKey): DeviceKeyInfo {
+private fun deviceKeyInfo(deviceKey: ECKey, authorizedNameSpaces: AuthorizedNameSpaces): DeviceKeyInfo {
     val key = OneKey(deviceKey.toECPublicKey(), null)
     val deviceKeyDataElement: MapElement = DataElement.fromCBOR(key.AsCBOR().EncodeToBytes())
-    return DeviceKeyInfo(deviceKeyDataElement, null, null)
+    val keyAuthorizations = KeyAuthorizations(authorizedNameSpaces = authorizedNameSpaces, dataElements = null).toMapElement()
+    return DeviceKeyInfo(deviceKeyDataElement, keyAuthorizations, null)
 }
 
 /**

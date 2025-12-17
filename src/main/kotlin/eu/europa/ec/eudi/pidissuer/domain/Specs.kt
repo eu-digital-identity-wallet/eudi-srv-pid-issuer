@@ -56,3 +56,11 @@ object TokenStatusListSpec {
     const val IDX: String = "idx"
     const val URI: String = "uri"
 }
+
+/**
+ * [Personal identification — ISO-compliant driving licence — Part 5: Mobile driving licence (mDL) application](https://github.com/ISOWG10/ISO-18013/blob/main/Working%20Documents/Working%20Draft%20ISO_IEC_18013-5_second-edition_CD_ballot_resolution_v3.pdf)
+ */
+object Iso180135 {
+    const val KEY_AUTHORIZATIONS_NAMESPACES: String = "nameSpaces"
+    const val KEY_AUTHORIZATIONS_DATA_ELEMENTS: String = "dataElements"
+}
