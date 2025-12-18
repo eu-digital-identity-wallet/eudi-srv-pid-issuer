@@ -19,6 +19,7 @@ sealed interface AttestationCategory {
     data object Pid : AttestationCategory
     data object EuQeaa : AttestationCategory
     data object EuPubQeaa : AttestationCategory
+    data object EuPubEaa : AttestationCategory
     data object EuEaa : AttestationCategory
     data object Eaa : AttestationCategory
 }
