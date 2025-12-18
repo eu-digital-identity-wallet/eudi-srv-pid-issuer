@@ -17,44 +17,37 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc
 
 import arrow.core.NonEmptyList
 import arrow.core.nonEmptyListOf
-import arrow.core.serialization.NonEmptyListSerializer
 import cbor.Cbor
 import eu.europa.ec.eudi.pidissuer.domain.Iso180135
 import id.walt.mdoc.dataelement.ListElement
 import id.walt.mdoc.dataelement.MapElement
+import id.walt.mdoc.dataelement.toDataElement
 import kotlinx.serialization.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.cbor as myCbor
 
 typealias NameSpace = String
 
 @JvmInline
-@Serializable
-value class AuthorizedNameSpaces(
-    @Serializable(with = NonEmptyListSerializer::class) val value: NonEmptyList<NameSpace>,
-) {
+value class AuthorizedNameSpaces(val value: NonEmptyList<NameSpace>) {
     constructor(first: NameSpace, vararg rest: NameSpace) : this(nonEmptyListOf(first, *rest))
 
-    fun toCbor(cbor: Cbor = myCbor): ByteArray = cbor.encodeToByteArray(this)
-    fun toCborHex(cbor: Cbor = myCbor): String = cbor.encodeToHexString(this)
-    fun toListElement(cbor: Cbor = myCbor): ListElement = cbor.decodeFromByteArray(toCbor(cbor))
+    fun toCbor(cbor: Cbor = myCbor): ByteArray = cbor.encodeToByteArray(toListElement())
+    fun toCborHex(cbor: Cbor = myCbor): String = cbor.encodeToHexString(toListElement())
+    fun toListElement(): ListElement = value.map { it.toDataElement() }.toDataElement()
 }
 
 typealias DataElementIdentifier = String
 
 @JvmInline
-@Serializable
-value class DataElementsArray(
-    @Serializable(with = NonEmptyListSerializer::class) val value: NonEmptyList<DataElementIdentifier>,
-) {
+value class DataElementsArray(val value: NonEmptyList<DataElementIdentifier>) {
     constructor(first: DataElementIdentifier, vararg rest: DataElementIdentifier) : this(nonEmptyListOf(first, *rest))
 
-    fun toCbor(cbor: Cbor = myCbor): ByteArray = cbor.encodeToByteArray(this)
-    fun toCborHex(cbor: Cbor = myCbor): String = cbor.encodeToHexString(this)
-    fun toListElement(cbor: Cbor = myCbor): ListElement = cbor.decodeFromByteArray(toCbor(cbor))
+    fun toCbor(cbor: Cbor = myCbor): ByteArray = cbor.encodeToByteArray(toListElement())
+    fun toCborHex(cbor: Cbor = myCbor): String = cbor.encodeToHexString(toListElement())
+    fun toListElement(): ListElement = value.map { it.toDataElement() }.toDataElement()
 }
 
 @JvmInline
-@Serializable
 value class AuthorizedDataElements(val value: Map<NameSpace, DataElementsArray>) {
     constructor(
         first: Pair<NameSpace, DataElementsArray>,
@@ -65,16 +58,15 @@ value class AuthorizedDataElements(val value: Map<NameSpace, DataElementsArray>)
         require(value.isNotEmpty()) { "AuthorizedDataElements must contain at least one NameSpace" }
     }
 
-    fun toCbor(cbor: Cbor = myCbor): ByteArray = cbor.encodeToByteArray(this)
-    fun toCborHex(cbor: Cbor = myCbor): String = cbor.encodeToHexString(this)
-    fun toMapElement(cbor: Cbor = myCbor): MapElement = cbor.decodeFromByteArray(toCbor(cbor))
+    fun toCbor(cbor: Cbor = myCbor): ByteArray = cbor.encodeToByteArray(toMapElement())
+    fun toCborHex(cbor: Cbor = myCbor): String = cbor.encodeToHexString(toMapElement())
+    fun toMapElement(): MapElement =
+        buildMap {
+            value.forEach { (nameSpace, dataElements) -> put(nameSpace.toDataElement(), dataElements.toListElement()) }
+        }.toDataElement()
 }
 
-@Serializable
-data class KeyAuthorizations(
-    @SerialName(Iso180135.KEY_AUTHORIZATIONS_NAMESPACES) val nameSpaces: AuthorizedNameSpaces? = null,
-    @SerialName(Iso180135.KEY_AUTHORIZATIONS_DATA_ELEMENTS) val dataElements: AuthorizedDataElements? = null,
-) {
+data class KeyAuthorizations(val nameSpaces: AuthorizedNameSpaces? = null, val dataElements: AuthorizedDataElements? = null) {
     constructor(
         first: NameSpace,
         vararg rest: NameSpace,
@@ -98,7 +90,16 @@ data class KeyAuthorizations(
         }
     }
 
-    fun toCbor(cbor: Cbor = myCbor): ByteArray = cbor.encodeToByteArray(this)
-    fun toCborHex(cbor: Cbor = myCbor): String = cbor.encodeToHexString(this)
-    fun toMapElement(cbor: Cbor = myCbor): MapElement = cbor.decodeFromByteArray(toCbor(cbor))
+    fun toCbor(cbor: Cbor = myCbor): ByteArray = cbor.encodeToByteArray(toMapElement())
+    fun toCborHex(cbor: Cbor = myCbor): String = cbor.encodeToHexString(toMapElement())
+    fun toMapElement(): MapElement =
+        buildMap {
+            if (null != nameSpaces) {
+                put(Iso180135.KEY_AUTHORIZATIONS_NAMESPACES.toDataElement(), nameSpaces.toListElement())
+            }
+
+            if (null != dataElements) {
+                put(Iso180135.KEY_AUTHORIZATIONS_DATA_ELEMENTS.toDataElement(), dataElements.toMapElement())
+            }
+        }.toDataElement()
 }
