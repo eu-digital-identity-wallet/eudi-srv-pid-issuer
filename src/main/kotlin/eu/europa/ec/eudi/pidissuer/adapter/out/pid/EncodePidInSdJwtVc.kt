@@ -154,9 +154,9 @@ private fun selectivelyDisclosed(
         sdClaim(SdJwtVcPidClaims.BirthDate.name, pid.birthDate.toString())
         with(pid.placeOfBirth) {
             sdObjClaim(SdJwtVcPidClaims.PlaceOfBirth.attribute.name) {
-                country?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Country.name, it.value) }
-                region?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Region.name, it.value) }
-                locality?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Locality.name, it.value) }
+                country?.let { claim(SdJwtVcPidClaims.PlaceOfBirth.Country.name, it.value) }
+                region?.let { claim(SdJwtVcPidClaims.PlaceOfBirth.Region.name, it.value) }
+                locality?.let { claim(SdJwtVcPidClaims.PlaceOfBirth.Locality.name, it.value) }
             }
         }
         sdArrClaim(SdJwtVcPidClaims.Nationalities.name) {

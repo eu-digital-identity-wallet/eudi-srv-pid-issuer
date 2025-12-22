@@ -116,7 +116,7 @@
           "label": "Locality"
         }
       ],
-      "sd": "always"
+      "sd": "never"
     },
     {
       "path": [
@@ -129,7 +129,7 @@
           "label": "Region"
         }
       ],
-      "sd": "always"
+      "sd": "never"
     },
     {
       "path": [
@@ -142,7 +142,7 @@
           "label": "Country"
         }
       ],
-      "sd": "always"
+      "sd": "never"
     },
     {
       "path": [
