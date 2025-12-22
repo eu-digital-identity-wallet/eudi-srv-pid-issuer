@@ -51,7 +51,10 @@ internal object SdJwtVcPidClaims {
     val BirthDate = OidcBirthDate
     val BirthFamilyName = OidcAssuranceBirthFamilyName
     val BirthGivenName = OidcAssuranceBirthGivenName
-    val PlaceOfBirth = OidcAssurancePlaceOfBirth
+    val PlaceOfBirth = OidcAssurancePlaceOfBirth.attribute.copy(
+        mandatory = true,
+        nested = emptyList(),
+    )
     val Address = OidcAddressClaim
     val Sex = ClaimDefinition(
         path = ClaimPath.claim("sex"),
@@ -128,7 +131,7 @@ internal object SdJwtVcPidClaims {
         FamilyName,
         GivenName,
         BirthDate,
-        PlaceOfBirth.attribute,
+        PlaceOfBirth,
         Nationalities,
         Address.attribute,
         PersonalAdministrativeNumber,

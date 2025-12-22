@@ -26,6 +26,7 @@ import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.certificate
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAddressClaim
+import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAssurancePlaceOfBirth
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType
@@ -153,10 +154,10 @@ private fun selectivelyDisclosed(
         sdClaim(SdJwtVcPidClaims.GivenName.name, pid.givenName.value)
         sdClaim(SdJwtVcPidClaims.BirthDate.name, pid.birthDate.toString())
         with(pid.placeOfBirth) {
-            sdObjClaim(SdJwtVcPidClaims.PlaceOfBirth.attribute.name) {
-                country?.let { claim(SdJwtVcPidClaims.PlaceOfBirth.Country.name, it.value) }
-                region?.let { claim(SdJwtVcPidClaims.PlaceOfBirth.Region.name, it.value) }
-                locality?.let { claim(SdJwtVcPidClaims.PlaceOfBirth.Locality.name, it.value) }
+            sdObjClaim(OidcAssurancePlaceOfBirth.NAME) {
+                country?.let { claim(OidcAssurancePlaceOfBirth.Country.name, it.value) }
+                region?.let { claim(OidcAssurancePlaceOfBirth.Region.name, it.value) }
+                locality?.let { claim(OidcAssurancePlaceOfBirth.Locality.name, it.value) }
             }
         }
         sdArrClaim(SdJwtVcPidClaims.Nationalities.name) {

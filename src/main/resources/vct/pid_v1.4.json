@@ -107,45 +107,6 @@
     },
     {
       "path": [
-        "place_of_birth",
-        "locality"
-      ],
-      "display": [
-        {
-          "lang": "en",
-          "label": "Locality"
-        }
-      ],
-      "sd": "never"
-    },
-    {
-      "path": [
-        "place_of_birth",
-        "region"
-      ],
-      "display": [
-        {
-          "lang": "en",
-          "label": "Region"
-        }
-      ],
-      "sd": "never"
-    },
-    {
-      "path": [
-        "place_of_birth",
-        "country"
-      ],
-      "display": [
-        {
-          "lang": "en",
-          "label": "Country"
-        }
-      ],
-      "sd": "never"
-    },
-    {
-      "path": [
         "nationalities"
       ],
       "display": [
