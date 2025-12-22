@@ -31,7 +31,11 @@ value class GivenName(val value: String)
  * code as specified in ISO 3166-1.
  */
 @JvmInline
-value class IsoCountry(val value: String)
+value class IsoCountry(val value: String) {
+    companion object {
+        val UTOPIA: IsoCountry = IsoCountry("UT")
+    }
+}
 
 @JvmInline
 value class Street(val value: String)
