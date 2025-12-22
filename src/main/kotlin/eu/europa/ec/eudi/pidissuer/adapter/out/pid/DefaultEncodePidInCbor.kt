@@ -50,18 +50,16 @@ private fun MDocBuilder.addItemsToSign(pid: Pid) {
     addItemToSign(MsoMdocPidClaims.FamilyName, pid.familyName.value.toDataElement())
     addItemToSign(MsoMdocPidClaims.GivenName, pid.givenName.value.toDataElement())
     addItemToSign(MsoMdocPidClaims.BirthDate, pid.birthDate.toDataElement())
-    val placeOfBirth =
-        if (null != pid.placeOfBirth)
-            buildMap {
-                pid.placeOfBirth.country?.let { put(MapKey("country"), it.value.toDataElement()) }
-                pid.placeOfBirth.region?.let { put(MapKey("region"), it.value.toDataElement()) }
-                pid.placeOfBirth.locality?.let { put(MapKey("locality"), it.value.toDataElement()) }
-            }.toDataElement()
-        else
-            buildMap {
-                put(MapKey("locality"), "Not known".toDataElement())
-            }.toDataElement()
+
+    val placeOfBirth = with(pid.placeOfBirth) {
+        buildMap {
+            country?.let { put(MapKey("country"), it.value.toDataElement()) }
+            region?.let { put(MapKey("region"), it.value.toDataElement()) }
+            locality?.let { put(MapKey("locality"), it.value.toDataElement()) }
+        }.toDataElement()
+    }
     addItemToSign(MsoMdocPidClaims.PlaceOfBirth, placeOfBirth)
+
     addItemToSign(MsoMdocPidClaims.Nationality, pid.nationalities.map { it.value.toDataElement() }.toDataElement())
     pid.residentAddress?.let { addItemToSign(MsoMdocPidClaims.ResidenceAddress, it.toDataElement()) }
     pid.residentCountry?.let { addItemToSign(MsoMdocPidClaims.ResidenceCountry, it.value.toDataElement()) }
