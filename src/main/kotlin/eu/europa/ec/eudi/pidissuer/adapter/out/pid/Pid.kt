@@ -74,7 +74,17 @@ data class PlaceOfBirth(
     val country: IsoCountry? = null,
     val region: State? = null,
     val locality: City? = null,
-)
+) {
+    init {
+        require(null != country || null != region || null != locality) {
+            "At least one of 'country', 'region' or 'locality' must be non-null"
+        }
+    }
+
+    companion object {
+        val NotKnown: PlaceOfBirth = PlaceOfBirth(locality = City("Not known"))
+    }
+}
 
 /**
  * @param familyName Current last name(s) or surname(s) of the PID User.
@@ -112,7 +122,7 @@ data class Pid(
     val familyName: FamilyName,
     val givenName: GivenName,
     val birthDate: LocalDate,
-    val placeOfBirth: PlaceOfBirth? = null,
+    val placeOfBirth: PlaceOfBirth,
     val nationalities: NonEmptyList<Nationality>,
     val residentAddress: Address? = null,
     val residentCountry: IsoCountry? = null,

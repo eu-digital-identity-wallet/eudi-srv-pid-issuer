@@ -243,7 +243,8 @@ class GetPidDataFromKeyCloak(
                     locality = placeOfBirth.locality?.let { City(it) },
                 )
             } else null
-        }
+        } ?: PlaceOfBirth.NotKnown
+
         val nationality = IsoCountry(requireNotNull(userInfo.nationality) { "missing required attribute 'nationality'" })
         val pid = Pid(
             familyName = FamilyName(userInfo.familyName),
