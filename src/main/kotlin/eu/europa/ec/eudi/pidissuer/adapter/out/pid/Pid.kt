@@ -75,6 +75,12 @@ data class PlaceOfBirth(
     val region: State? = null,
     val locality: City? = null,
 ) {
+    init {
+        require(null != country || null != region || null != locality) {
+            "At least one of 'country', 'region' or 'locality' must be non-null"
+        }
+    }
+
     companion object {
         val NotKnown: PlaceOfBirth = PlaceOfBirth(locality = City("Not known"))
     }
