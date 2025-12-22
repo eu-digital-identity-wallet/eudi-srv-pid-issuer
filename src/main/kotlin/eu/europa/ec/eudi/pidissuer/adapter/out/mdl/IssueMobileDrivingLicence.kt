@@ -317,7 +317,6 @@ internal fun mobileDrivingLicenceV1(
         proofTypesSupported = ProofTypesSupported(
             ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
-        policy = MsoMdocPolicy(oneTimeUse = false),
     )
 
 /**

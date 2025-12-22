@@ -280,7 +280,6 @@ internal fun pidMsoMdocV1(
         proofTypesSupported = ProofTypesSupported(
             ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
-        policy = MsoMdocPolicy(oneTimeUse = true),
     )
 
 /**
