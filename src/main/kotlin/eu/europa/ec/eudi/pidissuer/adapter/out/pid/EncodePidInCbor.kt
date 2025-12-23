@@ -16,10 +16,13 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import com.nimbusds.jose.jwk.ECKey
+import eu.europa.ec.eudi.pidissuer.domain.CoseAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import kotlin.time.Instant
 
-fun interface EncodePidInCbor {
+interface EncodePidInCbor {
+    val signingAlgorithm: CoseAlgorithm
+
     suspend operator fun invoke(
         pid: Pid,
         pidMetaData: PidMetaData,

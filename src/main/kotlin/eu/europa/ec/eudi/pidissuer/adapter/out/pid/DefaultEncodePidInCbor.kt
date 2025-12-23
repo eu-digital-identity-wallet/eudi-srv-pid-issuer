@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
+import eu.europa.ec.eudi.pidissuer.adapter.out.coseAlgorithm
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.MsoMdocSigner
 import eu.europa.ec.eudi.pidissuer.domain.ClaimDefinition
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
@@ -27,6 +28,7 @@ import id.walt.mdoc.doc.MDocBuilder
 import kotlin.time.Instant
 
 internal class DefaultEncodePidInCbor(issuerSigningKey: IssuerSigningKey) : EncodePidInCbor {
+    override val signingAlgorithm = issuerSigningKey.coseAlgorithm
 
     private val signer = MsoMdocSigner<Pair<Pid, PidMetaData>>(
         issuerSigningKey = issuerSigningKey,
