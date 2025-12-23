@@ -154,10 +154,22 @@ internal class BaseWalletApiTest {
 
         @Bean
         @Primary
-        fun encodePidInCbor(): EncodePidInCbor = EncodePidInCbor { _, _, holderKey, _, _, _ ->
-            println(holderKey)
-            "PID"
-        }
+        fun encodePidInCbor(): EncodePidInCbor =
+            object : EncodePidInCbor {
+                override val signingAlgorithm: CoseAlgorithm = CoseAlgorithm(-7)
+
+                override suspend fun invoke(
+                    pid: Pid,
+                    pidMetaData: PidMetaData,
+                    holderKey: ECKey,
+                    issuedAt: Instant,
+                    expiresAt: Instant,
+                    statusListToken: StatusListToken?,
+                ): String {
+                    println(holderKey)
+                    return "PID"
+                }
+            }
     }
 }
 
