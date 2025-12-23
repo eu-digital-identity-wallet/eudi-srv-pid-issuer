@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 import arrow.core.Either
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
+import eu.europa.ec.eudi.pidissuer.adapter.out.coseAlgorithm
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.GenericRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.ParameterizedRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.MsoMdocSigner
@@ -31,6 +32,7 @@ import kotlinx.datetime.toKotlinLocalDate
 import kotlin.time.Instant
 
 class DefaultEncodeMobileDrivingLicenceInCbor(issuerSigningKey: IssuerSigningKey) : EncodeMobileDrivingLicenceInCbor {
+    override val signingAlgorithm = issuerSigningKey.coseAlgorithm
 
     private val signer = MsoMdocSigner<MobileDrivingLicence>(
         issuerSigningKey = issuerSigningKey,
