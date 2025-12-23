@@ -126,7 +126,7 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
     },
     display = display.map { it.toTransferObject() }.takeIf { it.isNotEmpty() },
     credentialConfigurationsSupported = JsonObject(
-        credentialConfigurationsSupported.associate { it.id.value to credentialMetaDataJson(it, batchCredentialIssuance) },
+        credentialConfigurationsSupported.associate { it.id.value to credentialMetaDataJson(it) },
     ),
     openid4VciVersion = OpenId4VciSpec.VERSION,
 )
@@ -196,10 +196,7 @@ private fun CredentialConfiguration.format(): Format = when (this) {
     is SdJwtVcCredentialConfiguration -> SD_JWT_VC_FORMAT
 }
 
-private fun credentialMetaDataJson(
-    d: CredentialConfiguration,
-    batchCredentialIssuance: BatchCredentialIssuance,
-): JsonObject = buildJsonObject {
+private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject = buildJsonObject {
     put("format", d.format().value)
     put("scope", d.scope.value)
     d.cryptographicBindingMethodsSupported.takeIf { it.isNotEmpty() }
@@ -218,7 +215,7 @@ private fun credentialMetaDataJson(
         }
     when (d) {
         is JwtVcJsonCredentialConfiguration -> TODO()
-        is MsoMdocCredentialConfiguration -> d.toTransferObject(batchCredentialIssuance)(this)
+        is MsoMdocCredentialConfiguration -> d.toTransferObject()(this)
         is SdJwtVcCredentialConfiguration -> d.toTransferObject()(this)
     }
 }
@@ -283,9 +280,7 @@ private fun ProofType.toJsonObject(): JsonObject =
         }
     }
 
-internal fun MsoMdocCredentialConfiguration.toTransferObject(
-    batchCredentialIssuance: BatchCredentialIssuance,
-): JsonObjectBuilder.() -> Unit = {
+internal fun MsoMdocCredentialConfiguration.toTransferObject(): JsonObjectBuilder.() -> Unit = {
     credentialSigningAlgorithmsSupported
         ?.let { credentialSigningAlgorithmsSupported ->
             putJsonArray("credential_signing_alg_values_supported") {
@@ -293,14 +288,6 @@ internal fun MsoMdocCredentialConfiguration.toTransferObject(
             }
         }
     put("doctype", docType)
-    if (policy != null) {
-        putJsonObject("policy") {
-            put("one_time_use", policy.oneTimeUse)
-            if (batchCredentialIssuance is BatchCredentialIssuance.Supported) {
-                put("batch_size", batchCredentialIssuance.batchSize)
-            }
-        }
-    }
     putCredentialMetadata(display, claims)
 }
 
