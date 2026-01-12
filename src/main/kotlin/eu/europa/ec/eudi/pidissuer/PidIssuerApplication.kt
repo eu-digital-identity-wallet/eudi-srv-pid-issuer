@@ -213,6 +213,7 @@ fun beans(clock: Clock) = beans {
     val enableStatusList = env.getProperty<Boolean>("issuer.statusList.enabled") ?: false
     val enableEhic = env.getProperty<Boolean>("issuer.ehic.enabled") ?: true
     val enableLearningCredential = env.getProperty<Boolean>("issuer.learningCredential.enabled") ?: true
+    val trustListUrl = env.getProperty<String>("issuer.service-url")
 
     val issuerKeystore: KeyStore by lazy {
         val keystoreLocation = env.getRequiredProperty("issuer.keystore.file")
@@ -545,7 +546,18 @@ fun beans(clock: Clock) = beans {
     //
     // Specific Issuers
     //
-    bean { VerifyKeyAttestation() }
+    bean {
+        if (trustListUrl != null) {
+            VerifyKeyAttestation(
+                verifyTrustedSignedKey = VerifyTrustedSignedKey.Companion.VerifyTrustSignedKeyWithTrustService(
+                    webClient = ref(),
+                    trustService = trustListUrl,
+                ),
+            )
+        } else {
+            VerifyKeyAttestation()
+        }
+    }
     bean { ValidateJwtProof(issuerPublicUrl, ref()) }
     bean { ValidateAttestationProof(ref()) }
     bean { DefaultExtractJwkFromCredentialKey }

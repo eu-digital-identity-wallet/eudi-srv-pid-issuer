@@ -19,11 +19,14 @@ import arrow.core.Either
 import arrow.core.NonEmptyList
 import arrow.core.NonEmptySet
 import arrow.core.raise.either
+import arrow.core.serialization.NonEmptyListSerializer
 import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
-import com.nimbusds.jose.jwk.*
+import com.nimbusds.jose.jwk.AsymmetricJWK
+import com.nimbusds.jose.jwk.ECKey
+import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jose.proc.SingleKeyJWSKeySelector
@@ -36,6 +39,17 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationJWT
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Required
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.reactive.function.client.awaitBody
+import java.io.ByteArrayInputStream
 import java.net.URI
 import java.security.cert.*
 import kotlin.time.Duration
@@ -45,10 +59,30 @@ import kotlin.time.Instant
 
 internal val SkipRevocation: PKIXParameters.() -> Unit = { isRevocationEnabled = false }
 
+fun interface VerifyTrustedSignedKey {
+    suspend operator fun invoke(x5c: NonEmptyList<X509Certificate>): Boolean
+    companion object {
+        internal class VerifyTrustSignedKeyWithTrustService(
+            private val webClient: WebClient,
+            private val trustService: String,
+        ) : VerifyTrustedSignedKey {
+            override suspend fun invoke(x5c: NonEmptyList<X509Certificate>): Boolean {
+                val body = TrustQueryRequest(x5c, ProviderType.WalletProvider)
+                return webClient.post()
+                    .uri(trustService)
+                    .bodyValue(body)
+                    .retrieve()
+                    .awaitBody<TrustResponse>()
+                    .trusted
+            }
+        }
+    }
+}
+
 internal class VerifyKeyAttestation(
-    private val trustAnchors: NonEmptyList<X509Certificate>? = null,
     private val verifyAttestedKey: VerifyAttestedKey? = null,
     private val maxSkew: Duration = 30.seconds,
+    private val verifyTrustedSignedKey: VerifyTrustedSignedKey? = null,
 ) {
     suspend operator fun invoke(
         keyAttestation: KeyAttestationJWT,
@@ -62,7 +96,6 @@ internal class VerifyKeyAttestation(
             val key = extractSigningKey()
                 .ensureCompatibleWith(algorithm)
                 .ensureIsPublicAsymmetricKey()
-
             verifySignature(key, algorithm, expectExpirationClaim)
             ensureMeetsKeyAttestationRequirements(keyAttestationRequirement, nonce)
 
@@ -70,7 +103,7 @@ internal class VerifyKeyAttestation(
         }
     }
 
-    private fun KeyAttestationJWT.extractSigningKey(): JWK {
+    private suspend fun KeyAttestationJWT.extractSigningKey(): JWK {
         val header = jwt.header
         val kid: String? = header.keyID
         val x5c: List<Base64>? = header.x509CertChain
@@ -80,9 +113,7 @@ internal class VerifyKeyAttestation(
             kid == null && !x5c.isNullOrEmpty() -> {
                 val chain = X509CertChainUtils.parse(x5c).toNonEmptyListOrNull()
                 requireNotNull(chain) { "x5c chain cannot be empty" }
-                if (trustAnchors != null) {
-                    chain.isTrusted(trustAnchors)
-                }
+                verifyTrustedSignedKey?.invoke(chain)
                 JWK.parse(chain.head)
             }
             else -> error("Invalid Key attestation : No signing key found in one of 'kid' or 'x5c'. 'trust_chain not yet supported'")
@@ -186,3 +217,42 @@ private fun NonEmptyList<X509Certificate>.isTrusted(
     val validator = CertPathValidator.getInstance("PKIX")
     validator.validate(certPath, pkixParameters)
 }
+
+@Serializable
+internal enum class ProviderType {
+    WalletProvider,
+}
+
+@Serializable
+private data class TrustQueryRequest(
+    @Serializable(with = X509CertificateChainSerializer::class)
+    val x5c: NonEmptyList<X509Certificate>,
+    val serviceType: ProviderType,
+)
+
+object X509CertificateSerializer : KSerializer<X509Certificate> {
+
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("X509Certificate", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: X509Certificate) {
+        val encoded = kotlin.io.encoding.Base64.withPadding(kotlin.io.encoding.Base64.PaddingOption.ABSENT_OPTIONAL).encode(value.encoded)
+        encoder.encodeString(encoded)
+    }
+
+    override fun deserialize(decoder: Decoder): X509Certificate {
+        val cert = decoder.decodeString()
+        val decoded = kotlin.io.encoding.Base64.withPadding(kotlin.io.encoding.Base64.PaddingOption.ABSENT_OPTIONAL).decode(cert)
+        val cf = CertificateFactory.getInstance("X.509")
+        return ByteArrayInputStream(decoded).use { inputStream ->
+            cf.generateCertificate(inputStream) as X509Certificate
+        }
+    }
+}
+object X509CertificateChainSerializer : KSerializer<NonEmptyList<X509Certificate>> by NonEmptyListSerializer(
+    X509CertificateSerializer,
+)
+
+@Serializable
+private data class TrustResponse(
+    @Required val trusted: Boolean,
+)
