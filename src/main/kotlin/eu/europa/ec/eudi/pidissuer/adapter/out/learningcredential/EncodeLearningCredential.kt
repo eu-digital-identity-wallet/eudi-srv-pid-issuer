@@ -118,6 +118,25 @@ private class EncodeLearningCredentialInSdJwtVcCompact(
                 if (null != assessmentGrade) {
                     sdClaim(SdJwtVcClaims.AssessmentGrade.name, assessmentGrade.value)
                 }
+                claim(SdJwtVcClaims.LanguageOfClasses.name, languageOfClasses.value)
+                sdClaim(SdJwtVcClaims.LearnerIdentification.name, learnerIdentification.value)
+                sdClaim(SdJwtVcClaims.ExpectedStudyTime.name, expectedStudyTime.value)
+                sdClaim(SdJwtVcClaims.LevelOfLearningExperience.name, levelOfLearningExperience.value)
+                sdClaim(SdJwtVcClaims.FormOfParticipation.name, formOfParticipation.value)
+                sdClaim(SdJwtVcClaims.TypesOfQualityAssurance.name, typesOfQualityAssurance.value)
+                if (null != prerequisitesToEnroll) {
+                    sdArrClaim(SdJwtVcClaims.PrerequisitesToEnroll.name) {
+                        prerequisitesToEnroll.forEach { prerequisiteToEnroll -> claim(prerequisiteToEnroll.value) }
+                    }
+                }
+                if (null != evaluatorVerification) {
+                    sdArrClaim(SdJwtVcClaims.EvaluatorVerification.name) {
+                        evaluatorVerification.forEach { evaluatorVerification -> claim(evaluatorVerification.value) }
+                    }
+                }
+                if (null != integrationStackabilityOptions) {
+                    sdClaim(SdJwtVcClaims.IntegrationStackabilityOptions.name, integrationStackabilityOptions.value)
+                }
             }
         }
 
@@ -130,3 +149,27 @@ private class EncodeLearningCredentialInSdJwtVcCompact(
         }
     }
 }
+
+private val Language.value: String
+    get() = when (this) {
+        Language.EN -> "en"
+        Language.JP -> "jp"
+    }
+
+private val LevelOfLearningExperience.value: Int
+    get() = when (this) {
+        LevelOfLearningExperience.Level1 -> 1
+        LevelOfLearningExperience.Level2 -> 2
+        LevelOfLearningExperience.Level3 -> 3
+        LevelOfLearningExperience.Level4 -> 4
+        LevelOfLearningExperience.Level5 -> 5
+        LevelOfLearningExperience.Level6 -> 6
+        LevelOfLearningExperience.Level7 -> 7
+        LevelOfLearningExperience.Level8 -> 8
+    }
+
+private val IntegrationStackabilityOptions.value: Boolean
+    get() = when (this) {
+        IntegrationStackabilityOptions.Yes -> true
+        IntegrationStackabilityOptions.No -> false
+    }

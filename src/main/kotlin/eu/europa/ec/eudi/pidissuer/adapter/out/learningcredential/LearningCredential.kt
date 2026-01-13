@@ -45,6 +45,35 @@ typealias AchievementDescription = NonBlankString
 typealias LearningOutcome = NonBlankString
 typealias AssessmentGrade = NonBlankString
 
+enum class Language {
+    EN,
+    JP,
+}
+
+typealias LearnerIdentification = NonBlankString
+typealias ExpectedStudyTime = NonBlankString
+
+enum class LevelOfLearningExperience {
+    Level1,
+    Level2,
+    Level3,
+    Level4,
+    Level5,
+    Level6,
+    Level7,
+    Level8,
+}
+
+typealias FormOfParticipation = NonBlankString
+typealias TypesOfQualityAssurance = NonBlankString
+typealias PrerequisiteToEnroll = NonBlankString
+typealias EvaluatorVerification = NonBlankString
+
+enum class IntegrationStackabilityOptions {
+    Yes,
+    No,
+}
+
 data class LearningCredential(
     val issuer: Issuer,
     val dateOfIssuance: Instant,
@@ -55,6 +84,15 @@ data class LearningCredential(
     val achievementDescription: AchievementDescription? = null,
     val learningOutcomes: NonEmptyList<LearningOutcome>? = null,
     val assessmentGrade: AssessmentGrade? = null,
+    val languageOfClasses: Language,
+    val learnerIdentification: LearnerIdentification,
+    val expectedStudyTime: ExpectedStudyTime,
+    val levelOfLearningExperience: LevelOfLearningExperience,
+    val formOfParticipation: FormOfParticipation,
+    val typesOfQualityAssurance: TypesOfQualityAssurance,
+    val prerequisitesToEnroll: NonEmptyList<PrerequisiteToEnroll>? = null,
+    val evaluatorVerification: NonEmptyList<EvaluatorVerification>? = null,
+    val integrationStackabilityOptions: IntegrationStackabilityOptions? = null,
 ) {
     companion object
 }
