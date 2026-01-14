@@ -213,7 +213,6 @@ fun beans(clock: Clock) = beans {
     val enableStatusList = env.getProperty<Boolean>("issuer.statusList.enabled") ?: false
     val enableEhic = env.getProperty<Boolean>("issuer.ehic.enabled") ?: true
     val enableLearningCredential = env.getProperty<Boolean>("issuer.learningCredential.enabled") ?: true
-    val trustListUrl = env.getProperty<String>("issuer.service-url")
 
     val issuerKeystore: KeyStore by lazy {
         val keystoreLocation = env.getRequiredProperty("issuer.keystore.file")
@@ -547,15 +546,19 @@ fun beans(clock: Clock) = beans {
     // Specific Issuers
     //
     bean {
-        if (trustListUrl != null) {
+        val config = ref<AttestationTrustProperties>()
+        if (config.serviceUrl.isNullOrBlank()) {
+            log.warn("Trust Validator Service has not been configured. Trusting all Wallet Providers.")
+            VerifyKeyAttestation(verifyTrustedSignedKey = VerifyTrustedSignedKey.Ignored)
+        } else {
+            log.info("Using Trust Validator Service '{}'", config.serviceUrl)
             VerifyKeyAttestation(
-                verifyTrustedSignedKey = VerifyTrustedSignedKey.Companion.VerifyTrustSignedKeyWithTrustService(
-                    webClient = ref(),
-                    trustService = trustListUrl,
+                verifyTrustedSignedKey = VerifyTrustedSignedKey.verifyTrustSignedKeyWithTrustService(
+                    webClient = ref(),//TODO : check here if we can just add webclient,
+                    service = URI(config.serviceUrl),
+                    serviceType = config.defaultServiceType,
                 ),
             )
-        } else {
-            VerifyKeyAttestation()
         }
     }
     bean { ValidateJwtProof(issuerPublicUrl, ref()) }
@@ -1251,11 +1254,20 @@ private suspend fun WebClient.authorizationServerSupportedDPoPJWSAlgorithms(auth
         null
     }
 
+/**
+ * Configuration properties for Issuer Trust service.
+ */
+@ConfigurationProperties("issuer.trust")
+internal data class AttestationTrustProperties(
+    val serviceUrl: String? = null,
+    val defaultServiceType: ProviderType = ProviderType.WalletProvider,
+)
+
 fun BeanDefinitionDsl.initializer(): ApplicationContextInitializer<GenericApplicationContext> =
     ApplicationContextInitializer<GenericApplicationContext> { initialize(it) }
 
 @SpringBootApplication
-@EnableConfigurationProperties(IssuerMetadataProperties::class, SdJwtVcProperties::class)
+@EnableConfigurationProperties(IssuerMetadataProperties::class, SdJwtVcProperties::class, AttestationTrustProperties::class)
 @EnableScheduling
 class PidIssuerApplication
 
