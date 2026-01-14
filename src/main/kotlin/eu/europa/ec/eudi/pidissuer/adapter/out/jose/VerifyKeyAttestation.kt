@@ -58,8 +58,6 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 import kotlin.time.Instant
 
-internal val SkipRevocation: PKIXParameters.() -> Unit = { isRevocationEnabled = false }
-
 fun interface VerifyTrustedSignedKey {
     suspend operator fun invoke(x5c: NonEmptyList<X509Certificate>): Boolean
     companion object
