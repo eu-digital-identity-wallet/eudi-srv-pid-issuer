@@ -47,6 +47,7 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
 import java.io.ByteArrayInputStream
@@ -61,23 +62,25 @@ internal val SkipRevocation: PKIXParameters.() -> Unit = { isRevocationEnabled =
 
 fun interface VerifyTrustedSignedKey {
     suspend operator fun invoke(x5c: NonEmptyList<X509Certificate>): Boolean
-    companion object {
-        internal class VerifyTrustSignedKeyWithTrustService(
-            private val webClient: WebClient,
-            private val trustService: String,
-        ) : VerifyTrustedSignedKey {
-            override suspend fun invoke(x5c: NonEmptyList<X509Certificate>): Boolean {
-                val body = TrustQueryRequest(x5c, ProviderType.WalletProvider)
-                return webClient.post()
-                    .uri(trustService)
-                    .bodyValue(body)
-                    .retrieve()
-                    .awaitBody<TrustResponse>()
-                    .trusted
-            }
-        }
-    }
+    companion object
 }
+fun VerifyTrustedSignedKey.Companion.verifyTrustSignedKeyWithTrustService(
+    webClient: WebClient,
+    service: URI,
+    serviceType: ProviderType,
+): VerifyTrustedSignedKey = VerifyTrustedSignedKey { x5c ->
+    val body = TrustQueryRequest(x5c, serviceType)
+    val configClient = webClient.post().apply {
+        uri(service)
+        bodyValue(body)
+        contentType(MediaType.APPLICATION_JSON)
+        accept(MediaType.APPLICATION_JSON)
+    }
+    configClient.retrieve()
+        .awaitBody<TrustResponse>()
+        .trusted
+}
+val VerifyTrustedSignedKey.Companion.Ignored: VerifyTrustedSignedKey get() = VerifyTrustedSignedKey { true }
 
 internal class VerifyKeyAttestation(
     private val verifyAttestedKey: VerifyAttestedKey? = null,
@@ -204,22 +207,8 @@ private fun JWK.ensureIsPublicAsymmetricKey(): AsymmetricJWK {
     return this
 }
 
-private fun NonEmptyList<X509Certificate>.isTrusted(
-    trustAnchors: NonEmptyList<X509Certificate>,
-    customizePKIX: PKIXParameters.() -> Unit = SkipRevocation,
-) {
-    val factory = CertificateFactory.getInstance("X.509")
-    val certPath = factory.generateCertPath(this)
-
-    val trust = trustAnchors.map { cert -> TrustAnchor(cert, null) }.toSet()
-    val pkixParameters = PKIXParameters(trust).apply(customizePKIX)
-
-    val validator = CertPathValidator.getInstance("PKIX")
-    validator.validate(certPath, pkixParameters)
-}
-
 @Serializable
-internal enum class ProviderType {
+enum class ProviderType {
     WalletProvider,
 }
 
