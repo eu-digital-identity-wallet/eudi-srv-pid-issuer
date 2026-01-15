@@ -53,11 +53,11 @@ private class GetMockLearningCredential(
                 Instant.fromEpochSeconds(random.nextLong(twoYearsAgo.epochSeconds, now.epochSeconds))
             },
             dateOfExpiry =
-                run {
+                if (random.nextBoolean()) {
                     val inTwoYears = now + (2 * 365).days
                     val inFifteenYears = now + (15 * 365).days
                     Instant.fromEpochSeconds(random.nextLong(inTwoYears.epochSeconds, inFifteenYears.epochSeconds))
-                },
+                } else null,
             familyName = FamilyName(pid.familyName.value),
             givenName = GivenName(pid.givenName.value),
             achievementTitle = AchievementTitle("Foundations of Applied AI in Business"),

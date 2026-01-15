@@ -47,7 +47,7 @@ object SdJwtVcClaims {
     )
     val DateOfExpiry: ClaimDefinition = ClaimDefinition(
         path = ClaimPath.claim("date_of_expiry"),
-        mandatory = true,
+        mandatory = false,
         display = mapOf(
             Locale.ENGLISH to "Date of Expiry",
         ),

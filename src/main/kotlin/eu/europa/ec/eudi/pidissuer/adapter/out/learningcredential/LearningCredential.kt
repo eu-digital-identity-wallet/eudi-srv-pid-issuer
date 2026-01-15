@@ -77,7 +77,7 @@ enum class IntegrationStackabilityOptions {
 data class LearningCredential(
     val issuer: Issuer,
     val dateOfIssuance: Instant,
-    val dateOfExpiry: Instant,
+    val dateOfExpiry: Instant? = null,
     val familyName: FamilyName,
     val givenName: GivenName,
     val achievementTitle: AchievementTitle,

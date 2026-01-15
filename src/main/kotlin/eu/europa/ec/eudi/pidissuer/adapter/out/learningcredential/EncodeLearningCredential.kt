@@ -98,10 +98,12 @@ private class EncodeLearningCredentialInSdJwtVcCompact(
                     SdJwtVcClaims.DateOfIssuance.name,
                     formatter.format(ZonedDateTime.ofInstant(dateOfIssuance.toJavaInstant(), ZoneOffset.UTC)),
                 )
-                claim(
-                    SdJwtVcClaims.DateOfExpiry.name,
-                    formatter.format(ZonedDateTime.ofInstant(dateOfExpiry.toJavaInstant(), ZoneOffset.UTC)),
-                )
+                if (null != dateOfExpiry) {
+                    claim(
+                        SdJwtVcClaims.DateOfExpiry.name,
+                        formatter.format(ZonedDateTime.ofInstant(dateOfExpiry.toJavaInstant(), ZoneOffset.UTC)),
+                    )
+                }
                 sdClaim(SdJwtVcClaims.FamilyName.name, familyName.value)
                 sdClaim(SdJwtVcClaims.GivenName.name, givenName.value)
                 claim(SdJwtVcClaims.AchievementTitle.name, achievementTitle.value)
