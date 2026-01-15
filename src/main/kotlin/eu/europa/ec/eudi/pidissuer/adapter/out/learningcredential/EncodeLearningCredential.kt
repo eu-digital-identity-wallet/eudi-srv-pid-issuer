@@ -98,12 +98,10 @@ private class EncodeLearningCredentialInSdJwtVcCompact(
                     SdJwtVcClaims.DateOfIssuance.name,
                     formatter.format(ZonedDateTime.ofInstant(dateOfIssuance.toJavaInstant(), ZoneOffset.UTC)),
                 )
-                if (null != dateOfExpiry) {
-                    claim(
-                        SdJwtVcClaims.DateOfExpiry.name,
-                        formatter.format(ZonedDateTime.ofInstant(dateOfExpiry.toJavaInstant(), ZoneOffset.UTC)),
-                    )
-                }
+                claim(
+                    SdJwtVcClaims.DateOfExpiry.name,
+                    formatter.format(ZonedDateTime.ofInstant(dateOfExpiry.toJavaInstant(), ZoneOffset.UTC)),
+                )
                 sdClaim(SdJwtVcClaims.FamilyName.name, familyName.value)
                 sdClaim(SdJwtVcClaims.GivenName.name, givenName.value)
                 claim(SdJwtVcClaims.AchievementTitle.name, achievementTitle.value)
@@ -123,7 +121,9 @@ private class EncodeLearningCredentialInSdJwtVcCompact(
                 sdClaim(SdJwtVcClaims.ExpectedStudyTime.name, expectedStudyTime.value)
                 sdClaim(SdJwtVcClaims.LevelOfLearningExperience.name, levelOfLearningExperience.value)
                 sdClaim(SdJwtVcClaims.FormOfParticipation.name, formOfParticipation.value)
-                sdClaim(SdJwtVcClaims.TypesOfQualityAssurance.name, typesOfQualityAssurance.value)
+                sdArrClaim(SdJwtVcClaims.TypesOfQualityAssurance.name) {
+                    typesOfQualityAssurance.forEach { typeOfQualityAssurance -> claim(typeOfQualityAssurance.value) }
+                }
                 if (null != prerequisitesToEnroll) {
                     sdArrClaim(SdJwtVcClaims.PrerequisitesToEnroll.name) {
                         prerequisitesToEnroll.forEach { prerequisiteToEnroll -> claim(prerequisiteToEnroll.value) }

@@ -77,7 +77,7 @@ enum class IntegrationStackabilityOptions {
 data class LearningCredential(
     val issuer: Issuer,
     val dateOfIssuance: Instant,
-    val dateOfExpiry: Instant? = null,
+    val dateOfExpiry: Instant,
     val familyName: FamilyName,
     val givenName: GivenName,
     val achievementTitle: AchievementTitle,
@@ -89,7 +89,7 @@ data class LearningCredential(
     val expectedStudyTime: ExpectedStudyTime,
     val levelOfLearningExperience: LevelOfLearningExperience,
     val formOfParticipation: FormOfParticipation,
-    val typesOfQualityAssurance: TypesOfQualityAssurance,
+    val typesOfQualityAssurance: NonEmptyList<TypesOfQualityAssurance>,
     val prerequisitesToEnroll: NonEmptyList<PrerequisiteToEnroll>? = null,
     val evaluatorVerification: NonEmptyList<EvaluatorVerification>? = null,
     val integrationStackabilityOptions: IntegrationStackabilityOptions? = null,

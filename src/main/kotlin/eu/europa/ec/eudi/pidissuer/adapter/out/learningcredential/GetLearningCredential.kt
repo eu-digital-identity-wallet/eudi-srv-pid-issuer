@@ -53,11 +53,11 @@ private class GetMockLearningCredential(
                 Instant.fromEpochSeconds(random.nextLong(twoYearsAgo.epochSeconds, now.epochSeconds))
             },
             dateOfExpiry =
-                if (random.nextBoolean()) {
+                run {
                     val inTwoYears = now + (2 * 365).days
                     val inFifteenYears = now + (15 * 365).days
                     Instant.fromEpochSeconds(random.nextLong(inTwoYears.epochSeconds, inFifteenYears.epochSeconds))
-                } else null,
+                },
             familyName = FamilyName(pid.familyName.value),
             givenName = GivenName(pid.givenName.value),
             achievementTitle = AchievementTitle("Foundations of Applied AI in Business"),
@@ -82,7 +82,7 @@ private class GetMockLearningCredential(
             expectedStudyTime = ExpectedStudyTime("12 months"),
             levelOfLearningExperience = LevelOfLearningExperience.entries.shuffled(random).first(),
             formOfParticipation = FormOfParticipation("On-line"),
-            typesOfQualityAssurance = TypesOfQualityAssurance("Institutional Evaluation"),
+            typesOfQualityAssurance = nonEmptyListOf(TypesOfQualityAssurance("Institutional Evaluation")),
             prerequisitesToEnroll =
                 if (random.nextBoolean()) nonEmptyListOf(PrerequisiteToEnroll("Familiarity with Python"))
                 else null,
