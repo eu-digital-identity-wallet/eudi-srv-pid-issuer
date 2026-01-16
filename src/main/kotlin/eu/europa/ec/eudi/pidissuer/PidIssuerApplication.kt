@@ -545,7 +545,22 @@ fun beans(clock: Clock) = beans {
     //
     // Specific Issuers
     //
-    bean { VerifyKeyAttestation() }
+    bean {
+        val config = ref<AttestationTrustProperties>()
+        if (config.serviceUrl.isNullOrBlank()) {
+            log.warn("Trust Validator Service has not been configured. Trusting all Wallet Providers.")
+            VerifyKeyAttestation(verifyTrustedSignedKey = VerifyTrustedSignedKey.Ignored)
+        } else {
+            log.info("Using Trust Validator Service '{}'", config.serviceUrl)
+            VerifyKeyAttestation(
+                verifyTrustedSignedKey = VerifyTrustedSignedKey.verifyTrustSignedKeyWithTrustService(
+                    webClient = webClient,
+                    service = URI(config.serviceUrl),
+                    serviceType = config.defaultServiceType,
+                ),
+            )
+        }
+    }
     bean { ValidateJwtProof(issuerPublicUrl, ref()) }
     bean { ValidateAttestationProof(ref()) }
     bean { DefaultExtractJwkFromCredentialKey }
@@ -1239,11 +1254,20 @@ private suspend fun WebClient.authorizationServerSupportedDPoPJWSAlgorithms(auth
         null
     }
 
+/**
+ * Configuration properties for Issuer Trust service.
+ */
+@ConfigurationProperties("issuer.trust")
+internal data class AttestationTrustProperties(
+    val serviceUrl: String? = null,
+    val defaultServiceType: ProviderType = ProviderType.WalletProvider,
+)
+
 fun BeanDefinitionDsl.initializer(): ApplicationContextInitializer<GenericApplicationContext> =
     ApplicationContextInitializer<GenericApplicationContext> { initialize(it) }
 
 @SpringBootApplication
-@EnableConfigurationProperties(IssuerMetadataProperties::class, SdJwtVcProperties::class)
+@EnableConfigurationProperties(IssuerMetadataProperties::class, SdJwtVcProperties::class, AttestationTrustProperties::class)
 @EnableScheduling
 class PidIssuerApplication
 
