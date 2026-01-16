@@ -554,7 +554,7 @@ fun beans(clock: Clock) = beans {
             log.info("Using Trust Validator Service '{}'", config.serviceUrl)
             VerifyKeyAttestation(
                 verifyTrustedSignedKey = VerifyTrustedSignedKey.verifyTrustSignedKeyWithTrustService(
-                    webClient = ref(),//TODO : check here if we can just add webclient,
+                    webClient = webClient,
                     service = URI(config.serviceUrl),
                     serviceType = config.defaultServiceType,
                 ),
