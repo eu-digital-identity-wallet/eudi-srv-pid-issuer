@@ -45,53 +45,41 @@ private class GetMockLearningCredential(
             issuer = Issuer(
                 name = Issuer.Name("Technical University of Munich: Department of Applied Sciences"),
                 country = IsoAlpha2CountryCode("DE"),
-                uri = if (random.nextBoolean()) HttpsUrl.unsafe("https://university.de/department-of-applied-sciences")
-                else null,
+                uri = HttpsUrl.unsafe("https://university.de/department-of-applied-sciences"),
             ),
             dateOfIssuance = run {
                 val twoYearsAgo = now - (2 * 365).days
                 Instant.fromEpochSeconds(random.nextLong(twoYearsAgo.epochSeconds, now.epochSeconds))
             },
             dateOfExpiry =
-                if (random.nextBoolean()) {
+                run {
                     val inTwoYears = now + (2 * 365).days
                     val inFifteenYears = now + (15 * 365).days
                     Instant.fromEpochSeconds(random.nextLong(inTwoYears.epochSeconds, inFifteenYears.epochSeconds))
-                } else null,
+                },
             familyName = FamilyName(pid.familyName.value),
             givenName = GivenName(pid.givenName.value),
             achievementTitle = AchievementTitle("Foundations of Applied AI in Business"),
             achievementDescription =
-                if (random.nextBoolean()) AchievementDescription(
+                AchievementDescription(
                     "A comprehensive introductory course on the practical application of " +
                         "Artificial Intelligence models to solve common business problems.",
-                )
-                else null,
+                ),
             learningOutcomes =
-                if (random.nextBoolean())
-                    nonEmptyListOf(
-                        LearningOutcome("Analyze business processes to identify opportunities for AI implementation"),
-                        LearningOutcome("Evaluate the suitability of different machine learning models for a given problem"),
-                    )
-                else null,
-            assessmentGrade =
-                if (random.nextBoolean()) AssessmentGrade("Excellent")
-                else null,
+                nonEmptyListOf(
+                    LearningOutcome("Analyze business processes to identify opportunities for AI implementation"),
+                    LearningOutcome("Evaluate the suitability of different machine learning models for a given problem"),
+                ),
+            assessmentGrade = AssessmentGrade("Excellent"),
             languageOfClasses = Language.entries.shuffled(random).first(),
             learnerIdentification = LearnerIdentification("0123456"),
             expectedStudyTime = ExpectedStudyTime("12 months"),
             levelOfLearningExperience = LevelOfLearningExperience.entries.shuffled(random).first(),
             formOfParticipation = FormOfParticipation("On-line"),
             typesOfQualityAssurance = nonEmptyListOf(TypesOfQualityAssurance("Institutional Evaluation")),
-            prerequisitesToEnroll =
-                if (random.nextBoolean()) nonEmptyListOf(PrerequisiteToEnroll("Familiarity with Python"))
-                else null,
-            evaluatorVerification =
-                if (random.nextBoolean()) nonEmptyListOf(EvaluatorVerification("Document checks (passport)"))
-                else null,
-            integrationStackabilityOptions =
-                if (random.nextBoolean()) IntegrationStackabilityOptions.entries.shuffled(random).first()
-                else null,
+            prerequisitesToEnroll = nonEmptyListOf(PrerequisiteToEnroll("Familiarity with Python")),
+            evaluatorVerification = nonEmptyListOf(EvaluatorVerification("Document checks (passport)")),
+            integrationStackabilityOptions = IntegrationStackabilityOptions.entries.shuffled(random).first(),
         )
     }
 }
