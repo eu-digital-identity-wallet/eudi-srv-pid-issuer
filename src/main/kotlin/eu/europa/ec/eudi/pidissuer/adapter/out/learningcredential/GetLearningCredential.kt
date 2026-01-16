@@ -77,6 +77,21 @@ private class GetMockLearningCredential(
             assessmentGrade =
                 if (random.nextBoolean()) AssessmentGrade("Excellent")
                 else null,
+            languageOfClasses = Language.entries.shuffled(random).first(),
+            learnerIdentification = LearnerIdentification("0123456"),
+            expectedStudyTime = ExpectedStudyTime("12 months"),
+            levelOfLearningExperience = LevelOfLearningExperience.entries.shuffled(random).first(),
+            formOfParticipation = FormOfParticipation("On-line"),
+            typesOfQualityAssurance = nonEmptyListOf(TypesOfQualityAssurance("Institutional Evaluation")),
+            prerequisitesToEnroll =
+                if (random.nextBoolean()) nonEmptyListOf(PrerequisiteToEnroll("Familiarity with Python"))
+                else null,
+            evaluatorVerification =
+                if (random.nextBoolean()) nonEmptyListOf(EvaluatorVerification("Document checks (passport)"))
+                else null,
+            integrationStackabilityOptions =
+                if (random.nextBoolean()) IntegrationStackabilityOptions.entries.shuffled(random).first()
+                else null,
         )
     }
 }

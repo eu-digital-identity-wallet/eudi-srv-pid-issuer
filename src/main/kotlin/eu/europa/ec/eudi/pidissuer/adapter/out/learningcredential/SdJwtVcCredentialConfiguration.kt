@@ -46,7 +46,7 @@ object SdJwtVcClaims {
         ),
     )
     val DateOfExpiry: ClaimDefinition = ClaimDefinition(
-        path = ClaimPath.claim("date_of_issuance"),
+        path = ClaimPath.claim("date_of_expiry"),
         mandatory = false,
         display = mapOf(
             Locale.ENGLISH to "Date of Expiry",
@@ -94,6 +94,69 @@ object SdJwtVcClaims {
             Locale.ENGLISH to "Assessment Grade",
         ),
     )
+    val LanguageOfClasses: ClaimDefinition = ClaimDefinition(
+        path = ClaimPath.claim("language_of_classes"),
+        mandatory = true,
+        display = mapOf(
+            Locale.ENGLISH to "Language of classes",
+        ),
+    )
+    val LearnerIdentification: ClaimDefinition = ClaimDefinition(
+        path = ClaimPath.claim("learner_identification"),
+        mandatory = true,
+        display = mapOf(
+            Locale.ENGLISH to "Learner identification",
+        ),
+    )
+    val ExpectedStudyTime: ClaimDefinition = ClaimDefinition(
+        path = ClaimPath.claim("expected_study_time"),
+        mandatory = true,
+        display = mapOf(
+            Locale.ENGLISH to "Expected study time",
+        ),
+    )
+    val LevelOfLearningExperience: ClaimDefinition = ClaimDefinition(
+        path = ClaimPath.claim("level_of_learning_experience"),
+        mandatory = true,
+        display = mapOf(
+            Locale.ENGLISH to "Level of learning experience",
+        ),
+    )
+    val FormOfParticipation: ClaimDefinition = ClaimDefinition(
+        path = ClaimPath.claim("form_of_participation"),
+        mandatory = true,
+        display = mapOf(
+            Locale.ENGLISH to "Form of participation",
+        ),
+    )
+    val TypesOfQualityAssurance: ClaimDefinition = ClaimDefinition(
+        path = ClaimPath.claim("types_of_quality_assurance"),
+        mandatory = true,
+        display = mapOf(
+            Locale.ENGLISH to "Types of quality assurance",
+        ),
+    )
+    val PrerequisitesToEnroll: ClaimDefinition = ClaimDefinition(
+        path = ClaimPath.claim("prerequisites_to_enroll"),
+        mandatory = false,
+        display = mapOf(
+            Locale.ENGLISH to "Prerequisites to enroll",
+        ),
+    )
+    val EvaluatorVerification: ClaimDefinition = ClaimDefinition(
+        path = ClaimPath.claim("evaluator_verification"),
+        mandatory = false,
+        display = mapOf(
+            Locale.ENGLISH to "Evaluator verification",
+        ),
+    )
+    val IntegrationStackabilityOptions: ClaimDefinition = ClaimDefinition(
+        path = ClaimPath.claim("integration_stackability_options"),
+        mandatory = false,
+        display = mapOf(
+            Locale.ENGLISH to "Integration or Stackability options",
+        ),
+    )
 
     fun all(): NonEmptyList<ClaimDefinition> = nonEmptyListOf(
         IssuingAuthority,
@@ -106,6 +169,15 @@ object SdJwtVcClaims {
         AchievementDescription,
         LearningOutcomes,
         AssessmentGrade,
+        LanguageOfClasses,
+        LearnerIdentification,
+        ExpectedStudyTime,
+        LevelOfLearningExperience,
+        FormOfParticipation,
+        TypesOfQualityAssurance,
+        PrerequisitesToEnroll,
+        EvaluatorVerification,
+        IntegrationStackabilityOptions,
     )
 }
 
