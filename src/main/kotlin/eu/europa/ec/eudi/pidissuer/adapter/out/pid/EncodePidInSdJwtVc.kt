@@ -24,7 +24,6 @@ import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.certificate
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAddressClaim
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
@@ -35,13 +34,9 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObject
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
-import eu.europa.ec.eudi.sdjwt.vc.sanOfDNSName
-import eu.europa.ec.eudi.sdjwt.vc.sanOfUniformResourceIdentifier
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import org.slf4j.LoggerFactory
-import java.net.URL
-import java.security.cert.X509Certificate
 import kotlin.io.encoding.Base64
 import kotlin.time.Instant
 
@@ -67,14 +62,7 @@ class EncodePidInSdJwtVc(
         // SD-JWT VC requires no decoys
         val sdJwtFactory = SdJwtFactory(hashAlgorithm = hashAlgorithm, fallbackMinimumDigests = null)
         val signer = ECDSASigner(issuerSigningKey.key)
-        val x509CertChain = run {
-            val certificate = issuerSigningKey.certificate
-            if (certificate.containsSanUri(credentialIssuerId.value) || certificate.containsSanDns(credentialIssuerId.value)) {
-                issuerSigningKey.key.x509CertChain
-            } else {
-                null
-            }
-        }
+        val x509CertChain = issuerSigningKey.key.x509CertChain
 
         NimbusSdJwtOps.issuer(sdJwtFactory, signer, issuerSigningKey.signingAlgorithm) {
             type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
@@ -233,9 +221,3 @@ private object Printer {
         return str
     }
 }
-
-private fun X509Certificate.containsSanDns(url: URL): Boolean =
-    url.host in sanOfDNSName().getOrDefault(emptyList())
-
-private fun X509Certificate.containsSanUri(url: URL): Boolean =
-    url.toExternalForm() in sanOfUniformResourceIdentifier().getOrDefault(emptyList())
