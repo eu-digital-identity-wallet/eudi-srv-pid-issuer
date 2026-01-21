@@ -156,5 +156,5 @@ private fun DrivingPrivilege.Restriction.toDE() =
 
         put("code", code.toDataElement())
         sign?.let { put("sign", it.toDataElement()) }
-        value?.let { put("value", it.toDataElement()) }
+        value?.let { put("value", it.toString().toDataElement()) }
     }.toDataElement()
