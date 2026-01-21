@@ -20,6 +20,7 @@ import arrow.core.nonEmptySetOf
 import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.Clock
+import eu.europa.ec.eudi.pidissuer.domain.CoseAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
@@ -51,6 +52,7 @@ class ValidateProofTest {
             validateProofs(
                 nonEmptyListOf(proof),
                 pidMsoMdocV1(
+                    CoseAlgorithm(-7),
                     nonEmptySetOf(JWSAlgorithm.ES256),
                     KeyAttestationRequirement.NotRequired,
                 ),

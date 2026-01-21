@@ -24,6 +24,7 @@ import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jose.util.X509CertUtils
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.pidissuer.domain.CoseAlgorithm
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
 import eu.europa.ec.eudi.sdjwt.SdJwtFactory
@@ -55,6 +56,14 @@ internal val IssuerSigningKey.algorithmId: AlgorithmID
         Curve.P_256 -> AlgorithmID.ECDSA_256
         Curve.P_384 -> AlgorithmID.ECDSA_384
         Curve.P_521 -> AlgorithmID.ECDSA_512
+        else -> error("Unsupported ECKey Curve '$curve'")
+    }
+
+internal val IssuerSigningKey.coseAlgorithm: CoseAlgorithm
+    get() = when (val curve = key.curve) {
+        Curve.P_256 -> CoseAlgorithm(-7)
+        Curve.P_384 -> CoseAlgorithm(-35)
+        Curve.P_521 -> CoseAlgorithm(-36)
         else -> error("Unsupported ECKey Curve '$curve'")
     }
 

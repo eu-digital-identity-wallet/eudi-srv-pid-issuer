@@ -15,15 +15,14 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
-import arrow.core.Either
-import arrow.core.NonEmptySet
-import arrow.core.getOrElse
+import arrow.core.*
 import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
-import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
+import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
+import eu.europa.ec.eudi.pidissuer.adapter.out.coseAlgorithm
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.jwkExtensions
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -262,6 +261,7 @@ val PidMsoMdocV1CredentialConfigurationId: CredentialConfigurationId = Credentia
 val PidMsoMdocV1DocType: MsoDocType = pidDocType(1)
 
 internal fun pidMsoMdocV1(
+    credentialSigningAlgorithm: CoseAlgorithm,
     proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     keyAttestationRequirement: KeyAttestationRequirement,
 ): MsoMdocCredentialConfiguration =
@@ -275,7 +275,7 @@ internal fun pidMsoMdocV1(
         ),
         claims = MsoMdocPidClaims.all(),
         cryptographicBindingMethodsSupported = setOf(CryptographicBindingMethod.Jwk),
-        credentialSigningAlgorithmsSupported = null,
+        credentialSigningAlgorithmsSupported = nonEmptySetOf(credentialSigningAlgorithm),
         scope = PidMsoMdocScope,
         proofTypesSupported = ProofTypesSupported(
             ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
@@ -286,6 +286,7 @@ internal fun pidMsoMdocV1(
  * Service for issuing PID MsoMdoc credential
  */
 internal class IssueMsoMdocPid(
+    issuerSigningKey: IssuerSigningKey,
     private val validateProofs: ValidateProofs,
     private val getPidData: GetPidData,
     private val encodePidInCbor: EncodePidInCbor,
@@ -302,7 +303,11 @@ internal class IssueMsoMdocPid(
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
 
     override val supportedCredential: MsoMdocCredentialConfiguration =
-        pidMsoMdocV1(jwtProofsSupportedSigningAlgorithms, keyAttestationRequirement)
+        pidMsoMdocV1(
+            issuerSigningKey.coseAlgorithm,
+            jwtProofsSupportedSigningAlgorithms,
+            keyAttestationRequirement,
+        )
 
     override val publicKey: JWK? = null
 

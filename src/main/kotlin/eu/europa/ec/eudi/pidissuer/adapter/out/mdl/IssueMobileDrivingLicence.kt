@@ -18,12 +18,15 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 import arrow.core.Either
 import arrow.core.NonEmptySet
 import arrow.core.getOrElse
+import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
+import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
+import eu.europa.ec.eudi.pidissuer.adapter.out.coseAlgorithm
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.jwkExtensions
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -299,6 +302,7 @@ val MobileDrivingLicenceV1CredentialConfigurationId: CredentialConfigurationId =
 val MobileDrivingLicenceV1DocType: MsoDocType = mdlDocType(1u)
 
 internal fun mobileDrivingLicenceV1(
+    credentialSigningAlgorithm: CoseAlgorithm,
     proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     keyAttestationRequirement: KeyAttestationRequirement,
 ): MsoMdocCredentialConfiguration =
@@ -312,7 +316,7 @@ internal fun mobileDrivingLicenceV1(
         ),
         claims = MsoMdocMdlV1Claims.all(),
         cryptographicBindingMethodsSupported = setOf(CryptographicBindingMethod.Jwk),
-        credentialSigningAlgorithmsSupported = null,
+        credentialSigningAlgorithmsSupported = nonEmptySetOf(credentialSigningAlgorithm),
         scope = MobileDrivingLicenceV1Scope,
         proofTypesSupported = ProofTypesSupported(
             ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
@@ -323,6 +327,7 @@ internal fun mobileDrivingLicenceV1(
  * Issuing service for Mobile Driving Licence.
  */
 internal class IssueMobileDrivingLicence(
+    issuerSigningKey: IssuerSigningKey,
     private val validateProofs: ValidateProofs,
     private val getMobileDrivingLicenceData: GetMobileDrivingLicenceData,
     private val encodeMobileDrivingLicenceInCbor: EncodeMobileDrivingLicenceInCbor,
@@ -337,7 +342,11 @@ internal class IssueMobileDrivingLicence(
 ) : IssueSpecificCredential {
 
     override val supportedCredential: MsoMdocCredentialConfiguration =
-        mobileDrivingLicenceV1(jwtProofsSupportedSigningAlgorithms, keyAttestationRequirement)
+        mobileDrivingLicenceV1(
+            issuerSigningKey.coseAlgorithm,
+            jwtProofsSupportedSigningAlgorithms,
+            keyAttestationRequirement,
+        )
 
     override val publicKey: JWK?
         get() = null

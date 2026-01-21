@@ -48,6 +48,7 @@ internal class ValidateJwtProofTest {
     private val verifyKeyAttestation = VerifyKeyAttestation()
     private val validateJwtProof = ValidateJwtProof(issuer, verifyKeyAttestation)
     private val credentialConfiguration = mobileDrivingLicenceV1(
+        CoseAlgorithm(-7),
         checkNotNull(ECDSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
         KeyAttestationRequirement.NotRequired,
     )
@@ -235,6 +236,7 @@ internal class ValidateJwtProofTest {
             validateJwtProof(
                 UnvalidatedProof.Jwt(signedJwt.serialize()),
                 mobileDrivingLicenceV1(
+                    CoseAlgorithm(-7),
                     nonEmptySetOf(JWSAlgorithm.ES512),
                     KeyAttestationRequirement.NotRequired,
                 ),
