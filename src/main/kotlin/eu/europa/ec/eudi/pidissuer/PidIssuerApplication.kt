@@ -481,6 +481,7 @@ fun beans(clock: Clock) = beans {
                     )
                     val keyAttestationRequirement = keyAttestationRequirement("issuer.pid.mso_mdoc")
                     val issueMsoMdocPid = IssueMsoMdocPid(
+                        issuerSigningKey = ref(),
                         getPidData = ref(),
                         encodePidInCbor = ref(),
                         notificationsEnabled = env.getProperty<Boolean>("issuer.pid.mso_mdoc.notifications.enabled")
@@ -541,6 +542,7 @@ fun beans(clock: Clock) = beans {
                     )
                     val keyAttestationRequirement = keyAttestationRequirement("issuer.mdl")
                     val mdlIssuer = IssueMobileDrivingLicence(
+                        issuerSigningKey = ref(),
                         getMobileDrivingLicenceData = ref(),
                         encodeMobileDrivingLicenceInCbor = ref(),
                         notificationsEnabled = env.getProperty<Boolean>("issuer.mdl.notifications.enabled") ?: true,
