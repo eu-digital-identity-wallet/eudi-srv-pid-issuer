@@ -115,4 +115,4 @@ private fun ServerHttpRequest.authorization(): DPoPAccessToken? =
 /**
  * Gets the uri of the current [ServerHttpRequest]. The uri does not contain query parameters or fragments.
  */
-private fun ServerHttpRequest.uri(): URI = URI.create(UriComponentsBuilder.fromUri(uri).query(null).fragment(null).toUriString())
+private fun ServerHttpRequest.uri(): URI = URI.create(UriComponentsBuilder.fromUri(uri).toUriString())

@@ -61,16 +61,15 @@ import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.BeanRegistrarDsl
 import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.boot.http.codec.CodecCustomizer
 import org.springframework.boot.runApplication
-import org.springframework.boot.web.codec.CodecCustomizer
+import org.springframework.boot.security.oauth2.server.resource.autoconfigure.OAuth2ResourceServerProperties
 import org.springframework.context.ApplicationContextInitializer
-import org.springframework.context.support.BeanDefinitionDsl
 import org.springframework.context.support.GenericApplicationContext
-import org.springframework.context.support.beans
 import org.springframework.core.env.Environment
 import org.springframework.core.env.getProperty
 import org.springframework.core.env.getRequiredProperty
@@ -204,7 +203,7 @@ data class HttpProxy(
 
 private const val keystoreDefaultLocation = "/keystore.jks"
 
-fun beans(clock: Clock) = beans {
+fun beans(clock: Clock) = BeanRegistrarDsl {
     val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl", removeTrailingSlash = true)
     val enableMobileDrivingLicence = env.getProperty("issuer.mdl.enabled", true)
     val enableMsoMdocPid = env.getProperty<Boolean>("issuer.pid.mso_mdoc.enabled") ?: true
@@ -353,7 +352,7 @@ fun beans(clock: Clock) = beans {
     //
     // Signed metadata signing key
     //
-    bean(isLazyInit = true) {
+    registerBean(lazyInit = true) {
         val key = when (env.getProperty<KeyOption>("issuer.metadata.signed-metadata.signing-key")) {
             null, KeyOption.GenerateRandom -> {
                 log.info("Generating random signing key for metadata")
@@ -380,7 +379,7 @@ fun beans(clock: Clock) = beans {
     //
     // Adapters (out ports)
     //
-    bean { clock }
+    registerBean { clock }
 
     val proxy = env.getProperty("issuer.http.proxy.url")?.let {
         val url = Url(it)
@@ -394,8 +393,8 @@ fun beans(clock: Clock) = beans {
         } else {
             WebClients.default(proxy = proxy)
         }
-    bean { webClient }
-    bean {
+    registerBean { webClient }
+    registerBean {
         KeycloakConfigurationProperties(
             env.getRequiredProperty("issuer.keycloak.server-url", URL::class.java),
             env.getRequiredProperty("issuer.keycloak.authentication-realm"),
@@ -405,13 +404,13 @@ fun beans(clock: Clock) = beans {
             env.getRequiredProperty("issuer.keycloak.user-realm"),
         )
     }
-    bean {
-        val keycloakProperties = ref<KeycloakConfigurationProperties>()
+    registerBean {
+        val keycloakProperties = bean<KeycloakConfigurationProperties>()
         GetPidDataFromKeyCloak(
             issuerCountry = env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
             issuingJurisdiction = env.getProperty("issuer.pid.issuingJurisdiction"),
             clock = clock,
-            webClient = webClient,
+            webClient = bean(),
             keyCloak = Url(keycloakProperties.serverUrl.toExternalForm()),
             administrationClient = AdministrationClient(
                 realm = Realm(keycloakProperties.authenticationRealm),
@@ -421,24 +420,24 @@ fun beans(clock: Clock) = beans {
             users = Realm(keycloakProperties.userRealm),
         )
     }
-    bean<EncodePidInCbor>(isLazyInit = true) {
+    registerBean<EncodePidInCbor>(lazyInit = true) {
         DefaultEncodePidInCbor(getIssuerSigningKey("issuer.pid.mso_mdoc.signing-key"))
     }
 
-    bean {
+    registerBean {
         GetMobileDrivingLicenceDataMock()
     }
-    bean<EncodeMobileDrivingLicenceInCbor>(isLazyInit = true) {
+    registerBean<EncodeMobileDrivingLicenceInCbor>(lazyInit = true) {
         DefaultEncodeMobileDrivingLicenceInCbor(getIssuerSigningKey("issuer.mdl.signing-key"))
     }
 
-    bean(::DefaultGenerateQrCode)
-    bean(::HandleNotificationRequest)
-    bean {
+    registerBean { DefaultGenerateQrCode() }
+    registerBean { HandleNotificationRequest(bean()) }
+    registerBean {
         val cNonceExpiresIn = env.duration("issuer.cnonce.expiration") ?: 5.minutes
-        HandleNonceRequest(clock, cNonceExpiresIn, ref())
+        HandleNonceRequest(clock, cNonceExpiresIn, bean())
     }
-    bean {
+    registerBean {
         val resolvers = buildMap<CredentialIdentifier, CredentialRequestFactory> {
             if (enableMobileDrivingLicence) {
                 this[CredentialIdentifier(MobileDrivingLicenceV1Scope.value)] =
@@ -488,22 +487,22 @@ fun beans(clock: Clock) = beans {
 
         DefaultResolveCredentialRequestByCredentialIdentifier(resolvers)
     }
-    bean(isLazyInit = true) {
+    registerBean(lazyInit = true) {
         GenerateSignedMetadataWithNimbus(
-            clock = ref(),
-            credentialIssuerId = ref<CredentialIssuerMetaData>().id,
-            signingKey = ref(),
+            clock = bean(),
+            credentialIssuerId = bean<CredentialIssuerMetaData>().id,
+            signingKey = bean(),
         )
     }
     if (enableStatusList) {
-        bean<GenerateStatusListToken> {
+        registerBean<GenerateStatusListToken> {
             val serviceUrl = URL(env.getRequiredProperty("issuer.statusList.service.uri"))
             log.info("Token Status List support enabled. Service URL: ${serviceUrl.toExternalForm()}")
             GenerateStatusListTokenWithExternalService(
-                webClient = webClient,
+                webClient = bean(),
                 serviceUrl = serviceUrl,
                 apiKey = env.getRequiredProperty("issuer.statusList.service.apiKey"),
-                clock = ref(),
+                clock = bean(),
             )
         }
     }
@@ -511,46 +510,46 @@ fun beans(clock: Clock) = beans {
     //
     // Encryption of credential response
     //
-    bean(isLazyInit = true) {
-        EncryptDeferredResponseNimbus(ref<CredentialIssuerMetaData>().id, clock)
+    registerBean(lazyInit = true) {
+        EncryptDeferredResponseNimbus(bean<CredentialIssuerMetaData>().id, clock)
     }
-    bean(isLazyInit = true) {
-        EncryptCredentialResponseNimbus(ref<CredentialIssuerMetaData>().id, clock)
+    registerBean(lazyInit = true) {
+        EncryptCredentialResponseNimbus(bean<CredentialIssuerMetaData>().id, clock)
     }
 
     //
     // Nonce
     //
-    bean { GenerateNonceAndEncryptWithNimbus(issuerPublicUrl, nonceEncryptionKey) }
-    bean { DecryptNonceWithNimbusAndVerify(issuerPublicUrl, nonceEncryptionKey) }
+    registerBean { GenerateNonceAndEncryptWithNimbus(issuerPublicUrl, nonceEncryptionKey) }
+    registerBean { DecryptNonceWithNimbusAndVerify(issuerPublicUrl, nonceEncryptionKey) }
 
     //
     // Credentials
     //
     with(InMemoryIssuedCredentialRepository()) {
-        bean { GenerateNotificationId.Random }
-        bean { storeIssuedCredentials }
-        bean { loadIssuedCredentialsByNotificationId }
+        registerBean { GenerateNotificationId.Random }
+        registerBean { storeIssuedCredentials }
+        registerBean { loadIssuedCredentialsByNotificationId }
     }
 
     //
     // Deferred Credentials
     //
     with(InMemoryDeferredCredentialRepository(mutableMapOf(), clock)) {
-        bean { GenerateTransactionId.Random }
-        bean { storeDeferredCredential }
-        bean { loadDeferredCredentialByTransactionId }
+        registerBean { GenerateTransactionId.Random }
+        registerBean { storeDeferredCredential }
+        registerBean { loadDeferredCredentialByTransactionId }
     }
 
     //
     // Specific Issuers
     //
-    bean { VerifyKeyAttestation() }
-    bean { ValidateJwtProof(issuerPublicUrl, ref()) }
-    bean { ValidateAttestationProof(ref()) }
-    bean { DefaultExtractJwkFromCredentialKey }
-    bean { ValidateProofs(ref(), ref(), ref(), ref()) }
-    bean {
+    registerBean { VerifyKeyAttestation() }
+    registerBean { ValidateJwtProof(issuerPublicUrl, bean()) }
+    registerBean { ValidateAttestationProof(bean()) }
+    registerBean { DefaultExtractJwkFromCredentialKey }
+    registerBean { ValidateProofs(bean(), bean(), bean(), bean()) }
+    registerBean {
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
             credentialEndPoint = issuerPublicUrl.appendPath(WalletApi.CREDENTIAL_ENDPOINT),
@@ -567,29 +566,29 @@ fun beans(clock: Clock) = beans {
                         "issuer.pid.mso_mdoc.jwtProofs.supportedSigningAlgorithms",
                         JWSAlgorithm::parse,
                     )
-                    val keyAttestationRequirement = keyAttestationRequirement("issuer.pid.mso_mdoc")
+                    val keyAttestationRequirement = this@BeanRegistrarDsl.keyAttestationRequirement("issuer.pid.mso_mdoc")
                     val issueMsoMdocPid = IssueMsoMdocPid(
-                        getPidData = ref(),
-                        encodePidInCbor = ref(),
+                        getPidData = bean(),
+                        encodePidInCbor = bean(),
                         notificationsEnabled = env.getProperty<Boolean>("issuer.pid.mso_mdoc.notifications.enabled")
                             ?: true,
-                        generateNotificationId = ref(),
+                        generateNotificationId = bean(),
                         clock = clock,
                         validityDuration = duration,
-                        storeIssuedCredentials = ref(),
-                        validateProofs = ref(),
+                        storeIssuedCredentials = bean(),
+                        validateProofs = bean(),
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                         keyAttestationRequirement = keyAttestationRequirement,
-                        generateStatusListToken = provider<GenerateStatusListToken>().ifAvailable,
+                        generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
                     )
                     add(issueMsoMdocPid)
-                    add(issueMsoMdocPid.asDeferred(ref(), ref(), clock))
+                    add(issueMsoMdocPid.asDeferred(bean(), bean(), clock))
                 }
 
                 if (enableSdJwtVcPid) {
                     val expiresIn = env.duration("issuer.pid.sd_jwt_vc.duration") ?: 30.days
                     val notUseBefore = env.duration("issuer.pid.sd_jwt_vc.notUseBefore")
-                    val keyAttestationRequirement = keyAttestationRequirement("issuer.pid.sd_jwt_vc")
+                    val keyAttestationRequirement = this@BeanRegistrarDsl.keyAttestationRequirement("issuer.pid.sd_jwt_vc")
 
                     val digestsHashAlgorithm = env.getProperty<HashAlgorithm>(
                         "issuer.pid.sd_jwt_vc.digests.hashAlgorithm",
@@ -602,22 +601,22 @@ fun beans(clock: Clock) = beans {
                     val issueSdJwtVcPid = IssueSdJwtVcPid(
                         hashAlgorithm = digestsHashAlgorithm,
                         issuerSigningKey = getIssuerSigningKey("issuer.pid.sd_jwt_vc.signing-key"),
-                        getPidData = ref(),
+                        getPidData = bean(),
                         clock = clock,
                         credentialIssuerId = issuerPublicUrl,
                         calculateExpiresAt = { iat -> iat + expiresIn },
                         calculateNotUseBefore = notUseBefore?.let { duration -> { iat -> iat + duration } },
                         notificationsEnabled = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled") ?: true,
-                        generateNotificationId = ref(),
-                        storeIssuedCredentials = ref(),
-                        validateProofs = ref(),
-                        generateStatusListToken = provider<GenerateStatusListToken>().ifAvailable,
+                        generateNotificationId = bean(),
+                        storeIssuedCredentials = bean(),
+                        validateProofs = bean(),
+                        generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                         keyAttestationRequirement = keyAttestationRequirement,
                     )
 
                     add(issueSdJwtVcPid)
-                    add(issueSdJwtVcPid.asDeferred(ref(), ref(), clock))
+                    add(issueSdJwtVcPid.asDeferred(bean(), bean(), clock))
                 }
 
                 if (enableMobileDrivingLicence) {
@@ -626,22 +625,22 @@ fun beans(clock: Clock) = beans {
                         "issuer.mdl.jwtProofs.supportedSigningAlgorithms",
                         JWSAlgorithm::parse,
                     )
-                    val keyAttestationRequirement = keyAttestationRequirement("issuer.mdl")
+                    val keyAttestationRequirement = this@BeanRegistrarDsl.keyAttestationRequirement("issuer.mdl")
                     val mdlIssuer = IssueMobileDrivingLicence(
-                        getMobileDrivingLicenceData = ref(),
-                        encodeMobileDrivingLicenceInCbor = ref(),
+                        getMobileDrivingLicenceData = bean(),
+                        encodeMobileDrivingLicenceInCbor = bean(),
                         notificationsEnabled = env.getProperty<Boolean>("issuer.mdl.notifications.enabled") ?: true,
-                        generateNotificationId = ref(),
+                        generateNotificationId = bean(),
                         clock = clock,
                         validityDuration = duration,
-                        storeIssuedCredentials = ref(),
-                        validateProofs = ref(),
+                        storeIssuedCredentials = bean(),
+                        validateProofs = bean(),
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                         keyAttestationRequirement = keyAttestationRequirement,
-                        generateStatusListToken = provider<GenerateStatusListToken>().ifAvailable,
+                        generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
                     )
                     add(mdlIssuer)
-                    add(mdlIssuer.asDeferred(ref(), ref(), clock))
+                    add(mdlIssuer.asDeferred(bean(), bean(), clock))
                 }
 
                 if (enableEhic) {
@@ -655,48 +654,48 @@ fun beans(clock: Clock) = beans {
                         "issuer.ehic.jwtProofs.supportedSigningAlgorithms",
                         JWSAlgorithm::parse,
                     )
-                    val keyAttestationRequirement = keyAttestationRequirement("issuer.ehic")
+                    val keyAttestationRequirement = this@BeanRegistrarDsl.keyAttestationRequirement("issuer.ehic")
 
                     val issuerSigningKey = getIssuerSigningKey("issuer.ehic.signing-key")
                     val ehicJwsJsonFlattenedIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.jwsJsonFlattened(
                         issuerSigningKey = issuerSigningKey,
                         digestsHashAlgorithm = digestHashAlgorithm,
                         credentialIssuerId = issuerPublicUrl,
-                        clock = ref(),
+                        clock = bean(),
                         validity = validity,
-                        validateProofs = ref(),
+                        validateProofs = bean(),
                         getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(
-                            ref(),
+                            bean(),
                             issuingCountry,
                         ),
                         notificationsEnabled = ehicNotificationsEnabled,
-                        generateNotificationId = ref(),
-                        storeIssuedCredentials = ref(),
+                        generateNotificationId = bean(),
+                        storeIssuedCredentials = bean(),
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                         keyAttestationRequirement = keyAttestationRequirement,
                     )
                     add(ehicJwsJsonFlattenedIssuer)
-                    add(ehicJwsJsonFlattenedIssuer.asDeferred(ref(), ref(), clock))
+                    add(ehicJwsJsonFlattenedIssuer.asDeferred(bean(), bean(), clock))
 
                     val ehicCompactIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.compact(
                         issuerSigningKey = issuerSigningKey,
                         digestsHashAlgorithm = digestHashAlgorithm,
                         credentialIssuerId = issuerPublicUrl,
-                        clock = ref(),
+                        clock = bean(),
                         validity = validity,
-                        validateProofs = ref(),
+                        validateProofs = bean(),
                         getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(
-                            ref(),
+                            bean(),
                             issuingCountry,
                         ),
                         notificationsEnabled = ehicNotificationsEnabled,
-                        generateNotificationId = ref(),
-                        storeIssuedCredentials = ref(),
+                        generateNotificationId = bean(),
+                        storeIssuedCredentials = bean(),
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                         keyAttestationRequirement = keyAttestationRequirement,
                     )
                     add(ehicCompactIssuer)
-                    add(ehicCompactIssuer.asDeferred(ref(), ref(), ref()))
+                    add(ehicCompactIssuer.asDeferred(bean(), bean(), bean()))
                 }
 
                 if (enableLearningCredential) {
@@ -705,7 +704,7 @@ fun beans(clock: Clock) = beans {
                         "issuer.learningCredential.jwtProofs.supportedSigningAlgorithms",
                         JWSAlgorithm::parse,
                     )
-                    val keyAttestationRequirement = keyAttestationRequirement("issuer.learningCredential")
+                    val keyAttestationRequirement = this@BeanRegistrarDsl.keyAttestationRequirement("issuer.learningCredential")
                     val validity = Duration.parse(env.getProperty("issuer.learningCredential.validity", "P30D"))
                     val digestHashAlgorithm = env.getProperty<HashAlgorithm>(
                         "issuer.learningCredential.sdJwtVc.encoder.digests.hashAlgorithm",
@@ -717,17 +716,17 @@ fun beans(clock: Clock) = beans {
                         issuerSigningKey,
                         jwtProofsSupportedSigningAlgorithms,
                         keyAttestationRequirement,
-                        ref(),
-                        ref(),
-                        ref(),
+                        bean(),
+                        bean(),
+                        bean(),
                         validity,
                         digestHashAlgorithm,
-                        if (notificationsEnabled) ref() else null,
-                        ref(),
+                        if (notificationsEnabled) bean() else null,
+                        bean(),
                     )
 
                     add(sdJwtVcCompactIssuer)
-                    add(sdJwtVcCompactIssuer.asDeferred(ref(), ref(), ref()))
+                    add(sdJwtVcCompactIssuer.asDeferred(bean(), bean(), bean()))
                 }
             },
             batchCredentialIssuance = run {
@@ -739,7 +738,7 @@ fun beans(clock: Clock) = beans {
                     BatchCredentialIssuance.NotSupported
                 }
             },
-            display = ref<IssuerMetadataProperties>().display
+            display = bean<IssuerMetadataProperties>().display
                 .map { display ->
                     CredentialIssuerDisplay(
                         name = display.name,
@@ -753,23 +752,29 @@ fun beans(clock: Clock) = beans {
     //
     // In Ports (use cases)
     //
-    bean {
+    registerBean {
         val enableSignedMetadata = env.getProperty<Boolean>("issuer.metadata.signed-metadata.enabled") ?: true
-        val generateSignedMetadata = if (enableSignedMetadata) ref<GenerateSignedMetadata>() else null
-        GetCredentialIssuerMetaData(ref(), generateSignedMetadata)
+        val generateSignedMetadata = if (enableSignedMetadata) bean<GenerateSignedMetadata>() else null
+        GetCredentialIssuerMetaData(bean(), generateSignedMetadata)
     }
-    bean {
+    registerBean {
         IssueCredential(
-            credentialIssuerMetadata = ref(),
-            resolveCredentialRequestByCredentialIdentifier = ref(),
-            encryptCredentialResponse = ref(),
+            credentialIssuerMetadata = bean(),
+            resolveCredentialRequestByCredentialIdentifier = bean(),
+            encryptCredentialResponse = bean(),
         )
     }
-    bean {
-        GetDeferredCredential(ref(), ref(), ref())
+    registerBean {
+        GetDeferredCredential(bean(), bean(), bean())
     }
-    bean {
-        CreateCredentialsOffer(ref(), credentialsOfferUri)
+    registerBean {
+        CreateCredentialsOffer(bean(), credentialsOfferUri)
+    }
+    registerBean {
+        GetProtectedResourceMetadata(
+            bean(),
+            bean(),
+        )
     }
 
     val accessTokenType = env.getProperty<AccessTokenType>("issuer.access-token.type") ?: AccessTokenType.DPoP
@@ -793,13 +798,13 @@ fun beans(clock: Clock) = beans {
             val cachePurgeInterval = env.duration("issuer.dpop.cache-purge-interval") ?: 10.minutes
             val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
 
-            bean { DPoPConfigurationProperties(it, proofMaxAge, cachePurgeInterval, realm) }
+            registerBean { DPoPConfigurationProperties(it, proofMaxAge, cachePurgeInterval, realm) }
         }
     }
 
-    bean {
+    registerBean {
         GetProtectedResourceMetadata(
-            ref(),
+            bean(),
             enableBearerTokenAuthentication,
             provider<DPoPConfigurationProperties>().ifAvailable,
         )
@@ -808,14 +813,14 @@ fun beans(clock: Clock) = beans {
     //
     // Routes
     //
-    bean {
-        val typeMetadata = ref<SdJwtVcProperties>().typeMetadata
+    registerBean {
+        val typeMetadata = bean<SdJwtVcProperties>().typeMetadata
             .associateBy { Vct(it.vct) }
             .mapValues { it.value.resource }
-        val metaDataApi = MetaDataApi(ref(), ref(), typeMetadata, ref())
-        val walletApi = WalletApi(ref(), ref(), ref(), ref(), ref())
-        val issuerUi = IssuerUi(credentialsOfferUri, ref(), ref(), ref())
-        val issuerApi = IssuerApi(ref())
+        val metaDataApi = MetaDataApi(bean(), bean(), typeMetadata, bean())
+        val walletApi = WalletApi(bean(), bean(), bean(), bean(), bean())
+        val issuerUi = IssuerUi(credentialsOfferUri, bean(), bean(), bean())
+        val issuerApi = IssuerApi(bean())
         metaDataApi.route.and(walletApi.route).and(issuerUi.router).and(issuerApi.router)
     }
 
@@ -823,7 +828,7 @@ fun beans(clock: Clock) = beans {
     // Security
     //
 
-    bean {
+    registerBean {
         /*
          * This is a Spring naming convention
          * A prefix of SCOPE_xyz will grant a SimpleAuthority(xyz)
@@ -833,11 +838,11 @@ fun beans(clock: Clock) = beans {
          * and not SCOPE_xyz
          */
         fun Scope.springConvention() = "SCOPE_$value"
-        val metaData = ref<CredentialIssuerMetaData>()
+        val metaData = bean<CredentialIssuerMetaData>()
         val scopes = metaData.credentialConfigurationsSupported
             .map { it.scope.springConvention() }
             .distinct()
-        val http = ref<ServerHttpSecurity>()
+        val http = bean<ServerHttpSecurity>()
         http {
             authorizeExchange {
                 authorize(WalletApi.CREDENTIAL_ENDPOINT, hasAnyAuthority(*scopes.toTypedArray()))
@@ -866,15 +871,15 @@ fun beans(clock: Clock) = beans {
                 disable()
             }
 
-            val introspectionProperties = ref<OAuth2ResourceServerProperties>()
+            val introspectionProperties = bean<OAuth2ResourceServerProperties>()
             val introspector = SpringReactiveOpaqueTokenIntrospector(
                 introspectionProperties.opaquetoken.introspectionUri,
                 webClient
                     .mutate()
                     .defaultHeaders {
                         it.setBasicAuth(
-                            introspectionProperties.opaquetoken.clientId,
-                            introspectionProperties.opaquetoken.clientSecret,
+                            introspectionProperties.opaquetoken.clientId!!,
+                            introspectionProperties.opaquetoken.clientSecret!!,
                         )
                     }
                     .build(),
@@ -926,7 +931,7 @@ fun beans(clock: Clock) = beans {
                     )
 
                     val authenticationManager =
-                        DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier, dpopNonce, ref())
+                        DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier, dpopNonce, bean())
 
                     AuthenticationWebFilter(authenticationManager).apply {
                         setServerAuthenticationConverter(tokenConverter)
@@ -938,7 +943,7 @@ fun beans(clock: Clock) = beans {
                 if (dpopNonce is DPoPNoncePolicy.Enforcing) {
                     val dpopNonceFilter = DPoPNonceWebFilter(
                         dpopNonce,
-                        ref(),
+                        bean(),
                         listOf(
                             WalletApi.CREDENTIAL_ENDPOINT,
                             WalletApi.DEFERRED_ENDPOINT,
@@ -1006,7 +1011,7 @@ fun beans(clock: Clock) = beans {
     //
     // Other
     //
-    bean {
+    registerBean {
         CodecCustomizer {
             val json = Json {
                 explicitNulls = false
@@ -1022,7 +1027,7 @@ fun beans(clock: Clock) = beans {
     }
 }
 
-private fun BeanDefinitionDsl.keyAttestationRequirement(attestationPropertyPrefix: String): KeyAttestationRequirement {
+private fun BeanRegistrarDsl.keyAttestationRequirement(attestationPropertyPrefix: String): KeyAttestationRequirement {
     val keyAttestationRequired = env.getProperty<Boolean>("$attestationPropertyPrefix.key_attestations.required")
     val keyStorageConstraints = env.getProperty<List<String>>(
         "$attestationPropertyPrefix.key_attestations.constraints.key_storage",
@@ -1249,6 +1254,10 @@ class PidIssuerApplication
 
 fun main(args: Array<String>) {
     runApplication<PidIssuerApplication>(*args) {
-        addInitializers(beans(Clock.System).initializer())
+        addInitializers(
+            ApplicationContextInitializer<GenericApplicationContext> {
+                it.register(beans(Clock.System))
+            },
+        )
     }
 }
