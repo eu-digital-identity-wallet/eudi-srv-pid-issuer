@@ -65,7 +65,7 @@ fun interface VerifyTrustedSignedKey {
 fun VerifyTrustedSignedKey.Companion.verifyTrustSignedKeyWithTrustService(
     webClient: WebClient,
     service: URI,
-    serviceType: ProviderType,
+    serviceType: VerificationCase,
 ): VerifyTrustedSignedKey = VerifyTrustedSignedKey { x5c ->
     val body = TrustQueryRequest(x5c, serviceType)
     val configClient = webClient.post().apply {
@@ -206,15 +206,15 @@ private fun JWK.ensureIsPublicAsymmetricKey(): AsymmetricJWK {
 }
 
 @Serializable
-enum class ProviderType {
-    WalletProvider,
+enum class VerificationCase {
+    EU_WUA,
 }
 
 @Serializable
 private data class TrustQueryRequest(
     @Serializable(with = X509CertificateChainSerializer::class)
     val x5c: NonEmptyList<X509Certificate>,
-    val serviceType: ProviderType,
+    val case: VerificationCase,
 )
 
 object X509CertificateSerializer : KSerializer<X509Certificate> {
