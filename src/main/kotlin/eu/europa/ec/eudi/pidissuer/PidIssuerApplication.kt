@@ -100,6 +100,7 @@ import org.springframework.security.web.server.authorization.HttpStatusServerAcc
 import org.springframework.security.web.server.authorization.ServerWebExchangeDelegatingServerAccessDeniedHandler
 import org.springframework.util.unit.DataSize
 import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.reactive.function.client.bodyToMono
 import org.springframework.web.server.WebFilter
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
@@ -1245,7 +1246,7 @@ private suspend fun WebClient.authorizationServerSupportedDPoPJWSAlgorithms(auth
             .uri(authorizationServerMetadata)
             .accept(MediaType.APPLICATION_JSON)
             .retrieve()
-            .bodyToMono(String::class.java)
+            .bodyToMono<String>()
             .timeout(5.seconds.toJavaDuration())
             .awaitSingle()
         OIDCProviderMetadata.parse(metadata).dPoPJWSAlgs?.toNonEmptySetOrNull()
@@ -1260,7 +1261,7 @@ private suspend fun WebClient.authorizationServerSupportedDPoPJWSAlgorithms(auth
 @ConfigurationProperties("issuer.trust")
 internal data class AttestationTrustProperties(
     val serviceUrl: String? = null,
-    val defaultServiceType: ProviderType = ProviderType.WalletProvider,
+    val defaultServiceType: VerificationCase = VerificationCase.EU_WUA,
 )
 
 fun BeanDefinitionDsl.initializer(): ApplicationContextInitializer<GenericApplicationContext> =
