@@ -33,7 +33,7 @@ class ValidateProofTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.System
-    private val verifyKeyAttestation = VerifyKeyAttestation(isTrustedWalletProvider = IsTrustedWalletProvider.Ignored)
+    private val verifyKeyAttestation = VerifyKeyAttestation(isTrustedKeyAttestationIssuer = IsTrustedKeyAttestationIssuer.Ignored)
     private val validateProofs = ValidateProofs(
         validateJwtProof = ValidateJwtProof(issuer, verifyKeyAttestation),
         validateAttestationProof = ValidateAttestationProof(verifyKeyAttestation),
