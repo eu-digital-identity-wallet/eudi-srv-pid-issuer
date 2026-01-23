@@ -547,7 +547,11 @@ Default value: N/A
 
 Variable: `ISSUER_NONCE_ENCRYPTION_KEY_PASSWORD`  
 Description: Password of the EC key-pair for nonce encryption.  
-Default value: N/A
+Default value: N/A  
+
+Variable: `ISSUER_TRUST_SERVICE_URL`  
+Description: The URL of the trust service endpoint for trust verification. If no URL is configured, all Wallet Providers are considered trusted.  
+Default value: N/A  
 
 ### Metadata configuration
 
