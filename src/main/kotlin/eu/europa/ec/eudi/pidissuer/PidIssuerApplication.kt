@@ -45,6 +45,8 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryIssuedCredent
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
 import eu.europa.ec.eudi.pidissuer.adapter.out.status.GenerateStatusListTokenWithExternalService
+import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
+import eu.europa.ec.eudi.pidissuer.adapter.out.trust.isCertificateChainTrusted
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
@@ -214,6 +216,7 @@ fun beans(clock: Clock) = beans {
     val enableStatusList = env.getProperty<Boolean>("issuer.statusList.enabled") ?: false
     val enableEhic = env.getProperty<Boolean>("issuer.ehic.enabled") ?: true
     val enableLearningCredential = env.getProperty<Boolean>("issuer.learningCredential.enabled") ?: true
+    val attestationTrustUrl = env.getProperty<String>("issuer.trust.service.url")
 
     val issuerKeystore: KeyStore by lazy {
         val keystoreLocation = env.getRequiredProperty("issuer.keystore.file")
@@ -398,7 +401,7 @@ fun beans(clock: Clock) = beans {
     bean { webClient }
     bean {
         KeycloakConfigurationProperties(
-            env.getRequiredProperty("issuer.keycloak.server-url", URL::class.java),
+            env.getRequiredProperty<URL>("issuer.keycloak.server-url"),
             env.getRequiredProperty("issuer.keycloak.authentication-realm"),
             env.getRequiredProperty("issuer.keycloak.client-id"),
             env.getRequiredProperty("issuer.keycloak.username"),
@@ -547,17 +550,15 @@ fun beans(clock: Clock) = beans {
     // Specific Issuers
     //
     bean {
-        val config = ref<AttestationTrustProperties>()
-        if (config.serviceUrl.isNullOrBlank()) {
+        if (attestationTrustUrl.isNullOrBlank()) {
             log.warn("Trust Validator Service has not been configured. Trusting all Wallet Providers.")
-            VerifyKeyAttestation(verifyTrustedSignedKey = VerifyTrustedSignedKey.Ignored)
+            VerifyKeyAttestation(isTrustedWalletProvider = IsTrustedWalletProvider.Ignored)
         } else {
-            log.info("Using Trust Validator Service '{}'", config.serviceUrl)
+            log.info("Using Trust Validator Service '{}'", attestationTrustUrl)
             VerifyKeyAttestation(
-                verifyTrustedSignedKey = VerifyTrustedSignedKey.verifyTrustSignedKeyWithTrustService(
+                isTrustedWalletProvider = IsTrustedWalletProvider.isCertificateChainTrusted(
                     webClient = webClient,
-                    service = URI(config.serviceUrl),
-                    serviceType = config.defaultServiceType,
+                    service = URI(attestationTrustUrl),
                 ),
             )
         }
@@ -1255,20 +1256,11 @@ private suspend fun WebClient.authorizationServerSupportedDPoPJWSAlgorithms(auth
         null
     }
 
-/**
- * Configuration properties for Issuer Trust service.
- */
-@ConfigurationProperties("issuer.trust")
-internal data class AttestationTrustProperties(
-    val serviceUrl: String? = null,
-    val defaultServiceType: VerificationCase = VerificationCase.EU_WUA,
-)
-
 fun BeanDefinitionDsl.initializer(): ApplicationContextInitializer<GenericApplicationContext> =
     ApplicationContextInitializer<GenericApplicationContext> { initialize(it) }
 
 @SpringBootApplication
-@EnableConfigurationProperties(IssuerMetadataProperties::class, SdJwtVcProperties::class, AttestationTrustProperties::class)
+@EnableConfigurationProperties(IssuerMetadataProperties::class, SdJwtVcProperties::class)
 @EnableScheduling
 class PidIssuerApplication
 
