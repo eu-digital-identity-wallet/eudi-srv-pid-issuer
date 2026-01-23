@@ -46,7 +46,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
 import eu.europa.ec.eudi.pidissuer.adapter.out.status.GenerateStatusListTokenWithExternalService
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
-import eu.europa.ec.eudi.pidissuer.adapter.out.trust.isCertificateChainTrusted
+import eu.europa.ec.eudi.pidissuer.adapter.out.trust.usingTrustValidatorService
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
@@ -216,7 +216,7 @@ fun beans(clock: Clock) = beans {
     val enableStatusList = env.getProperty<Boolean>("issuer.statusList.enabled") ?: false
     val enableEhic = env.getProperty<Boolean>("issuer.ehic.enabled") ?: true
     val enableLearningCredential = env.getProperty<Boolean>("issuer.learningCredential.enabled") ?: true
-    val attestationTrustUrl = env.getProperty<String>("issuer.trust.service-url")
+    val trustValidatorServiceUrl = env.getProperty<String>("issuer.trust.service-url")
 
     val issuerKeystore: KeyStore by lazy {
         val keystoreLocation = env.getRequiredProperty("issuer.keystore.file")
@@ -550,18 +550,15 @@ fun beans(clock: Clock) = beans {
     // Specific Issuers
     //
     bean {
-        if (attestationTrustUrl.isNullOrBlank()) {
-            log.warn("Trust Validator Service has not been configured. Trusting all Wallet Providers.")
-            VerifyKeyAttestation(isTrustedWalletProvider = IsTrustedWalletProvider.Ignored)
-        } else {
-            log.info("Using Trust Validator Service '{}'", attestationTrustUrl)
-            VerifyKeyAttestation(
-                isTrustedWalletProvider = IsTrustedWalletProvider.isCertificateChainTrusted(
-                    webClient = webClient,
-                    service = URI(attestationTrustUrl),
-                ),
-            )
-        }
+        val isTrustedKeyAttestationIssuer =
+            if (trustValidatorServiceUrl.isNullOrBlank()) {
+                log.warn("Trust Validator Service has not been configured. Trusting all Wallet Providers.")
+                IsTrustedKeyAttestationIssuer.Ignored
+            } else {
+                log.info("Using Trust Validator Service '{}'", trustValidatorServiceUrl)
+                IsTrustedKeyAttestationIssuer.usingTrustValidatorService(ref(), URI.create(trustValidatorServiceUrl))
+            }
+        VerifyKeyAttestation(isTrustedKeyAttestationIssuer = isTrustedKeyAttestationIssuer)
     }
     bean { ValidateJwtProof(issuerPublicUrl, ref()) }
     bean { ValidateAttestationProof(ref()) }

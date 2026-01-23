@@ -45,7 +45,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 import kotlin.time.Instant
 
-fun interface IsTrustedWalletProvider {
+fun interface IsTrustedKeyAttestationIssuer {
     suspend operator fun invoke(x5c: NonEmptyList<X509Certificate>): Boolean
     companion object
 }
@@ -53,7 +53,7 @@ fun interface IsTrustedWalletProvider {
 internal class VerifyKeyAttestation(
     private val verifyAttestedKey: VerifyAttestedKey? = null,
     private val maxSkew: Duration = 30.seconds,
-    private val isTrustedWalletProvider: IsTrustedWalletProvider,
+    private val isTrustedKeyAttestationIssuer: IsTrustedKeyAttestationIssuer,
 ) {
     suspend operator fun invoke(
         keyAttestation: KeyAttestationJWT,
@@ -79,8 +79,8 @@ internal class VerifyKeyAttestation(
     }
 
     private suspend fun WalletProviderSigningKey.X5C.ensureTrustWalletProvider() {
-        require(isTrustedWalletProvider(x5c)) {
-            "Key attestation is not trusted by a trusted wallet provider"
+        require(isTrustedKeyAttestationIssuer(x5c)) {
+            "Key attestation is not issued by a trusted wallet provider"
         }
     }
 

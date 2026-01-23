@@ -17,7 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.trust
 
 import arrow.core.NonEmptyList
 import arrow.core.serialization.NonEmptyListSerializer
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.IsTrustedWalletProvider
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.IsTrustedKeyAttestationIssuer
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
@@ -34,10 +34,10 @@ import java.net.URI
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 
-fun IsTrustedWalletProvider.Companion.isCertificateChainTrusted(
+fun IsTrustedKeyAttestationIssuer.Companion.usingTrustValidatorService(
     webClient: WebClient,
     service: URI,
-): IsTrustedWalletProvider = IsTrustedWalletProvider { x5c ->
+): IsTrustedKeyAttestationIssuer = IsTrustedKeyAttestationIssuer { x5c ->
     val body = TrustQueryRequest(x5c, "EU_WUA")
     val configClient = webClient.post().apply {
         uri(service)
@@ -49,7 +49,7 @@ fun IsTrustedWalletProvider.Companion.isCertificateChainTrusted(
         .awaitBody<TrustResponse>()
         .trusted
 }
-val IsTrustedWalletProvider.Companion.Ignored: IsTrustedWalletProvider get() = IsTrustedWalletProvider { true }
+val IsTrustedKeyAttestationIssuer.Companion.Ignored: IsTrustedKeyAttestationIssuer get() = IsTrustedKeyAttestationIssuer { true }
 
 @Serializable
 private data class TrustQueryRequest(
@@ -58,7 +58,7 @@ private data class TrustQueryRequest(
     val case: String,
 )
 
-object X509CertificateSerializer : KSerializer<X509Certificate> {
+private object X509CertificateSerializer : KSerializer<X509Certificate> {
 
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("X509Certificate", PrimitiveKind.STRING)
 
