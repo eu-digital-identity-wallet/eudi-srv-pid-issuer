@@ -99,6 +99,7 @@ import org.springframework.security.web.server.authorization.HttpStatusServerAcc
 import org.springframework.security.web.server.authorization.ServerWebExchangeDelegatingServerAccessDeniedHandler
 import org.springframework.util.unit.DataSize
 import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.reactive.function.client.bodyToMono
 import org.springframework.web.server.WebFilter
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
@@ -396,7 +397,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     registerBean { webClient }
     registerBean {
         KeycloakConfigurationProperties(
-            env.getRequiredProperty("issuer.keycloak.server-url", URL::class.java),
+            env.getRequiredProperty<URL>("issuer.keycloak.server-url"),
             env.getRequiredProperty("issuer.keycloak.authentication-realm"),
             env.getRequiredProperty("issuer.keycloak.client-id"),
             env.getRequiredProperty("issuer.keycloak.username"),
@@ -770,12 +771,6 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     registerBean {
         CreateCredentialsOffer(bean(), credentialsOfferUri)
     }
-    registerBean {
-        GetProtectedResourceMetadata(
-            bean(),
-            bean(),
-        )
-    }
 
     val accessTokenType = env.getProperty<AccessTokenType>("issuer.access-token.type") ?: AccessTokenType.DPoP
     val enableBearerTokenAuthentication =
@@ -806,7 +801,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
         GetProtectedResourceMetadata(
             bean(),
             enableBearerTokenAuthentication,
-            provider<DPoPConfigurationProperties>().ifAvailable,
+            beanProvider<DPoPConfigurationProperties>().ifAvailable,
         )
     }
 
@@ -885,7 +880,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     .build(),
             )
 
-            val dpopConfigurationProperties = provider<DPoPConfigurationProperties>().ifAvailable
+            val dpopConfigurationProperties = beanProvider<DPoPConfigurationProperties>().ifAvailable
 
             val entryPoints = mutableListOf<DelegatingServerAuthenticationEntryPoint.DelegateEntry>()
             val accessDeniedHandlers = mutableListOf<ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry>()
@@ -898,12 +893,12 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                 val dpopNonce =
                     if (enableDPoPNonce) {
                         val dpopNonceExpiresIn = env.duration("issuer.dpop.nonce.expiration") ?: 5.minutes
-                        DPoPNoncePolicy.Enforcing(ref(), ref(), dpopNonceExpiresIn)
+                        DPoPNoncePolicy.Enforcing(bean(), bean(), dpopNonceExpiresIn)
                     } else {
                         DPoPNoncePolicy.Disabled
                     }
 
-                val entryPoint = DPoPTokenServerAuthenticationEntryPoint(dpopConfigurationProperties.realm, dpopNonce, ref())
+                val entryPoint = DPoPTokenServerAuthenticationEntryPoint(dpopConfigurationProperties.realm, dpopNonce, bean())
                 val tokenConverter = ServerDPoPAuthenticationTokenAuthenticationConverter()
 
                 entryPoints.add(
@@ -1235,7 +1230,7 @@ private suspend fun WebClient.authorizationServerSupportedDPoPJWSAlgorithms(auth
             .uri(authorizationServerMetadata)
             .accept(MediaType.APPLICATION_JSON)
             .retrieve()
-            .bodyToMono(String::class.java)
+            .bodyToMono<String>()
             .timeout(5.seconds.toJavaDuration())
             .awaitSingle()
         OIDCProviderMetadata.parse(metadata).dPoPJWSAlgs?.toNonEmptySetOrNull()
@@ -1243,9 +1238,6 @@ private suspend fun WebClient.authorizationServerSupportedDPoPJWSAlgorithms(auth
         log.warn("Unable to fetch Authorization Server metadata. DPoP support will be disabled.", it)
         null
     }
-
-fun BeanDefinitionDsl.initializer(): ApplicationContextInitializer<GenericApplicationContext> =
-    ApplicationContextInitializer<GenericApplicationContext> { initialize(it) }
 
 @SpringBootApplication
 @EnableConfigurationProperties(IssuerMetadataProperties::class, SdJwtVcProperties::class)
