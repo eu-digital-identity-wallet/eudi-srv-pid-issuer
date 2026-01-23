@@ -19,7 +19,6 @@ import arrow.core.Either
 import arrow.core.NonEmptyList
 import arrow.core.NonEmptySet
 import arrow.core.raise.either
-import arrow.core.serialization.NonEmptyListSerializer
 import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
@@ -39,51 +38,22 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationJWT
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Required
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
-import org.springframework.http.MediaType
-import org.springframework.web.reactive.function.client.WebClient
-import org.springframework.web.reactive.function.client.awaitBody
-import java.io.ByteArrayInputStream
 import java.net.URI
-import java.security.cert.*
+import java.security.cert.X509Certificate
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 import kotlin.time.Instant
 
-fun interface VerifyTrustedSignedKey {
+fun interface IsTrustedWalletProvider {
     suspend operator fun invoke(x5c: NonEmptyList<X509Certificate>): Boolean
     companion object
 }
-fun VerifyTrustedSignedKey.Companion.verifyTrustSignedKeyWithTrustService(
-    webClient: WebClient,
-    service: URI,
-    serviceType: VerificationCase,
-): VerifyTrustedSignedKey = VerifyTrustedSignedKey { x5c ->
-    val body = TrustQueryRequest(x5c, serviceType)
-    val configClient = webClient.post().apply {
-        uri(service)
-        bodyValue(body)
-        contentType(MediaType.APPLICATION_JSON)
-        accept(MediaType.APPLICATION_JSON)
-    }
-    configClient.retrieve()
-        .awaitBody<TrustResponse>()
-        .trusted
-}
-val VerifyTrustedSignedKey.Companion.Ignored: VerifyTrustedSignedKey get() = VerifyTrustedSignedKey { true }
 
 internal class VerifyKeyAttestation(
     private val verifyAttestedKey: VerifyAttestedKey? = null,
     private val maxSkew: Duration = 30.seconds,
-    private val verifyTrustedSignedKey: VerifyTrustedSignedKey? = null,
+    private val isTrustedWalletProvider: IsTrustedWalletProvider,
 ) {
     suspend operator fun invoke(
         keyAttestation: KeyAttestationJWT,
@@ -94,28 +64,42 @@ internal class VerifyKeyAttestation(
     ): Either<Throwable, Pair<NonEmptyList<JWK>, String?>> = either {
         with(keyAttestation) {
             val algorithm = extractSupportedAlgorithm(signingAlgorithmsSupported)
-            val key = extractSigningKey()
+            val walletProviderSigningKey = extractSigningKey()
+            val key = walletProviderSigningKey.key
                 .ensureCompatibleWith(algorithm)
                 .ensureIsPublicAsymmetricKey()
             verifySignature(key, algorithm, expectExpirationClaim)
             ensureMeetsKeyAttestationRequirements(keyAttestationRequirement, nonce)
+            if (walletProviderSigningKey is WalletProviderSigningKey.X5C) {
+                walletProviderSigningKey.ensureTrustWalletProvider()
+            }
 
             keyAttestation.attestedKeys to nonce
         }
     }
 
-    private suspend fun KeyAttestationJWT.extractSigningKey(): JWK {
+    private suspend fun WalletProviderSigningKey.X5C.ensureTrustWalletProvider() {
+        require(isTrustedWalletProvider(x5c)) {
+            "Key attestation is not trusted by a trusted wallet provider"
+        }
+    }
+
+    private fun KeyAttestationJWT.extractSigningKey(): WalletProviderSigningKey {
         val header = jwt.header
         val kid: String? = header.keyID
         val x5c: List<Base64>? = header.x509CertChain
 
         return when {
-            kid != null && x5c.isNullOrEmpty() -> resolveDidUrl(URI.create(kid)).getOrThrow()
+            kid != null && x5c.isNullOrEmpty() -> {
+                val didUrl = URI.create(kid)
+                val jwk = resolveDidUrl(didUrl).getOrThrow()
+                WalletProviderSigningKey.DIDUrl(jwk, didUrl)
+            }
             kid == null && !x5c.isNullOrEmpty() -> {
                 val chain = X509CertChainUtils.parse(x5c).toNonEmptyListOrNull()
                 requireNotNull(chain) { "x5c chain cannot be empty" }
-                verifyTrustedSignedKey?.invoke(chain)
-                JWK.parse(chain.head)
+                val jwk = JWK.parse(chain.head)
+                WalletProviderSigningKey.X5C(jwk, chain)
             }
             else -> error("Invalid Key attestation : No signing key found in one of 'kid' or 'x5c'. 'trust_chain not yet supported'")
         }
@@ -205,41 +189,9 @@ private fun JWK.ensureIsPublicAsymmetricKey(): AsymmetricJWK {
     return this
 }
 
-@Serializable
-enum class VerificationCase {
-    EU_WUA,
+private sealed interface WalletProviderSigningKey {
+    val key: JWK
+
+    data class DIDUrl(override val key: JWK, val didUrl: URI) : WalletProviderSigningKey
+    data class X5C(override val key: JWK, val x5c: NonEmptyList<X509Certificate>) : WalletProviderSigningKey
 }
-
-@Serializable
-private data class TrustQueryRequest(
-    @Serializable(with = X509CertificateChainSerializer::class)
-    val x5c: NonEmptyList<X509Certificate>,
-    val case: VerificationCase,
-)
-
-object X509CertificateSerializer : KSerializer<X509Certificate> {
-
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("X509Certificate", PrimitiveKind.STRING)
-
-    override fun serialize(encoder: Encoder, value: X509Certificate) {
-        val encoded = kotlin.io.encoding.Base64.withPadding(kotlin.io.encoding.Base64.PaddingOption.ABSENT_OPTIONAL).encode(value.encoded)
-        encoder.encodeString(encoded)
-    }
-
-    override fun deserialize(decoder: Decoder): X509Certificate {
-        val cert = decoder.decodeString()
-        val decoded = kotlin.io.encoding.Base64.withPadding(kotlin.io.encoding.Base64.PaddingOption.ABSENT_OPTIONAL).decode(cert)
-        val cf = CertificateFactory.getInstance("X.509")
-        return ByteArrayInputStream(decoded).use { inputStream ->
-            cf.generateCertificate(inputStream) as X509Certificate
-        }
-    }
-}
-object X509CertificateChainSerializer : KSerializer<NonEmptyList<X509Certificate>> by NonEmptyListSerializer(
-    X509CertificateSerializer,
-)
-
-@Serializable
-private data class TrustResponse(
-    @Required val trusted: Boolean,
-)

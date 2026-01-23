@@ -31,6 +31,7 @@ import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.mobileDrivingLicenceV1
+import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.loadResource
@@ -45,7 +46,7 @@ internal class ValidateJwtProofTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.System
-    private val verifyKeyAttestation = VerifyKeyAttestation()
+    private val verifyKeyAttestation = VerifyKeyAttestation(isTrustedWalletProvider = IsTrustedWalletProvider.Ignored)
     private val validateJwtProof = ValidateJwtProof(issuer, verifyKeyAttestation)
     private val credentialConfiguration = mobileDrivingLicenceV1(
         CoseAlgorithm(-7),
