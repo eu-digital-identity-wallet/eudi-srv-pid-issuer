@@ -30,6 +30,7 @@ import kotlinx.serialization.json.decodeFromStream
 import org.springframework.core.io.Resource
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.server.*
+import kotlin.collections.any
 
 val MEDIA_TYPE_APPLICATION_JWT = MediaType("application", "jwt")
 
@@ -41,11 +42,17 @@ class MetaDataApi(
 ) {
 
     val route = coRouter {
+        GET(
+            WELL_KNOWN_OPENID_CREDENTIAL_ISSUER,
+            headers { headers ->
+                val accept = headers.accept()
+                accept.isEmpty() || accept.any { it == MediaType.ALL || it == MEDIA_TYPE_APPLICATION_JWT }
+            },
+        ) {
+            handleGetSignedCredentialIssuerMetaData()
+        }
         GET(WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, accept(MediaType.APPLICATION_JSON)) { _ ->
             handleGetUnsignedCredentialIssuerMetaData()
-        }
-        GET(WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, accept(MEDIA_TYPE_APPLICATION_JWT)) { _ ->
-            handleGetSignedCredentialIssuerMetaData()
         }
         GET(WELL_KNOWN_JWT_VC_ISSUER, accept(MediaType.APPLICATION_JSON)) {
             handleGetJwtVcIssuerMetadata()
