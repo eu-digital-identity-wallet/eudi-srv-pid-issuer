@@ -90,9 +90,7 @@ private class EncodeLearningCredentialInSdJwtVcCompact(
                 with(issuer) {
                     claim(SdJwtVcClaims.IssuingAuthority.name, name.value)
                     claim(SdJwtVcClaims.IssuingCountry.name, country.code)
-                    if (null != uri) {
-                        claim(RFC7519.ISSUER, uri.externalForm)
-                    }
+                    claim(RFC7519.ISSUER, uri.externalForm)
                 }
                 claim(
                     SdJwtVcClaims.DateOfIssuance.name,
@@ -118,11 +116,12 @@ private class EncodeLearningCredentialInSdJwtVcCompact(
                 if (null != assessmentGrade) {
                     sdClaim(SdJwtVcClaims.AssessmentGrade.name, assessmentGrade.value)
                 }
-                claim(SdJwtVcClaims.LanguageOfClasses.name, languageOfClasses.value)
+                arrClaim(SdJwtVcClaims.LanguageOfClasses.name) {
+                    languagesOfClasses.forEach { languageOfClasses -> claim(languageOfClasses.value) }
+                }
                 sdClaim(SdJwtVcClaims.LearnerIdentification.name, learnerIdentification.value)
                 sdClaim(SdJwtVcClaims.ExpectedStudyTime.name, expectedStudyTime.value)
                 sdClaim(SdJwtVcClaims.LevelOfLearningExperience.name, levelOfLearningExperience.value)
-                sdClaim(SdJwtVcClaims.FormOfParticipation.name, formOfParticipation.value)
                 sdArrClaim(SdJwtVcClaims.TypesOfQualityAssurance.name) {
                     typesOfQualityAssurance.forEach { typeOfQualityAssurance -> claim(typeOfQualityAssurance.value) }
                 }
