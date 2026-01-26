@@ -30,6 +30,7 @@ import kotlinx.serialization.json.decodeFromStream
 import org.springframework.core.io.Resource
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.server.*
+import kotlin.collections.any
 
 val MEDIA_TYPE_APPLICATION_JWT = MediaType("application", "jwt")
 
@@ -41,7 +42,13 @@ class MetaDataApi(
 ) {
 
     val route = coRouter {
-        GET(WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, headers { it.allowedSignedMetadataAcceptHeaders() }) {
+        GET(
+            WELL_KNOWN_OPENID_CREDENTIAL_ISSUER,
+            headers { headers ->
+                val accept = headers.accept()
+                accept.isEmpty() || accept.any { it == MediaType.ALL || it == MEDIA_TYPE_APPLICATION_JWT }
+            },
+        ) {
             handleGetSignedCredentialIssuerMetaData()
         }
         GET(WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, accept(MediaType.APPLICATION_JSON)) { _ ->
@@ -118,9 +125,3 @@ private val CredentialIssuerMetaData.jwtVcIssuerJwks: JWKSet
 
 private val ServerRequest.vct: Vct
     get() = Vct(pathVariable("vct"))
-
-private fun ServerRequest.Headers.allowedSignedMetadataAcceptHeaders(): Boolean {
-    val accept = this.accept()
-    val allowed = setOf(MediaType.ALL, MEDIA_TYPE_APPLICATION_JWT)
-    return accept.isEmpty() || accept.any(allowed::contains)
-}
