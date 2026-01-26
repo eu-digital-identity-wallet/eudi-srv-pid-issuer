@@ -41,6 +41,12 @@ class MetaDataApi(
 ) {
 
     val route = coRouter {
+        GET(
+            WELL_KNOWN_OPENID_CREDENTIAL_ISSUER,
+            headers { it.missingOrAllAcceptHeader() },
+        ) { _ ->
+            handleGetSignedCredentialIssuerMetaData()
+        }
         GET(WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, accept(MediaType.APPLICATION_JSON)) { _ ->
             handleGetUnsignedCredentialIssuerMetaData()
         }
@@ -118,3 +124,8 @@ private val CredentialIssuerMetaData.jwtVcIssuerJwks: JWKSet
 
 private val ServerRequest.vct: Vct
     get() = Vct(pathVariable("vct"))
+
+private fun ServerRequest.Headers.missingOrAllAcceptHeader(): Boolean {
+    val accept = this.accept()
+    return (accept.isEmpty()) || (accept.any { mediaType -> mediaType == MediaType.ALL })
+}
