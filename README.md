@@ -547,7 +547,18 @@ Default value: N/A
 
 Variable: `ISSUER_NONCE_ENCRYPTION_KEY_PASSWORD`  
 Description: Password of the EC key-pair for nonce encryption.  
-Default value: N/A
+Default value: N/A  
+
+### Configuring trust
+
+PID Issuer verifies whether a Wallet Provider's Wallet Unit Attestation is trusted or not using an external service.  
+Currently, only [eudi-srv-trust-validator](https://github.com/eu-digital-identity-wallet/eudi-srv-trust-validator) is supported.  
+
+To configure the service, use the following environment variable:  
+
+Variable: `ISSUER_TRUST_SERVICE_URL`  
+Description: The URL of the trust service endpoint for trust verification. If no URL is configured, no trust verification is performed.  
+Default value: N/A  
 
 ### Metadata configuration
 

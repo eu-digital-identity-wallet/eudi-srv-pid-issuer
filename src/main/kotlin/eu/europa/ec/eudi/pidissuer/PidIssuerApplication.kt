@@ -45,6 +45,8 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryIssuedCredent
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
 import eu.europa.ec.eudi.pidissuer.adapter.out.status.GenerateStatusListTokenWithExternalService
+import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
+import eu.europa.ec.eudi.pidissuer.adapter.out.trust.usingTrustValidatorService
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
@@ -100,6 +102,7 @@ import org.springframework.security.web.server.authorization.HttpStatusServerAcc
 import org.springframework.security.web.server.authorization.ServerWebExchangeDelegatingServerAccessDeniedHandler
 import org.springframework.util.unit.DataSize
 import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.reactive.function.client.bodyToMono
 import org.springframework.web.server.WebFilter
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.netty.http.client.HttpClient
@@ -213,6 +216,7 @@ fun beans(clock: Clock) = beans {
     val enableStatusList = env.getProperty<Boolean>("issuer.statusList.enabled") ?: false
     val enableEhic = env.getProperty<Boolean>("issuer.ehic.enabled") ?: true
     val enableLearningCredential = env.getProperty<Boolean>("issuer.learningCredential.enabled") ?: true
+    val trustValidatorServiceUrl = env.getProperty<String>("issuer.trust.service-url")
 
     val issuerKeystore: KeyStore by lazy {
         val keystoreLocation = env.getRequiredProperty("issuer.keystore.file")
@@ -397,7 +401,7 @@ fun beans(clock: Clock) = beans {
     bean { webClient }
     bean {
         KeycloakConfigurationProperties(
-            env.getRequiredProperty("issuer.keycloak.server-url", URL::class.java),
+            env.getRequiredProperty<URL>("issuer.keycloak.server-url"),
             env.getRequiredProperty("issuer.keycloak.authentication-realm"),
             env.getRequiredProperty("issuer.keycloak.client-id"),
             env.getRequiredProperty("issuer.keycloak.username"),
@@ -545,7 +549,17 @@ fun beans(clock: Clock) = beans {
     //
     // Specific Issuers
     //
-    bean { VerifyKeyAttestation() }
+    bean {
+        val isTrustedKeyAttestationIssuer =
+            if (trustValidatorServiceUrl.isNullOrBlank()) {
+                log.warn("Trust Validator Service has not been configured. Trusting all Wallet Providers.")
+                IsTrustedKeyAttestationIssuer.Ignored
+            } else {
+                log.info("Using Trust Validator Service '{}'", trustValidatorServiceUrl)
+                IsTrustedKeyAttestationIssuer.usingTrustValidatorService(ref(), URI.create(trustValidatorServiceUrl))
+            }
+        VerifyKeyAttestation(isTrustedKeyAttestationIssuer = isTrustedKeyAttestationIssuer)
+    }
     bean { ValidateJwtProof(issuerPublicUrl, ref()) }
     bean { ValidateAttestationProof(ref()) }
     bean { DefaultExtractJwkFromCredentialKey }
@@ -1230,7 +1244,7 @@ private suspend fun WebClient.authorizationServerSupportedDPoPJWSAlgorithms(auth
             .uri(authorizationServerMetadata)
             .accept(MediaType.APPLICATION_JSON)
             .retrieve()
-            .bodyToMono(String::class.java)
+            .bodyToMono<String>()
             .timeout(5.seconds.toJavaDuration())
             .awaitSingle()
         OIDCProviderMetadata.parse(metadata).dPoPJWSAlgs?.toNonEmptySetOrNull()
