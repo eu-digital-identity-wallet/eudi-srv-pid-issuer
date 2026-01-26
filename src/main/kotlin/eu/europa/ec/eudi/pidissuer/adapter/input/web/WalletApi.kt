@@ -178,7 +178,7 @@ private suspend fun ServerRequest.authorizationContext(): Either<Throwable, Auth
 
         fun fromSpring(authority: GrantedAuthority): Scope? =
             authority.authority
-                .takeIf { it!!.startsWith("SCOPE_") }
+                ?.takeIf { it.startsWith("SCOPE_") }
                 ?.replaceFirst("SCOPE_", "")
                 ?.let { Scope(it) }
 
