@@ -17,15 +17,13 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.Either
 import arrow.core.raise.either
-import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAddressClaim
-import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
+import eu.europa.ec.eudi.pidissuer.adapter.out.sdJwtVcIssuer
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
@@ -58,18 +56,7 @@ class EncodePidInSdJwtVc(
      * In addition the issuer will use the config to select
      * [HashAlgorithm], [JWSAlgorithm] and [issuer's key][ECKey]
      */
-    private val issuer: SdJwtIssuer<SignedJWT> by lazy {
-        // SD-JWT VC requires no decoys
-        val sdJwtFactory = SdJwtFactory(hashAlgorithm = hashAlgorithm, fallbackMinimumDigests = null)
-        val signer = ECDSASigner(issuerSigningKey.key)
-        val x509CertChain = issuerSigningKey.key.x509CertChain
-
-        NimbusSdJwtOps.issuer(sdJwtFactory, signer, issuerSigningKey.signingAlgorithm) {
-            type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
-            keyID(issuerSigningKey.key.keyID)
-            x509CertChain(x509CertChain)
-        }
-    }
+    private val issuer: SdJwtIssuer<SignedJWT> by lazy { issuerSigningKey.sdJwtVcIssuer(hashAlgorithm) }
 
     suspend operator fun invoke(
         pid: Pid,
