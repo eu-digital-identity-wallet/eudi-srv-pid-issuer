@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.Either
 import arrow.core.NonEmptySet
-import arrow.core.raise.fold
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
@@ -95,7 +94,7 @@ internal class WalletApi(
                 type = CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST,
                 errorDescription = buildString {
                     append("Request body could not be parsed")
-                    if (error.message.isNotBlank()) {
+                    if (!error.message.isNullOrBlank()) {
                         append(": ${error.message}")
                     }
                 },
@@ -123,7 +122,7 @@ internal class WalletApi(
                     type = GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST,
                     errorDescription = buildString {
                         append("Request body could not be parsed")
-                        if (error.message.isNotBlank()) {
+                        if (!error.message.isNullOrBlank()) {
                             append(": ${error.message}")
                         }
                     },
@@ -179,7 +178,7 @@ private suspend fun ServerRequest.authorizationContext(): Either<Throwable, Auth
 
         fun fromSpring(authority: GrantedAuthority): Scope? =
             authority.authority
-                .takeIf { it.startsWith("SCOPE_") }
+                ?.takeIf { it.startsWith("SCOPE_") }
                 ?.replaceFirst("SCOPE_", "")
                 ?.let { Scope(it) }
 
