@@ -1,11 +1,11 @@
 [versions]
 coroutines = "1.10.2"
-kotlin = "2.1.21"
-arrow = "2.0.1"
-springboot = "3.4.6"
+kotlin = "2.3.0"
+arrow = "2.2.1.1"
+springboot = "4.0.1"
 spotless = "7.0.2"
 java = "17"
-kotlinxSerialization = "1.8.1"
+kotlinxSerialization = "1.9.0"
 ktlint = "0.50.0"
 nimbusJoseJwt = "10.0.2"
 nimbusOAuth2 = "11.23.1"
@@ -19,16 +19,21 @@ waltid = "0.11.0"
 uri-kmp = "0.0.19"
 zxing = "3.5.3"
 tink = "1.17.0"
-kover = "0.9.1"
+kover = "0.9.4"
 cose-java = "1.1.0"
 kotlinx-datetime = "0.7.1-0.6.x-compat"
 
 [libraries]
-kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
-kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
-arrow-core = { module = "io.arrow-kt:arrow-core", version.ref = "arrow" }
-arrow-core-serialization = { module = "io.arrow-kt:arrow-core-serialization", version.ref = "arrow" }
-arrow-fx-coroutines = { module = "io.arrow-kt:arrow-fx-coroutines", version.ref = "arrow" }
+kotlin-bom = { module = "org.jetbrains.kotlin:kotlin-bom", version.ref = "kotlin" }
+kotlinx-coroutines-bom = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-bom", version.ref = "coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test" }
+kotlinx-serialization-bom = { module = "org.jetbrains.kotlinx:kotlinx-serialization-bom", version.ref = "kotlinxSerialization" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
+arrow-stack = { module = "io.arrow-kt:arrow-stack", version.ref = "arrow" }
+arrow-core  = { module = "io.arrow-kt:arrow-core" }
+arrow-fx-coroutines = { module = "io.arrow-kt:arrow-fx-coroutines" }
+arrow-core-serialization = { module = "io.arrow-kt:arrow-core-serialization" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json" }
 nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbusJoseJwt" }
 nimbus-oauth2 = { module = "com.nimbusds:oauth2-oidc-sdk", version.ref = "nimbusOAuth2" }
 eudi-sdjwt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-sdjwt-kt", version.ref = "eudiSdJwt" }
@@ -41,7 +46,6 @@ waltid-mdoc-credentials = { module = "id.walt.mdoc-credentials:waltid-mdoc-crede
 uri-kmp = { module = "com.eygraber:uri-kmp", version.ref = "uri-kmp" }
 zxing = { module = "com.google.zxing:javase", version.ref = "zxing" }
 cose-java = { module = "com.augustcellars.cose:cose-java", version.ref = "cose-java" }
-kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "springboot" }
