@@ -24,8 +24,11 @@ repositories {
 }
 
 dependencies {
+    implementation(platform(libs.kotlin.bom))
+    implementation(platform(libs.kotlinx.coroutines.bom))
+    implementation(platform(libs.kotlinx.serialization.bom))
+    implementation(platform(libs.arrow.stack))
     implementation(platform(SpringBootPlugin.BOM_COORDINATES))
-    implementation(platform("org.jetbrains.kotlinx:kotlinx-serialization-bom:${libs.versions.kotlinxSerialization.get()}"))
 
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server") {
         because("PID Issuer acts like a OAUTH2 resource server")
@@ -51,7 +54,7 @@ dependencies {
     implementation(libs.bouncy.castle) {
         because("To support X509 certificates parsing")
     }
-    implementation("org.webjars:webjars-locator-core") {
+    implementation("org.webjars:webjars-locator-lite") {
         because("To support resolution of Webjars static resources")
     }
     implementation(libs.bootstrap) {
@@ -90,6 +93,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("io.projectreactor:reactor-test")
+    testImplementation("org.springframework.boot:spring-boot-webtestclient")
 }
 
 java {
@@ -102,7 +106,7 @@ kotlin {
     }
 
     compilerOptions {
-        apiVersion = KotlinVersion.KOTLIN_2_1
+        apiVersion = KotlinVersion.DEFAULT
         freeCompilerArgs.addAll(
             "-Xjsr305=strict",
             "-Xconsistent-data-class-copy-visibility",
