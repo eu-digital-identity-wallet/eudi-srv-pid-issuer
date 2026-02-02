@@ -32,12 +32,12 @@ import kotlinx.serialization.json.*
  */
 data class AccessCertificate(
     val key: JWK,
-    val accessCertificateIssuer: String,
+    val signedMetadataIssuer: String,
 ) {
     init {
         require(key is AsymmetricJWK) { "only asymmetric keys are supported" }
         require(key.isPrivate) { "a private key is required for signing metadata" }
-        require(accessCertificateIssuer.isNotBlank()) { "issuer cannot be blank" }
+        require(signedMetadataIssuer.isNotBlank()) { "issuer cannot be blank" }
     }
 
     val signingAlgorithm: JWSAlgorithm
@@ -84,17 +84,17 @@ data class AccessCertificate(
 internal class GenerateSignedMetadataWithNimbus(
     private val clock: Clock,
     private val credentialIssuerId: CredentialIssuerId,
-    private val signingKey: AccessCertificate,
+    private val accessCertificate: AccessCertificate,
 ) : GenerateSignedMetadata {
     override fun invoke(metadata: JsonObject): String {
         val payload = (metadata - "signed_metadata").buildUpon {
             put("iat", clock.now().epochSeconds)
-            put("iss", signingKey.accessCertificateIssuer)
+            put("iss", accessCertificate.signedMetadataIssuer)
             put("sub", credentialIssuerId.externalForm)
         }.toPayload()
 
-        val signedMetadata = JWSObject(signingKey.jwsHeader, payload)
-            .apply { sign(signingKey.jwsSigner) }
+        val signedMetadata = JWSObject(accessCertificate.jwsHeader, payload)
+            .apply { sign(accessCertificate.jwsSigner) }
 
         return signedMetadata.serialize()
     }

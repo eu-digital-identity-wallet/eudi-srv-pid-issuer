@@ -363,12 +363,12 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
             }
         }
 
-        val issuer = env.getProperty("issuer.signed-metadata.issuer")
+        val singedMetadataIssuer = env.getProperty("issuer.signed-metadata.issuer")
             ?.takeIf { it.isNotBlank() }
             ?.trim()
             ?: issuerPublicUrl.externalForm
 
-        AccessCertificate(key = key, accessCertificateIssuer = issuer)
+        AccessCertificate(key = key, signedMetadataIssuer = singedMetadataIssuer)
     }
 
     //
@@ -486,7 +486,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
         GenerateSignedMetadataWithNimbus(
             clock = bean(),
             credentialIssuerId = bean<CredentialIssuerMetaData>().id,
-            signingKey = bean(),
+            accessCertificate = bean(),
         )
     }
     if (enableStatusList) {

@@ -425,16 +425,16 @@ Variable: `ISSUER_SIGNED_METADATA_ISSUER`
 Description: Value of the `iss` claim of the signed metadata.  
 Default value: Value of `ISSUER_PUBLICURL`
 
-Variable: `ISSUER_ACCESS_CERTIFICATE_SIGNING_KEY`  
+Variable: `ISSUER_ACCESS_CERTIFICATE`  
 Description: Whether to generate a new, or use an existing key-pair for signing metadata.    
 Possible values: `GenerateRandom`, `LoadFromKeystore`  
 Default value: `GenerateRandom`
 
-Variable: `ISSUER_ACCESS_CERTIFICATE_SIGNING_KEY_ALIAS`  
+Variable: `ISSUER_ACCESS_CERTIFICATE_ALIAS`  
 Description: Alias of the key-pair for signing metadata.       
 Default value: N/A
 
-Variable: `ISSUER_ACCESS_CERTIFICATE_SIGNING_KEY_PASSWORD`  
+Variable: `ISSUER_ACCESS_CERTIFICATE_PASSWORD`  
 Description: Password of the key-pair for signing metadata.       
 Default value: N/A
 
