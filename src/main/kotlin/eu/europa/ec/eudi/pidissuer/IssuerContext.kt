@@ -363,12 +363,12 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
             }
         }
 
-        val singedMetadataIssuer = env.getProperty("issuer.signed-metadata.issuer")
+        val signedMetadataIssuer = env.getProperty("issuer.signed-metadata.issuer")
             ?.takeIf { it.isNotBlank() }
             ?.trim()
             ?: issuerPublicUrl.externalForm
 
-        AccessCertificate(key = key, signedMetadataIssuer = singedMetadataIssuer)
+        AccessCertificate(key = key, signedMetadataIssuer = signedMetadataIssuer)
     }
 
     //
