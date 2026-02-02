@@ -348,7 +348,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     // Signed metadata signing key
     //
     registerBean(lazyInit = true) {
-        val key = when (env.getProperty<KeyOption>("issuer.access-certificate.signing-key")) {
+        val key = when (env.getProperty<KeyOption>("issuer.access-certificate")) {
             null, KeyOption.GenerateRandom -> {
                 log.info("Generating random access certificate key for metadata signing")
                 ECKeyGenerator(Curve.P_256)
@@ -359,16 +359,16 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
 
             KeyOption.LoadFromKeystore -> {
                 log.info("Loading access certificate for metadata signing from keystore")
-                issuerKeystore.loadJwk(env, "issuer.access-certificate.signing-key")
+                issuerKeystore.loadJwk(env, "issuer.access-certificate")
             }
         }
 
-        val issuer = env.getProperty("issuer.access-certificate.issuer")
+        val issuer = env.getProperty("issuer.signed-metadata.issuer")
             ?.takeIf { it.isNotBlank() }
             ?.trim()
             ?: issuerPublicUrl.externalForm
 
-        MetadataSigningKey(key = key, issuer = issuer)
+        AccessCertificate(key = key, accessCertificateIssuer = issuer)
     }
 
     //

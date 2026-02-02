@@ -421,7 +421,7 @@ Variable: `ISSUER_METADATA_SIGNED_METADATA_ENABLED`
 Description: Whether to enable support for signed metadata or not.  
 Default value: `true`  
 
-Variable: `ISSUER_ACCESS_CERTIFICATE_ISSUER`  
+Variable: `ISSUER_SIGNED_METADATA_ISSUER`  
 Description: Value of the `iss` claim of the signed metadata.  
 Default value: Value of `ISSUER_PUBLICURL`
 

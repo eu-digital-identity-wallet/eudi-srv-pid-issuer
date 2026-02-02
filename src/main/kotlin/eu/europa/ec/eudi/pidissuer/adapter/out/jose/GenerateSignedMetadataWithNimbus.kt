@@ -30,14 +30,14 @@ import kotlinx.serialization.json.*
 /**
  * Key used to sign metadata.
  */
-data class MetadataSigningKey(
+data class AccessCertificate(
     val key: JWK,
-    val issuer: String,
+    val accessCertificateIssuer: String,
 ) {
     init {
         require(key is AsymmetricJWK) { "only asymmetric keys are supported" }
         require(key.isPrivate) { "a private key is required for signing metadata" }
-        require(issuer.isNotBlank()) { "issuer cannot be blank" }
+        require(accessCertificateIssuer.isNotBlank()) { "issuer cannot be blank" }
     }
 
     val signingAlgorithm: JWSAlgorithm
@@ -84,12 +84,12 @@ data class MetadataSigningKey(
 internal class GenerateSignedMetadataWithNimbus(
     private val clock: Clock,
     private val credentialIssuerId: CredentialIssuerId,
-    private val signingKey: MetadataSigningKey,
+    private val signingKey: AccessCertificate,
 ) : GenerateSignedMetadata {
     override fun invoke(metadata: JsonObject): String {
         val payload = (metadata - "signed_metadata").buildUpon {
             put("iat", clock.now().epochSeconds)
-            put("iss", signingKey.issuer)
+            put("iss", signingKey.accessCertificateIssuer)
             put("sub", credentialIssuerId.externalForm)
         }.toPayload()
 
