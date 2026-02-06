@@ -16,8 +16,10 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.trust
 
 import arrow.core.NonEmptyList
+import arrow.core.raise.result
 import arrow.core.serialization.NonEmptyListSerializer
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.IsTrustedKeyAttestationIssuer
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.TrustResult
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
@@ -45,11 +47,23 @@ fun IsTrustedKeyAttestationIssuer.Companion.usingTrustValidatorService(
         contentType(MediaType.APPLICATION_JSON)
         accept(MediaType.APPLICATION_JSON)
     }
-    configClient.retrieve()
-        .awaitBody<TrustResponse>()
-        .trusted
+    result {
+        val isTrusted = configClient.retrieve()
+            .awaitBody<TrustResponse>()
+            .trusted
+        if (isTrusted) {
+            TrustResult.IsTrusted
+        } else {
+            TrustResult.IsUntrusted
+        }
+    }.getOrElse {
+        TrustResult.ServiceFailure("Trust validator service is unavailable or unable to identify trust", it)
+    }
 }
-val IsTrustedKeyAttestationIssuer.Companion.Ignored: IsTrustedKeyAttestationIssuer get() = IsTrustedKeyAttestationIssuer { true }
+
+val IsTrustedKeyAttestationIssuer.Companion.Ignored: IsTrustedKeyAttestationIssuer get() = IsTrustedKeyAttestationIssuer {
+    TrustResult.IsTrusted
+}
 
 @Serializable
 private data class TrustQueryRequest(

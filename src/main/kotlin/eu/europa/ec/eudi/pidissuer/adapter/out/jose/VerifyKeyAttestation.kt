@@ -45,8 +45,14 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 import kotlin.time.Instant
 
+sealed interface TrustResult {
+    object IsTrusted : TrustResult
+    object IsUntrusted : TrustResult
+    class ServiceFailure(val reason: String, val throwable: Throwable) : TrustResult
+}
+
 fun interface IsTrustedKeyAttestationIssuer {
-    suspend operator fun invoke(x5c: NonEmptyList<X509Certificate>): Boolean
+    suspend operator fun invoke(x5c: NonEmptyList<X509Certificate>): TrustResult
     companion object
 }
 
@@ -79,8 +85,10 @@ internal class VerifyKeyAttestation(
     }
 
     private suspend fun WalletProviderSigningKey.X5C.ensureTrustWalletProvider() {
-        require(isTrustedKeyAttestationIssuer(x5c)) {
-            "Key attestation is not issued by a trusted wallet provider"
+        when (val result = isTrustedKeyAttestationIssuer(x5c)) {
+            TrustResult.IsTrusted -> {}
+            is TrustResult.ServiceFailure -> throw IllegalArgumentException(result.reason)
+            TrustResult.IsUntrusted -> throw IllegalArgumentException("Key attestation is not issued by a trusted wallet provider")
         }
     }
 
