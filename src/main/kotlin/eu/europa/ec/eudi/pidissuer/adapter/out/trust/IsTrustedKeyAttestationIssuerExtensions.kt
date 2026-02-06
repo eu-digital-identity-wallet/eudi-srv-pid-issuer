@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 European Commission
+ * Copyright (c) 2023-2026 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ fun IsTrustedKeyAttestationIssuer.Companion.usingTrustValidatorService(
     webClient: WebClient,
     service: URI,
 ): IsTrustedKeyAttestationIssuer = IsTrustedKeyAttestationIssuer { x5c ->
-    val body = TrustQueryRequest(x5c, "EU_WUA")
+    val body = TrustQueryRequest(x5c, "PID")
     val configClient = webClient.post().apply {
         uri(service)
         bodyValue(body)
@@ -54,8 +54,8 @@ val IsTrustedKeyAttestationIssuer.Companion.Ignored: IsTrustedKeyAttestationIssu
 @Serializable
 private data class TrustQueryRequest(
     @Serializable(with = X509CertificateChainSerializer::class)
-    val x5c: NonEmptyList<X509Certificate>,
-    val case: String,
+    val chain: NonEmptyList<X509Certificate>,
+    val verificationContext: String,
 )
 
 private object X509CertificateSerializer : KSerializer<X509Certificate> {
