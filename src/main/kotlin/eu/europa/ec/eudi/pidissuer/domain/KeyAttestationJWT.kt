@@ -27,7 +27,7 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jwt.SignedJWT
 import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 data class KeyAttestationJWT private constructor(
@@ -131,4 +131,4 @@ internal suspend fun signatureVerifiedByKey(vararg tasks: suspend () -> JWK?): J
         tasks.forEach {
             launch { send(it()) }
         }
-    }.first { it != null }
+    }.firstOrNull { it != null }
