@@ -826,6 +826,39 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
     }
 
     @Test
+    internal fun `issuance with jwt proof that contains key attestation fails when proof is signed with non-attested key`() =
+        runTest {
+            val authentication = dPoPTokenAuthentication(clock = clock)
+            val cNonce = generateNonce(clock.now(), 5L.minutes)
+            val nonAttestedProofKey = ECKeyGenerator(Curve.P_256).generate()
+            val attestedKey = ECKeyGenerator(Curve.P_256).generate()
+            val keyAttestationJwt = keyAttestationJWT(proofSigningKey = attestedKey)
+
+            val proofs = jwtProof(credentialIssuerMetadata.id, clock, cNonce, nonAttestedProofKey) {
+                customParam("key_attestation", keyAttestationJwt.serialize())
+            }.toJwtProofs()
+
+            val response = client()
+                .mutateWith(mockAuthentication(authentication))
+                .post()
+                .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestByCredentialIdentifier(proofs))
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody<IssueCredentialResponse.FailedTO>()
+                .returnResult()
+                .let { assertNotNull(it.responseBody) }
+
+            assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
+            assertEquals(
+                "Invalid proof JWT: Key attestation does not contain a key that verifies the jwt proof signature",
+                response.errorDescription,
+            )
+        }
+
+    @Test
     fun `issuance with attestation proof (without 'exp' claim) is successful`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
         val keyAttestationCNonce = generateNonce(clock.now(), 5L.minutes)
@@ -1527,7 +1560,7 @@ private suspend fun keyAttestationJWT(
     clock: Clock = Clock.System,
     expiresAt: Instant = clock.now() + 1.days,
     includeExpiresAt: Boolean = true,
-    extraKeys: () -> List<ECKey>,
+    extraKeys: () -> List<ECKey> = { emptyList() },
 ): SignedJWT {
     val keyAttestationSigningKey = loadECKey("key-attestation-key.pem")
     val signer = ECDSASigner(keyAttestationSigningKey)

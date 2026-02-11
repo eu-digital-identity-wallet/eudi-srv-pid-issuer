@@ -23,9 +23,7 @@ import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSASigner
-import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
-import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.Base64URL
@@ -33,18 +31,15 @@ import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.mobileDrivingLicenceV1
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidSdJwtVcV1
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.loadResource
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import java.security.cert.X509Certificate
 import java.util.*
 import kotlin.test.*
-import kotlin.time.Duration.Companion.minutes
 
 internal class ValidateJwtProofTest {
 
@@ -251,37 +246,6 @@ internal class ValidateJwtProofTest {
         assertTrue { result.isLeft() }
     }
 
-    @Test
-    internal fun `fails when proof is signed with a key not present in attested keys`() = runTest {
-        val credentialConfiguration = pidSdJwtVcV1(
-            JWSAlgorithm.ES256,
-            checkNotNull(ECDSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
-            KeyAttestationRequirement.Required(null, null),
-        )
-        val proofSigningKey = ECKeyGenerator(Curve.P_256)
-            .algorithm(JWSAlgorithm.ES256)
-            .generate()
-        val attestedKey = ECKeyGenerator(Curve.P_256)
-            .algorithm(JWSAlgorithm.ES256)
-            .generate()
-        val keyAttestationJwt = generateKeyAttestationJwt(attestedKey, "nonce")
-        val signedJwtProof =
-            generateSignedJwt(proofSigningKey, "nonce") {
-                customParam(
-                    "key_attestation",
-                    keyAttestationJwt.serialize(),
-                )
-            }
-        val result =
-            validateJwtProof(
-                UnvalidatedProof.Jwt(signedJwtProof.serialize()),
-                credentialConfiguration,
-                clock.now(),
-            )
-
-        assertIs<IssueCredentialError.InvalidProof>(result.leftOrNull())
-    }
-
     private fun generateSignedJwt(
         key: ECKey,
         nonce: String,
@@ -293,41 +257,13 @@ internal class ValidateJwtProofTest {
             .apply { headersProvider() }
             .build()
 
-        val now = clock.now()
-        val exp = now.plus(5.minutes)
-
         val claims = JWTClaimsSet.Builder()
             .audience(issuer.externalForm)
-            .issueTime(now.toJavaDate())
-            .expirationTime(exp.toJavaDate())
+            .issueTime(clock.now().toJavaDate())
             .claim("nonce", nonce)
             .build()
 
         return SignedJWT(header, claims).apply { sign(ECDSASigner(key)) }
-    }
-
-    private suspend fun generateKeyAttestationJwt(
-        attestedKey: ECKey,
-        nonce: String,
-        algorithm: JWSAlgorithm = ECDSASigner.SUPPORTED_ALGORITHMS.first(),
-    ): SignedJWT {
-        val signingKey = loadKey()
-        val header = JWSHeader.Builder(algorithm)
-            .type(JOSEObjectType("key-attestation+jwt"))
-            .x509CertChain(loadChain().map { Base64.encode(it.encoded) })
-            .build()
-
-        val now = clock.now()
-        val exp = now.plus(5.minutes)
-
-        val claims = JWTClaimsSet.Builder()
-            .issueTime(now.toJavaDate())
-            .expirationTime(exp.toJavaDate())
-            .claim("nonce", nonce)
-            .claim("attested_keys", arrayOf(attestedKey.toPublicJWK().toJSONObject()))
-            .build()
-
-        return SignedJWT(header, claims).apply { sign(ECDSASigner(signingKey)) }
     }
 }
 
