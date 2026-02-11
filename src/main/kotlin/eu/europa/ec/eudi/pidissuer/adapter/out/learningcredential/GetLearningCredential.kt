@@ -77,7 +77,6 @@ private class GetMockLearningCredential(
             levelOfLearningExperience = LevelOfLearningExperience.entries.shuffled(random).first(),
             typesOfQualityAssurance = nonEmptyListOf(TypesOfQualityAssurance("Institutional Evaluation")),
             prerequisitesToEnroll = nonEmptyListOf(PrerequisiteToEnroll("Familiarity with Python")),
-            evaluatorVerification = nonEmptyListOf(EvaluatorVerification("Document checks (passport)")),
             integrationStackabilityOptions = IntegrationStackabilityOptions.entries.shuffled(random).first(),
         )
     }

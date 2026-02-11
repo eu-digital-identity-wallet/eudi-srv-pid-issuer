@@ -66,7 +66,6 @@ enum class LevelOfLearningExperience {
 
 typealias TypesOfQualityAssurance = NonBlankString
 typealias PrerequisiteToEnroll = NonBlankString
-typealias EvaluatorVerification = NonBlankString
 
 enum class IntegrationStackabilityOptions {
     Yes,
@@ -78,7 +77,7 @@ data class LearningCredential(
     val dateOfIssuance: Instant,
     val dateOfExpiry: Instant? = null,
     val familyName: FamilyName,
-    val givenName: GivenName,
+    val givenName: GivenName? = null,
     val achievementTitle: AchievementTitle,
     val achievementDescription: AchievementDescription? = null,
     val learningOutcomes: NonEmptyList<LearningOutcome>? = null,
@@ -89,7 +88,6 @@ data class LearningCredential(
     val levelOfLearningExperience: LevelOfLearningExperience,
     val typesOfQualityAssurance: NonEmptyList<TypesOfQualityAssurance>,
     val prerequisitesToEnroll: NonEmptyList<PrerequisiteToEnroll>? = null,
-    val evaluatorVerification: NonEmptyList<EvaluatorVerification>? = null,
     val integrationStackabilityOptions: IntegrationStackabilityOptions? = null,
 ) {
     companion object

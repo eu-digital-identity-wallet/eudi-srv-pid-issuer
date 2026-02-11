@@ -103,7 +103,9 @@ private class EncodeLearningCredentialInSdJwtVcCompact(
                     )
                 }
                 sdClaim(SdJwtVcClaims.FamilyName.name, familyName.value)
-                sdClaim(SdJwtVcClaims.GivenName.name, givenName.value)
+                if (null != givenName) {
+                    sdClaim(SdJwtVcClaims.GivenName.name, givenName.value)
+                }
                 claim(SdJwtVcClaims.AchievementTitle.name, achievementTitle.value)
                 if (null != achievementDescription) {
                     claim(SdJwtVcClaims.AchievementDescription.name, achievementDescription.value)
@@ -128,11 +130,6 @@ private class EncodeLearningCredentialInSdJwtVcCompact(
                 if (null != prerequisitesToEnroll) {
                     sdArrClaim(SdJwtVcClaims.PrerequisitesToEnroll.name) {
                         prerequisitesToEnroll.forEach { prerequisiteToEnroll -> claim(prerequisiteToEnroll.value) }
-                    }
-                }
-                if (null != evaluatorVerification) {
-                    sdArrClaim(SdJwtVcClaims.EvaluatorVerification.name) {
-                        evaluatorVerification.forEach { evaluatorVerification -> claim(evaluatorVerification.value) }
                     }
                 }
                 if (null != integrationStackabilityOptions) {
