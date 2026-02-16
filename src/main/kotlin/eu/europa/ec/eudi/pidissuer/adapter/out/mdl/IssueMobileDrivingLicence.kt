@@ -315,7 +315,7 @@ internal fun mobileDrivingLicenceV1(
         proofTypesSupported = ProofTypesSupported(
             ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
-        attestationCategory = AttestationCategory.EuPubEaa,
+        attestationCategory = AttestationCategory.Eaa,
     )
 
 /**
