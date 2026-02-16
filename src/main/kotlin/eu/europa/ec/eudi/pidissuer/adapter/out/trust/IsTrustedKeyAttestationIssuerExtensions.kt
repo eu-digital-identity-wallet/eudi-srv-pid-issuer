@@ -16,10 +16,9 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.trust
 
 import arrow.core.NonEmptyList
-import arrow.core.raise.result
 import arrow.core.serialization.NonEmptyListSerializer
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.IsTrustedKeyAttestationIssuer
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.TrustResult
+import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.trust.TrustResult
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
@@ -34,6 +33,7 @@ import org.springframework.web.reactive.function.client.awaitBody
 import java.io.ByteArrayInputStream
 import java.net.URI
 import java.security.cert.CertificateFactory
+import java.security.cert.TrustAnchor
 import java.security.cert.X509Certificate
 
 fun IsTrustedKeyAttestationIssuer.Companion.usingTrustValidatorService(
@@ -47,22 +47,18 @@ fun IsTrustedKeyAttestationIssuer.Companion.usingTrustValidatorService(
         contentType(MediaType.APPLICATION_JSON)
         accept(MediaType.APPLICATION_JSON)
     }
-    result {
-        val isTrusted = configClient.retrieve()
-            .awaitBody<TrustResponse>()
-            .trusted
-        if (isTrusted) {
-            TrustResult.IsTrusted
-        } else {
-            TrustResult.IsUntrusted
-        }
-    }.getOrElse {
-        TrustResult.ServiceFailure("Trust validator service is unavailable or unable to identify trust", it)
+    val trustResponse = configClient.retrieve()
+        .awaitBody<TrustResponse>()
+    val isTrusted = trustResponse.trusted
+    if (isTrusted) {
+        TrustResult.IsTrusted(TrustAnchor(trustResponse.trustAnchor, null))
+    } else {
+        TrustResult.IsUntrusted
     }
 }
 
-val IsTrustedKeyAttestationIssuer.Companion.Ignored: IsTrustedKeyAttestationIssuer get() = IsTrustedKeyAttestationIssuer {
-    TrustResult.IsTrusted
+val IsTrustedKeyAttestationIssuer.Companion.Ignored: IsTrustedKeyAttestationIssuer get() = IsTrustedKeyAttestationIssuer { chain ->
+    TrustResult.IsTrusted(TrustAnchor(chain.last(), null))
 }
 
 @Serializable
@@ -97,4 +93,13 @@ object X509CertificateChainSerializer : KSerializer<NonEmptyList<X509Certificate
 @Serializable
 private data class TrustResponse(
     @Required val trusted: Boolean,
-)
+    @Serializable(with = X509CertificateSerializer::class)
+    val trustAnchor: X509Certificate? = null,
+) {
+    init {
+        if (trusted)
+            require(trustAnchor != null) {
+                "Trust anchor must be present when trusted is true"
+            }
+    }
+}

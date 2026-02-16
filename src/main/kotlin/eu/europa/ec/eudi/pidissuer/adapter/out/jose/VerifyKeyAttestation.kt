@@ -38,23 +38,14 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationJWT
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
+import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.trust.TrustResult
 import java.net.URI
 import java.security.cert.X509Certificate
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 import kotlin.time.Instant
-
-sealed interface TrustResult {
-    object IsTrusted : TrustResult
-    object IsUntrusted : TrustResult
-    class ServiceFailure(val reason: String, val throwable: Throwable) : TrustResult
-}
-
-fun interface IsTrustedKeyAttestationIssuer {
-    suspend operator fun invoke(x5c: NonEmptyList<X509Certificate>): TrustResult
-    companion object
-}
 
 internal class VerifyKeyAttestation(
     private val verifyAttestedKey: VerifyAttestedKey? = null,
@@ -85,10 +76,9 @@ internal class VerifyKeyAttestation(
     }
 
     private suspend fun WalletProviderSigningKey.X5C.ensureTrustWalletProvider() {
-        when (val result = isTrustedKeyAttestationIssuer(x5c)) {
-            TrustResult.IsTrusted -> {}
-            is TrustResult.ServiceFailure -> throw IllegalArgumentException(result.reason)
-            TrustResult.IsUntrusted -> throw IllegalArgumentException("Key attestation is not issued by a trusted wallet provider")
+        val result = isTrustedKeyAttestationIssuer(x5c)
+        require(result is TrustResult.IsTrusted) {
+            "Key attestation is not issued by a trusted wallet provider"
         }
     }
 
