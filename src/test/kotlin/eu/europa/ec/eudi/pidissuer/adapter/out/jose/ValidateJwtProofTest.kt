@@ -31,21 +31,22 @@ import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.mobileDrivingLicenceV1
+import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.loadResource
+import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import java.security.cert.X509Certificate
-import java.util.*
 import kotlin.test.*
 
 internal class ValidateJwtProofTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.System
-    private val verifyKeyAttestation = VerifyKeyAttestation()
+    private val verifyKeyAttestation = VerifyKeyAttestation(isTrustedKeyAttestationIssuer = IsTrustedKeyAttestationIssuer.Ignored)
     private val validateJwtProof = ValidateJwtProof(issuer, verifyKeyAttestation)
     private val credentialConfiguration = mobileDrivingLicenceV1(
         CoseAlgorithm(-7),
