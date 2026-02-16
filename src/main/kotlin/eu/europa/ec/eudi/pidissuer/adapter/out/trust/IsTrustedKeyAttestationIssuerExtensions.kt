@@ -97,9 +97,8 @@ private data class TrustResponse(
     val trustAnchor: X509Certificate? = null,
 ) {
     init {
-        if (trusted)
-            require(trustAnchor != null) {
-                "Trust anchor must be present when trusted is true"
-            }
+        require(!trusted || trustAnchor != null) {
+            "Trust anchor must be present when trusted is true"
+        }
     }
 }

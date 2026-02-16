@@ -54,6 +54,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.jose.GenerateSignedMetadata
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
+import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import eu.europa.ec.eudi.sdjwt.vc.Vct
 import io.ktor.http.*
@@ -543,16 +544,15 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     // Specific Issuers
     //
     registerBean {
-        val isTrustedKeyAttestationIssuer =
-            if (trustValidatorServiceUrl.isNullOrBlank()) {
-                log.warn("Trust Validator Service has not been configured. Trusting all Wallet Providers.")
-                IsTrustedKeyAttestationIssuer.Ignored
-            } else {
-                log.info("Using Trust Validator Service '{}'", trustValidatorServiceUrl)
-                IsTrustedKeyAttestationIssuer.usingTrustValidatorService(bean(), URI.create(trustValidatorServiceUrl))
-            }
-        VerifyKeyAttestation(isTrustedKeyAttestationIssuer = isTrustedKeyAttestationIssuer)
+        if (trustValidatorServiceUrl.isNullOrBlank()) {
+            log.warn("Trust Validator Service has not been configured. Trusting all Wallet Providers.")
+            IsTrustedKeyAttestationIssuer.Ignored
+        } else {
+            log.info("Using Trust Validator Service '{}'", trustValidatorServiceUrl)
+            IsTrustedKeyAttestationIssuer.usingTrustValidatorService(bean(), URI.create(trustValidatorServiceUrl))
+        }
     }
+    registerBean { VerifyKeyAttestation(isTrustedKeyAttestationIssuer = bean()) }
     registerBean { ValidateJwtProof(issuerPublicUrl, bean()) }
     registerBean { ValidateAttestationProof(bean()) }
     registerBean { DefaultExtractJwkFromCredentialKey }
