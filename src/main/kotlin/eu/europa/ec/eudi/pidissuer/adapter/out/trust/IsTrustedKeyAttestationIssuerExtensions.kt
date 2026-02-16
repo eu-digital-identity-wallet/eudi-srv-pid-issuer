@@ -40,7 +40,7 @@ fun IsTrustedKeyAttestationIssuer.Companion.usingTrustValidatorService(
     webClient: WebClient,
     service: URI,
 ): IsTrustedKeyAttestationIssuer = IsTrustedKeyAttestationIssuer { x5c ->
-    val body = TrustQueryRequest(x5c, "PID")
+    val body = TrustQueryRequest(x5c, "WalletUnitAttestation")
     val configClient = webClient.post().apply {
         uri(service)
         bodyValue(body)
