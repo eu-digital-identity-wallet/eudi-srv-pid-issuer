@@ -25,62 +25,21 @@ import com.nimbusds.jose.util.JSONObjectUtils
 import eu.europa.ec.eudi.pidissuer.adapter.out.x509.dropRootCA
 import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
+import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
 import eu.europa.ec.eudi.pidissuer.port.out.jose.GenerateSignedMetadata
 import kotlinx.serialization.json.*
+import kotlin.jvm.javaClass
 
 /**
  * Key used to sign metadata.
  */
-data class AccessCertificate(
-    val key: JWK,
-    val signedMetadataIssuer: String,
-) {
+@JvmInline
+value class AccessCertificate(val key: JWK) {
     init {
         require(key is AsymmetricJWK) { "only asymmetric keys are supported" }
         require(key.isPrivate) { "a private key is required for signing metadata" }
-        require(signedMetadataIssuer.isNotBlank()) { "issuer cannot be blank" }
     }
-
-    val signingAlgorithm: JWSAlgorithm
-        get() = when (key) {
-            is ECKey -> when (val curve = key.curve) {
-                Curve.P_256 -> JWSAlgorithm.ES256
-                Curve.P_384 -> JWSAlgorithm.ES384
-                Curve.P_521 -> JWSAlgorithm.ES512
-                else -> error("unsupported curve '$curve' for ECKey")
-            }
-            is RSAKey -> JWSAlgorithm.RS256
-            is OctetKeyPair -> when (val curve = key.curve) {
-                Curve.Ed25519 -> JWSAlgorithm.Ed25519
-                else -> error("unsupported curve '$curve' for OctetKeyPair")
-            }
-            else -> error("unsupported key type '$javaClass'")
-        }
-
-    val jwsHeader: JWSHeader
-        get() = JWSHeader.Builder(signingAlgorithm)
-            .apply {
-                type(JOSEObjectType(OpenId4VciSpec.SIGNED_METADATA_JWT_TYPE))
-                val publicJwk = key.toPublicJWK()
-                if (null != publicJwk.x509CertChain) {
-                    val x5c = publicJwk.parsedX509CertChain
-                        .dropRootCA()
-                        .map { Base64.encode(it.encoded) }
-                    x509CertChain(x5c)
-                } else {
-                    jwk(publicJwk)
-                }
-            }
-            .build()
-
-    val jwsSigner: JWSSigner
-        get() = when (key) {
-            is ECKey -> ECDSASigner(key)
-            is RSAKey -> RSASSASigner(key)
-            is OctetKeyPair -> Ed25519Signer(key)
-            else -> error("unsupported key type '$javaClass'")
-        }
 }
 
 /**
@@ -88,18 +47,19 @@ data class AccessCertificate(
  */
 internal class GenerateSignedMetadataWithNimbus(
     private val clock: Clock,
+    private val signedMetadataIssuer: HttpsUrl,
     private val credentialIssuerId: CredentialIssuerId,
     private val accessCertificate: AccessCertificate,
 ) : GenerateSignedMetadata {
     override fun invoke(metadata: JsonObject): String {
         val payload = (metadata - "signed_metadata").buildUpon {
             put("iat", clock.now().epochSeconds)
-            put("iss", accessCertificate.signedMetadataIssuer)
+            put("iss", signedMetadataIssuer.externalForm)
             put("sub", credentialIssuerId.externalForm)
         }.toPayload()
 
-        val signedMetadata = JWSObject(accessCertificate.jwsHeader, payload)
-            .apply { sign(accessCertificate.jwsSigner) }
+        val signedMetadata = JWSObject(accessCertificate.jwsHeader(), payload)
+            .apply { sign(accessCertificate.jwsSigner()) }
 
         return signedMetadata.serialize()
     }
@@ -112,3 +72,45 @@ private fun Map<String, JsonElement>.buildUpon(builder: JsonObjectBuilder.() -> 
     }
 
 private fun JsonObject.toPayload(): Payload = Payload(JSONObjectUtils.parse(Json.encodeToString(this)))
+
+private fun AccessCertificate.jwsHeader(customizer: JWSHeader.Builder.() -> Unit = {}): JWSHeader =
+    JWSHeader.Builder(signingAlgorithm())
+        .apply {
+            customizer()
+
+            type(JOSEObjectType(OpenId4VciSpec.SIGNED_METADATA_JWT_TYPE))
+            val publicJwk = key.toPublicJWK()
+            if (null != publicJwk.x509CertChain) {
+                val x5c = publicJwk.parsedX509CertChain
+                    .dropRootCA()
+                    .map { Base64.encode(it.encoded) }
+                x509CertChain(x5c)
+            } else {
+                jwk(publicJwk)
+            }
+        }
+        .build()
+
+private fun AccessCertificate.signingAlgorithm(): JWSAlgorithm =
+    when (key) {
+        is ECKey -> when (val curve = key.curve) {
+            Curve.P_256 -> JWSAlgorithm.ES256
+            Curve.P_384 -> JWSAlgorithm.ES384
+            Curve.P_521 -> JWSAlgorithm.ES512
+            else -> error("unsupported curve '$curve' for ECKey")
+        }
+        is RSAKey -> JWSAlgorithm.RS256
+        is OctetKeyPair -> when (val curve = key.curve) {
+            Curve.Ed25519 -> JWSAlgorithm.Ed25519
+            else -> error("unsupported curve '$curve' for OctetKeyPair")
+        }
+        else -> error("unsupported key type '$javaClass'")
+    }
+
+private fun AccessCertificate.jwsSigner(): JWSSigner =
+    when (key) {
+        is ECKey -> ECDSASigner(key)
+        is RSAKey -> RSASSASigner(key)
+        is OctetKeyPair -> Ed25519Signer(key)
+        else -> error("unsupported key type '$javaClass'")
+    }
