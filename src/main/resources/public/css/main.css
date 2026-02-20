@@ -13,3 +13,18 @@
 .credentials-offer-uri {
     word-break: break-all;
 }
+
+#generateButton:disabled {
+    background-color: var(--bs-danger);
+    border-color: var(--bs-danger);
+    color: #fff;
+    opacity: 1;
+    cursor: not-allowed;
+}
+#generateButton.disabled-by-script:disabled {
+    background-color: var(--bs-danger);
+    border-color: var(--bs-danger);
+    color: #fff;
+    opacity: 1;
+    cursor: not-allowed;
+}
