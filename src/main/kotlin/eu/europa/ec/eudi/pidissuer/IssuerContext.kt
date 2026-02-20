@@ -367,12 +367,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
             }
         }
 
-        val signedMetadataIssuer = env.getProperty("issuer.signed-metadata.issuer")
-            ?.takeIf { it.isNotBlank() }
-            ?.trim()
-            ?: issuerPublicUrl.externalForm
-
-        AccessCertificate(key = key, signedMetadataIssuer = signedMetadataIssuer)
+        AccessCertificate(key)
     }
 
     //
@@ -487,8 +482,15 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
         DefaultResolveCredentialRequestByCredentialIdentifier(resolvers)
     }
     registerBean(lazyInit = true) {
+        val signedMetadataIssuer = env.getProperty("issuer.signed-metadata.issuer")
+            ?.takeIf { it.isNotBlank() }
+            ?.trim()
+            ?.let { requireNotNull(HttpsUrl.of(it)) { "'issuer.signed-metadata.issuer' is not a valid HttpsUrl" } }
+            ?: issuerPublicUrl
+
         GenerateSignedMetadataWithNimbus(
             clock = bean(),
+            signedMetadataIssuer = signedMetadataIssuer,
             credentialIssuerId = bean<CredentialIssuerMetaData>().id,
             accessCertificate = bean(),
         )
