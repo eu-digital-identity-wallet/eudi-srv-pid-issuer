@@ -43,7 +43,7 @@ internal class MsoMdocSigner<in Credential>(
     private val usage: MDocBuilder.(Credential) -> Unit,
 ) {
     private val issuerCryptoProvider: SimpleCOSECryptoProvider by lazy {
-        issuerSigningKey.cryptoProvider()
+        issuerSigningKey.cryptoProvider(includeRootCA = false)
     }
 
     fun sign(
