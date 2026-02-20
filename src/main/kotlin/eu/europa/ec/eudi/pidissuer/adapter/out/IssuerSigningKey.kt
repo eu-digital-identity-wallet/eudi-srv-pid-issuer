@@ -21,9 +21,10 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
-import com.nimbusds.jose.util.X509CertChainUtils
+import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.X509CertUtils
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.pidissuer.adapter.out.x509.dropRootCA
 import eu.europa.ec.eudi.pidissuer.domain.CoseAlgorithm
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
@@ -67,7 +68,7 @@ internal val IssuerSigningKey.coseAlgorithm: CoseAlgorithm
         else -> error("Unsupported ECKey Curve '$curve'")
     }
 
-internal fun IssuerSigningKey.cryptoProvider(): SimpleCOSECryptoProvider {
+internal fun IssuerSigningKey.cryptoProvider(includeRootCA: Boolean): SimpleCOSECryptoProvider {
     return SimpleCOSECryptoProvider(
         listOf(
             COSECryptoProviderKeyInfo(
@@ -75,7 +76,9 @@ internal fun IssuerSigningKey.cryptoProvider(): SimpleCOSECryptoProvider {
                 algorithmID = algorithmId,
                 publicKey = key.toECPublicKey(),
                 privateKey = key.toECPrivateKey(),
-                x5Chain = X509CertChainUtils.parse(key.x509CertChain),
+                x5Chain =
+                    if (includeRootCA) key.parsedX509CertChain
+                    else key.parsedX509CertChain.dropRootCA(),
                 trustedRootCAs = emptyList(),
             ),
         ),
@@ -91,6 +94,8 @@ internal fun IssuerSigningKey.sdJwtVcIssuer(digestsHashAlgorithm: HashAlgorithm)
     return NimbusSdJwtOps.issuer(factory, signer, signingAlgorithm) {
         type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
         keyID(key.keyID)
-        x509CertChain(key.x509CertChain)
+
+        val x5c = key.parsedX509CertChain.dropRootCA().map { Base64.encode(it.encoded) }
+        x509CertChain(x5c)
     }
 }

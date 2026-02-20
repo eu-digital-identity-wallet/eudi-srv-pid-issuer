@@ -422,7 +422,7 @@ Description: Whether to enable support for signed metadata or not.
 Default value: `true`  
 
 Variable: `ISSUER_SIGNED_METADATA_ISSUER`  
-Description: Value of the `iss` claim of the signed metadata.  
+Description: Value of the `iss` claim of the signed metadata. **Must be a valid Https URL**.  
 Default value: Value of `ISSUER_PUBLICURL`
 
 Variable: `ISSUER_ACCESS_CERTIFICATE`  
