@@ -160,6 +160,7 @@ class GetPidDataFromKeyCloak(
             .appendPathSegments("admin", "realms", users.value, "users")
             .apply {
                 parameters.append("username", username)
+                parameters.append("exact", "true")
             }
             .build()
 
