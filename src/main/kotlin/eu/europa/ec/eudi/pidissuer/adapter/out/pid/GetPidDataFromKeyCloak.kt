@@ -281,7 +281,7 @@ data class UserRepresentation(
     @Required val lastName: String,
     @Required val firstName: String,
     val attributes: Map<String, List<String>> = emptyMap(),
-    @Required val email: String,
+    val email: String? = null,
 )
 
 private data class UserInfo(
