@@ -1,6 +1,8 @@
 # SD-JWT VC Credential Issuer
 
-Minimal OpenID4VCI issuer that generates an SD-JWT VC credential you can scan into your EUDI Wallet.
+Minimal OpenID4VCI issuer that generates SD-JWT VC credentials you can scan into your EUDI Wallet.
+
+Supports both `vc+sd-jwt` and `dc+sd-jwt` formats.
 
 ## Quick Start
 
@@ -32,12 +34,32 @@ BASE_URL=https://xxxx.ngrok-free.app npm start
 
 1. Starts an HTTP server with all the OpenID4VCI endpoints
 2. Shows a `openid-credential-offer://` QR code
-3. Your EUDI Wallet scans it → fetches issuer metadata → gets a token → requests the credential
+3. Your EUDI Wallet scans it, fetches issuer metadata, gets a token, requests the credential
 4. Server issues an SD-JWT VC with these selectively-disclosable claims:
    - `family_name` → "Doe"
    - `given_name` → "John"
    - `email` → "john.doe@example.com"
    - `birthdate` → "1990-01-15"
+
+## Endpoints
+
+| Endpoint                                    | Description                        |
+|---------------------------------------------|------------------------------------|
+| `GET /credential-offer`                     | Credential offer (QR points here)  |
+| `GET /.well-known/openid-credential-issuer` | Issuer metadata                    |
+| `GET /.well-known/oauth-authorization-server` | Auth server metadata             |
+| `GET /.well-known/jwt-vc-issuer`            | JWT VC issuer metadata             |
+| `GET /jwks`                                 | Issuer public keys (JWKS)          |
+| `POST /token`                               | Token endpoint (pre-auth code)     |
+| `POST /nonce`                               | Nonce endpoint                     |
+| `POST /credential`                          | Credential issuance                |
+
+## Credential Formats
+
+The offer includes both formats. The wallet picks whichever it supports:
+
+- **`SimpleCredential`** — `vc+sd-jwt` format (typ: `vc+sd-jwt`)
+- **`SimpleCredentialDC`** — `dc+sd-jwt` format (typ: `dc+sd-jwt`)
 
 ## Configuration
 
