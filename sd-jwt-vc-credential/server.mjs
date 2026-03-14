@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import express from 'express';
 import crypto from 'crypto';
 import qrcode from 'qrcode-terminal';
@@ -6,9 +5,7 @@ import { SDJwtVcInstance } from '@sd-jwt/sd-jwt-vc';
 import { ES256, digest, generateSalt } from '@sd-jwt/crypto-nodejs';
 
 const PORT = process.env.PORT || 3000;
-/** Base URL for the issuer (can be updated to ngrok URL when USE_NGROK=1). */
-let baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
-const useNgrok = process.env.USE_NGROK === '1' || process.env.USE_NGROK === 'true';
+const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 
 // ── Issuer key pair (generated fresh on each startup) ──────────────────────
 const ISSUER_KID = `issuer-key-${crypto.randomUUID().slice(0, 8)}`;
@@ -33,7 +30,7 @@ const sdjwt = new SDJwtVcInstance({
 const PRE_AUTH_CODE = crypto.randomUUID();
 const validTokens = new Set();
 
-// ── Credential claim data ──────────────────────────────────────────────────
+// ── Credential configurations ──────────────────────────────────────────────
 const VCT = 'urn:eu.europa.ec.eudi:simple:credential:1';
 
 const CLAIMS_METADATA = {
@@ -43,7 +40,13 @@ const CLAIMS_METADATA = {
   birthdate: { display: [{ name: 'Date of Birth', locale: 'en' }] },
 };
 
-function credentialConfig(id, format) {
+// Map config id → format typ header
+const CREDENTIAL_CONFIGS = {
+  SimpleCredential: { format: 'vc+sd-jwt', typ: 'vc+sd-jwt' },
+  SimpleCredentialDC: { format: 'dc+sd-jwt', typ: 'dc+sd-jwt' },
+};
+
+function credentialConfigMetadata(format) {
   return {
     format,
     vct: VCT,
@@ -54,7 +57,10 @@ function credentialConfig(id, format) {
     },
     display: [
       {
-        name: format === 'dc+sd-jwt' ? 'Simple Credential (DC)' : 'Simple Credential',
+        name:
+          format === 'dc+sd-jwt'
+            ? 'Simple Credential (DC)'
+            : 'Simple Credential',
         locale: 'en',
         description: 'A simple identity credential',
       },
@@ -68,7 +74,6 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Log every request for debugging
 app.use((req, _res, next) => {
   console.log(`${req.method} ${req.path}`);
   next();
@@ -77,8 +82,8 @@ app.use((req, _res, next) => {
 // ── 1. Credential Offer ────────────────────────────────────────────────────
 app.get('/credential-offer', (_req, res) => {
   res.json({
-    credential_issuer: baseUrl,
-    credential_configuration_ids: ['SimpleCredential', 'SimpleCredentialDC'],
+    credential_issuer: BASE_URL,
+    credential_configuration_ids: ['SimpleCredentialDC', 'SimpleCredential'],
     grants: {
       'urn:ietf:params:oauth:grant-type:pre-authorized_code': {
         'pre-authorized_code': PRE_AUTH_CODE,
@@ -90,45 +95,35 @@ app.get('/credential-offer', (_req, res) => {
 // ── 2. Credential Issuer Metadata ──────────────────────────────────────────
 app.get('/.well-known/openid-credential-issuer', (_req, res) => {
   res.json({
-    credential_issuer: baseUrl,
-    authorization_servers: [baseUrl],
-    credential_endpoint: `${baseUrl}/credential`,
-    nonce_endpoint: `${baseUrl}/nonce`,
-    jwks_uri: `${baseUrl}/jwks`,
+    credential_issuer: BASE_URL,
+    authorization_servers: [BASE_URL],
+    credential_endpoint: `${BASE_URL}/credential`,
+    nonce_endpoint: `${BASE_URL}/nonce`,
+    jwks_uri: `${BASE_URL}/jwks`,
     display: [{ name: 'Simple SD-JWT VC Issuer', locale: 'en' }],
     credential_configurations_supported: {
-      SimpleCredential: credentialConfig('SimpleCredential', 'vc+sd-jwt'),
-      SimpleCredentialDC: credentialConfig('SimpleCredentialDC', 'dc+sd-jwt'),
+      SimpleCredentialDC: credentialConfigMetadata('dc+sd-jwt'),
+      SimpleCredential: credentialConfigMetadata('vc+sd-jwt'),
     },
   });
 });
 
-// ── 3. JWKS — issuer public keys for signature verification ────────────────
-app.get('/jwks', (_req, res) => {
-  res.json(jwks);
-});
+// ── 3. JWKS ────────────────────────────────────────────────────────────────
+app.get('/jwks', (_req, res) => res.json(jwks));
 
-// ── 4. JWT VC Issuer Metadata (used by wallets to resolve issuer keys) ─────
+// ── 4. JWT VC Issuer Metadata ──────────────────────────────────────────────
 app.get('/.well-known/jwt-vc-issuer', (_req, res) => {
-  res.json({
-    issuer: baseUrl,
-    jwks_uri: `${baseUrl}/jwks`,
-  });
+  res.json({ issuer: BASE_URL, jwks_uri: `${BASE_URL}/jwks` });
 });
-
-// Also serve at the path the wallet might try with the issuer URL
 app.get('/.well-known/jwt-issuer', (_req, res) => {
-  res.json({
-    issuer: baseUrl,
-    jwks_uri: `${baseUrl}/jwks`,
-  });
+  res.json({ issuer: BASE_URL, jwks_uri: `${BASE_URL}/jwks` });
 });
 
 // ── 5. Authorization Server Metadata ───────────────────────────────────────
 app.get('/.well-known/oauth-authorization-server', (_req, res) => {
   res.json({
-    issuer: baseUrl,
-    token_endpoint: `${baseUrl}/token`,
+    issuer: BASE_URL,
+    token_endpoint: `${BASE_URL}/token`,
     response_types_supported: [],
     grant_types_supported: [
       'urn:ietf:params:oauth:grant-type:pre-authorized_code',
@@ -149,53 +144,59 @@ app.post('/token', (req, res) => {
   const accessToken = crypto.randomUUID();
   validTokens.add(accessToken);
 
-  const cNonce = crypto.randomUUID();
-
   res.json({
     access_token: accessToken,
     token_type: 'Bearer',
     expires_in: 86400,
-    c_nonce: cNonce,
-    c_nonce_expires_in: 86400,
   });
 });
 
 // ── 7. Nonce Endpoint ──────────────────────────────────────────────────────
 app.post('/nonce', (_req, res) => {
-  res.json({
-    c_nonce: crypto.randomUUID(),
-    c_nonce_expires_in: 86400,
-  });
+  const nonce = crypto.randomUUID();
+  console.log(`  -> issued c_nonce: ${nonce.slice(0, 8)}...`);
+  res.json({ c_nonce: nonce });
 });
 
 // ── 8. Credential Endpoint ─────────────────────────────────────────────────
 app.post('/credential', async (req, res) => {
+  console.log('  -> body:', JSON.stringify(req.body, null, 2));
+
   const auth = req.headers.authorization || '';
   const token = auth.replace(/^Bearer\s+/i, '');
   if (!validTokens.has(token)) {
     return res.status(401).json({ error: 'invalid_token' });
   }
 
-  // Extract holder public key from the proof JWT header
+  // Extract holder public key from proof JWT header
+  // EUDI wallet sends: { proofs: { jwt: ["eyJ..."] } }
+  // Other wallets may send: { proof: { proof_type: "jwt", jwt: "eyJ..." } }
   let holderJwk;
   try {
-    const proofJwt = req.body.proof?.jwt || req.body.proofs?.jwt?.[0];
+    const proofJwt =
+      req.body.proofs?.jwt?.[0] ||
+      req.body.proof?.jwt;
+    if (!proofJwt) throw new Error('no proof jwt found');
     const headerB64 = proofJwt.split('.')[0];
     const header = JSON.parse(
       Buffer.from(headerB64, 'base64url').toString('utf8'),
     );
     holderJwk = header.jwk;
     if (!holderJwk) throw new Error('no jwk in proof header');
-  } catch {
+  } catch (e) {
+    console.error('  -> proof extraction failed:', e.message);
     return res.status(400).json({ error: 'invalid_proof' });
   }
 
-  // Determine format: dc+sd-jwt or vc+sd-jwt
+  // Determine typ from credential_configuration_id, format, or credential_identifier
+  const configId = req.body.credential_configuration_id;
   const requestedFormat = req.body.format;
-  const credId = req.body.credential_identifier;
-  let typ = 'vc+sd-jwt';
-  if (requestedFormat === 'dc+sd-jwt' || credId === 'SimpleCredentialDC') {
-    typ = 'dc+sd-jwt';
+  let typ = 'dc+sd-jwt'; // default to dc+sd-jwt (EUDI wallet preference)
+
+  if (configId && CREDENTIAL_CONFIGS[configId]) {
+    typ = CREDENTIAL_CONFIGS[configId].typ;
+  } else if (requestedFormat === 'vc+sd-jwt') {
+    typ = 'vc+sd-jwt';
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -203,7 +204,7 @@ app.post('/credential', async (req, res) => {
   try {
     const credential = await sdjwt.issue(
       {
-        iss: baseUrl,
+        iss: BASE_URL,
         iat: now,
         exp: now + 30 * 24 * 60 * 60,
         vct: VCT,
@@ -221,12 +222,12 @@ app.post('/credential', async (req, res) => {
       },
     );
 
-    console.log(`\n--- Credential issued (${typ}) ---`);
+    console.log(`  -> credential issued (${typ})`);
 
+    // Response format per OpenID4VCI draft 15+:
+    // { "credentials": [ { "credential": "..." } ] }
     res.json({
-      credential,
-      c_nonce: crypto.randomUUID(),
-      c_nonce_expires_in: 86400,
+      credentials: [{ credential }],
     });
   } catch (err) {
     console.error('Issuance error:', err);
@@ -235,39 +236,17 @@ app.post('/credential', async (req, res) => {
 });
 
 // ── Start ──────────────────────────────────────────────────────────────────
-app.listen(PORT, async () => {
-  if (useNgrok) {
-    try {
-      const ngrok = await import('@ngrok/ngrok');
-      const listener = await ngrok.default.forward({
-        addr: PORT,
-        authtoken_from_env: true,
-      });
-      baseUrl = listener.url();
-      console.log(`ngrok tunnel: ${baseUrl}`);
-    } catch (err) {
-      console.error('ngrok failed:', err.message);
-      console.log(`
-  To use ngrok:
-  1. Get your token: https://dashboard.ngrok.com/get-started/your-authtoken
-  2. Create a file named .env in this folder with one line:
-     NGROK_AUTHTOKEN=paste_your_token_here
-  3. Run again: npm run start:ngrok
-`);
-      console.log('Falling back to', baseUrl);
-    }
-  }
-
-  const offerUrl = `openid-credential-offer://?credential_offer_uri=${encodeURIComponent(`${baseUrl}/credential-offer`)}`;
+app.listen(PORT, () => {
+  const offerUrl = `openid-credential-offer://?credential_offer_uri=${encodeURIComponent(`${BASE_URL}/credential-offer`)}`;
 
   console.log(`
 ╔══════════════════════════════════════════════════════════╗
 ║         SD-JWT VC Credential Issuer (EUDI Wallet)       ║
 ╚══════════════════════════════════════════════════════════╝
 
-  Server:     ${baseUrl}
-  JWKS:       ${baseUrl}/jwks
-  Formats:    vc+sd-jwt, dc+sd-jwt
+  Server:     ${BASE_URL}
+  JWKS:       ${BASE_URL}/jwks
+  Formats:    dc+sd-jwt, vc+sd-jwt
   Issuer kid: ${ISSUER_KID}
   Offer:      ${offerUrl}
 
@@ -276,12 +255,12 @@ Scan this QR code with your EUDI Wallet app:
 
   qrcode.generate(offerUrl, { small: true }, (code) => {
     console.log(code);
-    if (!useNgrok) {
-      console.log(`
-TIP: To expose this server to your phone via ngrok, restart with:
-     USE_NGROK=1 npm start
-     (Requires NGROK_AUTHTOKEN from https://dashboard.ngrok.com/get-started/your-authtoken)
+    console.log(`
+TIP: Your phone must be able to reach ${BASE_URL}
+     If running locally, set BASE_URL to your machine's IP or use ngrok:
+       npx ngrok http ${PORT}
+     Then restart with:
+       BASE_URL=https://<your-ngrok-url> npm start
 `);
-    }
   });
 });
