@@ -4,10 +4,14 @@
   "description": "Minimal OpenID4VCI issuer that generates an SD-JWT VC you can scan into your EUDI Wallet",
   "type": "module",
   "scripts": {
-    "start": "node server.mjs"
+    "start": "node server.mjs",
+    "start:ngrok": "cross-env USE_NGROK=1 node server.mjs"
   },
   "license": "Apache-2.0",
   "dependencies": {
+    "@ngrok/ngrok": "^1.7.0",
+    "cross-env": "^7.0.3",
+    "dotenv": "^16.4.5",
     "@sd-jwt/crypto-nodejs": "^0.19.0",
     "@sd-jwt/sd-jwt-vc": "^0.19.0",
     "express": "^4.21.0",

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import crypto from 'crypto';
 import qrcode from 'qrcode-terminal';
@@ -5,7 +6,9 @@ import { SDJwtVcInstance } from '@sd-jwt/sd-jwt-vc';
 import { ES256, digest, generateSalt } from '@sd-jwt/crypto-nodejs';
 
 const PORT = process.env.PORT || 3000;
-const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+/** Base URL for the issuer (can be updated to ngrok URL when USE_NGROK=1). */
+let baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
+const useNgrok = process.env.USE_NGROK === '1' || process.env.USE_NGROK === 'true';
 
 // ── Issuer key pair (generated fresh on each startup) ──────────────────────
 const { publicKey: issuerPub, privateKey: issuerPriv } = await ES256.generateKeyPair();
@@ -33,7 +36,7 @@ app.use(express.urlencoded({ extended: true }));
 // 1. Credential Offer (wallet fetches this from the QR link)
 app.get('/credential-offer', (_req, res) => {
   res.json({
-    credential_issuer: BASE_URL,
+    credential_issuer: baseUrl,
     credential_configuration_ids: ['SimpleCredential'],
     grants: {
       'urn:ietf:params:oauth:grant-type:pre-authorized_code': {
@@ -46,10 +49,10 @@ app.get('/credential-offer', (_req, res) => {
 // 2. Credential Issuer Metadata
 app.get('/.well-known/openid-credential-issuer', (_req, res) => {
   res.json({
-    credential_issuer: BASE_URL,
-    authorization_servers: [BASE_URL],
-    credential_endpoint: `${BASE_URL}/credential`,
-    nonce_endpoint: `${BASE_URL}/nonce`,
+    credential_issuer: baseUrl,
+    authorization_servers: [baseUrl],
+    credential_endpoint: `${baseUrl}/credential`,
+    nonce_endpoint: `${baseUrl}/nonce`,
     display: [{ name: 'Simple SD-JWT VC Issuer', locale: 'en' }],
     credential_configurations_supported: {
       SimpleCredential: {
@@ -83,8 +86,8 @@ app.get('/.well-known/openid-credential-issuer', (_req, res) => {
 // 3. Authorization Server Metadata
 app.get('/.well-known/oauth-authorization-server', (_req, res) => {
   res.json({
-    issuer: BASE_URL,
-    token_endpoint: `${BASE_URL}/token`,
+    issuer: baseUrl,
+    token_endpoint: `${baseUrl}/token`,
     response_types_supported: [],
     grant_types_supported: [
       'urn:ietf:params:oauth:grant-type:pre-authorized_code',
@@ -152,7 +155,7 @@ app.post('/credential', async (req, res) => {
   try {
     const credential = await sdjwt.issue(
       {
-        iss: BASE_URL,
+        iss: baseUrl,
         iat: now,
         exp: now + 30 * 24 * 60 * 60,
         vct: 'urn:eu.europa.ec.eudi:simple:credential:1',
@@ -184,15 +187,37 @@ app.post('/credential', async (req, res) => {
 });
 
 // ── Start ──────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  const offerUrl = `openid-credential-offer://?credential_offer_uri=${encodeURIComponent(`${BASE_URL}/credential-offer`)}`;
+app.listen(PORT, async () => {
+  if (useNgrok) {
+    try {
+      const ngrok = await import('@ngrok/ngrok');
+      const listener = await ngrok.default.forward({
+        addr: PORT,
+        authtoken_from_env: true,
+      });
+      baseUrl = listener.url();
+      console.log(`ngrok tunnel: ${baseUrl}`);
+    } catch (err) {
+      console.error('ngrok failed:', err.message);
+      console.log(`
+  To use ngrok:
+  1. Get your token: https://dashboard.ngrok.com/get-started/your-authtoken
+  2. Create a file named .env in this folder with one line:
+     NGROK_AUTHTOKEN=paste_your_token_here
+  3. Run again: npm run start:ngrok
+`);
+      console.log('Falling back to', baseUrl);
+    }
+  }
+
+  const offerUrl = `openid-credential-offer://?credential_offer_uri=${encodeURIComponent(`${baseUrl}/credential-offer`)}`;
 
   console.log(`
 ╔══════════════════════════════════════════════════════════╗
 ║         SD-JWT VC Credential Issuer (EUDI Wallet)       ║
 ╚══════════════════════════════════════════════════════════╝
 
-  Server:  ${BASE_URL}
+  Server:  ${baseUrl}
   Offer:   ${offerUrl}
 
 Scan this QR code with your EUDI Wallet app:
@@ -200,12 +225,12 @@ Scan this QR code with your EUDI Wallet app:
 
   qrcode.generate(offerUrl, { small: true }, (code) => {
     console.log(code);
-    console.log(`
-TIP: Your phone must be able to reach ${BASE_URL}
-     If running locally, set BASE_URL to your machine's IP or use ngrok:
-       npx ngrok http ${PORT}
-     Then restart with:
-       BASE_URL=https://<your-ngrok-url> npm start
+    if (!useNgrok) {
+      console.log(`
+TIP: To expose this server to your phone via ngrok, restart with:
+     USE_NGROK=1 npm start
+     (Requires NGROK_AUTHTOKEN from https://dashboard.ngrok.com/get-started/your-authtoken)
 `);
+    }
   });
 });
