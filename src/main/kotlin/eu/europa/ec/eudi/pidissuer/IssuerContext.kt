@@ -39,6 +39,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.GetEuropeanHealthInsuranceCa
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IssueSdJwtVcEuropeanHealthInsuranceCard
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential.IssueLearningCredential
+import eu.europa.ec.eudi.pidissuer.adapter.out.simplecredential.IssueSimpleCredential
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryIssuedCredentialRepository
@@ -210,6 +211,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     val enableStatusList = env.getProperty<Boolean>("issuer.statusList.enabled") ?: false
     val enableEhic = env.getProperty<Boolean>("issuer.ehic.enabled") ?: true
     val enableLearningCredential = env.getProperty<Boolean>("issuer.learningCredential.enabled") ?: true
+    val enableSimpleCredential = env.getProperty<Boolean>("issuer.simpleCredential.enabled") ?: true
     val trustValidatorServiceUrl = env.getProperty<String>("issuer.trust.service-url")
 
     val issuerKeystore: KeyStore by lazy {
@@ -737,6 +739,37 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
 
                     add(sdJwtVcCompactIssuer)
                     add(sdJwtVcCompactIssuer.asDeferred(bean(), bean(), bean()))
+                }
+
+                if (enableSimpleCredential) {
+                    val issuerSigningKey = getIssuerSigningKey("issuer.simpleCredential.signing-key")
+                    val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
+                        "issuer.simpleCredential.jwtProofs.supportedSigningAlgorithms",
+                        JWSAlgorithm::parse,
+                    )
+                    val keyAttestationRequirement = this@BeanRegistrarDsl.keyAttestationRequirement("issuer.simpleCredential")
+                    val validity = Duration.parse(env.getProperty("issuer.simpleCredential.validity", "P30D"))
+                    val digestHashAlgorithm = env.getProperty<HashAlgorithm>(
+                        "issuer.simpleCredential.sdJwtVc.encoder.digests.hashAlgorithm",
+                    ) ?: HashAlgorithm.SHA_256
+
+                    val notificationsEnabled = env.getProperty<Boolean>("issuer.simpleCredential.notifications.enabled") ?: true
+
+                    val simpleCredentialIssuer = IssueSimpleCredential.sdJwtVcCompact(
+                        issuerSigningKey,
+                        jwtProofsSupportedSigningAlgorithms,
+                        keyAttestationRequirement,
+                        bean(),
+                        bean(),
+                        bean(),
+                        validity,
+                        digestHashAlgorithm,
+                        if (notificationsEnabled) bean() else null,
+                        bean(),
+                    )
+
+                    add(simpleCredentialIssuer)
+                    add(simpleCredentialIssuer.asDeferred(bean(), bean(), bean()))
                 }
             },
             batchCredentialIssuance = run {
