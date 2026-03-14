@@ -1,0 +1,16 @@
+{
+  "name": "sd-jwt-vc-credential",
+  "version": "1.0.0",
+  "description": "Minimal OpenID4VCI issuer that generates an SD-JWT VC you can scan into your EUDI Wallet",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@sd-jwt/crypto-nodejs": "^0.19.0",
+    "@sd-jwt/sd-jwt-vc": "^0.19.0",
+    "express": "^4.21.0",
+    "qrcode-terminal": "^0.12.0"
+  }
+}
