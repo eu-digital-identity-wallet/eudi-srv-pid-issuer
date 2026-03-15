@@ -199,10 +199,13 @@ app.post('/credential', async (req, res) => {
     return res.status(401).json({ error: 'invalid_token' });
   }
 
-  // Extract holder public key from proof JWT header
-  // EUDI wallet: { proofs: { jwt: ["eyJ..."] } }
-  // Other wallets: { proof: { proof_type: "jwt", jwt: "eyJ..." } }
-  let holderJwk;
+  // Extract holder key binding from proof JWT header.
+  // Wallets send the holder key in one of two ways:
+  //   - jwk: the public key is embedded directly in the header
+  //   - kid: a DID or key identifier referencing the holder's key
+  // EUDI wallet sends: { proofs: { jwt: ["eyJ..."] } }
+  // Other wallets send: { proof: { proof_type: "jwt", jwt: "eyJ..." } }
+  let cnf; // confirmation claim for the credential
   try {
     const proofJwt =
       req.body.proofs?.jwt?.[0] || req.body.proof?.jwt;
@@ -212,9 +215,16 @@ app.post('/credential', async (req, res) => {
     const header = JSON.parse(
       Buffer.from(headerB64, 'base64url').toString('utf8'),
     );
-    holderJwk = header.jwk;
-    if (!holderJwk) throw new Error('no jwk in proof header');
-    console.log(`  -> holder key extracted (kty=${holderJwk.kty})`);
+
+    if (header.jwk) {
+      cnf = { jwk: header.jwk };
+      console.log(`  -> holder key: jwk (kty=${header.jwk.kty})`);
+    } else if (header.kid) {
+      cnf = { kid: header.kid };
+      console.log(`  -> holder key: kid (${header.kid.slice(0, 40)}...)`);
+    } else {
+      throw new Error('proof header has neither jwk nor kid');
+    }
   } catch (e) {
     console.error(`  -> proof error: ${e.message}`);
     return res.status(400).json({
@@ -247,7 +257,7 @@ app.post('/credential', async (req, res) => {
         iat: now,
         exp: now + 30 * 24 * 60 * 60,
         vct: VCT,
-        cnf: { jwk: holderJwk },
+        cnf,
         family_name: 'Doe',
         given_name: 'John',
         email: 'john.doe@example.com',
