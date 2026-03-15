@@ -131,7 +131,9 @@ function authServerMetadata() {
       'urn:ietf:params:oauth:grant-type:pre-authorized_code',
     ],
     'pre-authorized_grant_anonymous_access_supported': true,
-    token_endpoint_auth_methods_supported: ['none'],
+    token_endpoint_auth_methods_supported: ['none', 'attest_jwt_client_auth'],
+    client_attestation_signing_alg_values_supported: ['ES256'],
+    client_attestation_pop_signing_alg_values_supported: ['ES256'],
   };
 }
 app.get('/.well-known/oauth-authorization-server', (_req, res) => {
