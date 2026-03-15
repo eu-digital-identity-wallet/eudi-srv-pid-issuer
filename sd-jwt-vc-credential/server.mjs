@@ -27,63 +27,11 @@ const sdjwt = new SDJwtVcInstance({
 });
 
 // ── State ──────────────────────────────────────────────────────────────────
-const PRE_AUTH_CODE = crypto.randomUUID();
+let preAuthCode = crypto.randomUUID();
 const validTokens = new Set();
 
-// ── Credential configs ─────────────────────────────────────────────────────
+// ── Credential config ──────────────────────────────────────────────────────
 const VCT = 'urn:eu.europa.ec.eudi:simple:credential:1';
-
-// EUDI wallet expects claims as a list of {path, display} objects
-// nested under credential_metadata
-const CREDENTIAL_METADATA = {
-  display: [
-    {
-      name: 'Simple Credential',
-      locale: 'en',
-      description: 'A simple identity credential',
-    },
-  ],
-  claims: [
-    {
-      path: ['family_name'],
-      mandatory: true,
-      display: [{ name: 'Family Name', locale: 'en' }],
-    },
-    {
-      path: ['given_name'],
-      mandatory: true,
-      display: [{ name: 'Given Name', locale: 'en' }],
-    },
-    {
-      path: ['email'],
-      mandatory: true,
-      display: [{ name: 'Email', locale: 'en' }],
-    },
-    {
-      path: ['birthdate'],
-      mandatory: true,
-      display: [{ name: 'Date of Birth', locale: 'en' }],
-    },
-  ],
-};
-
-const CREDENTIAL_CONFIGS = {
-  SimpleCredentialDC: { format: 'dc+sd-jwt', typ: 'dc+sd-jwt' },
-  SimpleCredential: { format: 'vc+sd-jwt', typ: 'vc+sd-jwt' },
-};
-
-function credentialConfigMetadata(format) {
-  return {
-    format,
-    vct: VCT,
-    cryptographic_binding_methods_supported: ['jwk'],
-    credential_signing_alg_values_supported: ['ES256'],
-    proof_types_supported: {
-      jwt: { proof_signing_alg_values_supported: ['ES256'] },
-    },
-    credential_metadata: CREDENTIAL_METADATA,
-  };
-}
 
 // ── Express app ────────────────────────────────────────────────────────────
 const app = express();
@@ -97,46 +45,83 @@ app.use((req, _res, next) => {
 
 // ── 1. Credential Offer ────────────────────────────────────────────────────
 app.get('/credential-offer', (_req, res) => {
+  preAuthCode = crypto.randomUUID();
   res.json({
     credential_issuer: BASE_URL,
-    credential_configuration_ids: ['SimpleCredentialDC', 'SimpleCredential'],
+    credential_configuration_ids: ['SimpleCredentialDC'],
     grants: {
       'urn:ietf:params:oauth:grant-type:pre-authorized_code': {
-        'pre-authorized_code': PRE_AUTH_CODE,
+        'pre-authorized_code': preAuthCode,
       },
     },
   });
 });
 
 // ── 2. Credential Issuer Metadata ──────────────────────────────────────────
+//
+// EUDI wallet (eudi-lib-jvm-openid4vci-kt v0.9.1) parses this with:
+//   - @JsonClassDiscriminator("format") for polymorphic credential configs
+//   - FORMAT_SD_JWT_VC = "dc+sd-jwt" (only known SD-JWT format)
+//   - vc+sd-jwt is NOT recognized and gets silently dropped
+//   - credential_metadata (not top-level display/claims) for config display
+//   - CredentialIssuerId requires HTTPS
+//   - authorization_servers entries validated as HttpsUrl
+//
 app.get('/.well-known/openid-credential-issuer', (_req, res) => {
-  res.json({
+  const metadata = {
     credential_issuer: BASE_URL,
     authorization_servers: [BASE_URL],
     credential_endpoint: `${BASE_URL}/credential`,
     nonce_endpoint: `${BASE_URL}/nonce`,
     jwks_uri: `${BASE_URL}/jwks`,
-    jwks,
     credential_configurations_supported: {
-      SimpleCredentialDC: credentialConfigMetadata('dc+sd-jwt'),
-      SimpleCredential: credentialConfigMetadata('vc+sd-jwt'),
+      SimpleCredentialDC: {
+        format: 'dc+sd-jwt',
+        vct: VCT,
+        cryptographic_binding_methods_supported: ['jwk'],
+        credential_signing_alg_values_supported: ['ES256'],
+        proof_types_supported: {
+          jwt: {
+            proof_signing_alg_values_supported: ['ES256'],
+          },
+        },
+        credential_metadata: {
+          display: [
+            {
+              name: 'Simple Credential',
+              locale: 'en',
+              description: 'A simple identity credential',
+            },
+          ],
+          claims: [
+            { path: ['family_name'], mandatory: true, display: [{ name: 'Family Name', locale: 'en' }] },
+            { path: ['given_name'], mandatory: true, display: [{ name: 'Given Name', locale: 'en' }] },
+            { path: ['email'], mandatory: true, display: [{ name: 'Email', locale: 'en' }] },
+            { path: ['birthdate'], mandatory: true, display: [{ name: 'Date of Birth', locale: 'en' }] },
+          ],
+        },
+      },
     },
-  });
+  };
+  res.setHeader('Content-Type', 'application/json');
+  res.send(JSON.stringify(metadata));
 });
 
 // ── 3. JWKS ────────────────────────────────────────────────────────────────
-app.get('/jwks', (_req, res) => res.json(jwks));
+app.get('/jwks', (_req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(JSON.stringify(jwks));
+});
 
 // ── 4. JWT VC / Issuer Metadata ────────────────────────────────────────────
 app.get('/.well-known/jwt-vc-issuer', (_req, res) => {
-  res.json({ issuer: BASE_URL, jwks_uri: `${BASE_URL}/jwks`, jwks });
+  res.json({ issuer: BASE_URL, jwks_uri: `${BASE_URL}/jwks` });
 });
 app.get('/.well-known/jwt-issuer', (_req, res) => {
-  res.json({ issuer: BASE_URL, jwks_uri: `${BASE_URL}/jwks`, jwks });
+  res.json({ issuer: BASE_URL, jwks_uri: `${BASE_URL}/jwks` });
 });
 
 // ── 5. Authorization Server Metadata ───────────────────────────────────────
-// Serve at both paths — wallets may try either one
 function authServerMetadata() {
   return {
     issuer: BASE_URL,
@@ -150,21 +135,25 @@ function authServerMetadata() {
   };
 }
 app.get('/.well-known/oauth-authorization-server', (_req, res) => {
-  res.json(authServerMetadata());
+  res.setHeader('Content-Type', 'application/json');
+  res.send(JSON.stringify(authServerMetadata()));
 });
 app.get('/.well-known/openid-configuration', (_req, res) => {
-  res.json(authServerMetadata());
+  res.setHeader('Content-Type', 'application/json');
+  res.send(JSON.stringify(authServerMetadata()));
 });
 
 // ── 6. Token Endpoint ──────────────────────────────────────────────────────
 app.post('/token', (req, res) => {
+  console.log('  -> token body:', JSON.stringify(req.body));
+
   const code =
     req.body['pre-authorized_code'] ||
     req.body['pre_authorized_code'] ||
     req.query['pre-authorized_code'];
 
-  if (code !== PRE_AUTH_CODE) {
-    console.log('  -> token rejected: bad pre-auth code');
+  if (code !== preAuthCode) {
+    console.log(`  -> token rejected: got "${code}", expected "${preAuthCode}"`);
     return res.status(400).json({ error: 'invalid_grant' });
   }
 
@@ -189,9 +178,8 @@ app.post('/nonce', (_req, res) => {
 
 // ── 8. Credential Endpoint ─────────────────────────────────────────────────
 app.post('/credential', async (req, res) => {
-  console.log('  -> body:', JSON.stringify(req.body));
+  console.log('  -> credential body:', JSON.stringify(req.body));
 
-  // Accept both Bearer and DPoP token formats
   const auth = req.headers.authorization || '';
   const token = auth.replace(/^(Bearer|DPoP)\s+/i, '');
   if (!validTokens.has(token)) {
@@ -199,13 +187,8 @@ app.post('/credential', async (req, res) => {
     return res.status(401).json({ error: 'invalid_token' });
   }
 
-  // Extract holder key binding from proof JWT header.
-  // Wallets send the holder key in one of two ways:
-  //   - jwk: the public key is embedded directly in the header
-  //   - kid: a DID or key identifier referencing the holder's key
-  // EUDI wallet sends: { proofs: { jwt: ["eyJ..."] } }
-  // Other wallets send: { proof: { proof_type: "jwt", jwt: "eyJ..." } }
-  let cnf; // confirmation claim for the credential
+  // Extract holder key binding from proof JWT header
+  let cnf;
   try {
     const proofJwt =
       req.body.proofs?.jwt?.[0] || req.body.proof?.jwt;
@@ -221,7 +204,7 @@ app.post('/credential', async (req, res) => {
       console.log(`  -> holder key: jwk (kty=${header.jwk.kty})`);
     } else if (header.kid) {
       cnf = { kid: header.kid };
-      console.log(`  -> holder key: kid (${header.kid.slice(0, 40)}...)`);
+      console.log(`  -> holder key: kid`);
     } else {
       throw new Error('proof header has neither jwk nor kid');
     }
@@ -235,16 +218,12 @@ app.post('/credential', async (req, res) => {
     });
   }
 
-  // Determine typ from credential_configuration_id or format
   const configId =
     req.body.credential_configuration_id ||
     req.body.credential_identifier;
   const requestedFormat = req.body.format;
   let typ = 'dc+sd-jwt';
-
-  if (configId && CREDENTIAL_CONFIGS[configId]) {
-    typ = CREDENTIAL_CONFIGS[configId].typ;
-  } else if (requestedFormat === 'vc+sd-jwt') {
+  if (requestedFormat === 'vc+sd-jwt' || configId === 'SimpleCredential') {
     typ = 'vc+sd-jwt';
   }
 
@@ -269,7 +248,6 @@ app.post('/credential', async (req, res) => {
 
     console.log(`  -> issued (${typ}), ${credential.length} bytes`);
 
-    // OpenID4VCI draft 15+ response format
     res.json({
       credentials: [{ credential }],
     });
@@ -279,7 +257,19 @@ app.post('/credential', async (req, res) => {
   }
 });
 
-// ── Catch-all for debugging unknown requests ───────────────────────────────
+// ── Debug endpoint ─────────────────────────────────────────────────────────
+app.get('/debug', (_req, res) => {
+  res.json({
+    base_url: BASE_URL,
+    is_https: BASE_URL.startsWith('https://'),
+    issuer_kid: ISSUER_KID,
+    pre_auth_code: preAuthCode,
+    active_tokens: validTokens.size,
+    public_key: issuerJwk,
+  });
+});
+
+// ── Catch-all ──────────────────────────────────────────────────────────────
 app.use((req, res) => {
   console.log(`  -> 404: ${req.method} ${req.originalUrl}`);
   res.status(404).json({ error: 'not_found' });
@@ -288,7 +278,6 @@ app.use((req, res) => {
 // ── Start ──────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   const offerUrl = `openid-credential-offer://?credential_offer_uri=${encodeURIComponent(`${BASE_URL}/credential-offer`)}`;
-
   const isHttps = BASE_URL.startsWith('https://');
 
   console.log(`
@@ -298,14 +287,9 @@ app.listen(PORT, () => {
 
   Server:     ${BASE_URL}
   JWKS:       ${BASE_URL}/jwks
-  Formats:    dc+sd-jwt, vc+sd-jwt
+  Debug:      ${BASE_URL}/debug
   Issuer kid: ${ISSUER_KID}
-  Offer:      ${offerUrl}
-${!isHttps ? `
-  WARNING: EUDI Wallet requires HTTPS. Use ngrok or similar:
-    npx ngrok http ${PORT}
-    BASE_URL=https://<id>.ngrok-free.app npm start
-` : ''}
+${!isHttps ? '\n  ⚠ WARNING: EUDI Wallet requires HTTPS!\n    Use: npx ngrok http ' + PORT + '\n    Then: BASE_URL=https://<id>.ngrok-free.app npm start\n' : ''}
 Scan this QR code with your EUDI Wallet app:
 `);
 
