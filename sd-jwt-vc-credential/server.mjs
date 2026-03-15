@@ -5,7 +5,7 @@ import { SDJwtVcInstance } from '@sd-jwt/sd-jwt-vc';
 import { ES256, digest, generateSalt } from '@sd-jwt/crypto-nodejs';
 
 const PORT = process.env.PORT || 3000;
-const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const BASE_URL = "https://johnie-unidyllic-zara.ngrok-free.dev";
 
 // ── Issuer key pair ────────────────────────────────────────────────────────
 const ISSUER_KID = `issuer-key-${crypto.randomUUID().slice(0, 8)}`;
