@@ -516,6 +516,25 @@ private interface Validations : Raise<IssueCredentialError> {
         ): UnresolvedCredentialRequest.ByCredentialConfigurationId =
             supportedCredentialConfigurations.firstOrNull { credentialConfigurationId == it.id }
                 ?.let { credentialConfiguration ->
+                    credentialConfiguration.credentialReusePolicy.let { reusePolicy ->
+                        if (!reusePolicy.allowsBatchIssuance) {
+                            ensure(proofs.size == 1) {
+                                InvalidProof(
+                                    "Credential reuse policy allows only single instance issuance (limited-time). " +
+                                        "Batch issuance is not allowed.",
+                                )
+                            }
+                        } else {
+                            val effectiveBatchSize = reusePolicy.effectiveBatchSize
+                            if (effectiveBatchSize != null) {
+                                ensure(proofs.size <= effectiveBatchSize) {
+                                    InvalidProof(
+                                        "Credential reuse policy allows at most '$effectiveBatchSize' proofs (batch_size)",
+                                    )
+                                }
+                            }
+                        }
+                    }
                     val credentialRequest = when (credentialConfiguration) {
                         is MsoMdocCredentialConfiguration -> credentialConfiguration.credentialRequest(proofs, credentialResponseEncryption)
                         is SdJwtVcCredentialConfiguration -> credentialConfiguration.credentialRequest(proofs, credentialResponseEncryption)

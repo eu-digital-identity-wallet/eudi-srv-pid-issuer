@@ -58,6 +58,7 @@ data class MsoMdocCredentialConfiguration(
     val claims: List<ClaimDefinition> = emptyList(),
     override val proofTypesSupported: ProofTypesSupported = ProofTypesSupported.Empty,
     override val attestationCategory: AttestationCategory,
+    override val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : CredentialConfiguration {
     init {
         require(claims.all { it.isMsoMDoc() }) {

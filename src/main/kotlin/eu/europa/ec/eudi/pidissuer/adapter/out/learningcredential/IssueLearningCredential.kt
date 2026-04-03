@@ -112,6 +112,7 @@ internal class IssueLearningCredential(
             digestsHashAlgorithm: HashAlgorithm,
             generateNotificationId: GenerateNotificationId?,
             storeIssuedCredentials: StoreIssuedCredentials,
+            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
         ): IssueLearningCredential {
             val credentialConfiguration = LearningCredential.sdJwtVcCredentialConfiguration(
                 CredentialConfigurationId("urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt-compact"),
@@ -120,6 +121,7 @@ internal class IssueLearningCredential(
                 CredentialDisplay(DisplayName("Learning Credential (SD-JWT VC Compact)", Locale.ENGLISH)),
                 proofsSupportedSigningAlgorithms,
                 keyAttestationRequirement,
+                credentialReusePolicy,
             )
             return IssueLearningCredential(
                 credentialConfiguration,

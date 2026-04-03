@@ -299,6 +299,7 @@ internal fun mobileDrivingLicenceV1(
     credentialSigningAlgorithm: CoseAlgorithm,
     proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     keyAttestationRequirement: KeyAttestationRequirement,
+    credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ): MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
         id = MobileDrivingLicenceV1CredentialConfigurationId,
@@ -316,6 +317,7 @@ internal fun mobileDrivingLicenceV1(
             ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
         attestationCategory = AttestationCategory.Eaa,
+        credentialReusePolicy = credentialReusePolicy,
     )
 
 /**
@@ -333,6 +335,7 @@ internal class IssueMobileDrivingLicence(
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.NotRequired,
     private val generateStatusListToken: GenerateStatusListToken?,
+    private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : IssueSpecificCredential {
 
     override val supportedCredential: MsoMdocCredentialConfiguration =
@@ -340,6 +343,7 @@ internal class IssueMobileDrivingLicence(
             encodeMobileDrivingLicenceInCbor.signingAlgorithm,
             jwtProofsSupportedSigningAlgorithms,
             keyAttestationRequirement,
+            credentialReusePolicy,
         )
 
     override val publicKey: JWK?
