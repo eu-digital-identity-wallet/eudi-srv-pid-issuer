@@ -171,6 +171,7 @@ private fun europeanHealthInsuranceCardCredentialConfiguration(
     credentialDisplay: CredentialDisplay,
     proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     keyAttestationRequirement: KeyAttestationRequirement,
+    credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(
         id = credentialConfigurationId,
@@ -184,7 +185,7 @@ private fun europeanHealthInsuranceCardCredentialConfiguration(
             ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
         attestationCategory = AttestationCategory.EuPubEaa,
-
+        credentialReusePolicy = credentialReusePolicy,
     )
 
 private val log = LoggerFactory.getLogger(IssueSdJwtVcEuropeanHealthInsuranceCard::class.java)
@@ -259,6 +260,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             storeIssuedCredentials: StoreIssuedCredentials,
             jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
             keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.NotRequired,
+            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
         ): IssueSdJwtVcEuropeanHealthInsuranceCard =
             IssueSdJwtVcEuropeanHealthInsuranceCard(
                 europeanHealthInsuranceCardCredentialConfiguration(
@@ -270,6 +272,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     ),
                     jwtProofsSupportedSigningAlgorithms,
                     keyAttestationRequirement,
+                    credentialReusePolicy,
                 ),
                 issuerSigningKey.key.toPublicJWK(),
                 EncodeEuropeanHealthInsuranceCardInSdJwtVc.jwsJsonFlattened(
@@ -300,6 +303,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             storeIssuedCredentials: StoreIssuedCredentials,
             jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
             keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.NotRequired,
+            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
         ): IssueSdJwtVcEuropeanHealthInsuranceCard =
             IssueSdJwtVcEuropeanHealthInsuranceCard(
                 europeanHealthInsuranceCardCredentialConfiguration(
@@ -311,6 +315,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     ),
                     jwtProofsSupportedSigningAlgorithms,
                     keyAttestationRequirement,
+                    credentialReusePolicy,
                 ),
                 issuerSigningKey.key.toPublicJWK(),
                 EncodeEuropeanHealthInsuranceCardInSdJwtVc.compact(

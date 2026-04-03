@@ -288,7 +288,7 @@ internal fun MsoMdocCredentialConfiguration.toTransferObject(): JsonObjectBuilde
             }
         }
     put("doctype", docType)
-    putCredentialMetadata(display, claims)
+    putCredentialMetadata(display, claims, credentialReusePolicy)
 }
 
 internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilder.() -> Unit = {
@@ -299,14 +299,15 @@ internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilde
             }
         }
     put("vct", type.value)
-    putCredentialMetadata(display, claims)
+    putCredentialMetadata(display, claims, credentialReusePolicy)
 }
 
 private fun JsonObjectBuilder.putCredentialMetadata(
     display: List<CredentialDisplay>,
     claims: List<ClaimDefinition>,
+    credentialReusePolicy: CredentialReusePolicy,
 ) {
-    if (display.isNotEmpty() || claims.isNotEmpty()) {
+    if (display.isNotEmpty() || claims.isNotEmpty() || credentialReusePolicy != CredentialReusePolicy.None) {
         putJsonObject("credential_metadata") {
             if (display.isNotEmpty()) {
                 putJsonArray("display") {
@@ -318,9 +319,33 @@ private fun JsonObjectBuilder.putCredentialMetadata(
                     addAll(claims.flatMap { it.toJsonObjects() })
                 }
             }
+            putCredentialReusePolicy(credentialReusePolicy)
         }
     }
 }
+
+private fun JsonObjectBuilder.putCredentialReusePolicy(policy: CredentialReusePolicy) =
+    when (policy) {
+        is CredentialReusePolicy.ArfAnnex2ReusePolicy ->
+            putJsonObject("credential_reuse_policy") {
+                put("id", policy.id)
+                putJsonArray("options") {
+                    policy.options.forEach { option ->
+                        add(
+                            buildJsonObject {
+                                putJsonArray("details") {
+                                    option.details.forEach { add(JsonPrimitive(it.value)) }
+                                }
+                                option.batchSize?.let { put("batch_size", it) }
+                                option.reissueTriggerUnused?.let { put("reissue_trigger_unused", it) }
+                                option.reissueTriggerLifetimeLeft?.let { put("reissue_trigger_lifetime_left", it) }
+                            },
+                        )
+                    }
+                }
+            }
+        else -> {}
+    }
 
 internal fun CredentialDisplay.toTransferObject(): JsonObject = buildJsonObject {
     put("name", name.name)
