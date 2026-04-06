@@ -13,7 +13,7 @@
       "path": [
         "iss"
       ],
-      "mandatory": false,
+      "mandatory": true,
       "sd": "never"
     },
     {
@@ -27,14 +27,14 @@
       "path": [
         "exp"
       ],
-      "mandatory": false,
+      "mandatory": true,
       "sd": "never"
     },
     {
       "path": [
         "cnf"
       ],
-      "mandatory": false,
+      "mandatory": true,
       "sd": "never"
     },
     {
@@ -62,7 +62,7 @@
       "path": [
         "iat"
       ],
-      "mandatory": false,
+      "mandatory": true,
       "sd": "never"
     },
     {
@@ -128,7 +128,7 @@
           "label": "Locality"
         }
       ],
-      "mandatory": true,
+      "mandatory": false,
       "sd": "always"
     },
     {
