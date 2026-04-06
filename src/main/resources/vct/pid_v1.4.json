@@ -13,48 +13,56 @@
       "path": [
         "iss"
       ],
+      "mandatory": true,
       "sd": "never"
     },
     {
       "path": [
         "nbf"
       ],
+      "mandatory": false,
       "sd": "never"
     },
     {
       "path": [
         "exp"
       ],
+      "mandatory": true,
       "sd": "never"
     },
     {
       "path": [
         "cnf"
       ],
+      "mandatory": true,
       "sd": "never"
     },
     {
       "path": [
         "vct"
       ],
+      "mandatory": true,
       "sd": "never"
     },
     {
       "path": [
         "status"
       ],
+      "mandatory": false,
       "sd": "never"
     },
     {
       "path": [
         "sub"
       ],
+      "mandatory": false,
       "sd": "never"
     },
     {
       "path": [
         "iat"
       ],
+      "mandatory": true,
       "sd": "never"
     },
     {
@@ -67,6 +75,7 @@
           "label": "Family Name(s)"
         }
       ],
+      "mandatory": true,
       "sd": "always"
     },
     {
@@ -79,6 +88,7 @@
           "label": "Given Name(s)"
         }
       ],
+      "mandatory": true,
       "sd": "always"
     },
     {
@@ -91,6 +101,7 @@
           "label": "Birth Date"
         }
       ],
+      "mandatory": true,
       "sd": "always"
     },
     {
@@ -103,6 +114,7 @@
           "label": "Birth Place"
         }
       ],
+      "mandatory": true,
       "sd": "always"
     },
     {
@@ -116,6 +128,7 @@
           "label": "Locality"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -129,6 +142,7 @@
           "label": "Region"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -142,6 +156,7 @@
           "label": "Country"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -154,6 +169,7 @@
           "label": "Nationality"
         }
       ],
+      "mandatory": true,
       "sd": "always"
     },
     {
@@ -161,6 +177,7 @@
         "nationalities",
         null
       ],
+      "mandatory": true,
       "sd": "always"
     },
     {
@@ -173,6 +190,7 @@
           "label": "Address"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -186,6 +204,7 @@
           "label": "House Number"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -199,6 +218,7 @@
           "label": "Street"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -212,6 +232,7 @@
           "label": "Locality"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -225,6 +246,7 @@
           "label": "Region"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -238,6 +260,7 @@
           "label": "Postal Code"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -251,6 +274,7 @@
           "label": "Country"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -264,6 +288,7 @@
           "label": "Full Address"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -276,6 +301,7 @@
           "label": "Personal Administrative Number"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -288,6 +314,7 @@
           "label": "Portrait Image"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -300,6 +327,7 @@
           "label": "Birth Family Name(s)"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -312,6 +340,7 @@
           "label": "Birth Given Name(s)"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -324,6 +353,7 @@
           "label": "Sex"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -336,6 +366,7 @@
           "label": "Email Address"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -348,6 +379,7 @@
           "label": "Mobile Phone Number"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -360,6 +392,7 @@
           "label": "Expiry Date"
         }
       ],
+      "mandatory": true,
       "sd": "always"
     },
     {
@@ -372,6 +405,7 @@
           "label": "Issuing Authority"
         }
       ],
+      "mandatory": true,
       "sd": "always"
     },
     {
@@ -384,6 +418,7 @@
           "label": "Issuing Country"
         }
       ],
+      "mandatory": true,
       "sd": "always"
     },
     {
@@ -396,6 +431,7 @@
           "label": "Document Number"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -408,6 +444,7 @@
           "label": "Issuing Jurisdiction"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -420,6 +457,7 @@
           "label": "Issuance Date"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -432,6 +470,7 @@
           "label": "Trust Anchor"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -444,6 +483,7 @@
           "label": "Attestation Legal Category"
         }
       ],
+      "mandatory": false,
       "sd": "always"
     }
   ]

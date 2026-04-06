@@ -24,18 +24,21 @@
       "path": [
         "jti"
       ],
+      "mandatory": true,
       "sd": "never"
     },
     {
       "path": [
         "sub"
       ],
+      "mandatory": true,
       "sd": "never"
     },
     {
       "path": [
         "iat"
       ],
+      "mandatory": true,
       "sd": "never"
     },
     {
@@ -43,6 +46,7 @@
         "personal_administrative_number"
       ],
       "sd": "always",
+      "mandatory": true,
       "svg_id": "personal_administrative_number",
       "display": [
         {
@@ -56,6 +60,7 @@
       "path": [
         "issuing_country"
       ],
+      "mandatory": true,
       "sd": "never",
       "svg_id": "issuer_country",
       "display": [
@@ -70,6 +75,7 @@
       "path": [
         "issuing_authority"
       ],
+      "mandatory": true,
       "sd": "never",
       "display": [
         {
@@ -84,6 +90,7 @@
         "issuing_authority",
         "id"
       ],
+      "mandatory": true,
       "sd": "never",
       "display": [
         {
@@ -98,6 +105,7 @@
         "issuing_authority",
         "name"
       ],
+      "mandatory": true,
       "sd": "never",
       "display": [
         {
@@ -112,6 +120,7 @@
         "date_of_expiry"
       ],
       "sd": "never",
+      "mandatory": true,
       "svg_id": "date_of_expiry",
       "display": [
         {
@@ -125,6 +134,7 @@
       "path": [
         "date_of_issuance"
       ],
+      "mandatory": true,
       "sd": "never",
       "display": [
         {
@@ -139,6 +149,7 @@
         "authentic_source"
       ],
       "sd": "never",
+      "mandatory": true,
       "svg_id": "authentic_source_id",
       "display": [
         {
@@ -153,6 +164,7 @@
         "authentic_source",
         "id"
       ],
+      "mandatory": true,
       "sd": "never",
       "svg_id": "authentic_source_id",
       "display": [
@@ -168,6 +180,7 @@
         "authentic_source",
         "name"
       ],
+      "mandatory": true,
       "sd": "never",
       "svg_id": "authentic_source_name",
       "display": [
@@ -182,6 +195,7 @@
       "path": [
         "ending_date"
       ],
+      "mandatory": false,
       "sd": "never",
       "display": [
         {
@@ -195,6 +209,7 @@
       "path": [
         "starting_date"
       ],
+      "mandatory": false,
       "sd": "never",
       "display": [
         {
@@ -208,6 +223,7 @@
       "path": [
         "document_number"
       ],
+      "mandatory": true,
       "sd": "always",
       "svg_id": "document_number",
       "display": [

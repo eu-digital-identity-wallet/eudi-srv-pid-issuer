@@ -114,7 +114,7 @@ internal object EuropeanHealthInsuranceCardClaims {
     val IssuingAuthority = IssuingAuthorityClaim
     val DateOfExpiry = ClaimDefinition(
         path = ClaimPath.claim("date_of_expiry"),
-        mandatory = false,
+        mandatory = true,
         display = mapOf(
             Locale.ENGLISH to "Expiry date",
         ),

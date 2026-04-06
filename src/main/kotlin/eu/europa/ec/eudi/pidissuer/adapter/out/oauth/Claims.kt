@@ -164,6 +164,11 @@ data class OidcAssurancePlaceOfBirth(
     val region: String? = null,
     val country: String? = null,
 ) {
+    init {
+        require(null != country || null != region || null != locality) {
+            "At least one of 'country', 'region' or 'locality' must be non-null"
+        }
+    }
     companion object : IsAttribute {
         const val NAME = "place_of_birth"
 
@@ -177,7 +182,7 @@ data class OidcAssurancePlaceOfBirth(
 
         val Locality = ClaimDefinition(
             path = ClaimPath.claim(NAME).claim("locality"),
-            mandatory = true,
+            mandatory = false,
             display = mapOf(Locale.ENGLISH to "Locality"),
         )
 
