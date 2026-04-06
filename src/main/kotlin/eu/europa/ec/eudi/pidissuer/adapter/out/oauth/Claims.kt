@@ -164,6 +164,11 @@ data class OidcAssurancePlaceOfBirth(
     val region: String? = null,
     val country: String? = null,
 ) {
+    init {
+        require(null != country || null != region || null != locality) {
+            "At least one of 'country', 'region' or 'locality' must be non-null"
+        }
+    }
     companion object : IsAttribute {
         const val NAME = "place_of_birth"
 
