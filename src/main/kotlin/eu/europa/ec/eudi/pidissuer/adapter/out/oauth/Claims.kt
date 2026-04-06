@@ -177,7 +177,7 @@ data class OidcAssurancePlaceOfBirth(
 
         val Locality = ClaimDefinition(
             path = ClaimPath.claim(NAME).claim("locality"),
-            mandatory = true,
+            mandatory = false,
             display = mapOf(Locale.ENGLISH to "Locality"),
         )
 
