@@ -24,21 +24,21 @@
       "path": [
         "jti"
       ],
-      "mandatory": false,
+      "mandatory": true,
       "sd": "never"
     },
     {
       "path": [
         "sub"
       ],
-      "mandatory": false,
+      "mandatory": true,
       "sd": "never"
     },
     {
       "path": [
         "iat"
       ],
-      "mandatory": false,
+      "mandatory": true,
       "sd": "never"
     },
     {
@@ -120,7 +120,7 @@
         "date_of_expiry"
       ],
       "sd": "never",
-      "mandatory": false,
+      "mandatory": true,
       "svg_id": "date_of_expiry",
       "display": [
         {
