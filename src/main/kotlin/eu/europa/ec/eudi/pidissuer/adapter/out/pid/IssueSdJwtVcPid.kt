@@ -252,7 +252,7 @@ internal class IssueSdJwtVcPid(
         }
 
         val issuedCredentials = holderPubKeys.parMap(Dispatchers.Default, 4) { holderPubKey ->
-            val statusListToken = generateStatusListToken?.let {
+            val statusListToken = generateStatusListToken?.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
                 it(supportedCredential.type.value, expiresAt)
                     .getOrElse { error ->
                         raise(Unexpected("Unable to generate Status List Token", error))
