@@ -150,3 +150,9 @@ sealed interface CredentialReusePolicy {
         }
     }
 }
+
+val CredentialReusePolicy.shouldIncludeStatusList: Boolean
+    get() = when (this) {
+        CredentialReusePolicy.None -> true
+        is CredentialReusePolicy.ArfAnnex2ReusePolicy -> options.none { ArfReuseMethod.LimitedTime in it.details }
+    }

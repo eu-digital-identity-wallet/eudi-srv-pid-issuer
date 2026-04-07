@@ -298,7 +298,7 @@ internal class IssueMsoMdocPid(
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.NotRequired,
     private val generateStatusListToken: GenerateStatusListToken?,
-    credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+    private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : IssueSpecificCredential {
 
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
@@ -332,7 +332,7 @@ internal class IssueMsoMdocPid(
         val expiresAt = issuedAt + validityDuration
 
         val issuedCredentials = holderPubKeys.parMap(Dispatchers.Default, 4) { holderKey ->
-            val statusListToken = generateStatusListToken?.let {
+            val statusListToken = generateStatusListToken?.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
                 it(supportedCredential.docType, expiresAt)
                     .getOrElse { error ->
                         raise(Unexpected("Unable to generate Status List Token", error))

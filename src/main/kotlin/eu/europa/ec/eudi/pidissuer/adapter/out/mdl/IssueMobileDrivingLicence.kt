@@ -368,7 +368,7 @@ internal class IssueMobileDrivingLicence(
         val expiresAt = issuedAt + validityDuration
 
         val issuedCredentials = holderKeys.parMap(Dispatchers.Default, 4) { holderKey ->
-            val statusListToken = generateStatusListToken?.let {
+            val statusListToken = generateStatusListToken?.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
                 it(supportedCredential.docType, expiresAt)
                     .getOrElse { error ->
                         raise(Unexpected("Unable to generate Status List Token", error))
