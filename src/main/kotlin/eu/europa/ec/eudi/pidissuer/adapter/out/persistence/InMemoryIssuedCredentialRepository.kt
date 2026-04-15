@@ -38,7 +38,7 @@ class InMemoryIssuedCredentialRepository(
                     }
                 }
                 data.add(credential)
-                log.info("Stored $credential")
+                log.info("Stored credential of type '{}' with notificationId={}", credential.type, credential.notificationId)
             }
         }
 

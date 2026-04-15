@@ -68,7 +68,7 @@ class InMemoryDeferredCredentialRepository(
                     require(data[transactionId] == null) { "Oops!! $transactionId already exists" }
                 }
                 data[transactionId] = DeferredState(credential, notIssuedBefore)
-                log.info("Stored $transactionId -> $credential ")
+                log.info("Stored deferred credential for transactionId={} notIssuedBefore={}", transactionId, notIssuedBefore)
             }
         }
 }
