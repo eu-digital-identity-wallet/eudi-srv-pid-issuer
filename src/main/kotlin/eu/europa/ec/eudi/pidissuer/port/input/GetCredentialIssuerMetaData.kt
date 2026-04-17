@@ -334,16 +334,14 @@ private fun JsonObjectBuilder.putCredentialReusePolicy(policy: CredentialReusePo
                         add(
                             buildJsonObject {
                                 putJsonArray("details") {
-                                    add(
-                                        JsonPrimitive(
-                                            when (option) {
-                                                is ArfAnnex2ReusePolicyOption.OnceOnly -> ArfAnnex2ReuseMethod.ONCE_ONLY.value
-                                                is ArfAnnex2ReusePolicyOption.LimitedTime -> ArfAnnex2ReuseMethod.LIMITED_TIME.value
-                                                is ArfAnnex2ReusePolicyOption.RotatingBatch -> ArfAnnex2ReuseMethod.ROTATING_BATCH.value
-                                                is ArfAnnex2ReusePolicyOption.PerRelyingParty -> ArfAnnex2ReuseMethod.PER_RELYING_PARTY.value
-                                            },
-                                        ),
-                                    )
+                                    val value = when (option) {
+                                        is ArfAnnex2ReusePolicyOption.OnceOnly -> ArfAnnex2ReuseMethod.ONCE_ONLY.value
+                                        is ArfAnnex2ReusePolicyOption.LimitedTime -> ArfAnnex2ReuseMethod.LIMITED_TIME.value
+                                        is ArfAnnex2ReusePolicyOption.RotatingBatch -> ArfAnnex2ReuseMethod.ROTATING_BATCH.value
+                                        is ArfAnnex2ReusePolicyOption.PerRelyingParty ->
+                                            ArfAnnex2ReuseMethod.PER_RELYING_PARTY.value
+                                    }
+                                    add(JsonPrimitive(value))
                                 }
                                 option.batchSize?.let { put("batch_size", it) }
                                 option.reissueTriggerUnused?.let { put("reissue_trigger_unused", it) }

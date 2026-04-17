@@ -517,22 +517,26 @@ private interface Validations : Raise<IssueCredentialError> {
             supportedCredentialConfigurations.firstOrNull { credentialConfigurationId == it.id }
                 ?.let { credentialConfiguration ->
                     credentialConfiguration.credentialReusePolicy.let { reusePolicy ->
-                        if (!reusePolicy.allowsBatchIssuance) {
-                            ensure(proofs.size == 1) {
-                                InvalidProof(
-                                    "Credential reuse policy allows only single instance issuance (limited-time). " +
-                                        "Batch issuance is not allowed.",
-                                )
-                            }
-                        } else {
-                            val effectiveBatchSize = reusePolicy.effectiveBatchSize
-                            if (effectiveBatchSize != null) {
-                                ensure(proofs.size <= effectiveBatchSize) {
-                                    InvalidProof(
-                                        "Credential reuse policy allows at most '$effectiveBatchSize' proofs (batch_size)",
-                                    )
+                        when (reusePolicy) {
+                            is CredentialReusePolicy.ArfAnnex2ReusePolicy -> {
+                                if (reusePolicy.options.any { it is ArfAnnex2ReusePolicyOption.LimitedTime }) {
+                                    ensure(proofs.size == 1) {
+                                        InvalidProof(
+                                            "Credential reuse method 'limited_time' requires exactly 1 proof",
+                                        )
+                                    }
+                                } else {
+                                    val effectiveBatchSize = reusePolicy.effectiveBatchSize
+                                    if (effectiveBatchSize != null) {
+                                        ensure(proofs.size <= effectiveBatchSize) {
+                                            InvalidProof(
+                                                "Credential reuse policy allows at most '$effectiveBatchSize' proofs (batch_size)",
+                                            )
+                                        }
+                                    }
                                 }
                             }
+                            CredentialReusePolicy.None -> {}
                         }
                     }
                     val credentialRequest = when (credentialConfiguration) {
