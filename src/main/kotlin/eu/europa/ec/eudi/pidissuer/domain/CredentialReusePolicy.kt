@@ -114,10 +114,6 @@ sealed interface ArfAnnex2ReusePolicyOption : ReusePolicyOption {
  */
 sealed interface CredentialReusePolicy {
 
-    /**
-     * Returns the effective batch size from the first policy option that allows batch issuance,
-     * or null if no option allows batch issuance.
-     */
     val effectiveBatchSize: Int?
         get() = null
 
@@ -157,11 +153,11 @@ sealed interface CredentialReusePolicy {
         }
 
         /**
-         * Returns the effective batch size from the first policy option that allows batch issuance,
+         * Returns the effective batch size from the smallest policy option that allows batch issuance,
          * or null if no option allows batch issuance.
          */
         override val effectiveBatchSize: Int?
-            get() = options.firstNotNullOfOrNull { it.batchSize }
+            get() = options.mapNotNull { it.batchSize }.minOrNull()
 
         /**
          * Returns true if at least one option allows batch issuance.

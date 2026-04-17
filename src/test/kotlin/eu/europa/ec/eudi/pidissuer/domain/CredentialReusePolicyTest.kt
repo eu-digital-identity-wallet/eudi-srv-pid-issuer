@@ -164,12 +164,12 @@ class CredentialReusePolicyTest {
     }
 
     @Test
-    fun `credential reuse policy with multiple compatible options`() {
+    fun `credential reuse policy with multiple compatible options uses smallest batch size`() {
         val policy = CredentialReusePolicy.ArfAnnex2ReusePolicy(
             id = CredentialReusePolicy.ArfAnnex2ReusePolicy.ARF_ANNEX_II_ID,
             options = listOf(
-                ArfAnnex2ReusePolicyOption.OnceOnly(batchSize = 10, reissueTriggerUnused = 4),
                 ArfAnnex2ReusePolicyOption.RotatingBatch(batchSize = 15, reissueTriggerLifetimeLeft = 885433),
+                ArfAnnex2ReusePolicyOption.OnceOnly(batchSize = 10, reissueTriggerUnused = 4),
             ),
         )
         assertNotNull(policy)
