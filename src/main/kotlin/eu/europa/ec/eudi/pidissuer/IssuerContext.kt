@@ -1049,26 +1049,49 @@ private fun BeanRegistrarDsl.credentialReusePolicy(prefix: String): CredentialRe
     val type = env.getProperty("$prefix.reusePolicy.type") ?: "ArfAnnex2"
     return when (type) {
         "ArfAnnex2" -> {
-            val options = mutableListOf<ArfReusePolicyOption>()
+            val options = mutableListOf<ArfAnnex2ReusePolicyOption>()
             var index = 0
             while (true) {
                 val detailsStr = env.getProperty("$prefix.reusePolicy.options[$index].details") ?: break
-                val details = detailsStr.split(",").map { it.trim() }.mapNotNull { ArfReuseMethod.fromValue(it) }
-                if (details.isEmpty()) {
+                val methods = detailsStr.split(",").map { it.trim() }.mapNotNull { ArfAnnex2ReuseMethod.fromValue(it) }
+                if (methods.isEmpty()) {
                     index++
                     continue
                 }
                 val batchSize = env.getProperty<Int>("$prefix.reusePolicy.options[$index].batchSize")
                 val reissueTriggerUnused = env.getProperty<Int>("$prefix.reusePolicy.options[$index].reissueTriggerUnused")
                 val reissueTriggerLifetimeLeft = env.getProperty<Long>("$prefix.reusePolicy.options[$index].reissueTriggerLifetimeLeft")
-                options.add(
-                    ArfReusePolicyOption(
-                        details = details,
-                        batchSize = batchSize,
-                        reissueTriggerUnused = reissueTriggerUnused,
-                        reissueTriggerLifetimeLeft = reissueTriggerLifetimeLeft,
-                    ),
-                )
+                methods.mapNotNullTo(options) { method ->
+                    when (method) {
+                        ArfAnnex2ReuseMethod.ONCE_ONLY -> batchSize?.let { bs ->
+                            reissueTriggerUnused?.let { rtu ->
+                                ArfAnnex2ReusePolicyOption.OnceOnly(batchSize = bs, reissueTriggerUnused = rtu)
+                            }
+                        }
+
+                        ArfAnnex2ReuseMethod.LIMITED_TIME -> reissueTriggerLifetimeLeft?.let { rtl ->
+                            ArfAnnex2ReusePolicyOption.LimitedTime(reissueTriggerLifetimeLeft = rtl)
+                        }
+
+                        ArfAnnex2ReuseMethod.ROTATING_BATCH -> batchSize?.let { bs ->
+                            reissueTriggerLifetimeLeft?.let { rtl ->
+                                ArfAnnex2ReusePolicyOption.RotatingBatch(batchSize = bs, reissueTriggerLifetimeLeft = rtl)
+                            }
+                        }
+
+                        ArfAnnex2ReuseMethod.PER_RELYING_PARTY -> batchSize?.let { bs ->
+                            reissueTriggerLifetimeLeft?.let { rtl ->
+                                reissueTriggerUnused?.let { rtu ->
+                                    ArfAnnex2ReusePolicyOption.PerRelyingParty(
+                                        batchSize = bs,
+                                        reissueTriggerLifetimeLeft = rtl,
+                                        reissueTriggerUnused = rtu,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
                 index++
             }
             if (options.isEmpty()) CredentialReusePolicy.None
