@@ -15,77 +15,97 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import java.io.Serializable
+
 /**
- * Represents the details of an ARF Annex II reuse method.
+ * Represents the ARF Annex II reuse methods.
  */
-enum class ArfReuseMethod(val value: String) {
-    OnceOnly("once_only"),
-    LimitedTime("limited_time"),
-    RotatingBatch("rotating-batch"),
-    PerRelyingParty("per-relying-party"),
+enum class ArfAnnex2ReuseMethod(val value: String) {
+    ONCE_ONLY("once_only"),
+    LIMITED_TIME("limited_time"),
+    ROTATING_BATCH("rotating-batch"),
+    PER_RELYING_PARTY("per-relying-party"),
     ;
 
     companion object {
-        fun fromValue(value: String): ArfReuseMethod? = entries.firstOrNull { it.value == value }
+        fun fromValue(value: String): ArfAnnex2ReuseMethod? = entries.firstOrNull { it.value == value }
     }
 }
 
+private fun validateBatchSize(batchSize: Int) {
+    require(batchSize > 0) { "'batch_size' must be greater than 0" }
+}
+
+private fun validateReissueTriggerUnused(reissueTriggerUnused: Int, batchSize: Int) {
+    require(reissueTriggerUnused >= 0) { "'reissue_trigger_unused' must be non-negative" }
+    require(reissueTriggerUnused < batchSize) { "'reissue_trigger_unused' must be lower than 'batch_size'" }
+}
+
+private fun validateReissueTriggerLifetimeLeft(reissueTriggerLifetimeLeft: Long) {
+    require(reissueTriggerLifetimeLeft > 0) { "'reissue_trigger_lifetime_left' must be greater than 0" }
+}
+
+sealed interface ReusePolicyOption : Serializable
+
 /**
- * A single option within an ARF Annex II credential reuse policy.
- *
- * @param details the reuse methods for this option; must contain exactly one of [ArfReuseMethod.OnceOnly]
- *   or [ArfReuseMethod.LimitedTime] (but not both), and optionally [ArfReuseMethod.RotatingBatch]
- *   and/or [ArfReuseMethod.PerRelyingParty]
- * @param batchSize the size of the batch during issuance; required when details contains
- *   [ArfReuseMethod.OnceOnly], [ArfReuseMethod.RotatingBatch], or [ArfReuseMethod.PerRelyingParty]
- * @param reissueTriggerUnused the lower limit of unused attestations triggering re-issuance;
- *   required when details contains [ArfReuseMethod.OnceOnly]; must be lower than [batchSize]
- * @param reissueTriggerLifetimeLeft seconds before expiration that triggers re-issuance;
- *   required when details contains [ArfReuseMethod.LimitedTime], [ArfReuseMethod.RotatingBatch],
- *   or [ArfReuseMethod.PerRelyingParty]
+ * A single ARF Annex II option in the reuse policy.
  */
-data class ArfReusePolicyOption(
-    val details: List<ArfReuseMethod>,
-    val batchSize: Int? = null,
-    val reissueTriggerUnused: Int? = null,
-    val reissueTriggerLifetimeLeft: Long? = null,
-) {
-    init {
-        val hasOnceOnly = ArfReuseMethod.OnceOnly in details
-        val hasLimitedTime = ArfReuseMethod.LimitedTime in details
-        val hasRotatingBatch = ArfReuseMethod.RotatingBatch in details
-        val hasPerRelyingParty = ArfReuseMethod.PerRelyingParty in details
+sealed interface ArfAnnex2ReusePolicyOption : ReusePolicyOption {
 
-        require(hasOnceOnly xor hasLimitedTime) {
-            "'details' must contain exactly one of 'once_only' or 'limited_time'"
+    val batchSize: Int?
+    val reissueTriggerUnused: Int?
+    val reissueTriggerLifetimeLeft: Long?
+
+    data class OnceOnly(
+        override val batchSize: Int,
+        override val reissueTriggerUnused: Int,
+    ) : ArfAnnex2ReusePolicyOption {
+
+        init {
+            validateBatchSize(batchSize)
+            validateReissueTriggerUnused(reissueTriggerUnused, batchSize)
         }
 
-        val needsBatchSize = hasOnceOnly || hasRotatingBatch || hasPerRelyingParty
-        if (needsBatchSize) {
-            requireNotNull(batchSize) { "'batch_size' is required when details contains once_only, rotating-batch, or per-relying-party" }
-            require(batchSize > 0) { "'batch_size' must be greater than 0" }
-        }
-
-        if (hasOnceOnly) {
-            requireNotNull(reissueTriggerUnused) { "'reissue_trigger_unused' is required when details contains 'once_only'" }
-            require(reissueTriggerUnused >= 0) { "'reissue_trigger_unused' must be non-negative" }
-            requireNotNull(batchSize)
-            require(reissueTriggerUnused < batchSize) { "'reissue_trigger_unused' must be lower than 'batch_size'" }
-        }
-
-        val needsLifetimeLeft = hasLimitedTime || hasRotatingBatch || hasPerRelyingParty
-        if (needsLifetimeLeft) {
-            requireNotNull(reissueTriggerLifetimeLeft) {
-                "'reissue_trigger_lifetime_left' is required when details contains 'limited_time', 'rotating-batch', or 'per-relying-party'"
-            }
-            require(reissueTriggerLifetimeLeft > 0) { "'reissue_trigger_lifetime_left' must be greater than 0" }
-        }
+        override val reissueTriggerLifetimeLeft: Long? = null
     }
 
-    val allowsBatchIssuance: Boolean
-        get() = ArfReuseMethod.OnceOnly in details ||
-            ArfReuseMethod.RotatingBatch in details ||
-            ArfReuseMethod.PerRelyingParty in details
+    data class LimitedTime(
+        override val reissueTriggerLifetimeLeft: Long,
+    ) : ArfAnnex2ReusePolicyOption {
+
+        init {
+            validateReissueTriggerLifetimeLeft(reissueTriggerLifetimeLeft)
+        }
+
+        override val reissueTriggerUnused: Int? = null
+        override val batchSize: Int? = null
+    }
+
+    data class RotatingBatch(
+        override val batchSize: Int,
+        override val reissueTriggerLifetimeLeft: Long,
+    ) : ArfAnnex2ReusePolicyOption {
+
+        init {
+            validateBatchSize(batchSize)
+            validateReissueTriggerLifetimeLeft(reissueTriggerLifetimeLeft)
+        }
+
+        override val reissueTriggerUnused: Int? = null
+    }
+
+    data class PerRelyingParty(
+        override val batchSize: Int,
+        override val reissueTriggerLifetimeLeft: Long,
+        override val reissueTriggerUnused: Int,
+    ) : ArfAnnex2ReusePolicyOption {
+
+        init {
+            validateBatchSize(batchSize)
+            validateReissueTriggerLifetimeLeft(reissueTriggerLifetimeLeft)
+            validateReissueTriggerUnused(reissueTriggerUnused, batchSize)
+        }
+    }
 }
 
 /**
@@ -120,15 +140,19 @@ sealed interface CredentialReusePolicy {
      */
     data class ArfAnnex2ReusePolicy(
         val id: String,
-        val options: List<ArfReusePolicyOption>,
+        val options: List<ArfAnnex2ReusePolicyOption>,
     ) : CredentialReusePolicy {
         init {
             require(options.isNotEmpty()) { "'options' must not be empty" }
 
-            // Validate no overlapping details across options
-            val allDetails = options.flatMap { it.details }
-            require(allDetails.size == allDetails.distinct().size) {
-                "Policy options must not have overlapping 'details' values"
+            // Validate no duplicate option types
+            val optionTypes = options.map { it::class }
+            require(optionTypes.size == optionTypes.distinct().size) {
+                "Policy options must not contain duplicate option types"
+            }
+
+            require(options.count { it is ArfAnnex2ReusePolicyOption.OnceOnly || it is ArfAnnex2ReusePolicyOption.LimitedTime } <= 1) {
+                "Policy options must not contain both 'once_only' and 'limited_time'"
             }
         }
 
@@ -137,13 +161,13 @@ sealed interface CredentialReusePolicy {
          * or null if no option allows batch issuance.
          */
         override val effectiveBatchSize: Int?
-            get() = options.firstOrNull { it.allowsBatchIssuance }?.batchSize
+            get() = options.firstNotNullOfOrNull { it.batchSize }
 
         /**
          * Returns true if at least one option allows batch issuance.
          */
         override val allowsBatchIssuance: Boolean
-            get() = options.any { it.allowsBatchIssuance }
+            get() = options.any { it.batchSize != null }
 
         companion object {
             const val ARF_ANNEX_II_ID = "arf_annex_ii"
@@ -154,5 +178,5 @@ sealed interface CredentialReusePolicy {
 val CredentialReusePolicy.shouldIncludeStatusList: Boolean
     get() = when (this) {
         CredentialReusePolicy.None -> true
-        is CredentialReusePolicy.ArfAnnex2ReusePolicy -> options.none { ArfReuseMethod.LimitedTime in it.details }
+        is CredentialReusePolicy.ArfAnnex2ReusePolicy -> options.none { it is ArfAnnex2ReusePolicyOption.LimitedTime }
     }
