@@ -1049,7 +1049,7 @@ private fun BeanRegistrarDsl.credentialReusePolicy(prefix: String): CredentialRe
     val type = env.getProperty("$prefix.reusePolicy.type") ?: "ArfAnnex2"
     return when (type) {
         "ArfAnnex2" -> {
-            val options = mutableListOf<ArfAnnex2ReusePolicyOption>()
+            val options = mutableListOf<EudiReusePolicy>()
             var index = 0
             while (true) {
                 val detailsStr = env.getProperty("$prefix.reusePolicy.options[$index].details") ?: break
@@ -1065,24 +1065,24 @@ private fun BeanRegistrarDsl.credentialReusePolicy(prefix: String): CredentialRe
                     when (method) {
                         ArfAnnex2ReuseMethod.ONCE_ONLY -> batchSize?.let { bs ->
                             reissueTriggerUnused?.let { rtu ->
-                                ArfAnnex2ReusePolicyOption.OnceOnly(batchSize = bs, reissueTriggerUnused = rtu)
+                                EudiReusePolicy.OnceOnly(batchSize = bs, reissueTriggerUnused = rtu)
                             }
                         }
 
                         ArfAnnex2ReuseMethod.LIMITED_TIME -> reissueTriggerLifetimeLeft?.let { rtl ->
-                            ArfAnnex2ReusePolicyOption.LimitedTime(reissueTriggerLifetimeLeft = rtl)
+                            EudiReusePolicy.LimitedTime(reissueTriggerLifetimeLeft = rtl)
                         }
 
                         ArfAnnex2ReuseMethod.ROTATING_BATCH -> batchSize?.let { bs ->
                             reissueTriggerLifetimeLeft?.let { rtl ->
-                                ArfAnnex2ReusePolicyOption.RotatingBatch(batchSize = bs, reissueTriggerLifetimeLeft = rtl)
+                                EudiReusePolicy.RotatingBatch(batchSize = bs, reissueTriggerLifetimeLeft = rtl)
                             }
                         }
 
                         ArfAnnex2ReuseMethod.PER_RELYING_PARTY -> batchSize?.let { bs ->
                             reissueTriggerLifetimeLeft?.let { rtl ->
                                 reissueTriggerUnused?.let { rtu ->
-                                    ArfAnnex2ReusePolicyOption.PerRelyingParty(
+                                    EudiReusePolicy.PerRelyingParty(
                                         batchSize = bs,
                                         reissueTriggerLifetimeLeft = rtl,
                                         reissueTriggerUnused = rtu,
@@ -1095,8 +1095,8 @@ private fun BeanRegistrarDsl.credentialReusePolicy(prefix: String): CredentialRe
                 index++
             }
             if (options.isEmpty()) CredentialReusePolicy.None
-            else CredentialReusePolicy.ArfAnnex2ReusePolicy(
-                id = CredentialReusePolicy.ArfAnnex2ReusePolicy.ARF_ANNEX_II_ID,
+            else CredentialReusePolicy.EUDI(
+                id = CredentialReusePolicy.EUDI.ARF_ANNEX_II_ID,
                 options = options,
             )
         }

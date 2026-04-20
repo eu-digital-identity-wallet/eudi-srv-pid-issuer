@@ -15,8 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
-import java.io.Serializable
-
 /**
  * Represents the ARF Annex II reuse methods.
  */
@@ -45,12 +43,10 @@ private fun validateReissueTriggerLifetimeLeft(reissueTriggerLifetimeLeft: Long)
     require(reissueTriggerLifetimeLeft > 0) { "'reissue_trigger_lifetime_left' must be greater than 0" }
 }
 
-sealed interface ReusePolicyOption : Serializable
-
 /**
  * A single ARF Annex II option in the reuse policy.
  */
-sealed interface ArfAnnex2ReusePolicyOption : ReusePolicyOption {
+sealed interface EudiReusePolicy {
 
     val batchSize: Int?
     val reissueTriggerUnused: Int?
@@ -59,7 +55,7 @@ sealed interface ArfAnnex2ReusePolicyOption : ReusePolicyOption {
     data class OnceOnly(
         override val batchSize: Int,
         override val reissueTriggerUnused: Int,
-    ) : ArfAnnex2ReusePolicyOption {
+    ) : EudiReusePolicy {
 
         init {
             validateBatchSize(batchSize)
@@ -71,7 +67,7 @@ sealed interface ArfAnnex2ReusePolicyOption : ReusePolicyOption {
 
     data class LimitedTime(
         override val reissueTriggerLifetimeLeft: Long,
-    ) : ArfAnnex2ReusePolicyOption {
+    ) : EudiReusePolicy {
 
         init {
             validateReissueTriggerLifetimeLeft(reissueTriggerLifetimeLeft)
@@ -84,7 +80,7 @@ sealed interface ArfAnnex2ReusePolicyOption : ReusePolicyOption {
     data class RotatingBatch(
         override val batchSize: Int,
         override val reissueTriggerLifetimeLeft: Long,
-    ) : ArfAnnex2ReusePolicyOption {
+    ) : EudiReusePolicy {
 
         init {
             validateBatchSize(batchSize)
@@ -98,7 +94,7 @@ sealed interface ArfAnnex2ReusePolicyOption : ReusePolicyOption {
         override val batchSize: Int,
         override val reissueTriggerLifetimeLeft: Long,
         override val reissueTriggerUnused: Int,
-    ) : ArfAnnex2ReusePolicyOption {
+    ) : EudiReusePolicy {
 
         init {
             validateBatchSize(batchSize)
@@ -134,9 +130,9 @@ sealed interface CredentialReusePolicy {
      *
      * @param options the ordered list of policy options; the order represents issuer priority
      */
-    data class ArfAnnex2ReusePolicy(
+    data class EUDI(
         val id: String,
-        val options: List<ArfAnnex2ReusePolicyOption>,
+        val options: List<EudiReusePolicy>,
     ) : CredentialReusePolicy {
         init {
             require(options.isNotEmpty()) { "'options' must not be empty" }
@@ -147,7 +143,7 @@ sealed interface CredentialReusePolicy {
                 "Policy options must not contain duplicate option types"
             }
 
-            require(options.count { it is ArfAnnex2ReusePolicyOption.OnceOnly || it is ArfAnnex2ReusePolicyOption.LimitedTime } <= 1) {
+            require(options.count { it is EudiReusePolicy.OnceOnly || it is EudiReusePolicy.LimitedTime } <= 1) {
                 "Policy options must not contain both 'once_only' and 'limited_time'"
             }
         }
@@ -174,5 +170,5 @@ sealed interface CredentialReusePolicy {
 val CredentialReusePolicy.shouldIncludeStatusList: Boolean
     get() = when (this) {
         CredentialReusePolicy.None -> true
-        is CredentialReusePolicy.ArfAnnex2ReusePolicy -> options.none { it is ArfAnnex2ReusePolicyOption.LimitedTime }
+        is CredentialReusePolicy.EUDI -> options.none { it is EudiReusePolicy.LimitedTime }
     }

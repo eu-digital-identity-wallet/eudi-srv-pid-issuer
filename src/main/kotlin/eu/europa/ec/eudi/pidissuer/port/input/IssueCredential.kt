@@ -518,8 +518,8 @@ private interface Validations : Raise<IssueCredentialError> {
                 ?.let { credentialConfiguration ->
                     credentialConfiguration.credentialReusePolicy.let { reusePolicy ->
                         when (reusePolicy) {
-                            is CredentialReusePolicy.ArfAnnex2ReusePolicy -> {
-                                if (reusePolicy.options.any { it is ArfAnnex2ReusePolicyOption.LimitedTime }) {
+                            is CredentialReusePolicy.EUDI -> {
+                                if (reusePolicy.options.any { it is EudiReusePolicy.LimitedTime }) {
                                     ensure(proofs.size == 1) {
                                         InvalidProof(
                                             "Credential reuse method 'limited_time' requires exactly 1 proof",
