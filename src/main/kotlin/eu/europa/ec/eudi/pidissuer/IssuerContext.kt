@@ -1058,37 +1058,34 @@ private fun BeanRegistrarDsl.credentialReusePolicy(prefix: String): CredentialRe
                     index++
                     continue
                 }
-                val batchSize = env.getProperty<Int>("$prefix.reusePolicy.options[$index].batchSize")
-                val reissueTriggerUnused = env.getProperty<Int>("$prefix.reusePolicy.options[$index].reissueTriggerUnused")
-                val reissueTriggerLifetimeLeft = env.getProperty<Long>("$prefix.reusePolicy.options[$index].reissueTriggerLifetimeLeft")
-                methods.mapNotNullTo(options) { method ->
+                methods.mapTo(options) { method ->
                     when (method) {
-                        ArfAnnex2ReuseMethod.ONCE_ONLY -> batchSize?.let { bs ->
-                            reissueTriggerUnused?.let { rtu ->
-                                EudiReusePolicy.OnceOnly(batchSize = bs, reissueTriggerUnused = rtu)
-                            }
+                        ArfAnnex2ReuseMethod.ONCE_ONLY -> {
+                            val batchSize = env.getRequiredProperty<Int>("$prefix.reusePolicy.options[$index].batchSize")
+                            val reissueTriggerUnused = env.getRequiredProperty<Int>("$prefix.reusePolicy.options[$index].reissueTriggerUnused")
+                            EudiReusePolicy.OnceOnly(batchSize, reissueTriggerUnused)
                         }
 
-                        ArfAnnex2ReuseMethod.LIMITED_TIME -> reissueTriggerLifetimeLeft?.let { rtl ->
-                            EudiReusePolicy.LimitedTime(reissueTriggerLifetimeLeft = rtl)
+                        ArfAnnex2ReuseMethod.LIMITED_TIME -> {
+                            val reissueTriggerLifetimeLeft = env.getRequiredProperty<Long>("$prefix.reusePolicy.options[$index].reissueTriggerLifetimeLeft")
+                            EudiReusePolicy.LimitedTime(reissueTriggerLifetimeLeft)
                         }
 
-                        ArfAnnex2ReuseMethod.ROTATING_BATCH -> batchSize?.let { bs ->
-                            reissueTriggerLifetimeLeft?.let { rtl ->
-                                EudiReusePolicy.RotatingBatch(batchSize = bs, reissueTriggerLifetimeLeft = rtl)
-                            }
+                        ArfAnnex2ReuseMethod.ROTATING_BATCH -> {
+                            val batchSize = env.getRequiredProperty<Int>("$prefix.reusePolicy.options[$index].batchSize")
+                            val reissueTriggerLifetimeLeft = env.getRequiredProperty<Long>("$prefix.reusePolicy.options[$index].reissueTriggerLifetimeLeft")
+                            EudiReusePolicy.RotatingBatch(batchSize, reissueTriggerLifetimeLeft)
                         }
 
-                        ArfAnnex2ReuseMethod.PER_RELYING_PARTY -> batchSize?.let { bs ->
-                            reissueTriggerLifetimeLeft?.let { rtl ->
-                                reissueTriggerUnused?.let { rtu ->
-                                    EudiReusePolicy.PerRelyingParty(
-                                        batchSize = bs,
-                                        reissueTriggerLifetimeLeft = rtl,
-                                        reissueTriggerUnused = rtu,
-                                    )
-                                }
-                            }
+                        ArfAnnex2ReuseMethod.PER_RELYING_PARTY -> {
+                            val batchSize = env.getRequiredProperty<Int>("$prefix.reusePolicy.options[$index].batchSize")
+                            val reissueTriggerUnused = env.getRequiredProperty<Int>("$prefix.reusePolicy.options[$index].reissueTriggerUnused")
+                            val reissueTriggerLifetimeLeft = env.getRequiredProperty<Long>("$prefix.reusePolicy.options[$index].reissueTriggerLifetimeLeft")
+                            EudiReusePolicy.PerRelyingParty(
+                                batchSize,
+                                reissueTriggerLifetimeLeft,
+                                reissueTriggerUnused,
+                            )
                         }
                     }
                 }
