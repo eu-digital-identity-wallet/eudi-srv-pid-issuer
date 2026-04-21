@@ -242,10 +242,10 @@ class CredentialReusePolicyTest {
 
     @Test
     fun `ArfAnnex2ReuseMethod fromValue works correctly`() {
-        assertEquals(ArfAnnex2ReuseMethod.ONCE_ONLY, ArfAnnex2ReuseMethod.fromValue("once_only"))
-        assertEquals(ArfAnnex2ReuseMethod.LIMITED_TIME, ArfAnnex2ReuseMethod.fromValue("limited_time"))
-        assertEquals(ArfAnnex2ReuseMethod.ROTATING_BATCH, ArfAnnex2ReuseMethod.fromValue("rotating-batch"))
-        assertEquals(ArfAnnex2ReuseMethod.PER_RELYING_PARTY, ArfAnnex2ReuseMethod.fromValue("per-relying-party"))
-        assertNull(ArfAnnex2ReuseMethod.fromValue("unknown"))
+        assertEquals(EudiReusePolicyType.OnceOnly, EudiReusePolicyType.fromValue("once_only"))
+        assertEquals(EudiReusePolicyType.LimitedTime, EudiReusePolicyType.fromValue("limited_time"))
+        assertEquals(EudiReusePolicyType.RotatingBatch, EudiReusePolicyType.fromValue("rotating-batch"))
+        assertEquals(EudiReusePolicyType.PerRelyingParty, EudiReusePolicyType.fromValue("per-relying-party"))
+        assertNull(EudiReusePolicyType.fromValue("unknown"))
     }
 }

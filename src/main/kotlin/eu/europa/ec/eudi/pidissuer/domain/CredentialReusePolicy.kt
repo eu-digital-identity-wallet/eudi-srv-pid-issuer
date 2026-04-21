@@ -15,18 +15,15 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
-/**
- * Represents the ARF Annex II reuse methods.
- */
-enum class ArfAnnex2ReuseMethod(val value: String) {
-    ONCE_ONLY("once_only"),
-    LIMITED_TIME("limited_time"),
-    ROTATING_BATCH("rotating-batch"),
-    PER_RELYING_PARTY("per-relying-party"),
+enum class EudiReusePolicyType(val value: String) {
+    OnceOnly("once_only"),
+    LimitedTime("limited_time"),
+    RotatingBatch("rotating-batch"),
+    PerRelyingParty("per-relying-party"),
     ;
 
     companion object {
-        fun fromValue(value: String): ArfAnnex2ReuseMethod? = entries.firstOrNull { it.value == value }
+        fun fromValue(value: String): EudiReusePolicyType? = entries.firstOrNull { it.value == value }
     }
 }
 
