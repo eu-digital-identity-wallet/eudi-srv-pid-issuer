@@ -1053,14 +1053,14 @@ private fun BeanRegistrarDsl.credentialReusePolicy(prefix: String): CredentialRe
             var index = 0
             while (true) {
                 val detailsStr = env.getProperty("$prefix.reusePolicy.options[$index].details") ?: break
-                val methods = detailsStr.split(",").map { it.trim() }.mapNotNull { ArfAnnex2ReuseMethod.fromValue(it) }
+                val methods = detailsStr.split(",").map { it.trim() }.mapNotNull { EudiReusePolicyType.fromValue(it) }
                 if (methods.isEmpty()) {
                     index++
                     continue
                 }
                 methods.mapTo(options) { method ->
                     when (method) {
-                        ArfAnnex2ReuseMethod.ONCE_ONLY -> {
+                        EudiReusePolicyType.OnceOnly -> {
                             val batchSize = env.getRequiredProperty<Int>("$prefix.reusePolicy.options[$index].batchSize")
                             val reissueTriggerUnused = env.getRequiredProperty<Int>(
                                 "$prefix.reusePolicy.options[$index].reissueTriggerUnused",
@@ -1068,14 +1068,14 @@ private fun BeanRegistrarDsl.credentialReusePolicy(prefix: String): CredentialRe
                             EudiReusePolicy.OnceOnly(batchSize, reissueTriggerUnused)
                         }
 
-                        ArfAnnex2ReuseMethod.LIMITED_TIME -> {
+                        EudiReusePolicyType.LimitedTime -> {
                             val reissueTriggerLifetimeLeft = env.getRequiredProperty<Long>(
                                 "$prefix.reusePolicy.options[$index].reissueTriggerLifetimeLeft",
                             )
                             EudiReusePolicy.LimitedTime(reissueTriggerLifetimeLeft)
                         }
 
-                        ArfAnnex2ReuseMethod.ROTATING_BATCH -> {
+                        EudiReusePolicyType.RotatingBatch -> {
                             val batchSize = env.getRequiredProperty<Int>("$prefix.reusePolicy.options[$index].batchSize")
                             val reissueTriggerLifetimeLeft = env.getRequiredProperty<Long>(
                                 "$prefix.reusePolicy.options[$index].reissueTriggerLifetimeLeft",
@@ -1083,7 +1083,7 @@ private fun BeanRegistrarDsl.credentialReusePolicy(prefix: String): CredentialRe
                             EudiReusePolicy.RotatingBatch(batchSize, reissueTriggerLifetimeLeft)
                         }
 
-                        ArfAnnex2ReuseMethod.PER_RELYING_PARTY -> {
+                        EudiReusePolicyType.PerRelyingParty -> {
                             val batchSize = env.getRequiredProperty<Int>("$prefix.reusePolicy.options[$index].batchSize")
                             val reissueTriggerUnused = env.getRequiredProperty<Int>(
                                 "$prefix.reusePolicy.options[$index].reissueTriggerUnused",

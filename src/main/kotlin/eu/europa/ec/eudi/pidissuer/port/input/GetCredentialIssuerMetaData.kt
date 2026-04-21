@@ -337,11 +337,11 @@ private fun JsonObjectBuilder.putCredentialReusePolicy(policy: CredentialReusePo
                                     add(
                                         JsonPrimitive(
                                             when (option) {
-                                                is EudiReusePolicy.OnceOnly -> ArfAnnex2ReuseMethod.ONCE_ONLY.value
-                                                is EudiReusePolicy.LimitedTime -> ArfAnnex2ReuseMethod.LIMITED_TIME.value
-                                                is EudiReusePolicy.RotatingBatch -> ArfAnnex2ReuseMethod.ROTATING_BATCH.value
+                                                is EudiReusePolicy.OnceOnly -> EudiReusePolicyType.OnceOnly.value
+                                                is EudiReusePolicy.LimitedTime -> EudiReusePolicyType.LimitedTime.value
+                                                is EudiReusePolicy.RotatingBatch -> EudiReusePolicyType.RotatingBatch.value
                                                 is EudiReusePolicy.PerRelyingParty ->
-                                                    ArfAnnex2ReuseMethod.PER_RELYING_PARTY.value
+                                                    EudiReusePolicyType.PerRelyingParty.value
                                             },
                                         ),
                                     )
