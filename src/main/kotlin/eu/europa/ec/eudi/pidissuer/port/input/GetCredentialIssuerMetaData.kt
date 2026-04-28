@@ -348,7 +348,7 @@ private fun JsonObjectBuilder.putCredentialReusePolicy(policy: CredentialReusePo
                                 }
                                 option.batchSize?.let { put("batch_size", it) }
                                 option.reissueTriggerUnused?.let { put("reissue_trigger_unused", it) }
-                                option.reissueTriggerLifetimeLeft?.let { put("reissue_trigger_lifetime_left", it) }
+                                option.reissueTriggerLifetimeLeft?.let { put("reissue_trigger_lifetime_left", it.inWholeMilliseconds) }
                             },
                         )
                     }

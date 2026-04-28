@@ -108,6 +108,7 @@ import java.security.cert.X509Certificate
 import java.util.*
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
@@ -1071,7 +1072,7 @@ private fun BeanRegistrarDsl.credentialReusePolicy(prefix: String): CredentialRe
                         EudiReusePolicyType.LimitedTime -> {
                             val reissueTriggerLifetimeLeft = env.getRequiredProperty<Long>(
                                 "$prefix.reusePolicy.options[$index].reissueTriggerLifetimeLeft",
-                            )
+                            ).milliseconds
                             EudiReusePolicy.LimitedTime(reissueTriggerLifetimeLeft)
                         }
 
@@ -1079,7 +1080,7 @@ private fun BeanRegistrarDsl.credentialReusePolicy(prefix: String): CredentialRe
                             val batchSize = env.getRequiredProperty<Int>("$prefix.reusePolicy.options[$index].batchSize")
                             val reissueTriggerLifetimeLeft = env.getRequiredProperty<Long>(
                                 "$prefix.reusePolicy.options[$index].reissueTriggerLifetimeLeft",
-                            )
+                            ).milliseconds
                             EudiReusePolicy.RotatingBatch(batchSize, reissueTriggerLifetimeLeft)
                         }
 
@@ -1090,7 +1091,7 @@ private fun BeanRegistrarDsl.credentialReusePolicy(prefix: String): CredentialRe
                             )
                             val reissueTriggerLifetimeLeft = env.getRequiredProperty<Long>(
                                 "$prefix.reusePolicy.options[$index].reissueTriggerLifetimeLeft",
-                            )
+                            ).milliseconds
                             EudiReusePolicy.PerRelyingParty(
                                 batchSize,
                                 reissueTriggerLifetimeLeft,

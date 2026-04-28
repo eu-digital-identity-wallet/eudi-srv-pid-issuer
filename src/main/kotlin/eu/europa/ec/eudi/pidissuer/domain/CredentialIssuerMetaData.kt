@@ -257,7 +257,7 @@ sealed interface BatchCredentialIssuance {
      */
     data class Supported(val batchSize: Int) : BatchCredentialIssuance {
         init {
-            require(batchSize > 0) { "Batch size must be greater than 0" }
+            require(batchSize >= 2) { "Batch size must be equal or greater than 2" }
         }
     }
 }
