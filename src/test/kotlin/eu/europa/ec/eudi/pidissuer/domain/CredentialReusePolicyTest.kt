@@ -17,11 +17,8 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
+import kotlin.test.*
+import kotlin.time.Duration.Companion.milliseconds
 
 class CredentialReusePolicyTest {
 
@@ -37,10 +34,10 @@ class CredentialReusePolicyTest {
     }
 
     @Test
-    fun `OnceOnly option fails with batch_size zero`() {
+    fun `OnceOnly option fails with batch_size 1`() {
         assertThrows<IllegalArgumentException> {
             EudiReusePolicy.OnceOnly(
-                batchSize = 0,
+                batchSize = 1,
                 reissueTriggerUnused = 0,
             )
         }
@@ -69,18 +66,18 @@ class CredentialReusePolicyTest {
     @Test
     fun `LimitedTime option requires reissue_trigger_lifetime_left`() {
         val option = EudiReusePolicy.LimitedTime(
-            reissueTriggerLifetimeLeft = 655433,
+            reissueTriggerLifetimeLeft = 655433.milliseconds,
         )
         assertNull(option.batchSize)
         assertNull(option.reissueTriggerUnused)
-        assertEquals(655433, option.reissueTriggerLifetimeLeft)
+        assertEquals(655433.milliseconds, option.reissueTriggerLifetimeLeft)
     }
 
     @Test
     fun `LimitedTime option fails with reissue_trigger_lifetime_left zero`() {
         assertThrows<IllegalArgumentException> {
             EudiReusePolicy.LimitedTime(
-                reissueTriggerLifetimeLeft = 0,
+                reissueTriggerLifetimeLeft = 0.milliseconds,
             )
         }
     }
@@ -89,7 +86,7 @@ class CredentialReusePolicyTest {
     fun `LimitedTime option fails with negative reissue_trigger_lifetime_left`() {
         assertThrows<IllegalArgumentException> {
             EudiReusePolicy.LimitedTime(
-                reissueTriggerLifetimeLeft = -1,
+                reissueTriggerLifetimeLeft = (-1).milliseconds,
             )
         }
     }
@@ -98,19 +95,19 @@ class CredentialReusePolicyTest {
     fun `RotatingBatch option requires batch_size and reissue_trigger_lifetime_left`() {
         val option = EudiReusePolicy.RotatingBatch(
             batchSize = 5,
-            reissueTriggerLifetimeLeft = 655433,
+            reissueTriggerLifetimeLeft = 655433.milliseconds,
         )
         assertEquals(5, option.batchSize)
-        assertEquals(655433, option.reissueTriggerLifetimeLeft)
+        assertEquals(655433.milliseconds, option.reissueTriggerLifetimeLeft)
         assertNull(option.reissueTriggerUnused)
     }
 
     @Test
-    fun `RotatingBatch option fails with batch_size zero`() {
+    fun `RotatingBatch option fails with batch_size 1`() {
         assertThrows<IllegalArgumentException> {
             EudiReusePolicy.RotatingBatch(
-                batchSize = 0,
-                reissueTriggerLifetimeLeft = 100,
+                batchSize = 1,
+                reissueTriggerLifetimeLeft = 100.milliseconds,
             )
         }
     }
@@ -119,11 +116,11 @@ class CredentialReusePolicyTest {
     fun `PerRelyingParty option requires batch_size, reissue_trigger_lifetime_left, and reissue_trigger_unused`() {
         val option = EudiReusePolicy.PerRelyingParty(
             batchSize = 60,
-            reissueTriggerLifetimeLeft = 777543,
+            reissueTriggerLifetimeLeft = 777543.milliseconds,
             reissueTriggerUnused = 5,
         )
         assertEquals(60, option.batchSize)
-        assertEquals(777543, option.reissueTriggerLifetimeLeft)
+        assertEquals(777543.milliseconds, option.reissueTriggerLifetimeLeft)
         assertEquals(5, option.reissueTriggerUnused)
     }
 
@@ -132,7 +129,7 @@ class CredentialReusePolicyTest {
         assertThrows<IllegalArgumentException> {
             EudiReusePolicy.PerRelyingParty(
                 batchSize = 10,
-                reissueTriggerLifetimeLeft = 100,
+                reissueTriggerLifetimeLeft = 100.milliseconds,
                 reissueTriggerUnused = 10,
             )
         }
@@ -156,7 +153,7 @@ class CredentialReusePolicyTest {
         val policy = CredentialReusePolicy.EUDI(
             id = CredentialReusePolicy.EUDI.ARF_ANNEX_II_ID,
             options = listOf(
-                EudiReusePolicy.LimitedTime(reissueTriggerLifetimeLeft = 885433),
+                EudiReusePolicy.LimitedTime(reissueTriggerLifetimeLeft = 885433.milliseconds),
             ),
         )
         assertFalse(policy.allowsBatchIssuance)
@@ -168,7 +165,7 @@ class CredentialReusePolicyTest {
         val policy = CredentialReusePolicy.EUDI(
             id = CredentialReusePolicy.EUDI.ARF_ANNEX_II_ID,
             options = listOf(
-                EudiReusePolicy.RotatingBatch(batchSize = 15, reissueTriggerLifetimeLeft = 885433),
+                EudiReusePolicy.RotatingBatch(batchSize = 15, reissueTriggerLifetimeLeft = 885433.milliseconds),
                 EudiReusePolicy.OnceOnly(batchSize = 10, reissueTriggerUnused = 4),
             ),
         )
@@ -184,7 +181,7 @@ class CredentialReusePolicyTest {
                 id = CredentialReusePolicy.EUDI.ARF_ANNEX_II_ID,
                 options = listOf(
                     EudiReusePolicy.OnceOnly(batchSize = 10, reissueTriggerUnused = 3),
-                    EudiReusePolicy.LimitedTime(reissueTriggerLifetimeLeft = 885433),
+                    EudiReusePolicy.LimitedTime(reissueTriggerLifetimeLeft = 885433.milliseconds),
                 ),
             )
         }
@@ -218,7 +215,7 @@ class CredentialReusePolicyTest {
         val policy = CredentialReusePolicy.EUDI(
             id = CredentialReusePolicy.EUDI.ARF_ANNEX_II_ID,
             options = listOf(
-                EudiReusePolicy.LimitedTime(reissueTriggerLifetimeLeft = 1000),
+                EudiReusePolicy.LimitedTime(reissueTriggerLifetimeLeft = 1000.milliseconds),
             ),
         )
         assertFalse(policy.shouldIncludeStatusList)

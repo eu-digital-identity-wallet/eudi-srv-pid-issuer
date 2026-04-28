@@ -15,6 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import kotlin.time.Duration
+
 enum class EudiReusePolicyType(val value: String) {
     OnceOnly("once_only"),
     LimitedTime("limited_time"),
@@ -28,7 +30,7 @@ enum class EudiReusePolicyType(val value: String) {
 }
 
 private fun validateBatchSize(batchSize: Int) {
-    require(batchSize > 0) { "'batch_size' must be greater than 0" }
+    require(batchSize >= 2) { "'batch_size' must be equal or greater than 2" }
 }
 
 private fun validateReissueTriggerUnused(reissueTriggerUnused: Int, batchSize: Int) {
@@ -36,8 +38,8 @@ private fun validateReissueTriggerUnused(reissueTriggerUnused: Int, batchSize: I
     require(reissueTriggerUnused < batchSize) { "'reissue_trigger_unused' must be lower than 'batch_size'" }
 }
 
-private fun validateReissueTriggerLifetimeLeft(reissueTriggerLifetimeLeft: Long) {
-    require(reissueTriggerLifetimeLeft > 0) { "'reissue_trigger_lifetime_left' must be greater than 0" }
+private fun validateReissueTriggerLifetimeLeft(reissueTriggerLifetimeLeft: Duration) {
+    require(reissueTriggerLifetimeLeft.isPositive()) { "'reissue_trigger_lifetime_left' must be greater than 0" }
 }
 
 /**
@@ -47,7 +49,7 @@ sealed interface EudiReusePolicy {
 
     val batchSize: Int?
     val reissueTriggerUnused: Int?
-    val reissueTriggerLifetimeLeft: Long?
+    val reissueTriggerLifetimeLeft: Duration?
 
     data class OnceOnly(
         override val batchSize: Int,
@@ -59,11 +61,11 @@ sealed interface EudiReusePolicy {
             validateReissueTriggerUnused(reissueTriggerUnused, batchSize)
         }
 
-        override val reissueTriggerLifetimeLeft: Long? = null
+        override val reissueTriggerLifetimeLeft: Duration? = null
     }
 
     data class LimitedTime(
-        override val reissueTriggerLifetimeLeft: Long,
+        override val reissueTriggerLifetimeLeft: Duration,
     ) : EudiReusePolicy {
 
         init {
@@ -76,7 +78,7 @@ sealed interface EudiReusePolicy {
 
     data class RotatingBatch(
         override val batchSize: Int,
-        override val reissueTriggerLifetimeLeft: Long,
+        override val reissueTriggerLifetimeLeft: Duration,
     ) : EudiReusePolicy {
 
         init {
@@ -89,7 +91,7 @@ sealed interface EudiReusePolicy {
 
     data class PerRelyingParty(
         override val batchSize: Int,
-        override val reissueTriggerLifetimeLeft: Long,
+        override val reissueTriggerLifetimeLeft: Duration,
         override val reissueTriggerUnused: Int,
     ) : EudiReusePolicy {
 
