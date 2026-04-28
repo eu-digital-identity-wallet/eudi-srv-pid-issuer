@@ -23,6 +23,8 @@ import arrow.core.raise.ensure
 import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
+import eu.europa.ec.eudi.pidissuer.domain.CredentialReusePolicy
+import eu.europa.ec.eudi.pidissuer.domain.EudiReusePolicy
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
@@ -68,9 +70,21 @@ internal class ValidateProofs(
                 }
             }.flatten()
                 .distinct()
+                .limitTo(credentialConfiguration.credentialReusePolicy)
                 .toNonEmptyListOrNull()
 
             checkNotNull(jwks)
+        }
+    }
+
+    private fun List<JWK>.limitTo(policy: CredentialReusePolicy): List<JWK> = when (policy) {
+        CredentialReusePolicy.None -> this
+        is CredentialReusePolicy.EUDI -> {
+            val limit = when {
+                policy.options.any { it is EudiReusePolicy.LimitedTime } -> 1
+                else -> policy.effectiveBatchSize
+            }
+            if (limit == null) this else take(limit)
         }
     }
 }
