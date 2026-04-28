@@ -516,29 +516,6 @@ private interface Validations : Raise<IssueCredentialError> {
         ): UnresolvedCredentialRequest.ByCredentialConfigurationId =
             supportedCredentialConfigurations.firstOrNull { credentialConfigurationId == it.id }
                 ?.let { credentialConfiguration ->
-                    credentialConfiguration.credentialReusePolicy.let { reusePolicy ->
-                        when (reusePolicy) {
-                            is CredentialReusePolicy.EUDI -> {
-                                if (reusePolicy.options.any { it is EudiReusePolicy.LimitedTime }) {
-                                    ensure(proofs.size == 1) {
-                                        InvalidProof(
-                                            "Credential reuse method 'limited_time' requires exactly 1 proof",
-                                        )
-                                    }
-                                } else {
-                                    val effectiveBatchSize = reusePolicy.effectiveBatchSize
-                                    if (effectiveBatchSize != null) {
-                                        ensure(proofs.size <= effectiveBatchSize) {
-                                            InvalidProof(
-                                                "Credential reuse policy allows at most '$effectiveBatchSize' proofs (batch_size)",
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                            CredentialReusePolicy.None -> {}
-                        }
-                    }
                     val credentialRequest = when (credentialConfiguration) {
                         is MsoMdocCredentialConfiguration -> credentialConfiguration.credentialRequest(proofs, credentialResponseEncryption)
                         is SdJwtVcCredentialConfiguration -> credentialConfiguration.credentialRequest(proofs, credentialResponseEncryption)
