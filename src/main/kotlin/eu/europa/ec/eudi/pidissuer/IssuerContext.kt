@@ -1072,7 +1072,7 @@ private fun BeanRegistrarDsl.credentialReusePolicy(prefix: String): CredentialRe
                         EudiReusePolicyType.LimitedTime -> {
                             val reissueTriggerLifetimeLeft = env.getRequiredProperty<Long>(
                                 "$prefix.reusePolicy.options[$index].reissueTriggerLifetimeLeft",
-                            ).milliseconds
+                            ).seconds
                             EudiReusePolicy.LimitedTime(reissueTriggerLifetimeLeft)
                         }
 
@@ -1080,7 +1080,7 @@ private fun BeanRegistrarDsl.credentialReusePolicy(prefix: String): CredentialRe
                             val batchSize = env.getRequiredProperty<Int>("$prefix.reusePolicy.options[$index].batchSize")
                             val reissueTriggerLifetimeLeft = env.getRequiredProperty<Long>(
                                 "$prefix.reusePolicy.options[$index].reissueTriggerLifetimeLeft",
-                            ).milliseconds
+                            ).seconds
                             EudiReusePolicy.RotatingBatch(batchSize, reissueTriggerLifetimeLeft)
                         }
 
@@ -1091,7 +1091,7 @@ private fun BeanRegistrarDsl.credentialReusePolicy(prefix: String): CredentialRe
                             )
                             val reissueTriggerLifetimeLeft = env.getRequiredProperty<Long>(
                                 "$prefix.reusePolicy.options[$index].reissueTriggerLifetimeLeft",
-                            ).milliseconds
+                            ).seconds
                             EudiReusePolicy.PerRelyingParty(
                                 batchSize,
                                 reissueTriggerLifetimeLeft,
