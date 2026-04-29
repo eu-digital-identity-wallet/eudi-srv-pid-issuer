@@ -17,16 +17,12 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
 import arrow.core.Either
 import arrow.core.nonEmptySetOf
-import arrow.core.raise.Raise
-import arrow.core.raise.catch
 import arrow.core.raise.either
-import arrow.core.raise.ensureNotNull
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.GenericRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.ParameterizedRestriction
+import eu.europa.ec.eudi.pidissuer.adapter.out.util.loadResource
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.time.Month
@@ -39,11 +35,18 @@ class GetMobileDrivingLicenceDataMock : GetMobileDrivingLicenceData {
     override suspend fun invoke(context: AuthorizationContext): Either<IssueCredentialError.Unexpected, MobileDrivingLicence> = either {
         log.info("Getting mock data for Mobile Driving Licence")
 
+        val portrait = loadResource("/eu/europa/ec/eudi/pidissuer/adapter/out/mdl/Portrait.jpg") { message, cause ->
+            raise(IssueCredentialError.Unexpected(message, cause))
+        }
+        val signature = loadResource("/eu/europa/ec/eudi/pidissuer/adapter/out/mdl/Signature.jpg") { message, cause ->
+            raise(IssueCredentialError.Unexpected(message, cause))
+        }
+
         val driver = Driver(
             Latin150AndUtf8(Latin150("Georgiou"), "Γεωργίου"),
             Latin150AndUtf8(Latin150("Georgios"), "Γεώργιος"),
             LocalDate.of(1948, Month.MAY, 30),
-            Portrait(Image.Jpeg(loadResource("/eu/europa/ec/eudi/pidissuer/adapter/out/mdl/Portrait.jpg"))),
+            Portrait(Image.Jpeg(portrait)),
             Sex.MALE,
             175u.cm(),
             80u.kg(),
@@ -52,10 +55,8 @@ class GetMobileDrivingLicenceDataMock : GetMobileDrivingLicenceData {
             null,
             Age(79u.natural(), 1948u.natural()),
             IsoAlpha2CountryCode("GR"),
-            Residence(
-                IsoAlpha2CountryCode("GR"),
-            ),
-            Image.Jpeg(loadResource("/eu/europa/ec/eudi/pidissuer/adapter/out/mdl/Signature.jpg")),
+            Residence(IsoAlpha2CountryCode("GR")),
+            Image.Jpeg(signature),
         )
 
         val issuer = Issuer(
@@ -92,21 +93,6 @@ class GetMobileDrivingLicenceDataMock : GetMobileDrivingLicenceData {
     }
 
     companion object {
-
         private val log = LoggerFactory.getLogger(GetMobileDrivingLicenceDataMock::class.java)
-
-        private suspend fun Raise<IssueCredentialError.Unexpected>.loadResource(path: String): ByteArray =
-            withContext(Dispatchers.IO) {
-                val portrait =
-                    ensureNotNull(Companion::class.java.getResourceAsStream(path)) {
-                        IssueCredentialError.Unexpected("Unable to load resource $path")
-                    }
-
-                portrait.use {
-                    catch({ it.readAllBytes() }) {
-                        raise(IssueCredentialError.Unexpected("Unable to read $path", it))
-                    }
-                }
-            }
     }
 }
