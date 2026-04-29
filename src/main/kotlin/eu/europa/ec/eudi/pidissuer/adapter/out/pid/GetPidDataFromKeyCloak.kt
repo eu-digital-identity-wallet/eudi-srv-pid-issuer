@@ -19,7 +19,6 @@ import arrow.core.nonEmptyListOf
 import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.util.JSONObjectUtils
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAssurancePlaceOfBirth
-import eu.europa.ec.eudi.pidissuer.adapter.out.util.loadResource
 import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.port.input.Username
 import io.ktor.http.*
@@ -232,7 +231,7 @@ class GetPidDataFromKeyCloak(
         )
     }
 
-    private suspend fun pid(userInfo: UserInfo): Pair<Pid, PidMetaData> {
+    private fun pid(userInfo: UserInfo): Pair<Pid, PidMetaData> {
         val birthDate = requireNotNull(userInfo.birthDate) {
             "missing required attribute 'birthDate'"
         }.let { LocalDate.parse(it) }
@@ -248,9 +247,6 @@ class GetPidDataFromKeyCloak(
         } ?: PlaceOfBirth.NotKnown
 
         val nationality = userInfo.nationality?.let { IsoCountry(it) } ?: issuerCountry
-        val portrait = loadResource("/eu/europa/ec/eudi/pidissuer/adapter/out/pid/Portrait.jpg") { message, cause ->
-            throw IllegalStateException(message, cause)
-        }
         val pid = Pid(
             familyName = FamilyName(userInfo.familyName),
             givenName = GivenName(userInfo.givenName),
@@ -264,7 +260,7 @@ class GetPidDataFromKeyCloak(
             residentPostalCode = userInfo.address?.postalCode?.let { PostalCode(it) },
             residentStreet = userInfo.address?.streetAddress?.let { Street(it) },
             residentHouseNumber = userInfo.address?.houseNumber,
-            portrait = PortraitImage.JPEG(portrait),
+            portrait = null,
             familyNameBirth = userInfo.birthFamilyName?.let { FamilyName(it) },
             givenNameBirth = userInfo.birthGivenName?.let { GivenName(it) },
             sex = userInfo.gender?.let { IsoGender(it) },
