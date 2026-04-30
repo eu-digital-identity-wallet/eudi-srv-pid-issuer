@@ -130,6 +130,7 @@ sealed interface CredentialConfiguration {
     val cryptographicBindingMethodsSupported: Set<CryptographicBindingMethod>
     val proofTypesSupported: ProofTypesSupported
     val attestationCategory: AttestationCategory
+    val credentialReusePolicy: CredentialReusePolicy
 }
 
 internal fun CredentialConfiguration.validateCryptographicBindingsAndProofTypes() {

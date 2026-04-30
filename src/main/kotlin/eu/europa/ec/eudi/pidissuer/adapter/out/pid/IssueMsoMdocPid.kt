@@ -262,6 +262,7 @@ internal fun pidMsoMdocV1(
     credentialSigningAlgorithm: CoseAlgorithm,
     proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     keyAttestationRequirement: KeyAttestationRequirement,
+    credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ): MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
         id = PidMsoMdocV1CredentialConfigurationId,
@@ -279,6 +280,7 @@ internal fun pidMsoMdocV1(
             ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
         attestationCategory = AttestationCategory.Pid,
+        credentialReusePolicy = credentialReusePolicy,
     )
 
 /**
@@ -296,6 +298,7 @@ internal class IssueMsoMdocPid(
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.NotRequired,
     private val generateStatusListToken: GenerateStatusListToken?,
+    private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : IssueSpecificCredential {
 
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
@@ -305,6 +308,7 @@ internal class IssueMsoMdocPid(
             encodePidInCbor.signingAlgorithm,
             jwtProofsSupportedSigningAlgorithms,
             keyAttestationRequirement,
+            credentialReusePolicy,
         )
 
     override val publicKey: JWK? = null
@@ -328,7 +332,7 @@ internal class IssueMsoMdocPid(
         val expiresAt = issuedAt + validityDuration
 
         val issuedCredentials = holderPubKeys.parMap(Dispatchers.Default, 4) { holderKey ->
-            val statusListToken = generateStatusListToken?.let {
+            val statusListToken = generateStatusListToken?.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
                 it(supportedCredential.docType, expiresAt)
                     .getOrElse { error ->
                         raise(Unexpected("Unable to generate Status List Token", error))

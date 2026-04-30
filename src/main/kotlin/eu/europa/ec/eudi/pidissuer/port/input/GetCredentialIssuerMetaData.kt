@@ -288,7 +288,7 @@ internal fun MsoMdocCredentialConfiguration.toTransferObject(): JsonObjectBuilde
             }
         }
     put("doctype", docType)
-    putCredentialMetadata(display, claims)
+    putCredentialMetadata(display, claims, credentialReusePolicy)
 }
 
 internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilder.() -> Unit = {
@@ -299,14 +299,15 @@ internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilde
             }
         }
     put("vct", type.value)
-    putCredentialMetadata(display, claims)
+    putCredentialMetadata(display, claims, credentialReusePolicy)
 }
 
 private fun JsonObjectBuilder.putCredentialMetadata(
     display: List<CredentialDisplay>,
     claims: List<ClaimDefinition>,
+    credentialReusePolicy: CredentialReusePolicy,
 ) {
-    if (display.isNotEmpty() || claims.isNotEmpty()) {
+    if (display.isNotEmpty() || claims.isNotEmpty() || credentialReusePolicy != CredentialReusePolicy.None) {
         putJsonObject("credential_metadata") {
             if (display.isNotEmpty()) {
                 putJsonArray("display") {
@@ -318,9 +319,43 @@ private fun JsonObjectBuilder.putCredentialMetadata(
                     addAll(claims.flatMap { it.toJsonObjects() })
                 }
             }
+            putCredentialReusePolicy(credentialReusePolicy)
         }
     }
 }
+
+private fun JsonObjectBuilder.putCredentialReusePolicy(policy: CredentialReusePolicy) =
+    when (policy) {
+        is CredentialReusePolicy.EUDI ->
+            putJsonObject("credential_reuse_policy") {
+                put("id", policy.id)
+                putJsonArray("options") {
+                    policy.options.forEach { option ->
+                        add(
+                            buildJsonObject {
+                                putJsonArray("details") {
+                                    add(
+                                        JsonPrimitive(
+                                            when (option) {
+                                                is EudiReusePolicy.OnceOnly -> EudiReusePolicyType.OnceOnly.value
+                                                is EudiReusePolicy.LimitedTime -> EudiReusePolicyType.LimitedTime.value
+                                                is EudiReusePolicy.RotatingBatch -> EudiReusePolicyType.RotatingBatch.value
+                                                is EudiReusePolicy.PerRelyingParty ->
+                                                    EudiReusePolicyType.PerRelyingParty.value
+                                            },
+                                        ),
+                                    )
+                                }
+                                option.batchSize?.let { put("batch_size", it) }
+                                option.reissueTriggerUnused?.let { put("reissue_trigger_unused", it) }
+                                option.reissueTriggerLifetimeLeft?.let { put("reissue_trigger_lifetime_left", it.inWholeSeconds) }
+                            },
+                        )
+                    }
+                }
+            }
+        is CredentialReusePolicy.None -> {}
+    }
 
 internal fun CredentialDisplay.toTransferObject(): JsonObject = buildJsonObject {
     put("name", name.name)

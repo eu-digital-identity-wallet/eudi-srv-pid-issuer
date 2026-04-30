@@ -172,6 +172,7 @@ fun LearningCredential.Companion.sdJwtVcCredentialConfiguration(
     display: CredentialDisplay,
     proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     keyAttestationRequirement: KeyAttestationRequirement,
+    credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) = SdJwtVcCredentialConfiguration(
     id,
     SdJwtVcType("urn:eu.europa.ec.eudi:learning:credential:1"),
@@ -184,4 +185,5 @@ fun LearningCredential.Companion.sdJwtVcCredentialConfiguration(
         ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
     ),
     attestationCategory = AttestationCategory.Eaa,
+    credentialReusePolicy = credentialReusePolicy,
 )

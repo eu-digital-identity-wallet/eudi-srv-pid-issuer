@@ -159,6 +159,7 @@ fun pidSdJwtVcV1(
     signingAlgorithm: JWSAlgorithm,
     proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     keyAttestationRequirement: KeyAttestationRequirement,
+    credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(
         id = SdJwtVcPidCredentialConfigurationId,
@@ -176,6 +177,7 @@ fun pidSdJwtVcV1(
             ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
         ),
         attestationCategory = AttestationCategory.Pid,
+        credentialReusePolicy = credentialReusePolicy,
     )
 
 typealias TimeDependant<F> = (Instant) -> F
@@ -200,10 +202,16 @@ internal class IssueSdJwtVcPid(
     private val generateStatusListToken: GenerateStatusListToken?,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     override val keyAttestationRequirement: KeyAttestationRequirement,
+    private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : IssueSpecificCredential {
 
     override val supportedCredential: SdJwtVcCredentialConfiguration =
-        pidSdJwtVcV1(issuerSigningKey.signingAlgorithm, jwtProofsSupportedSigningAlgorithms, keyAttestationRequirement)
+        pidSdJwtVcV1(
+            issuerSigningKey.signingAlgorithm,
+            jwtProofsSupportedSigningAlgorithms,
+            keyAttestationRequirement,
+            credentialReusePolicy,
+        )
 
     override val publicKey: JWK
         get() = issuerSigningKey.key.toPublicJWK()
@@ -244,7 +252,7 @@ internal class IssueSdJwtVcPid(
         }
 
         val issuedCredentials = holderPubKeys.parMap(Dispatchers.Default, 4) { holderPubKey ->
-            val statusListToken = generateStatusListToken?.let {
+            val statusListToken = generateStatusListToken?.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
                 it(supportedCredential.type.value, expiresAt)
                     .getOrElse { error ->
                         raise(Unexpected("Unable to generate Status List Token", error))

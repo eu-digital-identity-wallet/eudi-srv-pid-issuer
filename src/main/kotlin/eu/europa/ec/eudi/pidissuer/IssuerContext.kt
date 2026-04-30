@@ -577,6 +577,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         JWSAlgorithm::parse,
                     )
                     val keyAttestationRequirement = this@BeanRegistrarDsl.keyAttestationRequirement("issuer.pid.mso_mdoc")
+                    val pidMsoMdocReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.pid.mso_mdoc")
                     val issueMsoMdocPid = IssueMsoMdocPid(
                         getPidData = bean(),
                         encodePidInCbor = bean(),
@@ -590,6 +591,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                         keyAttestationRequirement = keyAttestationRequirement,
                         generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
+                        credentialReusePolicy = pidMsoMdocReusePolicy,
                     )
                     add(issueMsoMdocPid)
                     add(issueMsoMdocPid.asDeferred(bean(), bean(), clock))
@@ -599,6 +601,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     val expiresIn = env.duration("issuer.pid.sd_jwt_vc.duration") ?: 30.days
                     val notUseBefore = env.duration("issuer.pid.sd_jwt_vc.notUseBefore")
                     val keyAttestationRequirement = this@BeanRegistrarDsl.keyAttestationRequirement("issuer.pid.sd_jwt_vc")
+                    val pidSdJwtVcReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.pid.sd_jwt_vc")
 
                     val digestsHashAlgorithm = env.getProperty<HashAlgorithm>(
                         "issuer.pid.sd_jwt_vc.digests.hashAlgorithm",
@@ -623,6 +626,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                         keyAttestationRequirement = keyAttestationRequirement,
+                        credentialReusePolicy = pidSdJwtVcReusePolicy,
                     )
 
                     add(issueSdJwtVcPid)
@@ -636,6 +640,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         JWSAlgorithm::parse,
                     )
                     val keyAttestationRequirement = this@BeanRegistrarDsl.keyAttestationRequirement("issuer.mdl")
+                    val mdlIssuerReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.mdl")
                     val mdlIssuer = IssueMobileDrivingLicence(
                         getMobileDrivingLicenceData = bean(),
                         encodeMobileDrivingLicenceInCbor = bean(),
@@ -648,6 +653,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                         keyAttestationRequirement = keyAttestationRequirement,
                         generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
+                        credentialReusePolicy = mdlIssuerReusePolicy,
                     )
                     add(mdlIssuer)
                     add(mdlIssuer.asDeferred(bean(), bean(), clock))
@@ -665,6 +671,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         JWSAlgorithm::parse,
                     )
                     val keyAttestationRequirement = this@BeanRegistrarDsl.keyAttestationRequirement("issuer.ehic")
+                    val ehicReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.ehic")
 
                     val issuerSigningKey = getIssuerSigningKey("issuer.ehic.signing-key")
                     val ehicJwsJsonFlattenedIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.jwsJsonFlattened(
@@ -683,6 +690,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         storeIssuedCredentials = bean(),
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                         keyAttestationRequirement = keyAttestationRequirement,
+                        credentialReusePolicy = ehicReusePolicy,
                     )
                     add(ehicJwsJsonFlattenedIssuer)
                     add(ehicJwsJsonFlattenedIssuer.asDeferred(bean(), bean(), clock))
@@ -703,6 +711,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         storeIssuedCredentials = bean(),
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                         keyAttestationRequirement = keyAttestationRequirement,
+                        credentialReusePolicy = ehicReusePolicy,
                     )
                     add(ehicCompactIssuer)
                     add(ehicCompactIssuer.asDeferred(bean(), bean(), bean()))
@@ -715,6 +724,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         JWSAlgorithm::parse,
                     )
                     val keyAttestationRequirement = this@BeanRegistrarDsl.keyAttestationRequirement("issuer.learningCredential")
+                    val learningCredentialReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.learningCredential")
                     val validity = Duration.parse(env.getProperty("issuer.learningCredential.validity", "P30D"))
                     val digestHashAlgorithm = env.getProperty<HashAlgorithm>(
                         "issuer.learningCredential.sdJwtVc.encoder.digests.hashAlgorithm",
@@ -733,6 +743,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         digestHashAlgorithm,
                         if (notificationsEnabled) bean() else null,
                         bean(),
+                        learningCredentialReusePolicy,
                     )
 
                     add(sdJwtVcCompactIssuer)
@@ -1028,6 +1039,76 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
             val maxInMemorySize = DataSize.parse(env.getProperty("spring.webflux.codecs.max-in-memory-size", "1MB"))
             it.defaultCodecs().maxInMemorySize(maxInMemorySize.toBytes().toInt())
         }
+    }
+}
+
+private fun BeanRegistrarDsl.credentialReusePolicy(prefix: String): CredentialReusePolicy {
+    val enabled = env.getProperty<Boolean>("$prefix.reusePolicy.enabled") ?: false
+    if (!enabled) return CredentialReusePolicy.None
+
+    val type = env.getProperty("$prefix.reusePolicy.type") ?: "ArfAnnex2"
+    return when (type) {
+        "ArfAnnex2" -> {
+            val options = mutableListOf<EudiReusePolicy>()
+            var index = 0
+            while (true) {
+                val detailsStr = env.getProperty("$prefix.reusePolicy.options[$index].details") ?: break
+                val methods = detailsStr.split(",").map { it.trim() }.mapNotNull { EudiReusePolicyType.fromValue(it) }
+                if (methods.isEmpty()) {
+                    index++
+                    continue
+                }
+                methods.mapTo(options) { method ->
+                    when (method) {
+                        EudiReusePolicyType.OnceOnly -> {
+                            val batchSize = env.getRequiredProperty<Int>("$prefix.reusePolicy.options[$index].batchSize")
+                            val reissueTriggerUnused = env.getRequiredProperty<Int>(
+                                "$prefix.reusePolicy.options[$index].reissueTriggerUnused",
+                            )
+                            EudiReusePolicy.OnceOnly(batchSize, reissueTriggerUnused)
+                        }
+
+                        EudiReusePolicyType.LimitedTime -> {
+                            val reissueTriggerLifetimeLeft = env.getRequiredProperty<Long>(
+                                "$prefix.reusePolicy.options[$index].reissueTriggerLifetimeLeft",
+                            ).seconds
+                            EudiReusePolicy.LimitedTime(reissueTriggerLifetimeLeft)
+                        }
+
+                        EudiReusePolicyType.RotatingBatch -> {
+                            val batchSize = env.getRequiredProperty<Int>("$prefix.reusePolicy.options[$index].batchSize")
+                            val reissueTriggerLifetimeLeft = env.getRequiredProperty<Long>(
+                                "$prefix.reusePolicy.options[$index].reissueTriggerLifetimeLeft",
+                            ).seconds
+                            EudiReusePolicy.RotatingBatch(batchSize, reissueTriggerLifetimeLeft)
+                        }
+
+                        EudiReusePolicyType.PerRelyingParty -> {
+                            val batchSize = env.getRequiredProperty<Int>("$prefix.reusePolicy.options[$index].batchSize")
+                            val reissueTriggerUnused = env.getRequiredProperty<Int>(
+                                "$prefix.reusePolicy.options[$index].reissueTriggerUnused",
+                            )
+                            val reissueTriggerLifetimeLeft = env.getRequiredProperty<Long>(
+                                "$prefix.reusePolicy.options[$index].reissueTriggerLifetimeLeft",
+                            ).seconds
+                            EudiReusePolicy.PerRelyingParty(
+                                batchSize,
+                                reissueTriggerLifetimeLeft,
+                                reissueTriggerUnused,
+                            )
+                        }
+                    }
+                }
+                index++
+            }
+            if (options.isEmpty()) CredentialReusePolicy.None
+            else CredentialReusePolicy.EUDI(
+                id = CredentialReusePolicy.EUDI.ARF_ANNEX_II_ID,
+                options = options,
+            )
+        }
+
+        else -> CredentialReusePolicy.None
     }
 }
 

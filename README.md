@@ -205,6 +205,31 @@ Variable: `ISSUER_PID_MSO_MDOC_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`
 Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
 Default value: `ES256`
 
+Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_ENABLED`
+Description: Whether to enable support for Credential Reuse Policy for PIDs issued in *MSO MDOC*.
+Default value: `false`
+
+Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_TYPE`
+Description: The type of Credential Reuse Policy.
+Default value: `ArfAnnex2`
+
+Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_OPTIONS_XX_DETAILS`
+Description: Comma separated list of policy types. 
+Possible values: `once_only`, `limited_time`, `rotating_batch`, `per_relying_party`
+Default value: N/A
+
+Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_OPTIONS_XX_BATCHSIZE`
+Description: The size of the batch of credentials to be issued.
+Default value: N/A
+
+Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERUNUSED`
+Description: The number of unused credentials that triggers a reissue.
+Default value: N/A
+
+Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`
+Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.
+Default value: N/A
+
 Variable: `ISSUER_PID_MSO_MDOC_KEY_ATTESTATIONS_REQUIRED`      
 Description: Boolean property that when set to true makes key attestations mandatory in proofs sent for issuance of PID attestations in msoMdoc format. A key attestation is expected in a JWT proof or as a proof itself.
 Default value: N/A
@@ -254,6 +279,31 @@ Default value: `sha-256`
 Variable: `ISSUER_PID_SD_JWT_VC_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`      
 Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
 Default value: `ES256`
+
+Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_ENABLED`
+Description: Whether to enable support for Credential Reuse Policy for PIDs issued in *SD JWT VC*.
+Default value: `false`
+
+Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_TYPE`
+Description: The type of Credential Reuse Policy.
+Default value: `ArfAnnex2`
+
+Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_OPTIONS_XX_DETAILS`
+Description: Comma separated list of policy types. 
+Possible values: `once_only`, `limited_time`, `rotating_batch`, `per_relying_party`
+Default value: N/A
+
+Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_OPTIONS_XX_BATCHSIZE`
+Description: The size of the batch of credentials to be issued.
+Default value: N/A
+
+Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERUNUSED`
+Description: The number of unused credentials that triggers a reissue.
+Default value: N/A
+
+Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`
+Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.
+Default value: N/A
 
 Variable: `ISSUER_PID_SD_JWT_VC_KEY_ATTESTATIONS_REQUIRED`      
 Description: Boolean property that when set to true makes key attestations mandatory in proofs sent for issuance of PID attestations in sd-jwt-vc format. A key attestation is expected in a JWT proof or as a proof itself.
@@ -305,6 +355,31 @@ Variable: `ISSUER_MDL_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`
 Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
 Default value: `ES256`
 
+Variable: `ISSUER_MDL_REUSEPOLICY_ENABLED`
+Description: Whether to enable support for Credential Reuse Policy for mDLs.
+Default value: `false`
+
+Variable: `ISSUER_MDL_REUSEPOLICY_TYPE`
+Description: The type of Credential Reuse Policy.
+Default value: `ArfAnnex2`
+
+Variable: `ISSUER_MDL_REUSEPOLICY_OPTIONS_XX_DETAILS`
+Description: Comma separated list of policy types. 
+Possible values: `once_only`, `limited_time`, `rotating_batch`, `per_relying_party`
+Default value: N/A
+
+Variable: `ISSUER_MDL_REUSEPOLICY_OPTIONS_XX_BATCHSIZE`
+Description: The size of the batch of credentials to be issued.
+Default value: N/A
+
+Variable: `ISSUER_MDL_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERUNUSED`
+Description: The number of unused credentials that triggers a reissue.
+Default value: N/A
+
+Variable: `ISSUER_MDL_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`
+Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.
+Default value: N/A
+
 Variable: `ISSUER_MDL_KEY_ATTESTATIONS_REQUIRED`      
 Description: Boolean property that when set to true makes key attestations mandatory in proofs sent for issuance of PID attestations in msoMdoc format. A key attestation is expected in a JWT proof or as a proof itself.
 Default value: N/A
@@ -355,6 +430,31 @@ Variable: `ISSUER_EHIC_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`
 Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
 Default value: `ES256`  
 
+Variable: `ISSUER_EHIC_REUSEPOLICY_ENABLED`
+Description: Whether to enable support for Credential Reuse Policy for EHICs.
+Default value: `false`
+
+Variable: `ISSUER_EHIC_REUSEPOLICY_TYPE`
+Description: The type of Credential Reuse Policy.
+Default value: `ArfAnnex2`
+
+Variable: `ISSUER_EHIC_REUSEPOLICY_OPTIONS_XX_DETAILS`
+Description: Comma separated list of policy types. 
+Possible values: `once_only`, `limited_time`, `rotating_batch`, `per_relying_party`
+Default value: N/A
+
+Variable: `ISSUER_EHIC_REUSEPOLICY_OPTIONS_XX_BATCHSIZE`
+Description: The size of the batch of credentials to be issued.
+Default value: N/A
+
+Variable: `ISSUER_EHIC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERUNUSED`
+Description: The number of unused credentials that triggers a reissue.
+Default value: N/A
+
+Variable: `ISSUER_EHIC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`
+Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.
+Default value: N/A
+
 Variable: `ISSUER_EHIC_KEY_ATTESTATIONS_REQUIRED`      
 Description: Boolean property that when set to true makes key attestations mandatory in proofs sent for EHIC attestation issuance. A key attestation is expected in a JWT proof or as a proof itself.
 Default value: N/A
@@ -401,15 +501,40 @@ Variable: `ISSUER_LEARNINGCREDENTIAL_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`
 Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
 Example: `ES256`
 
-Variable: `ISSUER_LEARNINGCREDENTIA_KEY_ATTESTATIONS_REQUIRED`      
+Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_ENABLED`
+Description: Whether to enable support for Credential Reuse Policy for Learning Credentials.
+Default value: `false`
+
+Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_TYPE`
+Description: The type of Credential Reuse Policy.
+Default value: `ArfAnnex2`
+
+Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_OPTIONS_XX_DETAILS`
+Description: Comma separated list of policy types. 
+Possible values: `once_only`, `limited_time`, `rotating_batch`, `per_relying_party`
+Default value: N/A
+
+Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_OPTIONS_XX_BATCHSIZE`
+Description: The size of the batch of credentials to be issued.
+Default value: N/A
+
+Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERUNUSED`
+Description: The number of unused credentials that triggers a reissue.
+Default value: N/A
+
+Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`
+Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.
+Default value: N/A
+
+Variable: `ISSUER_LEARNINGCREDENTIAL_KEY_ATTESTATIONS_REQUIRED`      
 Description: Boolean property that when set to true makes key attestations mandatory in proofs sent for Learning Credential attestation issuance. A key attestation is expected in a JWT proof or as a proof itself.  
 Default value: `false`
 
-Variable: `ISSUER_LEARNINGCREDENTIA_KEY_ATTESTATIONS_CONSTRAINTS_KEY_STORAGE`      
+Variable: `ISSUER_LEARNINGCREDENTIAL_KEY_ATTESTATIONS_CONSTRAINTS_KEY_STORAGE`      
 Description: Comma separated list of strings. Each string specifies an accepted level of attack resistance protection regarding the storage of keys included in a key attestation.  
 Default value: N/A
 
-Variable: `ISSUER_LEARNINGCREDENTIA_KEY_ATTESTATIONS_CONSTRAINTS_USER_AUTHENTICATION`      
+Variable: `ISSUER_LEARNINGCREDENTIAL_KEY_ATTESTATIONS_CONSTRAINTS_USER_AUTHENTICATION`      
 Description: Comma separated list of strings. Each string specifies an accepted level of attack resistance protection regarding the authentication of user when using the keys included in the key attestation.     
 Default value: N/A
 
