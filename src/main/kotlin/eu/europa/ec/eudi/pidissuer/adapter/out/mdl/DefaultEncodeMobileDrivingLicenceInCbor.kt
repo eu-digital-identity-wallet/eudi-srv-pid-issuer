@@ -22,6 +22,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.coseAlgorithm
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.GenericRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.ParameterizedRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.MsoMdocSigner
+import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.toTDate
 import eu.europa.ec.eudi.pidissuer.domain.ClaimDefinition
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
@@ -29,7 +30,9 @@ import id.walt.mdoc.dataelement.DataElement
 import id.walt.mdoc.dataelement.toDataElement
 import id.walt.mdoc.doc.MDocBuilder
 import kotlinx.datetime.toKotlinLocalDate
+import java.time.ZoneOffset
 import kotlin.time.Instant
+import kotlin.time.toKotlinInstant
 
 class DefaultEncodeMobileDrivingLicenceInCbor(issuerSigningKey: IssuerSigningKey) : EncodeMobileDrivingLicenceInCbor {
     override val signingAlgorithm = issuerSigningKey.coseAlgorithm
@@ -70,7 +73,7 @@ private fun MDocBuilder.addItemsToSign(driver: Driver) {
     driver.portrait.capturedAt?.let {
         addItemToSign(
             MsoMdocMdlV1Claims.PortraitCaptureDate,
-            it.toLocalDate().toKotlinLocalDate().toDataElement(),
+            it.toInstant(ZoneOffset.UTC).toKotlinInstant().toTDate(),
         )
     }
     driver.sex?.let { addItemToSign(MsoMdocMdlV1Claims.Sex, it.code.toDataElement()) }

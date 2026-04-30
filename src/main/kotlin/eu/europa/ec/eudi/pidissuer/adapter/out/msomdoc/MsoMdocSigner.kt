@@ -55,9 +55,9 @@ internal class MsoMdocSigner<in Credential>(
     ): String {
         require(expiresAt >= issuedAt) { "expiresAt must greater or equal to issuedAt" }
         val validityInfo = ValidityInfo(
-            signed = issuedAt.toDeprecatedInstant(),
-            validFrom = issuedAt.toDeprecatedInstant(),
-            validUntil = expiresAt.toDeprecatedInstant(),
+            signed = issuedAt.dropFractionOfSeconds().toDeprecatedInstant(),
+            validFrom = issuedAt.dropFractionOfSeconds().toDeprecatedInstant(),
+            validUntil = expiresAt.dropFractionOfSeconds().toDeprecatedInstant(),
             expectedUpdate = null,
         )
         val deviceKeyInfo = deviceKeyInfo(deviceKey)
