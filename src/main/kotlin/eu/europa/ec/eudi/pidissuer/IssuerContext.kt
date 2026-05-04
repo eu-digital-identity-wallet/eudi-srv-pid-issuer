@@ -1052,7 +1052,7 @@ private fun BeanRegistrarDsl.credentialReusePolicy(prefix: String): CredentialRe
             val options = mutableListOf<EudiReusePolicy>()
             var index = 0
             while (true) {
-                val detailsStr = env.getProperty("$prefix.reusePolicy.options[$index].details") ?: break
+                val detailsStr = env.getPropertyOrEnvVariable("$prefix.reusePolicy.options[$index].details") ?: break
                 val methods = detailsStr.split(",").map { it.trim() }.mapNotNull { EudiReusePolicyType.fromValue(it) }
                 if (methods.isEmpty()) {
                     index++
@@ -1061,34 +1061,34 @@ private fun BeanRegistrarDsl.credentialReusePolicy(prefix: String): CredentialRe
                 methods.mapTo(options) { method ->
                     when (method) {
                         EudiReusePolicyType.OnceOnly -> {
-                            val batchSize = env.getRequiredProperty<Int>("$prefix.reusePolicy.options[$index].batchSize")
-                            val reissueTriggerUnused = env.getRequiredProperty<Int>(
+                            val batchSize = env.getRequiredPropertyOrEnvVariable<Int>("$prefix.reusePolicy.options[$index].batchSize")
+                            val reissueTriggerUnused = env.getRequiredPropertyOrEnvVariable<Int>(
                                 "$prefix.reusePolicy.options[$index].reissueTriggerUnused",
                             )
                             EudiReusePolicy.OnceOnly(batchSize, reissueTriggerUnused)
                         }
 
                         EudiReusePolicyType.LimitedTime -> {
-                            val reissueTriggerLifetimeLeft = env.getRequiredProperty<Long>(
+                            val reissueTriggerLifetimeLeft = env.getRequiredPropertyOrEnvVariable<Long>(
                                 "$prefix.reusePolicy.options[$index].reissueTriggerLifetimeLeft",
                             ).seconds
                             EudiReusePolicy.LimitedTime(reissueTriggerLifetimeLeft)
                         }
 
                         EudiReusePolicyType.RotatingBatch -> {
-                            val batchSize = env.getRequiredProperty<Int>("$prefix.reusePolicy.options[$index].batchSize")
-                            val reissueTriggerLifetimeLeft = env.getRequiredProperty<Long>(
+                            val batchSize = env.getRequiredPropertyOrEnvVariable<Int>("$prefix.reusePolicy.options[$index].batchSize")
+                            val reissueTriggerLifetimeLeft = env.getRequiredPropertyOrEnvVariable<Long>(
                                 "$prefix.reusePolicy.options[$index].reissueTriggerLifetimeLeft",
                             ).seconds
                             EudiReusePolicy.RotatingBatch(batchSize, reissueTriggerLifetimeLeft)
                         }
 
                         EudiReusePolicyType.PerRelyingParty -> {
-                            val batchSize = env.getRequiredProperty<Int>("$prefix.reusePolicy.options[$index].batchSize")
-                            val reissueTriggerUnused = env.getRequiredProperty<Int>(
+                            val batchSize = env.getRequiredPropertyOrEnvVariable<Int>("$prefix.reusePolicy.options[$index].batchSize")
+                            val reissueTriggerUnused = env.getRequiredPropertyOrEnvVariable<Int>(
                                 "$prefix.reusePolicy.options[$index].reissueTriggerUnused",
                             )
-                            val reissueTriggerLifetimeLeft = env.getRequiredProperty<Long>(
+                            val reissueTriggerLifetimeLeft = env.getRequiredPropertyOrEnvVariable<Long>(
                                 "$prefix.reusePolicy.options[$index].reissueTriggerLifetimeLeft",
                             ).seconds
                             EudiReusePolicy.PerRelyingParty(
@@ -1328,3 +1328,25 @@ private suspend fun WebClient.authorizationServerSupportedDPoPJWSAlgorithms(auth
         log.warn("Unable to fetch Authorization Server metadata. DPoP support will be disabled.", it)
         null
     }
+
+
+private fun Environment.getPropertyOrEnvVariable(property: String): String? {
+    return getProperty(property) ?: getProperty(toEnvironmentVariable(property))
+}
+
+private inline fun <reified T : Any> Environment.getPropertyOrEnvVariable(property: String): T? {
+    return getProperty<T>(property) ?: getProperty<T>(toEnvironmentVariable(property))
+}
+
+private inline fun <reified T : Any> Environment.getRequiredPropertyOrEnvVariable(property: String): T {
+    return getProperty<T>(property) ?: getProperty<T>(toEnvironmentVariable(property))
+    ?: throw IllegalStateException("Property $property or environment variable ${toEnvironmentVariable(property)} not found")
+}
+
+private fun toEnvironmentVariable(property: String): String {
+    return property.replace(".", "_")
+        .replace("[", "_")
+        .replace("]", "")
+        .replace("-", "")
+        .uppercase()
+}
