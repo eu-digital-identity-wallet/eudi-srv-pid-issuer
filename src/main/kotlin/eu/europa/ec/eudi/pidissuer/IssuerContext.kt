@@ -1329,7 +1329,6 @@ private suspend fun WebClient.authorizationServerSupportedDPoPJWSAlgorithms(auth
         null
     }
 
-
 private fun Environment.getPropertyOrEnvVariable(property: String): String? {
     return getProperty(property) ?: getProperty(toEnvironmentVariable(property))
 }
@@ -1340,7 +1339,7 @@ private inline fun <reified T : Any> Environment.getPropertyOrEnvVariable(proper
 
 private inline fun <reified T : Any> Environment.getRequiredPropertyOrEnvVariable(property: String): T {
     return getProperty<T>(property) ?: getProperty<T>(toEnvironmentVariable(property))
-    ?: throw IllegalStateException("Property $property or environment variable ${toEnvironmentVariable(property)} not found")
+        ?: throw IllegalStateException("Property $property or environment variable ${toEnvironmentVariable(property)} not found")
 }
 
 private fun toEnvironmentVariable(property: String): String {
