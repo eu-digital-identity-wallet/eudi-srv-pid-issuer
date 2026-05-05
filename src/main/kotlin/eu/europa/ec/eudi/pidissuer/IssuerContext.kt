@@ -317,7 +317,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                 methodsSupported = encryptionMethods,
                 zipAlgorithmsSupported = env.readNullableNonEmptySet(
                     "issuer.credentialRequestEncryption.zipAlgorithmsSupported",
-                ) { CompressionAlgorithm(it) },
+                ) { algorithm -> algorithm.takeIf { it.isNotBlank() }?.let { CompressionAlgorithm(it) } },
             )
             val isRequired = env.getProperty<Boolean>("issuer.credentialRequestEncryption.required") ?: false
             if (!isRequired) {
@@ -1148,7 +1148,7 @@ private fun Environment.credentialResponseEncryption(): CredentialResponseEncryp
             ),
             zipAlgorithmsSupported = readNullableNonEmptySet(
                 "issuer.credentialResponseEncryption.zipAlgorithmsSupported",
-            ) { CompressionAlgorithm(it) },
+            ) { algorithm -> algorithm.takeIf { it.isNotBlank() }?.let { CompressionAlgorithm(it) } },
         )
         val isRequired = getProperty<Boolean>("issuer.credentialResponseEncryption.required") ?: false
         if (!isRequired) {
