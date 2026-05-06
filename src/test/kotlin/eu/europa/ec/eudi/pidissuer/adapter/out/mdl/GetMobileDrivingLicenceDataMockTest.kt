@@ -20,6 +20,7 @@ import arrow.core.nonEmptySetOf
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
+import eu.europa.ec.eudi.pidissuer.utils.createAccessTokenValue
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 
@@ -29,10 +30,12 @@ internal class GetMobileDrivingLicenceDataMockTest {
     internal fun `get mDL success`() = runTest {
         val getMobileDrivingLicenceData = GetMobileDrivingLicenceDataMock()
 
+        val accessTokenValue = createAccessTokenValue()
+
         getMobileDrivingLicenceData(
             AuthorizationContext(
                 "username",
-                BearerAccessToken.parse("Bearer access-token"),
+                BearerAccessToken.parse("Bearer $accessTokenValue"),
                 nonEmptySetOf(Scope("test")),
             ),
         ).getOrElse { throw RuntimeException(it.msg, it.cause) }

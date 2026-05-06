@@ -41,6 +41,7 @@ import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.loadResource
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
+import eu.europa.ec.eudi.pidissuer.utils.createAccessTokenValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
@@ -227,6 +228,27 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
         assertNotNull(response)
         assertEquals(CredentialErrorTypeTo.UNKNOWN_CREDENTIAL_CONFIGURATION, response.type)
         assertEquals("Unsupported Credential Configuration Id 'foo'", response.errorDescription)
+    }
+
+    /**
+     * Verifies that when Access Token does not include client_status, Credential Request fails
+     */
+    @Test
+    fun `fails when client_status is not included inside the access token`() = runTest {
+        val authentication = dPoPTokenAuthentication(clock = clock, includeClientStatus = false)
+
+        client()
+            .mutateWith(mockAuthentication(authentication))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(
+                requestByCredentialConfigurationId(credentialConfigurationId = "foo", proofs = ProofsTO(jwtProofs = listOf("proof"))),
+            )
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().is5xxServerError
+            .returnResult()
     }
 
     /**
@@ -1458,6 +1480,7 @@ private fun dPoPTokenAuthentication(
     expiresIn: Duration = 10L.minutes,
     scopes: List<Scope> = listOf(PidMsoMdocScope, PidSdJwtVcScope),
     authorities: List<GrantedAuthority> = listOf(SimpleGrantedAuthority("ROLE_USER")),
+    includeClientStatus: Boolean = true,
 ): DPoPTokenAuthentication {
     val issuedAt = clock.now()
     val principal = DefaultOAuth2AuthenticatedPrincipal(
@@ -1476,10 +1499,12 @@ private fun dPoPTokenAuthentication(
         ),
         authorities + scopes.map { SimpleGrantedAuthority("SCOPE_${it.value}") },
     )
-    val accessToken = DPoPAccessToken("token")
+
+    val accessTokenValue = createAccessTokenValue(includeClientStatus)
+    val accessToken = DPoPAccessToken(accessTokenValue)
 
     return DPoPTokenAuthentication.unauthenticated(
-        SignedJWT(JWSHeader.Builder(JWSAlgorithm.RS256).build(), JWTClaimsSet.Builder().build()),
+        SignedJWT(JWSHeader.Builder(JWSAlgorithm.ES256).build(), JWTClaimsSet.Builder().build()),
         accessToken,
         HttpMethod.GET,
         URI.create("/"),
