@@ -17,16 +17,10 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
 import arrow.core.getOrElse
 import arrow.core.nonEmptySetOf
-import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.JWSHeader
-import com.nimbusds.jose.util.JSONObjectUtils
-import com.nimbusds.jwt.JWTClaimsSet
-import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
 import eu.europa.ec.eudi.pidissuer.domain.Scope
-import eu.europa.ec.eudi.pidissuer.domain.TS3
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
-import eu.europa.ec.eudi.pidissuer.utils.ECDSASigner
+import eu.europa.ec.eudi.pidissuer.utils.createAccessTokenValue
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 
@@ -36,34 +30,12 @@ internal class GetMobileDrivingLicenceDataMockTest {
     internal fun `get mDL success`() = runTest {
         val getMobileDrivingLicenceData = GetMobileDrivingLicenceDataMock()
 
-        val signer = ECDSASigner.signer
-
-        val signedJwt = SignedJWT(
-            JWSHeader.Builder(JWSAlgorithm.ES256).build(),
-            JWTClaimsSet.Builder()
-                .claim(
-                    TS3.CLIENT_STATUS,
-                    JSONObjectUtils.parse(
-                        """
-                          {
-                              "status": {
-                                "status_list": {
-                                  "idx": 1337,
-                                  "uri": "https://revocation_url/wia-statuslists/42"
-                                }
-                              },
-                              "exp": 1303497780
-                            }
-                        """.trimIndent(),
-                    ),
-                )
-                .build(),
-        ).apply { sign(signer) }
+        val accessTokenValue = createAccessTokenValue()
 
         getMobileDrivingLicenceData(
             AuthorizationContext(
                 "username",
-                BearerAccessToken.parse("Bearer ${signedJwt.serialize()}"),
+                BearerAccessToken.parse("Bearer $accessTokenValue"),
                 nonEmptySetOf(Scope("test")),
             ),
         ).getOrElse { throw RuntimeException(it.msg, it.cause) }

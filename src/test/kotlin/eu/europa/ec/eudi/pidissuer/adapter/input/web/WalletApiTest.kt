@@ -27,7 +27,6 @@ import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
-import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
@@ -41,7 +40,7 @@ import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.loadResource
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
-import eu.europa.ec.eudi.pidissuer.utils.ECDSASigner
+import eu.europa.ec.eudi.pidissuer.utils.createAccessTokenValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
@@ -1501,37 +1500,8 @@ private fun dPoPTokenAuthentication(
         authorities + scopes.map { SimpleGrantedAuthority("SCOPE_${it.value}") },
     )
 
-    val signer = ECDSASigner.signer
-
-    val jwtClaimSet = if (includeClientStatus) {
-        JWTClaimsSet.Builder()
-            .claim(
-                TS3.CLIENT_STATUS,
-                JSONObjectUtils.parse(
-                    """
-                           {
-                              "status": {
-                                "status_list": {
-                                  "idx": 1337,
-                                  "uri": "https://revocation_url/wia-statuslists/42"
-                                }
-                              },
-                              "exp": 1303497780
-                            }
-                    """.trimIndent(),
-                ),
-            )
-            .build()
-    } else {
-        JWTClaimsSet.Builder().build()
-    }
-
-    val accessToken = DPoPAccessToken(
-        SignedJWT(
-            JWSHeader.Builder(JWSAlgorithm.ES256).build(),
-            jwtClaimSet,
-        ).apply { sign(signer) }.serialize(),
-    )
+    val accessTokenValue = createAccessTokenValue(includeClientStatus)
+    val accessToken = DPoPAccessToken(accessTokenValue)
 
     return DPoPTokenAuthentication.unauthenticated(
         SignedJWT(JWSHeader.Builder(JWSAlgorithm.ES256).build(), JWTClaimsSet.Builder().build()),
