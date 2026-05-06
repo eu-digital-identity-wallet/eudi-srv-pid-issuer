@@ -25,7 +25,7 @@ import kotlin.time.Instant
 
 object InstantEpochSecondsSerializer : KSerializer<Instant> {
     override val descriptor: SerialDescriptor =
-        PrimitiveSerialDescriptor("NumericInstant", PrimitiveKind.LONG)
+        PrimitiveSerialDescriptor("InstantEpochSeconds", PrimitiveKind.LONG)
 
     override fun serialize(encoder: Encoder, value: Instant) {
         encoder.encodeLong(value.epochSeconds)

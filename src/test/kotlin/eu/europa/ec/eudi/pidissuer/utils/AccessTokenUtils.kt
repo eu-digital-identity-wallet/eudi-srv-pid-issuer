@@ -28,9 +28,9 @@ import eu.europa.ec.eudi.pidissuer.domain.TS3
 private val accessTokenSigner = ECDSASigner(ECKeyGenerator(Curve.P_256).generate())
 
 fun createAccessTokenValue(includeClientStatus: Boolean = true): String {
-    val jwtClaimSet = if (includeClientStatus) {
-        JWTClaimsSet.Builder()
-            .claim(
+    val jwtClaimSet = JWTClaimsSet.Builder().apply {
+        if (includeClientStatus) {
+            claim(
                 TS3.CLIENT_STATUS,
                 JSONObjectUtils.parse(
                     """
@@ -46,10 +46,8 @@ fun createAccessTokenValue(includeClientStatus: Boolean = true): String {
                     """.trimIndent(),
                 ),
             )
-            .build()
-    } else {
-        JWTClaimsSet.Builder().build()
-    }
+        }
+    }.build()
 
     return SignedJWT(
         JWSHeader.Builder(JWSAlgorithm.ES256).build(),
