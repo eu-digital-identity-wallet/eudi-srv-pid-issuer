@@ -18,16 +18,8 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential
 import arrow.core.NonEmptyList
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.IsoAlpha2CountryCode
 import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
+import eu.europa.ec.eudi.pidissuer.domain.NonBlankString
 import kotlin.time.Instant
-
-@JvmInline
-value class NonBlankString(val value: String) {
-    init {
-        require(value.isNotBlank())
-    }
-
-    override fun toString(): String = value
-}
 
 data class Issuer(
     val name: Name,

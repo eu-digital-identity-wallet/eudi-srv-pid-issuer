@@ -56,3 +56,10 @@ object TokenStatusListSpec {
     const val IDX: String = "idx"
     const val URI: String = "uri"
 }
+
+/**
+ * [TS3](https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md)
+ */
+object TS3 {
+    const val CLIENT_STATUS: String = "client_status"
+}
