@@ -22,7 +22,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.nimbusds.jose.*
 import com.nimbusds.jose.crypto.ECDHEncrypter
-import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.crypto.factories.DefaultJWEDecrypterFactory
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
@@ -42,6 +41,7 @@ import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.loadResource
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
+import eu.europa.ec.eudi.pidissuer.utils.ECDSASigner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
@@ -75,6 +75,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
+import com.nimbusds.jose.crypto.ECDSASigner as NimbusECDSASigner
 
 /**
  * Base class for [WalletApi] tests.
@@ -117,7 +118,7 @@ internal class BaseWalletApiTest {
             .claim("nonce", nonce)
             .build()
         val jwt = SignedJWT(header, claims)
-        jwt.sign(ECDSASigner(key))
+        jwt.sign(NimbusECDSASigner(key))
 
         return jwt
     }
@@ -231,12 +232,11 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
     }
 
     /**
-     * Verifies that client_status should be included inside the Access Token per TS3.
-     * The Application is expected to fail.
+     * Verifies that when Access Token does not include client_status, Credential Request fails
      */
     @Test
     fun `fails when client_status is not included inside the access token`() = runTest {
-        val authentication = dPoPTokenAuthenticationWithNoClientStatus(clock = clock)
+        val authentication = dPoPTokenAuthentication(clock = clock, includeClientStatus = false)
 
         client()
             .mutateWith(mockAuthentication(authentication))
@@ -1481,6 +1481,7 @@ private fun dPoPTokenAuthentication(
     expiresIn: Duration = 10L.minutes,
     scopes: List<Scope> = listOf(PidMsoMdocScope, PidSdJwtVcScope),
     authorities: List<GrantedAuthority> = listOf(SimpleGrantedAuthority("ROLE_USER")),
+    includeClientStatus: Boolean = true,
 ): DPoPTokenAuthentication {
     val issuedAt = clock.now()
     val principal = DefaultOAuth2AuthenticatedPrincipal(
@@ -1500,16 +1501,14 @@ private fun dPoPTokenAuthentication(
         authorities + scopes.map { SimpleGrantedAuthority("SCOPE_${it.value}") },
     )
 
-    val signer = ECDSASigner(ECKeyGenerator(Curve.P_256).generate())
+    val signer = ECDSASigner.signer
 
-    val accessToken = DPoPAccessToken(
-        SignedJWT(
-            JWSHeader.Builder(JWSAlgorithm.ES256).build(),
-            JWTClaimsSet.Builder()
-                .claim(
-                    TS3.CLIENT_STATUS,
-                    JSONObjectUtils.parse(
-                        """
+    val jwtClaimSet = if (includeClientStatus) {
+        JWTClaimsSet.Builder()
+            .claim(
+                TS3.CLIENT_STATUS,
+                JSONObjectUtils.parse(
+                    """
                            {
                               "status": {
                                 "status_list": {
@@ -1519,52 +1518,18 @@ private fun dPoPTokenAuthentication(
                               },
                               "exp": 1303497780
                             }
-                        """.trimIndent(),
-                    ),
-                )
-                .build(),
-        ).apply { sign(signer) }.serialize(),
-    )
-
-    return DPoPTokenAuthentication.unauthenticated(
-        SignedJWT(JWSHeader.Builder(JWSAlgorithm.ES256).build(), JWTClaimsSet.Builder().build()),
-        accessToken,
-        HttpMethod.GET,
-        URI.create("/"),
-    ).authenticate(principal)
-}
-
-private fun dPoPTokenAuthenticationWithNoClientStatus(
-    subject: String = "user",
-    clock: Clock,
-    expiresIn: Duration = 10L.minutes,
-    scopes: List<Scope> = listOf(PidMsoMdocScope, PidSdJwtVcScope),
-    authorities: List<GrantedAuthority> = listOf(SimpleGrantedAuthority("ROLE_USER")),
-): DPoPTokenAuthentication {
-    val issuedAt = clock.now()
-    val principal = DefaultOAuth2AuthenticatedPrincipal(
-        subject,
-        mapOf(
-            OAuth2TokenIntrospectionClaimNames.ACTIVE to true,
-            OAuth2TokenIntrospectionClaimNames.USERNAME to subject,
-            OAuth2TokenIntrospectionClaimNames.CLIENT_ID to "wallet-dev",
-            OAuth2TokenIntrospectionClaimNames.SCOPE to scopes.map { it.value },
-            OAuth2TokenIntrospectionClaimNames.TOKEN_TYPE to TokenType.BEARER.value,
-            OAuth2TokenIntrospectionClaimNames.EXP to (issuedAt + expiresIn),
-            OAuth2TokenIntrospectionClaimNames.IAT to issuedAt,
-            OAuth2TokenIntrospectionClaimNames.NBF to issuedAt,
-            OAuth2TokenIntrospectionClaimNames.SUB to subject,
-            OAuth2TokenIntrospectionClaimNames.JTI to UUID.randomUUID().toString(),
-        ),
-        authorities + scopes.map { SimpleGrantedAuthority("SCOPE_${it.value}") },
-    )
-
-    val signer = ECDSASigner(ECKeyGenerator(Curve.P_256).generate())
+                    """.trimIndent(),
+                ),
+            )
+            .build()
+    } else {
+        JWTClaimsSet.Builder().build()
+    }
 
     val accessToken = DPoPAccessToken(
         SignedJWT(
             JWSHeader.Builder(JWSAlgorithm.ES256).build(),
-            JWTClaimsSet.Builder().build(),
+            jwtClaimSet,
         ).apply { sign(signer) }.serialize(),
     )
 
@@ -1654,7 +1619,7 @@ private suspend fun keyAttestationJWT(
     extraKeys: () -> List<ECKey> = { emptyList() },
 ): SignedJWT {
     val keyAttestationSigningKey = loadECKey("key-attestation-key.pem")
-    val signer = ECDSASigner(keyAttestationSigningKey)
+    val signer = NimbusECDSASigner(keyAttestationSigningKey)
 
     val attestedKeys = extraKeys() + proofSigningKey
 

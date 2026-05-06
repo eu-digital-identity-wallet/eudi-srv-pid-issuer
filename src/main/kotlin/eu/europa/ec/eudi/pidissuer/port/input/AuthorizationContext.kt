@@ -20,10 +20,10 @@ import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.oauth2.sdk.token.AccessToken
+import eu.europa.ec.eudi.pidissuer.adapter.out.json.jsonSupport
 import eu.europa.ec.eudi.pidissuer.domain.ClientStatus
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.domain.TS3
-import kotlinx.serialization.json.Json
 
 typealias Username = String
 typealias ClientId = String
@@ -37,14 +37,14 @@ data class AuthorizationContext(
     val clientStatus: ClientStatus = accessToken.extractClientStatus()
 }
 
-private fun AccessToken.extractClientStatus(): ClientStatus = run {
+private fun AccessToken.extractClientStatus(): ClientStatus {
     val jwtClaimSet: JWTClaimsSet = SignedJWT.parse(value).jwtClaimsSet
 
-    val clientStatusJwt = JSONObjectUtils.toJSONString(
+    val clientStatus = JSONObjectUtils.toJSONString(
         requireNotNull(jwtClaimSet.getJSONObjectClaim(TS3.CLIENT_STATUS)) {
-            "client_status is missing"
+            "${TS3.CLIENT_STATUS} is missing"
         },
     )
 
-    Json.decodeFromString<ClientStatus>(clientStatusJwt)
+    return jsonSupport.decodeFromString<ClientStatus>(clientStatus)
 }

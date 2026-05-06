@@ -15,22 +15,17 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import eu.europa.ec.eudi.pidissuer.adapter.out.json.InstantEpochSecondsSerializer
 import eu.europa.ec.eudi.sdjwt.RFC7519
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import kotlin.time.Instant
 
 @Serializable
 data class ClientStatus(
     @Required @SerialName(TokenStatusListSpec.STATUS) val status: StatusClaim,
-    @Required @SerialName(RFC7519.EXPIRATION_TIME) @Serializable(with = NumericInstantSerializer::class) val expiresAt: Instant,
+    @Required @SerialName(RFC7519.EXPIRATION_TIME) @Serializable(with = InstantEpochSecondsSerializer::class) val expiresAt: Instant,
 )
 
 @Serializable
@@ -43,16 +38,3 @@ data class StatusListTokenClaim(
     @Required @SerialName(TokenStatusListSpec.IDX) val index: UInt,
     @Required @SerialName(TokenStatusListSpec.URI) val uri: NonBlankString,
 )
-
-object NumericInstantSerializer : KSerializer<Instant> {
-    override val descriptor: SerialDescriptor =
-        PrimitiveSerialDescriptor("NumericInstant", PrimitiveKind.LONG)
-
-    override fun serialize(encoder: Encoder, value: Instant) {
-        encoder.encodeLong(value.epochSeconds)
-    }
-
-    override fun deserialize(decoder: Decoder): Instant {
-        return Instant.fromEpochSeconds(decoder.decodeLong())
-    }
-}

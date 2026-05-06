@@ -19,9 +19,6 @@ import arrow.core.getOrElse
 import arrow.core.nonEmptySetOf
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
-import com.nimbusds.jose.crypto.ECDSASigner
-import com.nimbusds.jose.jwk.Curve
-import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
@@ -29,6 +26,7 @@ import com.nimbusds.oauth2.sdk.token.BearerAccessToken
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.domain.TS3
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
+import eu.europa.ec.eudi.pidissuer.utils.ECDSASigner
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 
@@ -38,7 +36,7 @@ internal class GetMobileDrivingLicenceDataMockTest {
     internal fun `get mDL success`() = runTest {
         val getMobileDrivingLicenceData = GetMobileDrivingLicenceDataMock()
 
-        val signer = ECDSASigner(ECKeyGenerator(Curve.P_256).generate())
+        val signer = ECDSASigner.signer
 
         val signedJwt = SignedJWT(
             JWSHeader.Builder(JWSAlgorithm.ES256).build(),
