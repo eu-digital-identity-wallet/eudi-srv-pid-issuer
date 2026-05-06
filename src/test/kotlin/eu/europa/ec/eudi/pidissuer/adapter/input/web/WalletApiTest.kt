@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.nimbusds.jose.*
 import com.nimbusds.jose.crypto.ECDHEncrypter
+import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.crypto.factories.DefaultJWEDecrypterFactory
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
@@ -74,7 +75,6 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
-import com.nimbusds.jose.crypto.ECDSASigner as NimbusECDSASigner
 
 /**
  * Base class for [WalletApi] tests.
@@ -117,7 +117,7 @@ internal class BaseWalletApiTest {
             .claim("nonce", nonce)
             .build()
         val jwt = SignedJWT(header, claims)
-        jwt.sign(NimbusECDSASigner(key))
+        jwt.sign(ECDSASigner(key))
 
         return jwt
     }
@@ -1589,7 +1589,7 @@ private suspend fun keyAttestationJWT(
     extraKeys: () -> List<ECKey> = { emptyList() },
 ): SignedJWT {
     val keyAttestationSigningKey = loadECKey("key-attestation-key.pem")
-    val signer = NimbusECDSASigner(keyAttestationSigningKey)
+    val signer = ECDSASigner(keyAttestationSigningKey)
 
     val attestedKeys = extraKeys() + proofSigningKey
 
