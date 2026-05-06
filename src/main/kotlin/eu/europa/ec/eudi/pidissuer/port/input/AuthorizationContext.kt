@@ -16,8 +16,14 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.NonEmptySet
+import com.nimbusds.jose.util.JSONObjectUtils
+import com.nimbusds.jwt.JWTClaimsSet
+import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.oauth2.sdk.token.AccessToken
+import eu.europa.ec.eudi.pidissuer.domain.ClientStatus
 import eu.europa.ec.eudi.pidissuer.domain.Scope
+import eu.europa.ec.eudi.pidissuer.domain.TS3
+import kotlinx.serialization.json.Json
 
 typealias Username = String
 typealias ClientId = String
@@ -27,4 +33,18 @@ data class AuthorizationContext(
     val accessToken: AccessToken,
     val scopes: NonEmptySet<Scope>,
     val clientId: ClientId? = null,
-)
+) {
+    val clientStatus: ClientStatus = accessToken.extractClientStatus()
+}
+
+private fun AccessToken.extractClientStatus(): ClientStatus = run {
+    val jwtClaimSet: JWTClaimsSet = SignedJWT.parse(value).jwtClaimsSet
+
+    val clientStatusJwt = JSONObjectUtils.toJSONString(
+        requireNotNull(jwtClaimSet.getJSONObjectClaim(TS3.CLIENT_STATUS)) {
+            "client_status is missing"
+        },
+    )
+
+    Json.decodeFromString<ClientStatus>(clientStatusJwt)
+}

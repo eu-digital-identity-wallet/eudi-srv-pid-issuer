@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptyList
 import com.nimbusds.jose.jwk.JWK
+import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import java.net.MalformedURLException
 import java.net.URI
@@ -154,3 +155,13 @@ enum class IntegrityHashAlgorithm(val id: String) {
 
 @JvmInline
 value class CoseAlgorithm(val value: Int)
+
+@JvmInline
+@Serializable
+value class NonBlankString(val value: String) {
+    init {
+        require(value.isNotBlank())
+    }
+
+    override fun toString(): String = value
+}

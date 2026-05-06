@@ -28,6 +28,7 @@ import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
+import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
@@ -227,6 +228,28 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
         assertNotNull(response)
         assertEquals(CredentialErrorTypeTo.UNKNOWN_CREDENTIAL_CONFIGURATION, response.type)
         assertEquals("Unsupported Credential Configuration Id 'foo'", response.errorDescription)
+    }
+
+    /**
+     * Verifies that client_status should be included inside the Access Token per TS3.
+     * The Application is expected to fail.
+     */
+    @Test
+    fun `fails when client_status is not included inside the access token`() = runTest {
+        val authentication = dPoPTokenAuthenticationWithNoClientStatus(clock = clock)
+
+        client()
+            .mutateWith(mockAuthentication(authentication))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(
+                requestByCredentialConfigurationId(credentialConfigurationId = "foo", proofs = ProofsTO(jwtProofs = listOf("proof"))),
+            )
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().is5xxServerError
+            .returnResult()
     }
 
     /**
@@ -1476,10 +1499,77 @@ private fun dPoPTokenAuthentication(
         ),
         authorities + scopes.map { SimpleGrantedAuthority("SCOPE_${it.value}") },
     )
-    val accessToken = DPoPAccessToken("token")
+
+    val signer = ECDSASigner(ECKeyGenerator(Curve.P_256).generate())
+
+    val accessToken = DPoPAccessToken(
+        SignedJWT(
+            JWSHeader.Builder(JWSAlgorithm.ES256).build(),
+            JWTClaimsSet.Builder()
+                .claim(
+                    TS3.CLIENT_STATUS,
+                    JSONObjectUtils.parse(
+                        """
+                           {
+                              "status": {
+                                "status_list": {
+                                  "idx": 1337,
+                                  "uri": "https://revocation_url/wia-statuslists/42"
+                                }
+                              },
+                              "exp": 1303497780
+                            }
+                        """.trimIndent(),
+                    ),
+                )
+                .build(),
+        ).apply { sign(signer) }.serialize(),
+    )
 
     return DPoPTokenAuthentication.unauthenticated(
-        SignedJWT(JWSHeader.Builder(JWSAlgorithm.RS256).build(), JWTClaimsSet.Builder().build()),
+        SignedJWT(JWSHeader.Builder(JWSAlgorithm.ES256).build(), JWTClaimsSet.Builder().build()),
+        accessToken,
+        HttpMethod.GET,
+        URI.create("/"),
+    ).authenticate(principal)
+}
+
+private fun dPoPTokenAuthenticationWithNoClientStatus(
+    subject: String = "user",
+    clock: Clock,
+    expiresIn: Duration = 10L.minutes,
+    scopes: List<Scope> = listOf(PidMsoMdocScope, PidSdJwtVcScope),
+    authorities: List<GrantedAuthority> = listOf(SimpleGrantedAuthority("ROLE_USER")),
+): DPoPTokenAuthentication {
+    val issuedAt = clock.now()
+    val principal = DefaultOAuth2AuthenticatedPrincipal(
+        subject,
+        mapOf(
+            OAuth2TokenIntrospectionClaimNames.ACTIVE to true,
+            OAuth2TokenIntrospectionClaimNames.USERNAME to subject,
+            OAuth2TokenIntrospectionClaimNames.CLIENT_ID to "wallet-dev",
+            OAuth2TokenIntrospectionClaimNames.SCOPE to scopes.map { it.value },
+            OAuth2TokenIntrospectionClaimNames.TOKEN_TYPE to TokenType.BEARER.value,
+            OAuth2TokenIntrospectionClaimNames.EXP to (issuedAt + expiresIn),
+            OAuth2TokenIntrospectionClaimNames.IAT to issuedAt,
+            OAuth2TokenIntrospectionClaimNames.NBF to issuedAt,
+            OAuth2TokenIntrospectionClaimNames.SUB to subject,
+            OAuth2TokenIntrospectionClaimNames.JTI to UUID.randomUUID().toString(),
+        ),
+        authorities + scopes.map { SimpleGrantedAuthority("SCOPE_${it.value}") },
+    )
+
+    val signer = ECDSASigner(ECKeyGenerator(Curve.P_256).generate())
+
+    val accessToken = DPoPAccessToken(
+        SignedJWT(
+            JWSHeader.Builder(JWSAlgorithm.ES256).build(),
+            JWTClaimsSet.Builder().build(),
+        ).apply { sign(signer) }.serialize(),
+    )
+
+    return DPoPTokenAuthentication.unauthenticated(
+        SignedJWT(JWSHeader.Builder(JWSAlgorithm.ES256).build(), JWTClaimsSet.Builder().build()),
         accessToken,
         HttpMethod.GET,
         URI.create("/"),
