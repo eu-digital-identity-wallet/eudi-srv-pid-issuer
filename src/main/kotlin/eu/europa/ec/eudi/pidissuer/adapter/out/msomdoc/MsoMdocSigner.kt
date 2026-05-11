@@ -64,7 +64,7 @@ internal class MsoMdocSigner<in Credential>(
         val mdoc = MDocBuilder(docType)
             .apply { usage(credential) }
             .sign(validityInfo, deviceKeyInfo, statusListToken, issuerCryptoProvider, issuerSigningKey.key.keyID)
-        return Base64.UrlSafe.encode(mdoc.issuerSigned.toMapElement().toCBOR())
+        return Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT).encode(mdoc.issuerSigned.toMapElement().toCBOR())
     }
 }
 
