@@ -35,7 +35,6 @@ import id.walt.mdoc.mso.DeviceKeyInfo
 import id.walt.mdoc.mso.MSO
 import id.walt.mdoc.mso.ValidityInfo
 import kotlinx.datetime.toDeprecatedInstant
-import kotlin.io.encoding.Base64
 import kotlin.time.Instant
 
 internal class MsoMdocSigner<in Credential>(
