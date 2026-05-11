@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc
 import COSE.OneKey
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
+import eu.europa.ec.eudi.pidissuer.adapter.out.base64.base64UrlSafeNoPadding
 import eu.europa.ec.eudi.pidissuer.adapter.out.cryptoProvider
 import eu.europa.ec.eudi.pidissuer.domain.MsoDocType
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
@@ -34,7 +35,6 @@ import id.walt.mdoc.mso.DeviceKeyInfo
 import id.walt.mdoc.mso.MSO
 import id.walt.mdoc.mso.ValidityInfo
 import kotlinx.datetime.toDeprecatedInstant
-import kotlin.io.encoding.Base64
 import kotlin.time.Instant
 
 internal class MsoMdocSigner<in Credential>(
@@ -64,7 +64,7 @@ internal class MsoMdocSigner<in Credential>(
         val mdoc = MDocBuilder(docType)
             .apply { usage(credential) }
             .sign(validityInfo, deviceKeyInfo, statusListToken, issuerCryptoProvider, issuerSigningKey.key.keyID)
-        return Base64.UrlSafe.encode(mdoc.issuerSigned.toMapElement().toCBOR())
+        return base64UrlSafeNoPadding.encode(mdoc.issuerSigned.toMapElement().toCBOR())
     }
 }
 
