@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc
 import COSE.OneKey
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
+import eu.europa.ec.eudi.pidissuer.adapter.out.base64.base64UrlSafeNoPadding
 import eu.europa.ec.eudi.pidissuer.adapter.out.cryptoProvider
 import eu.europa.ec.eudi.pidissuer.domain.MsoDocType
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
@@ -64,7 +65,7 @@ internal class MsoMdocSigner<in Credential>(
         val mdoc = MDocBuilder(docType)
             .apply { usage(credential) }
             .sign(validityInfo, deviceKeyInfo, statusListToken, issuerCryptoProvider, issuerSigningKey.key.keyID)
-        return Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT).encode(mdoc.issuerSigned.toMapElement().toCBOR())
+        return base64UrlSafeNoPadding.encode(mdoc.issuerSigned.toMapElement().toCBOR())
     }
 }
 
