@@ -272,7 +272,7 @@ class GetPidDataFromKeyCloak(
             mobilePhoneNumber = null,
             personalAdministrativeNumber = userInfo.personalAdministrativeNumber?.let {
                 AdministrativeNumber(it)
-            } ?: AdministrativeNumber(UUID.randomUUID().toString()),
+            },
         )
 
         val pidMetaData = genPidMetaData()
