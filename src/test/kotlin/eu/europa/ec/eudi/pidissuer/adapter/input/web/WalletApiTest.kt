@@ -138,6 +138,7 @@ internal class BaseWalletApiTest {
                         locality = City("Athens"),
                     ),
                     nationalities = nonEmptyListOf(Nationality("GR")),
+                    personalAdministrativeNumber = null,
                 )
                 val issuingCountry = IsoCountry("GR")
                 val pidMetaData = PidMetaData(
@@ -145,7 +146,6 @@ internal class BaseWalletApiTest {
                     expiryDate = LocalDate(2030, 11, 10),
                     documentNumber = null,
                     issuingAuthority = IssuingAuthority.MemberState(issuingCountry),
-                    personalAdministrativeNumber = null,
                     issuingCountry = issuingCountry,
                     issuingJurisdiction = null,
                 )

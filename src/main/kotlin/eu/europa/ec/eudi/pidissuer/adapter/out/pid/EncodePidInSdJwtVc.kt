@@ -148,7 +148,7 @@ private fun selectivelyDisclosed(
                 address.country?.let { sdClaim(SdJwtVcPidClaims.Address.Country.name, it) }
             }
         }
-        pidMetaData.personalAdministrativeNumber?.let { sdClaim(SdJwtVcPidClaims.PersonalAdministrativeNumber.name, it.value) }
+        pid.personalAdministrativeNumber?.let { sdClaim(SdJwtVcPidClaims.PersonalAdministrativeNumber.name, it.value) }
         pid.portrait?.let {
             val encodedBytes = when (it) {
                 is PortraitImage.JPEG -> Base64.encode(it.value)
