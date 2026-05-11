@@ -117,6 +117,7 @@ data class PlaceOfBirth(
  * in conformance with [RFC 5322].
  * @param mobilePhoneNumber Mobile telephone number of the User to whom the person identification data relates,
  * starting with the '+' symbol as the international code prefix and the country code, followed by numbers only.
+ * @param personalAdministrativeNumber A number assigned by the PID Provider for audit control or other purposes.
  */
 data class Pid(
     val familyName: FamilyName,
@@ -137,6 +138,7 @@ data class Pid(
     val sex: IsoGender? = null,
     val emailAddress: EmailAddress? = null,
     val mobilePhoneNumber: PhoneNumber? = null,
+    val personalAdministrativeNumber: AdministrativeNumber? = null,
 )
 
 /**
@@ -187,7 +189,6 @@ typealias IsoCountrySubdivision = String
 typealias AttestationLegalCategory = String
 
 /**
- * @param personalAdministrativeNumber A number assigned by the PID Provider for audit control or other purposes.
  * @param expiryDate Date (and possibly time) when the PID will expire.
  * @param issuingAuthority Name of the administrative authority that has issued this PID instance,
  * or the ISO 3166 Alpha-2 country code of the respective Member State
@@ -202,7 +203,6 @@ typealias AttestationLegalCategory = String
  * @param attestationLegalCategory This attribute indicates that a PID has indeed been issued as a PID.
  */
 data class PidMetaData(
-    val personalAdministrativeNumber: AdministrativeNumber? = null,
     val expiryDate: LocalDate,
     val issuingAuthority: IssuingAuthority,
     val issuingCountry: IsoCountry,

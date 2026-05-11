@@ -82,10 +82,10 @@ private fun MDocBuilder.addItemsToSign(pid: Pid) {
     pid.sex?.let { addItemToSign(MsoMdocPidClaims.Sex, it.value.toDataElement()) }
     pid.emailAddress?.let { addItemToSign(MsoMdocPidClaims.EmailAddress, it.toDataElement()) }
     pid.mobilePhoneNumber?.let { addItemToSign(MsoMdocPidClaims.MobilePhoneNumberAttribute, it.value.toDataElement()) }
+    pid.personalAdministrativeNumber?.let { addItemToSign(MsoMdocPidClaims.PersonalAdministrativeNumber, it.value.toDataElement()) }
 }
 
 private fun MDocBuilder.addItemsToSign(metaData: PidMetaData) {
-    metaData.personalAdministrativeNumber?.let { addItemToSign(MsoMdocPidClaims.PersonalAdministrativeNumber, it.value.toDataElement()) }
     addItemToSign(MsoMdocPidClaims.ExpiryDate, metaData.expiryDate.toDataElement())
     when (val issuingAuthority = metaData.issuingAuthority) {
         is IssuingAuthority.MemberState ->

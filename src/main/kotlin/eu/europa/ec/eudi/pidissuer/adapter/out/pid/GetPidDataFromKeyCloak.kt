@@ -145,6 +145,7 @@ class GetPidDataFromKeyCloak(
                     placeOfBirth = user.placeOfBirth(),
                     picture = null,
                     nationality = user.attributes["nationality"]?.firstOrNull(),
+                    personalAdministrativeNumber = user.attributes["personal_administrative_number"]?.firstOrNull(),
                 )
             }
     }
@@ -220,7 +221,6 @@ class GetPidDataFromKeyCloak(
         }
 
         return PidMetaData(
-            personalAdministrativeNumber = AdministrativeNumber(UUID.randomUUID().toString()),
             expiryDate = expiryDate,
             issuingAuthority = IssuingAuthority.AdministrativeAuthority("${issuerCountry.value} Administrative authority"),
             issuingCountry = issuerCountry,
@@ -270,6 +270,9 @@ class GetPidDataFromKeyCloak(
             sex = userInfo.gender?.let { IsoGender(it) },
             emailAddress = userInfo.email,
             mobilePhoneNumber = null,
+            personalAdministrativeNumber = userInfo.personalAdministrativeNumber?.let {
+                AdministrativeNumber(it)
+            } ?: AdministrativeNumber(UUID.randomUUID().toString()),
         )
 
         val pidMetaData = genPidMetaData()
@@ -302,6 +305,7 @@ private data class UserInfo(
     val placeOfBirth: OidcAssurancePlaceOfBirth? = null,
     val picture: String? = null,
     val nationality: String? = null,
+    val personalAdministrativeNumber: String? = null,
 )
 
 private data class AddressData(
