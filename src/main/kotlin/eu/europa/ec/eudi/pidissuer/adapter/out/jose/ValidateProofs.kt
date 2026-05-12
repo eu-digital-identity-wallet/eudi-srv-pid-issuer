@@ -27,7 +27,8 @@ import eu.europa.ec.eudi.pidissuer.domain.CredentialReusePolicy
 import eu.europa.ec.eudi.pidissuer.domain.EudiReusePolicy
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidNonce
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
 import kotlinx.coroutines.coroutineScope
 import kotlin.time.Instant
@@ -43,33 +44,28 @@ internal class ValidateProofs(
 ) {
 
     suspend operator fun invoke(
-        unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
+        unvalidatedProof: UnvalidatedProof,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
     ): Either<IssueCredentialError, NonEmptyList<JWK>> = coroutineScope {
         either {
-            val credentialKeysAndCNonces = unvalidatedProofs.map {
-                when (it) {
+            val credentialKeysAndCNonces =
+                when (unvalidatedProof) {
                     is UnvalidatedProof.Jwt ->
-                        validateJwtProof(it, credentialConfiguration, at).bind()
+                        validateJwtProof(unvalidatedProof, credentialConfiguration, at).bind()
                     is UnvalidatedProof.Attestation ->
-                        validateAttestationProof(it, credentialConfiguration, at).bind()
+                        validateAttestationProof(unvalidatedProof, credentialConfiguration, at).bind()
                     is UnvalidatedProof.DiVp -> raise(InvalidProof("Supporting only JWT proof"))
                 }
-            }
 
-            val cnonces = credentialKeysAndCNonces.map { it.second }.toNonEmptyListOrNull()
-            checkNotNull(cnonces)
-            ensure(verifyNonce(cnonces, at)) {
+            val cNonces = credentialKeysAndCNonces.second
+            ensure(verifyNonce(cNonces, at)) {
                 InvalidNonce("CNonce is not valid")
             }
 
-            val jwks = credentialKeysAndCNonces.map {
-                extractJwkFromCredentialKey(it.first).getOrElse { error ->
-                    raise(InvalidProof("Unable to extract JWK from CredentialKey", error))
-                }
-            }.flatten()
-                .distinct()
+            val jwks = extractJwkFromCredentialKey(credentialKeysAndCNonces.first).getOrElse { error ->
+                raise(InvalidProof("Unable to extract JWK from CredentialKey", error))
+            }.distinct()
                 .limitTo(credentialConfiguration.credentialReusePolicy)
                 .toNonEmptyListOrNull()
 

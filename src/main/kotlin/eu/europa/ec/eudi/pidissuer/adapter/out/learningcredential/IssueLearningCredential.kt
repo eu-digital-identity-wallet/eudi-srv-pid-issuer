@@ -65,7 +65,7 @@ internal class IssueLearningCredential(
     ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Issuing Learning Credential")
 
-        val holderKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.now()).bind()
+        val holderKeys = validateProofs(request.unvalidatedProof, supportedCredential, clock.now()).bind()
         val learningCredential = getLearningCredential(authorizationContext)
         val issuedAt = clock.now()
         val expiresAt = run {

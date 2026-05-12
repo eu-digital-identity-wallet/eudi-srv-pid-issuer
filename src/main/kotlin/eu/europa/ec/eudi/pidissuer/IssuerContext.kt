@@ -435,11 +435,11 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
         val resolvers = buildMap<CredentialIdentifier, CredentialRequestFactory> {
             if (enableMobileDrivingLicence) {
                 this[CredentialIdentifier(MobileDrivingLicenceV1Scope.value)] =
-                    { identifier, unvalidatedProofs, requestedResponseEncryption ->
+                    { identifier, unvalidatedProof, requestedResponseEncryption ->
                         ResolvedCredentialRequest(
                             MobileDrivingLicenceV1CredentialConfigurationId,
                             MsoMdocCredentialRequest(
-                                unvalidatedProofs = unvalidatedProofs,
+                                unvalidatedProof = unvalidatedProof,
                                 credentialResponseEncryption = requestedResponseEncryption,
                                 docType = MobileDrivingLicenceV1DocType,
                             ),
@@ -450,11 +450,11 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
 
             if (enableMsoMdocPid) {
                 this[CredentialIdentifier(PidMsoMdocScope.value)] =
-                    { identifier, unvalidatedProofs, requestedResponseEncryption ->
+                    { identifier, unvalidatedProof, requestedResponseEncryption ->
                         ResolvedCredentialRequest(
                             PidMsoMdocV1CredentialConfigurationId,
                             MsoMdocCredentialRequest(
-                                unvalidatedProofs = unvalidatedProofs,
+                                unvalidatedProof = unvalidatedProof,
                                 credentialResponseEncryption = requestedResponseEncryption,
                                 docType = PidMsoMdocV1DocType,
                             ),
@@ -469,7 +469,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         ResolvedCredentialRequest(
                             SdJwtVcPidCredentialConfigurationId,
                             SdJwtVcCredentialRequest(
-                                unvalidatedProofs = unvalidatedProofs,
+                                unvalidatedProof = unvalidatedProofs,
                                 credentialResponseEncryption = requestedResponseEncryption,
                                 type = SdJwtVcPidVct,
                             ),

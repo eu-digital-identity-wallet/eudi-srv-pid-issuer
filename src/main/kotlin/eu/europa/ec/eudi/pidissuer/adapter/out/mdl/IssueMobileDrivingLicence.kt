@@ -356,7 +356,7 @@ internal class IssueMobileDrivingLicence(
     ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Issuing mDL")
         val holderKeys = with(jwkExtensions()) {
-            validateProofs(request.unvalidatedProofs, supportedCredential, clock.now()).bind()
+            validateProofs(request.unvalidatedProof, supportedCredential, clock.now()).bind()
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
         }
         val licence = getMobileDrivingLicenceData(authorizationContext).bind()

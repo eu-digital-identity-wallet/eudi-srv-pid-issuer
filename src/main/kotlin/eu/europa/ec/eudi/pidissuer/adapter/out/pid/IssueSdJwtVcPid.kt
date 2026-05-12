@@ -230,7 +230,7 @@ internal class IssueSdJwtVcPid(
     ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Handling issuance request ...")
 
-        val holderPubKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.now()).bind()
+        val holderPubKeys = validateProofs(request.unvalidatedProof, supportedCredential, clock.now()).bind()
         val (pid, pidMetaData) = getPidData(authorizationContext).bind()
         val issuedAt = clock.now()
         val expiresAt = calculateExpiresAt(issuedAt)

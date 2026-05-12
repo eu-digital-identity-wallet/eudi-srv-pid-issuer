@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.credential
 
-import arrow.core.NonEmptyList
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIdentifier
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.domain.ResolvedCredentialRequest
@@ -23,7 +22,7 @@ import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ResolveCredentialRequestByCredentialIdentifier
 
 typealias CredentialRequestFactory =
-    (CredentialIdentifier, NonEmptyList<UnvalidatedProof>, RequestedResponseEncryption) -> ResolvedCredentialRequest
+    (CredentialIdentifier, UnvalidatedProof, RequestedResponseEncryption) -> ResolvedCredentialRequest
 
 class DefaultResolveCredentialRequestByCredentialIdentifier(
     private val factories: Map<CredentialIdentifier, CredentialRequestFactory>,
@@ -31,8 +30,8 @@ class DefaultResolveCredentialRequestByCredentialIdentifier(
 
     override suspend fun invoke(
         identifier: CredentialIdentifier,
-        unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
+        unvalidatedProof: UnvalidatedProof,
         credentialResponseEncryption: RequestedResponseEncryption,
     ): ResolvedCredentialRequest? =
-        factories[identifier]?.let { factory -> factory(identifier, unvalidatedProofs, credentialResponseEncryption) }
+        factories[identifier]?.let { factory -> factory(identifier, unvalidatedProof, credentialResponseEncryption) }
 }

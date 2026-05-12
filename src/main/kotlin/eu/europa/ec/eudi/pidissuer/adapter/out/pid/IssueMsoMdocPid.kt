@@ -320,7 +320,7 @@ internal class IssueMsoMdocPid(
     ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Handling issuance request ...")
         val holderPubKeys = with(jwkExtensions()) {
-            validateProofs(request.unvalidatedProofs, supportedCredential, clock.now())
+            validateProofs(request.unvalidatedProof, supportedCredential, clock.now())
                 .bind()
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
         }

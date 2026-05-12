@@ -26,7 +26,6 @@ import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
 import com.nimbusds.jose.proc.JWSKeySelector
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jose.proc.SingleKeyJWSKeySelector
-import com.nimbusds.jose.util.Base64
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
@@ -35,7 +34,6 @@ import com.nimbusds.jwt.proc.JWTProcessor
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import java.security.interfaces.ECPublicKey
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 import kotlin.time.Instant
@@ -94,9 +92,6 @@ private suspend fun algorithmAndCredentialKey(
         ?.takeIf(supported::contains)
         ?: error("signing algorithm '${header.algorithm.name}' is not supported")
 
-    val kid: String? = header.keyID
-    val jwk: JWK? = header.jwk
-    val x5c: List<Base64>? = header.x509CertChain
     val keyAttestation = header.getCustomParam("key_attestation") as String?
 
     when (proofType.keyAttestationRequirement) {
@@ -108,14 +103,11 @@ private suspend fun algorithmAndCredentialKey(
     }
 
     val key = when {
-        kid != null && jwk == null && keyAttestation == null && x5c.isNullOrEmpty() -> CredentialKey.DIDUrl(kid).getOrThrow()
-        kid == null && jwk != null && keyAttestation == null && x5c.isNullOrEmpty() -> CredentialKey.Jwk(jwk)
-        kid == null && jwk == null && keyAttestation == null && !x5c.isNullOrEmpty() -> CredentialKey.X5c.parseDer(x5c).getOrThrow()
-        jwk == null && keyAttestation != null && x5c.isNullOrEmpty() -> {
+        keyAttestation != null -> {
             CredentialKey.AttestedKeys.fromKeyAttestation(keyAttestation, proofType, verifyKeyAttestation, expectedKeyAttestationNonce, at)
         }
 
-        else -> error("public key(s) must be provided in one of 'kid', 'jwk', 'x5c' or 'key_attestation'")
+        else -> error("public key(s) must be provided in 'key_attestation' header")
     }.apply {
         ensureCompatibleWithAlgorithm(algorithm, signedJwt)
     }
@@ -165,24 +157,10 @@ private suspend fun CredentialKey.ensureCompatibleWithAlgorithm(algorithm: JWSAl
     }
 
     when (this) {
-        is CredentialKey.DIDUrl -> jwk.ensureCompatibleWith(algorithm)
-        is CredentialKey.Jwk -> value.ensureCompatibleWith(algorithm)
-
         is CredentialKey.AttestedKeys -> {
             val signingJWK = keys.signingKeyOf(signedJwt)
             requireNotNull(signingJWK) { "Key attestation does not contain a key that verifies the jwt proof signature" }
             signingJWK.ensureCompatibleWith(algorithm)
-        }
-
-        is CredentialKey.X5c -> {
-            val supportedAlgorithms =
-                when (certificate.publicKey) {
-                    is ECPublicKey -> ECDSASigner.SUPPORTED_ALGORITHMS
-                    else -> error("Certificate key not supported")
-                }
-            require(algorithm in supportedAlgorithms) {
-                "certificate algorithm '${certificate.publicKey.algorithm}' is not compatible with signing algorithm '${algorithm.name}'"
-            }
         }
     }
 }
@@ -204,9 +182,6 @@ private suspend fun keySelector(
             requireNotNull(signingJWK) { "Key attestation does not contain a key that verifies the jwt proof signature" }
             signingJWK.keySelector(algorithm)
         }
-        is CredentialKey.DIDUrl -> credentialKey.jwk.keySelector(algorithm)
-        is CredentialKey.Jwk -> credentialKey.value.keySelector(algorithm)
-        is CredentialKey.X5c -> SingleKeyJWSKeySelector(algorithm, credentialKey.certificate.publicKey)
     }
 }
 

@@ -215,7 +215,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
         log.info("Issuing DC4EU EHIC")
 
         val now = clock.now()
-        val holderPublicKeys = validateProofs(request.unvalidatedProofs, supportedCredential, now).bind()
+            val holderPublicKeys = validateProofs(request.unvalidatedProof, supportedCredential, now).bind()
         val ehic = getEuropeanHealthInsuranceCardData()
         val dateOfIssuance = now
         val dateOfExpiry = dateOfIssuance + validity
