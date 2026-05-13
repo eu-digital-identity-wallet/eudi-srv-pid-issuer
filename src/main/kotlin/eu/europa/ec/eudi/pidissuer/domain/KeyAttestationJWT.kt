@@ -19,12 +19,8 @@ import arrow.core.NonEmptyList
 import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSObject
-import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jose.crypto.MACSigner
-import com.nimbusds.jose.crypto.RSASSAVerifier
-import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
-import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jwt.SignedJWT
 
 data class KeyAttestationJWT private constructor(
@@ -102,19 +98,3 @@ private fun requireIsNotMAC(alg: JWSAlgorithm) =
     require(!alg.isMACSigning()) { "MAC signing algorithm not allowed" }
 
 private fun JWSAlgorithm.isMACSigning(): Boolean = this in MACSigner.SUPPORTED_ALGORITHMS
-
-internal fun List<JWK>.signingKeyOf(signedJwt: SignedJWT): JWK? =
-    firstOrNull()?.let { verifiesSignature(it, signedJwt) }
-
-internal fun verifiesSignature(jwk: JWK, signedJwt: SignedJWT): JWK? =
-    try {
-        val verifier = when (jwk) {
-            is RSAKey -> RSASSAVerifier(jwk)
-            is ECKey -> ECDSAVerifier(jwk)
-            else -> null
-        }
-        if (verifier != null && signedJwt.verify(verifier)) jwk
-        else null
-    } catch (_: Exception) {
-        null
-    }

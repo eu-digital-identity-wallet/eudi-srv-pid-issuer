@@ -523,7 +523,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
     }
 
     @Test
-    fun `when duplicate keys exists in key attestation they are skipped`() = runTest {
+    fun `when duplicate keys exists in key attestation issuance fails`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
         val cNonce = generateNonce(clock.now(), 5L.minutes)
         val jwtProofSigningKey = ECKeyGenerator(Curve.P_256).generate()
@@ -545,18 +545,17 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
             .bodyValue(requestByCredentialIdentifier(proofs))
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
-            .expectStatus().isOk()
-            .expectBody<IssueCredentialResponse.PlainTO>()
+            .expectStatus().isBadRequest()
+            .expectBody<IssueCredentialResponse.FailedTO>()
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        val issuedCredentials = assertNotNull(response.credentials)
-        assertEquals(2, issuedCredentials.size)
-        assertNull(response.transactionId)
+        assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
+        assertEquals("Invalid proof JWT: Duplicate keys provided in credential request", response.errorDescription)
     }
 
     @Test
-    fun `when key attestation in jwt proof, it must contain valid 'exp' claim, otherwise issuance fails `() = runTest {
+    fun `when key attestation in jwt proof, it must contain valid 'exp' claim, otherwise issuance fails`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
         val previousCNonce = generateNonce(clock.now(), 5L.minutes)
         val keyAttestationCNonce = generateNonce(clock.now(), 5L.minutes)
@@ -760,7 +759,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
 
             assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
             assertEquals(
-                "Invalid proof JWT: The first key in the key attestation does not verify the jwt proof signature",
+                "Invalid proof JWT: Signed JWT rejected: Invalid signature",
                 response.errorDescription,
             )
         }

@@ -59,7 +59,7 @@ internal class ValidateProofs(
                 InvalidNonce("CNonce is not valid")
             }
 
-            val jwks = credentialKeysAndCNonce.first.value.distinct()
+            val jwks = credentialKeysAndCNonce.first.value
                 .limitTo(credentialConfiguration.credentialReusePolicy)
                 .toNonEmptyListOrNull()
 

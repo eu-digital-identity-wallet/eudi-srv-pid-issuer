@@ -51,11 +51,12 @@ sealed interface UnvalidatedProof {
 value class CredentialKeys(val value: NonEmptyList<JWK>) {
 
     init {
-        value.forEach { it.isPublicAsymmetricKey() }
+        value.forEach { it.ensureIsPublicAsymmetricKey() }
+        require(value.size == value.distinct().size) { "Duplicate keys provided in credential request" }
     }
 
     companion object {
-        private fun JWK.isPublicAsymmetricKey() {
+        private fun JWK.ensureIsPublicAsymmetricKey() {
             require(!isPrivate) {
                 "Private key provided while expecting a public key."
             }

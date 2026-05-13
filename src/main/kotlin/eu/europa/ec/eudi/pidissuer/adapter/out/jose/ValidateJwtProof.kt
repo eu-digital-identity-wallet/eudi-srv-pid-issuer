@@ -69,12 +69,12 @@ internal class ValidateJwtProof(
             "JWT proof signing algorithm '${signedJwt.header.algorithm}' is not supported, " +
                 "must be one of: ${proofType.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
         }
-        val (algorithm, credentialKey) = algorithmAndCredentialKey(signedJwt, proofType, verifyKeyAttestation, nonce, at)
-        val keySelector = keySelector(signedJwt, credentialKey, algorithm)
+        val (algorithm, credentialKeys) = algorithmAndCredentialKey(signedJwt, proofType, verifyKeyAttestation, nonce, at)
+        val keySelector = keySelector(credentialKeys, algorithm)
         val processor = processor(credentialIssuerId, keySelector)
         processor.process(signedJwt, null)
 
-        credentialKey to nonce
+        credentialKeys to nonce
     }.mapLeft { IssueCredentialError.InvalidProof("Invalid proof JWT", it) }
 }
 
@@ -131,7 +131,7 @@ private suspend fun CredentialKeys.Companion.fromKeyAttestation(
     return CredentialKeys(attestedKeys)
 }
 
-private suspend fun CredentialKeys.ensureCompatibleWithAlgorithm(algorithm: JWSAlgorithm, signedJwt: SignedJWT) {
+private fun CredentialKeys.ensureCompatibleWithAlgorithm(algorithm: JWSAlgorithm, signedJwt: SignedJWT) {
     fun JWK.ensureCompatibleWith(algorithm: JWSAlgorithm) {
         val supportedAlgorithms =
             when (this) {
@@ -143,13 +143,11 @@ private suspend fun CredentialKeys.ensureCompatibleWithAlgorithm(algorithm: JWSA
         }
     }
 
-    val signingJWK = value.signingKeyOf(signedJwt)
-    requireNotNull(signingJWK) { "The first key in the key attestation does not verify the jwt proof signature" }
+    val signingJWK = value.first()
     signingJWK.ensureCompatibleWith(algorithm)
 }
 
-private suspend fun keySelector(
-    signedJwt: SignedJWT,
+private fun keySelector(
     credentialKeys: CredentialKeys,
     algorithm: JWSAlgorithm,
 ): JWSKeySelector<SecurityContext> {
@@ -159,8 +157,7 @@ private suspend fun keySelector(
             else -> TODO("CredentialKey.Jwk with non AsymmetricJWK is not yet supported")
         }
 
-    val signingJWK = credentialKeys.value.signingKeyOf(signedJwt)
-    requireNotNull(signingJWK) { "The first key in the key attestation does not verify the jwt proof signature" }
+    val signingJWK = credentialKeys.value.first()
     return signingJWK.keySelector(algorithm)
 }
 
