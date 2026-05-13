@@ -49,7 +49,7 @@ internal class ValidateJwtProof(
         unvalidatedProof: UnvalidatedProof.Jwt,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
-    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey, String>> = either {
+    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKeys, String>> = either {
         val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.JWT]
         ensureNotNull(proofType) {
             IssueCredentialError.InvalidProof("credential configuration '${credentialConfiguration.id.value}' doesn't support 'jwt' proofs")
@@ -62,7 +62,7 @@ internal class ValidateJwtProof(
         unvalidatedProof: UnvalidatedProof.Jwt,
         proofType: ProofType.Jwt,
         at: Instant,
-    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey, String>> = Either.catch {
+    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKeys, String>> = Either.catch {
         val signedJwt = SignedJWT.parse(unvalidatedProof.jwt)
         val nonce = requireNotNull(signedJwt.jwtClaimsSet.getStringClaim("nonce")) { "Missing 'nonce'" }
         require(signedJwt.header.algorithm in proofType.signingAlgorithmsSupported) {
@@ -84,7 +84,7 @@ private suspend fun algorithmAndCredentialKey(
     verifyKeyAttestation: VerifyKeyAttestation,
     expectedKeyAttestationNonce: String,
     at: Instant,
-): Pair<JWSAlgorithm, CredentialKey> {
+): Pair<JWSAlgorithm, CredentialKeys> {
     val supported = proofType.signingAlgorithmsSupported
     val header = signedJwt.header
     val algorithm = header.algorithm
@@ -97,7 +97,7 @@ private suspend fun algorithmAndCredentialKey(
     requireNotNull(keyAttestation) { "JWT Proof must contain `key_attestation`" }
 
     val key = run {
-        CredentialKey.AttestedKeys.fromKeyAttestation(keyAttestation, proofType, verifyKeyAttestation, expectedKeyAttestationNonce, at)
+        CredentialKeys.fromKeyAttestation(keyAttestation, proofType, verifyKeyAttestation, expectedKeyAttestationNonce, at)
     }.apply {
         ensureCompatibleWithAlgorithm(algorithm, signedJwt)
     }
@@ -105,13 +105,13 @@ private suspend fun algorithmAndCredentialKey(
     return (algorithm to key)
 }
 
-private suspend fun CredentialKey.AttestedKeys.Companion.fromKeyAttestation(
+private suspend fun CredentialKeys.Companion.fromKeyAttestation(
     keyAttestation: String,
     proofJwt: ProofType.Jwt,
     verifyKeyAttestation: VerifyKeyAttestation,
     expectedNonce: String,
     at: Instant,
-): CredentialKey.AttestedKeys {
+): CredentialKeys {
     val keyAttestationJWT = KeyAttestationJWT(keyAttestation)
     require(keyAttestationJWT.jwt.header.algorithm in proofJwt.signingAlgorithmsSupported) {
         "Key attestation signing algorithm '${keyAttestationJWT.jwt.header.algorithm}' is not supported, " +
@@ -128,10 +128,10 @@ private suspend fun CredentialKey.AttestedKeys.Companion.fromKeyAttestation(
         require(expectedNonce == nonce) { "Key Attestation 'nonce' does not match JWT Proof 'nonce'" }
     }
 
-    return CredentialKey.AttestedKeys(attestedKeys)
+    return CredentialKeys(attestedKeys)
 }
 
-private suspend fun CredentialKey.ensureCompatibleWithAlgorithm(algorithm: JWSAlgorithm, signedJwt: SignedJWT) {
+private suspend fun CredentialKeys.ensureCompatibleWithAlgorithm(algorithm: JWSAlgorithm, signedJwt: SignedJWT) {
     fun JWK.ensureCompatibleWith(algorithm: JWSAlgorithm) {
         val supportedAlgorithms =
             when (this) {
@@ -143,18 +143,14 @@ private suspend fun CredentialKey.ensureCompatibleWithAlgorithm(algorithm: JWSAl
         }
     }
 
-    when (this) {
-        is CredentialKey.AttestedKeys -> {
-            val signingJWK = keys.signingKeyOf(signedJwt)
-            requireNotNull(signingJWK) { "Key attestation does not contain a key that verifies the jwt proof signature" }
-            signingJWK.ensureCompatibleWith(algorithm)
-        }
-    }
+    val signingJWK = value.signingKeyOf(signedJwt)
+    requireNotNull(signingJWK) { "Key attestation does not contain a key that verifies the jwt proof signature" }
+    signingJWK.ensureCompatibleWith(algorithm)
 }
 
 private suspend fun keySelector(
     signedJwt: SignedJWT,
-    credentialKey: CredentialKey,
+    credentialKeys: CredentialKeys,
     algorithm: JWSAlgorithm,
 ): JWSKeySelector<SecurityContext> {
     fun <C : SecurityContext> JWK.keySelector(algorithm: JWSAlgorithm): SingleKeyJWSKeySelector<C> =
@@ -163,13 +159,9 @@ private suspend fun keySelector(
             else -> TODO("CredentialKey.Jwk with non AsymmetricJWK is not yet supported")
         }
 
-    return when (credentialKey) {
-        is CredentialKey.AttestedKeys -> {
-            val signingJWK = credentialKey.keys.signingKeyOf(signedJwt)
-            requireNotNull(signingJWK) { "Key attestation does not contain a key that verifies the jwt proof signature" }
-            signingJWK.keySelector(algorithm)
-        }
-    }
+    val signingJWK = credentialKeys.value.signingKeyOf(signedJwt)
+    requireNotNull(signingJWK) { "Key attestation does not contain a key that verifies the jwt proof signature" }
+    return signingJWK.keySelector(algorithm)
 }
 
 private val expectedType = JOSEObjectType("openid4vci-proof+jwt")

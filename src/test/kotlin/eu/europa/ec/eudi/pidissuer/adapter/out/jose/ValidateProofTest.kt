@@ -15,16 +15,13 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.Either
 import arrow.core.NonEmptyList
-import arrow.core.nonEmptyListOf
 import arrow.core.nonEmptySetOf
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
-import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
@@ -45,34 +42,31 @@ class ValidateProofTest {
         verifyNonce = { _, _ ->
             fail("VerifyCNonce should not have been invoked")
         },
-        extractJwkFromCredentialKey = { _ ->
-            fail("ExtractJwkFromCredentialKey should not have been invoked.")
-        },
     )
 
     @Test
     internal fun `keys are not truncated when reuse policy is None`() = runTest {
-        val proof = generateJwtProofWithAttestation()
-        val result = runValidateProofsKeepingAllKeys(
+        // 1 signing key + 1 extra key in attestation = 2 attested keys
+        val proof = generateJwtProofWithAttestation(extraKeysNo = 1)
+        val result = runValidateProofs(
             proof = proof,
-            extraKeys = { nonEmptyListOf(generateJwk()) },
             policy = CredentialReusePolicy.None,
         )
 
-        // 1 proof * (1 main + 1 extra unique) = 2 keys, all distinct, none truncated
+        // 2 attested keys, all distinct, none truncated
         assertEquals(2, result.size)
     }
 
     @Test
     internal fun `keys are truncated to 1 when reuse policy contains LimitedTime`() = runTest {
-        val proof = generateJwtProofWithAttestation()
+        // 1 signing key + 1 extra key in attestation = 2 attested keys
+        val proof = generateJwtProofWithAttestation(extraKeysNo = 1)
         val policy = CredentialReusePolicy.EUDI(
             id = "test",
             options = listOf(EudiReusePolicy.LimitedTime(reissueTriggerLifetimeLeft = 5.minutes)),
         )
-        val result = runValidateProofsKeepingAllKeys(
+        val result = runValidateProofs(
             proof = proof,
-            extraKeys = { nonEmptyListOf(generateJwk()) },
             policy = policy,
         )
 
@@ -81,49 +75,30 @@ class ValidateProofTest {
 
     @Test
     internal fun `keys are truncated to effective batch size`() = runTest {
-        // Single proof carrying 5 keys (e.g. attestation proof)
+        // Single proof carrying 5 keys (1 signing + 4 extra)
         val proof = generateJwtProofWithAttestation(extraKeysNo = 4)
-        val extras = nonEmptyListOf(generateJwk(), generateJwk(), generateJwk(), generateJwk())
         val policy = CredentialReusePolicy.EUDI(
             id = "test",
             options = listOf(EudiReusePolicy.OnceOnly(batchSize = 3, reissueTriggerUnused = 1)),
         )
-        val result = runValidateProofsKeepingAllKeys(
+        val result = runValidateProofs(
             proof = proof,
-            extraKeys = { extras },
             policy = policy,
-            includeAttestedKeysInExtraKeys = false,
         )
 
         assertEquals(3, result.size)
     }
 
-    private suspend fun runValidateProofsKeepingAllKeys(
-        proof: Pair<UnvalidatedProof.Jwt, ECKey>,
-        extraKeys: () -> NonEmptyList<JWK>,
+    private suspend fun runValidateProofs(
+        proof: Pair<UnvalidatedProof.Jwt, *>,
         policy: CredentialReusePolicy,
-        includeAttestedKeysInExtraKeys: Boolean = true,
     ): NonEmptyList<JWK> {
-        val (unvalidatedProof, key) = proof
-        val keysByProofKey = mapOf(
-            key.toPublicJWK().computeThumbprint().toString() to
-                (if (includeAttestedKeysInExtraKeys) extraKeys() + key.toPublicJWK() else extraKeys()),
-        )
-
-        val extract = ExtractJwkFromCredentialKey { credentialKey ->
-            // For our generated proofs the credential key is always AttestedKeys; look it up by thumbprint of the first key
-            val keys = (credentialKey as CredentialKey.AttestedKeys).keys
-            val signingKeyThumbprint = keys.signingKeyOf(SignedJWT.parse(unvalidatedProof.jwt))?.computeThumbprint().toString()
-            val match = keysByProofKey[signingKeyThumbprint]
-                ?: error("Unexpected credential key in test")
-            Either.Right<NonEmptyList<JWK>>(match)
-        }
+        val (unvalidatedProof, _) = proof
 
         val validator = ValidateProofs(
             validateJwtProof = ValidateJwtProof(issuer, verifyKeyAttestation),
             validateAttestationProof = ValidateAttestationProof(verifyKeyAttestation),
             verifyNonce = { _, _ -> true },
-            extractJwkFromCredentialKey = extract,
         )
 
         val configuration = pidMsoMdocV1(

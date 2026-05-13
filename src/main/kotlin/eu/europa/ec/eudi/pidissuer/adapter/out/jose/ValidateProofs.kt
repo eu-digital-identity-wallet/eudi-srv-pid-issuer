@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.Either
 import arrow.core.NonEmptyList
-import arrow.core.getOrElse
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.toNonEmptyListOrNull
@@ -28,7 +27,6 @@ import eu.europa.ec.eudi.pidissuer.domain.EudiReusePolicy
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidNonce
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
 import kotlinx.coroutines.coroutineScope
 import kotlin.time.Instant
@@ -40,7 +38,6 @@ internal class ValidateProofs(
     private val validateJwtProof: ValidateJwtProof,
     private val validateAttestationProof: ValidateAttestationProof,
     private val verifyNonce: VerifyNonce,
-    private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
 ) {
 
     suspend operator fun invoke(
@@ -62,9 +59,7 @@ internal class ValidateProofs(
                 InvalidNonce("CNonce is not valid")
             }
 
-            val jwks = extractJwkFromCredentialKey(credentialKeysAndCNonces.first).getOrElse { error ->
-                raise(InvalidProof("Unable to extract JWK from CredentialKey", error))
-            }.distinct()
+            val jwks = credentialKeysAndCNonces.first.value.distinct()
                 .limitTo(credentialConfiguration.credentialReusePolicy)
                 .toNonEmptyListOrNull()
 

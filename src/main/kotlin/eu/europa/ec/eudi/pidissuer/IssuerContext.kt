@@ -557,8 +557,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     registerBean { VerifyKeyAttestation(isTrustedKeyAttestationIssuer = bean()) }
     registerBean { ValidateJwtProof(issuerPublicUrl, bean()) }
     registerBean { ValidateAttestationProof(bean()) }
-    registerBean { DefaultExtractJwkFromCredentialKey }
-    registerBean { ValidateProofs(bean(), bean(), bean(), bean()) }
+    registerBean { ValidateProofs(bean(), bean(), bean()) }
     registerBean {
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
