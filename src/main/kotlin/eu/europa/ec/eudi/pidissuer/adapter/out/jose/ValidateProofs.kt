@@ -46,7 +46,7 @@ internal class ValidateProofs(
         at: Instant,
     ): Either<IssueCredentialError, NonEmptyList<JWK>> = coroutineScope {
         either {
-            val credentialKeysAndCNonces =
+            val credentialKeysAndCNonce =
                 when (unvalidatedProof) {
                     is UnvalidatedProof.Jwt ->
                         validateJwtProof(unvalidatedProof, credentialConfiguration, at).bind()
@@ -54,12 +54,12 @@ internal class ValidateProofs(
                         validateAttestationProof(unvalidatedProof, credentialConfiguration, at).bind()
                 }
 
-            val cNonces = credentialKeysAndCNonces.second
-            ensure(verifyNonce(cNonces, at)) {
+            val cNonce = credentialKeysAndCNonce.second
+            ensure(verifyNonce(cNonce, at)) {
                 InvalidNonce("CNonce is not valid")
             }
 
-            val jwks = credentialKeysAndCNonces.first.value.distinct()
+            val jwks = credentialKeysAndCNonce.first.value.distinct()
                 .limitTo(credentialConfiguration.credentialReusePolicy)
                 .toNonEmptyListOrNull()
 
