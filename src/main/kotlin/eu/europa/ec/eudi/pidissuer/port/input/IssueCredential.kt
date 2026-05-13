@@ -41,7 +41,6 @@ import org.slf4j.LoggerFactory
 @Serializable
 data class ProofsTO(
     @SerialName("jwt") val jwtProofs: List<String>? = null,
-    @SerialName("di_vp") val diVpProofs: List<String>? = null,
     @SerialName("attestation") val attestations: List<String>? = null,
 )
 
@@ -489,22 +488,21 @@ private interface Validations : Raise<IssueCredentialError> {
             when {
                 proofs != null -> {
                     val jwtProofs = proofs.jwtProofs?.map { UnvalidatedProof.Jwt(it) }
-                    val diVpProofs = proofs.diVpProofs?.map { UnvalidatedProof.DiVp(it) }
                     val attestations = proofs.attestations?.map { UnvalidatedProof.Attestation(it) }
                         ?.also {
                             ensure(1 == it.size) { InvalidProof("'attestation' can contain only a single element") }
                         }
                     // Proof object contains exactly one parameter named as the proof type
-                    ensure(1 == listOfNotNull(jwtProofs, diVpProofs, attestations).size) {
+                    ensure(1 == listOfNotNull(jwtProofs, attestations).size) {
                         InvalidProof("Only a single proof type is allowed")
                     }
 
-                    val proofs = (jwtProofs.orEmpty() + diVpProofs.orEmpty() + attestations.orEmpty()).toNonEmptyListOrNull()
+                    val proofs = (jwtProofs.orEmpty() + attestations.orEmpty()).toNonEmptyListOrNull()
                     ensureNotNull(proofs) { MissingProof }
                     ensure(proofs.size == 1) {
                         InvalidProof("You can provide at most 1 proof")
                     }
-                    proofs.firstOrNull()
+                    proofs.first()
                 }
                 else -> raise(MissingProof)
             }

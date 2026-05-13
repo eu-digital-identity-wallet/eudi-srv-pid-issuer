@@ -55,7 +55,6 @@ internal class ValidateProofs(
                         validateJwtProof(unvalidatedProof, credentialConfiguration, at).bind()
                     is UnvalidatedProof.Attestation ->
                         validateAttestationProof(unvalidatedProof, credentialConfiguration, at).bind()
-                    is UnvalidatedProof.DiVp -> raise(InvalidProof("Supporting only JWT proof"))
                 }
 
             val cNonces = credentialKeysAndCNonces.second

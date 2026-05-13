@@ -29,7 +29,6 @@ import eu.europa.ec.eudi.pidissuer.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
 import kotlinx.coroutines.test.runTest
 import kotlin.test.*
@@ -50,31 +49,6 @@ class ValidateProofTest {
             fail("ExtractJwkFromCredentialKey should not have been invoked.")
         },
     )
-
-    @Test
-    internal fun `fails with unsupported proof type`() = runTest {
-        val proof = UnvalidatedProof.DiVp("foo")
-
-        val result =
-            validateProofs(
-                proof,
-                pidMsoMdocV1(
-                    CoseAlgorithm(-7),
-                    nonEmptySetOf(JWSAlgorithm.ES256),
-                    KeyAttestationRequirement(
-                        keyStorage = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
-                        userAuthentication = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
-                    ),
-                ),
-                clock.now(),
-            )
-
-        assert(result.isLeft())
-
-        val error = assertIs<IssueCredentialError.InvalidProof>(result.leftOrNull())
-        assertEquals("Supporting only JWT proof", error.msg)
-        assertNull(error.cause)
-    }
 
     @Test
     internal fun `keys are not truncated when reuse policy is None`() = runTest {

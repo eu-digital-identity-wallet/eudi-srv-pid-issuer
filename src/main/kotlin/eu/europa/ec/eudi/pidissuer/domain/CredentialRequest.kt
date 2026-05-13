@@ -36,11 +36,6 @@ sealed interface UnvalidatedProof {
     data class Jwt(val jwt: String) : UnvalidatedProof
 
     /**
-     * Proof of possession using a W3C Verifiable Presentation object signed using the Data Integrity Proof.
-     */
-    data class DiVp(val vp: String) : UnvalidatedProof
-
-    /**
      * A JWT representing a key attestation without using a proof of possession of
      * the cryptographic key material that is being attested.
      */
