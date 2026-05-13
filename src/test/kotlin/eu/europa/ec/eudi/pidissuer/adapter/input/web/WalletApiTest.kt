@@ -161,7 +161,6 @@ internal class BaseWalletApiTest {
         "issuer.credentialResponseEncryption.required=false",
         "issuer.credentialEndpoint.batchIssuance.enabled=true",
         "issuer.credentialEndpoint.batchIssuance.batchSize=3",
-        "issuer.pid.mso_mdoc.key_attestations.required=true",
     ],
 )
 internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseWalletApiTest() {
@@ -472,7 +471,6 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
         "issuer.credentialResponseEncryption.required=false",
         "issuer.credentialEndpoint.batchIssuance.enabled=true",
         "issuer.credentialEndpoint.batchIssuance.batchSize=3",
-        "issuer.pid.mso_mdoc.key_attestations.required=true",
         "issuer.pid.mso_mdoc.key_attestations.constraints.key_storage=iso_18045_high,iso_18045_moderate",
         "issuer.pid.mso_mdoc.key_attestations.constraints.user_authentication=iso_18045_high,iso_18045_moderate",
     ],
@@ -914,7 +912,6 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
         "issuer.credentialResponseEncryption.required=true",
         "issuer.credentialEndpoint.batchIssuance.enabled=true",
         "issuer.credentialEndpoint.batchIssuance.batchSize=3",
-        "issuer.pid.mso_mdoc.key_attestations.required=true",
     ],
 )
 internal class WalletApiResponseEncryptionRequiredTest : BaseWalletApiTest() {
@@ -1205,7 +1202,6 @@ internal class WalletApiResponseEncryptionRequiredTest : BaseWalletApiTest() {
     properties = [
         "issuer.credentialRequestEncryption.required=false",
         "issuer.credentialResponseEncryption.required=false",
-        "issuer.pid.sd_jwt_vc.key_attestations.required=true",
     ],
 )
 internal class WalletApiDeferredIssuanceResponseEncryptionOptionalTest : BaseWalletApiTest() {
@@ -1256,7 +1252,6 @@ internal class WalletApiDeferredIssuanceResponseEncryptionOptionalTest : BaseWal
     properties = [
         "issuer.credentialResponseEncryption.required=true",
         "issuer.pid.sd_jwt_vc.enabled=true",
-        "issuer.pid.sd_jwt_vc.key_attestations.required=true",
     ],
 )
 internal class WalletApiDeferredIssuanceResponseEncryptionRequiredTest : BaseWalletApiTest() {

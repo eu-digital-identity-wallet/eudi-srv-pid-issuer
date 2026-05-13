@@ -51,7 +51,7 @@ internal class ValidateJwtProofTest {
     private val credentialConfiguration = mobileDrivingLicenceV1(
         CoseAlgorithm(-7),
         checkNotNull(ECDSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
-        KeyAttestationRequirement.NotRequired,
+        KeyAttestationRequirement.plain(),
     )
 
     @Test
@@ -175,7 +175,7 @@ internal class ValidateJwtProofTest {
                 mobileDrivingLicenceV1(
                     CoseAlgorithm(-7),
                     nonEmptySetOf(JWSAlgorithm.ES512),
-                    KeyAttestationRequirement.NotRequired,
+                    KeyAttestationRequirement.plain(),
                 ),
                 clock.now(),
             )

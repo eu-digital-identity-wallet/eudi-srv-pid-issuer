@@ -201,7 +201,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredentials: StoreIssuedCredentials,
-    override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.NotRequired,
+    override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.plain(),
 ) : IssueSpecificCredential {
     init {
         require(validity.isPositive())
@@ -259,7 +259,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             generateNotificationId: GenerateNotificationId,
             storeIssuedCredentials: StoreIssuedCredentials,
             jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-            keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.NotRequired,
+            keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.plain(),
             credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
         ): IssueSdJwtVcEuropeanHealthInsuranceCard =
             IssueSdJwtVcEuropeanHealthInsuranceCard(
@@ -302,7 +302,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             generateNotificationId: GenerateNotificationId,
             storeIssuedCredentials: StoreIssuedCredentials,
             jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-            keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.NotRequired,
+            keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.plain(),
             credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
         ): IssueSdJwtVcEuropeanHealthInsuranceCard =
             IssueSdJwtVcEuropeanHealthInsuranceCard(

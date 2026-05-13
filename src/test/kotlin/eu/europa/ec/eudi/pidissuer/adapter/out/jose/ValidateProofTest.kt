@@ -61,7 +61,7 @@ class ValidateProofTest {
                 pidMsoMdocV1(
                     CoseAlgorithm(-7),
                     nonEmptySetOf(JWSAlgorithm.ES256),
-                    KeyAttestationRequirement.Required(
+                    KeyAttestationRequirement(
                         keyStorage = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
                         userAuthentication = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
                     ),
@@ -155,7 +155,7 @@ class ValidateProofTest {
         val configuration = pidMsoMdocV1(
             CoseAlgorithm(-7),
             nonEmptySetOf(JWSAlgorithm.ES256),
-            KeyAttestationRequirement.Required(
+            KeyAttestationRequirement(
                 keyStorage = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
                 userAuthentication = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
             ),

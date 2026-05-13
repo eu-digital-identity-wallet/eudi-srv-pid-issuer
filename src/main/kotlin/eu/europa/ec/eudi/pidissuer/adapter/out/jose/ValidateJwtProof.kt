@@ -94,20 +94,10 @@ private suspend fun algorithmAndCredentialKey(
 
     val keyAttestation = header.getCustomParam("key_attestation") as String?
 
-    when (proofType.keyAttestationRequirement) {
-        KeyAttestationRequirement.NotRequired ->
-            require(null == keyAttestation) { "JWT Proof cannot contain `key_attestation`" }
+    requireNotNull(keyAttestation) { "JWT Proof must contain `key_attestation`" }
 
-        is KeyAttestationRequirement.Required ->
-            requireNotNull(keyAttestation) { "JWT Proof must contain `key_attestation`" }
-    }
-
-    val key = when {
-        keyAttestation != null -> {
-            CredentialKey.AttestedKeys.fromKeyAttestation(keyAttestation, proofType, verifyKeyAttestation, expectedKeyAttestationNonce, at)
-        }
-
-        else -> error("public key(s) must be provided in 'key_attestation' header")
+    val key = run {
+        CredentialKey.AttestedKeys.fromKeyAttestation(keyAttestation, proofType, verifyKeyAttestation, expectedKeyAttestationNonce, at)
     }.apply {
         ensureCompatibleWithAlgorithm(algorithm, signedJwt)
     }
@@ -122,9 +112,6 @@ private suspend fun CredentialKey.AttestedKeys.Companion.fromKeyAttestation(
     expectedNonce: String,
     at: Instant,
 ): CredentialKey.AttestedKeys {
-    require(proofJwt.keyAttestationRequirement is KeyAttestationRequirement.Required) {
-        "Proof type JWT does not require key attestation, though one was provided."
-    }
     val keyAttestationJWT = KeyAttestationJWT(keyAttestation)
     require(keyAttestationJWT.jwt.header.algorithm in proofJwt.signingAlgorithmsSupported) {
         "Key attestation signing algorithm '${keyAttestationJWT.jwt.header.algorithm}' is not supported, " +

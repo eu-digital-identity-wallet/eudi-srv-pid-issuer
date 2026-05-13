@@ -1113,16 +1113,13 @@ private fun BeanRegistrarDsl.credentialReusePolicy(prefix: String): CredentialRe
 }
 
 private fun BeanRegistrarDsl.keyAttestationRequirement(attestationPropertyPrefix: String): KeyAttestationRequirement {
-    val keyAttestationRequired = env.getProperty<Boolean>("$attestationPropertyPrefix.key_attestations.required")
     val keyStorageConstraints = env.getProperty<List<String>>(
         "$attestationPropertyPrefix.key_attestations.constraints.key_storage",
     )
     val userAuthenticationConstraints = env.getProperty<List<String>>(
         "$attestationPropertyPrefix.key_attestations.constraints.user_authentication",
     )
-    return if (keyAttestationRequired == null || !keyAttestationRequired)
-        KeyAttestationRequirement.NotRequired
-    else KeyAttestationRequirement.Required(
+    return KeyAttestationRequirement(
         keyStorage = keyStorageConstraints?.map {
             AttackPotentialResistance(it)
         }?.toNonEmptySetOrNull(),
