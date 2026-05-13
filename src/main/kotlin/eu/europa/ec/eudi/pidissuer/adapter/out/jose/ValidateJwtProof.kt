@@ -144,7 +144,7 @@ private suspend fun CredentialKeys.ensureCompatibleWithAlgorithm(algorithm: JWSA
     }
 
     val signingJWK = value.signingKeyOf(signedJwt)
-    requireNotNull(signingJWK) { "Key attestation does not contain a key that verifies the jwt proof signature" }
+    requireNotNull(signingJWK) { "The first key in the key attestation does not verify the jwt proof signature" }
     signingJWK.ensureCompatibleWith(algorithm)
 }
 
@@ -160,7 +160,7 @@ private suspend fun keySelector(
         }
 
     val signingJWK = credentialKeys.value.signingKeyOf(signedJwt)
-    requireNotNull(signingJWK) { "Key attestation does not contain a key that verifies the jwt proof signature" }
+    requireNotNull(signingJWK) { "The first key in the key attestation does not verify the jwt proof signature" }
     return signingJWK.keySelector(algorithm)
 }
 

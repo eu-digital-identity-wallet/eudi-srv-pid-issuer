@@ -760,7 +760,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
 
             assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
             assertEquals(
-                "Invalid proof JWT: Key attestation does not contain a key that verifies the jwt proof signature",
+                "Invalid proof JWT: The first key in the key attestation does not verify the jwt proof signature",
                 response.errorDescription,
             )
         }

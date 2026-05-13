@@ -88,7 +88,7 @@ internal suspend fun jwtProofWithKeyAttestation(
  * Creates a key attestation jwt having as attested keys the one passed in [proofSigningKey]
  * plus a number of keys generated from [extraKeys] function.
  *
- * NOTE: The [proofSigningKey] is added last in the array of attested keys.
+ * NOTE: The [proofSigningKey] is added first in the array of attested keys.
  *
  * @param proofSigningKey The key used to sign the JWT Proof
  * @param extraKeys   Function that generates the extra keys to be included in the 'attested_keys' array claim.
@@ -106,7 +106,7 @@ internal suspend fun keyAttestationJWT(
     val keyAttestationSigningKey = loadECKey("key-attestation-key.pem")
     val signer = ECDSASigner(keyAttestationSigningKey)
 
-    val attestedKeys = extraKeys() + proofSigningKey
+    val attestedKeys = listOf(proofSigningKey) + extraKeys()
 
     val attestedKeysJsonArray = attestedKeys.map { key ->
         JSONUtils.parseJSON(key.toPublicJWK().toJSONString())

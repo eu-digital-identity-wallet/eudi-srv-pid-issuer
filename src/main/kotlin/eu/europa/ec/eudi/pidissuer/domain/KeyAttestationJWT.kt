@@ -26,9 +26,6 @@ import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jwt.SignedJWT
-import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.launch
 
 data class KeyAttestationJWT private constructor(
     val jwt: SignedJWT,
@@ -106,12 +103,8 @@ private fun requireIsNotMAC(alg: JWSAlgorithm) =
 
 private fun JWSAlgorithm.isMACSigning(): Boolean = this in MACSigner.SUPPORTED_ALGORITHMS
 
-internal suspend fun List<JWK>.signingKeyOf(signedJwt: SignedJWT): JWK? {
-    val tasks = map { jwk: JWK ->
-        suspend { verifiesSignature(jwk, signedJwt) }
-    }
-    return signatureVerifiedByKey(*tasks.toTypedArray())
-}
+internal fun List<JWK>.signingKeyOf(signedJwt: SignedJWT): JWK? =
+    firstOrNull()?.let { verifiesSignature(it, signedJwt) }
 
 internal fun verifiesSignature(jwk: JWK, signedJwt: SignedJWT): JWK? =
     try {
@@ -125,10 +118,3 @@ internal fun verifiesSignature(jwk: JWK, signedJwt: SignedJWT): JWK? =
     } catch (_: Exception) {
         null
     }
-
-internal suspend fun signatureVerifiedByKey(vararg tasks: suspend () -> JWK?): JWK? =
-    channelFlow {
-        tasks.forEach {
-            launch { send(it()) }
-        }
-    }.firstOrNull { it != null }
