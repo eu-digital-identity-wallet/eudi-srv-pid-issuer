@@ -44,7 +44,7 @@ private val log = LoggerFactory.getLogger(IssueLearningCredential::class.java)
 internal class IssueLearningCredential(
     override val supportedCredential: CredentialConfiguration,
     override val publicKey: JWK,
-    override val keyAttestationRequirement: KeyAttestationRequirement,
+    override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.ts3(),
     private val clock: Clock,
     private val validateProofs: ValidateProofs,
     private val getLearningCredential: GetLearningCredential,
@@ -65,7 +65,7 @@ internal class IssueLearningCredential(
     ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Issuing Learning Credential")
 
-        val holderKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.now()).bind()
+        val holderKeys = validateProofs(request.unvalidatedProof, supportedCredential, clock.now()).bind()
         val learningCredential = getLearningCredential(authorizationContext)
         val issuedAt = clock.now()
         val expiresAt = run {

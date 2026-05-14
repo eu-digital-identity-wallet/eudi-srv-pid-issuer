@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.credential
 
-import arrow.core.NonEmptyList
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIdentifier
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.domain.ResolvedCredentialRequest
@@ -29,7 +28,7 @@ fun interface ResolveCredentialRequestByCredentialIdentifier {
 
     suspend operator fun invoke(
         identifier: CredentialIdentifier,
-        unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
+        unvalidatedProof: UnvalidatedProof,
         credentialResponseEncryption: RequestedResponseEncryption,
     ): ResolvedCredentialRequest?
 }

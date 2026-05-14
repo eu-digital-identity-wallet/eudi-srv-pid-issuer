@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
-import arrow.core.NonEmptyList
 import arrow.core.NonEmptySet
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
@@ -69,10 +68,10 @@ data class MsoMdocCredentialConfiguration(
 }
 
 internal fun MsoMdocCredentialConfiguration.credentialRequest(
-    unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
+    unvalidatedProof: UnvalidatedProof,
     credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
 ): MsoMdocCredentialRequest = MsoMdocCredentialRequest(
-    unvalidatedProofs = unvalidatedProofs,
+    unvalidatedProof = unvalidatedProof,
     credentialResponseEncryption = credentialResponseEncryption,
     docType = docType,
 )
@@ -81,7 +80,7 @@ internal fun MsoMdocCredentialConfiguration.credentialRequest(
 // Credential Request
 //
 data class MsoMdocCredentialRequest(
-    override val unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
+    override val unvalidatedProof: UnvalidatedProof,
     override val credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
     val docType: MsoDocType,
 ) : CredentialRequest {

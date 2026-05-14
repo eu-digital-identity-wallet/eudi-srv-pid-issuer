@@ -333,7 +333,7 @@ internal class IssueMobileDrivingLicence(
     private val validityDuration: Duration,
     private val storeIssuedCredentials: StoreIssuedCredentials,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.NotRequired,
+    override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.ts3(),
     private val generateStatusListToken: GenerateStatusListToken?,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : IssueSpecificCredential {
@@ -356,7 +356,7 @@ internal class IssueMobileDrivingLicence(
     ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Issuing mDL")
         val holderKeys = with(jwkExtensions()) {
-            validateProofs(request.unvalidatedProofs, supportedCredential, clock.now()).bind()
+            validateProofs(request.unvalidatedProof, supportedCredential, clock.now()).bind()
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
         }
         val licence = getMobileDrivingLicenceData(authorizationContext).bind()

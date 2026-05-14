@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.Either
 import arrow.core.NonEmptyList
-import arrow.core.getOrElse
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.toNonEmptyListOrNull
@@ -27,7 +26,7 @@ import eu.europa.ec.eudi.pidissuer.domain.CredentialReusePolicy
 import eu.europa.ec.eudi.pidissuer.domain.EudiReusePolicy
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidNonce
 import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
 import kotlinx.coroutines.coroutineScope
 import kotlin.time.Instant
@@ -39,37 +38,28 @@ internal class ValidateProofs(
     private val validateJwtProof: ValidateJwtProof,
     private val validateAttestationProof: ValidateAttestationProof,
     private val verifyNonce: VerifyNonce,
-    private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
 ) {
 
     suspend operator fun invoke(
-        unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
+        unvalidatedProof: UnvalidatedProof,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
     ): Either<IssueCredentialError, NonEmptyList<JWK>> = coroutineScope {
         either {
-            val credentialKeysAndCNonces = unvalidatedProofs.map {
-                when (it) {
+            val credentialKeysAndCNonce =
+                when (unvalidatedProof) {
                     is UnvalidatedProof.Jwt ->
-                        validateJwtProof(it, credentialConfiguration, at).bind()
+                        validateJwtProof(unvalidatedProof, credentialConfiguration, at).bind()
                     is UnvalidatedProof.Attestation ->
-                        validateAttestationProof(it, credentialConfiguration, at).bind()
-                    is UnvalidatedProof.DiVp -> raise(InvalidProof("Supporting only JWT proof"))
+                        validateAttestationProof(unvalidatedProof, credentialConfiguration, at).bind()
                 }
-            }
 
-            val cnonces = credentialKeysAndCNonces.map { it.second }.toNonEmptyListOrNull()
-            checkNotNull(cnonces)
-            ensure(verifyNonce(cnonces, at)) {
+            val cNonce = credentialKeysAndCNonce.second
+            ensure(verifyNonce(cNonce, at)) {
                 InvalidNonce("CNonce is not valid")
             }
 
-            val jwks = credentialKeysAndCNonces.map {
-                extractJwkFromCredentialKey(it.first).getOrElse { error ->
-                    raise(InvalidProof("Unable to extract JWK from CredentialKey", error))
-                }
-            }.flatten()
-                .distinct()
+            val jwks = credentialKeysAndCNonce.first.value
                 .limitTo(credentialConfiguration.credentialReusePolicy)
                 .toNonEmptyListOrNull()
 
