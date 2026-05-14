@@ -51,7 +51,7 @@ internal class ValidateJwtProofTest {
     private val credentialConfiguration = mobileDrivingLicenceV1(
         CoseAlgorithm(-7),
         checkNotNull(ECDSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
-        KeyAttestationRequirement.NotRequired,
+        KeyAttestationRequirement.ts3(),
     )
 
     @Test
@@ -104,70 +104,6 @@ internal class ValidateJwtProofTest {
             )
 
         assertTrue { result.isLeft() }
-    }
-
-    @Test
-    internal fun `proof validation with 'x5c' in header succeeds`() = runTest {
-        val key = loadKey()
-        val chain = loadChain()
-        val signedJwt =
-            generateSignedJwt(key, "nonce") {
-                x509CertChain(chain.map { Base64.encode(it.encoded) })
-            }
-
-        validateJwtProof(
-            UnvalidatedProof.Jwt(signedJwt.serialize()),
-            credentialConfiguration,
-            clock.now(),
-        ).fold(
-            ifLeft = { fail("Unexpected $it", it.cause) },
-            ifRight = { credentialKey ->
-                val x5c = assertIs<Pair<CredentialKey.X5c, String?>>(credentialKey, "expected 'x5c' credential key")
-                assertEquals(chain, x5c.first.chain)
-            },
-        )
-    }
-
-    @Test
-    internal fun `proof validation with 'jwk' in header succeeds`() = runTest {
-        val key = loadKey()
-        val signedJwt =
-            generateSignedJwt(key, "nonce") {
-                jwk(key.toPublicJWK())
-            }
-
-        validateJwtProof(
-            UnvalidatedProof.Jwt(signedJwt.serialize()),
-            credentialConfiguration,
-            clock.now(),
-        ).fold(
-            ifLeft = { fail("Unexpected $it", it.cause) },
-            ifRight = { credentialKey ->
-                val jwk = assertIs<Pair<CredentialKey.Jwk, String?>>(credentialKey, "expected 'jwk' credential key")
-                assertEquals(key.toPublicJWK(), jwk.first.value)
-            },
-        )
-    }
-
-    @Test
-    internal fun `proof validation with 'kid' in header succeeds`() = runTest {
-        val key = loadKey()
-        val signedJwt =
-            generateSignedJwt(key, "nonce") {
-                keyID("did:jwk:${Base64URL.encode(key.toPublicJWK().toJSONString())}#0")
-            }
-
-        validateJwtProof(
-            UnvalidatedProof.Jwt(signedJwt.serialize()),
-            credentialConfiguration,
-            clock.now(),
-        ).fold(
-            ifLeft = { fail("Unexpected $it", it.cause) },
-            ifRight = { credentialKey ->
-                val jwk = assertIs<Pair<CredentialKey.DIDUrl, String?>>(credentialKey, "expected 'jwk' credential key")
-                assertEquals(key.toPublicJWK(), jwk.first.jwk)
-            },
-        )
     }
 
     @Test
@@ -239,7 +175,7 @@ internal class ValidateJwtProofTest {
                 mobileDrivingLicenceV1(
                     CoseAlgorithm(-7),
                     nonEmptySetOf(JWSAlgorithm.ES512),
-                    KeyAttestationRequirement.NotRequired,
+                    KeyAttestationRequirement.ts3(),
                 ),
                 clock.now(),
             )

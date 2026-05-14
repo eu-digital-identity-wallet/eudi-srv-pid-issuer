@@ -23,11 +23,11 @@ import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement
 
 fun interface VerifyAttestedKey {
 
-    suspend fun verify(key: JWK, requirement: KeyAttestationRequirement.Required, cNonce: String?): Either<AttestedKeyError, JWK>
+    suspend fun verify(key: JWK, requirement: KeyAttestationRequirement, cNonce: String?): Either<AttestedKeyError, JWK>
 
     suspend fun verify(
         keys: NonEmptyList<JWK>,
-        requirement: KeyAttestationRequirement.Required,
+        requirement: KeyAttestationRequirement,
         cNonce: String?,
     ): Either<NonEmptyList<AttestedKeyError>, NonEmptyList<JWK>> =
         keys.mapOrAccumulate { key ->

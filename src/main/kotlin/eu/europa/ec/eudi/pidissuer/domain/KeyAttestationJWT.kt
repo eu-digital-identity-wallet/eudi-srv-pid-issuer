@@ -19,16 +19,9 @@ import arrow.core.NonEmptyList
 import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSObject
-import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jose.crypto.MACSigner
-import com.nimbusds.jose.crypto.RSASSAVerifier
-import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
-import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jwt.SignedJWT
-import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.launch
 
 data class KeyAttestationJWT private constructor(
     val jwt: SignedJWT,
@@ -105,30 +98,3 @@ private fun requireIsNotMAC(alg: JWSAlgorithm) =
     require(!alg.isMACSigning()) { "MAC signing algorithm not allowed" }
 
 private fun JWSAlgorithm.isMACSigning(): Boolean = this in MACSigner.SUPPORTED_ALGORITHMS
-
-internal suspend fun List<JWK>.signingKeyOf(signedJwt: SignedJWT): JWK? {
-    val tasks = map { jwk: JWK ->
-        suspend { verifiesSignature(jwk, signedJwt) }
-    }
-    return signatureVerifiedByKey(*tasks.toTypedArray())
-}
-
-internal fun verifiesSignature(jwk: JWK, signedJwt: SignedJWT): JWK? =
-    try {
-        val verifier = when (jwk) {
-            is RSAKey -> RSASSAVerifier(jwk)
-            is ECKey -> ECDSAVerifier(jwk)
-            else -> null
-        }
-        if (verifier != null && signedJwt.verify(verifier)) jwk
-        else null
-    } catch (_: Exception) {
-        null
-    }
-
-internal suspend fun signatureVerifiedByKey(vararg tasks: suspend () -> JWK?): JWK? =
-    channelFlow {
-        tasks.forEach {
-            launch { send(it()) }
-        }
-    }.firstOrNull { it != null }

@@ -41,7 +41,6 @@ import org.slf4j.LoggerFactory
 @Serializable
 data class ProofsTO(
     @SerialName("jwt") val jwtProofs: List<String>? = null,
-    @SerialName("di_vp") val diVpProofs: List<String>? = null,
     @SerialName("attestation") val attestations: List<String>? = null,
 )
 
@@ -458,7 +457,7 @@ private sealed interface UnresolvedCredentialRequest {
      */
     data class ByCredentialIdentifier(
         val credentialIdentifier: CredentialIdentifier,
-        val unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
+        val unvalidatedProofs: UnvalidatedProof,
         val credentialResponseEncryption: RequestedResponseEncryption,
     ) : UnresolvedCredentialRequest
 }
@@ -485,28 +484,25 @@ private interface Validations : Raise<IssueCredentialError> {
             }
         }
 
-        val proofs =
+        val proof =
             when {
                 proofs != null -> {
                     val jwtProofs = proofs.jwtProofs?.map { UnvalidatedProof.Jwt(it) }
-                    val diVpProofs = proofs.diVpProofs?.map { UnvalidatedProof.DiVp(it) }
                     val attestations = proofs.attestations?.map { UnvalidatedProof.Attestation(it) }
-                        ?.also {
-                            ensure(1 == it.size) { InvalidProof("'attestation' can contain only a single element") }
-                        }
                     // Proof object contains exactly one parameter named as the proof type
-                    ensure(1 == listOfNotNull(jwtProofs, diVpProofs, attestations).size) {
+                    ensure(1 == listOfNotNull(jwtProofs, attestations).size) {
                         InvalidProof("Only a single proof type is allowed")
                     }
 
-                    val proofs = (jwtProofs.orEmpty() + diVpProofs.orEmpty() + attestations.orEmpty()).toNonEmptyListOrNull()
+                    val proofs = (jwtProofs.orEmpty() + attestations.orEmpty()).toNonEmptyListOrNull()
                     ensureNotNull(proofs) { MissingProof }
+                    ensure(proofs.size == 1) {
+                        InvalidProof("You can provide at most 1 proof")
+                    }
+                    proofs.first()
                 }
                 else -> raise(MissingProof)
             }
-        ensure(proofs.size <= supportedBatchIssuance.maxProofsSupported) {
-            InvalidProof("You can provide at most '${supportedBatchIssuance.maxProofsSupported}' proofs")
-        }
 
         val credentialResponseEncryption = credentialResponseEncryption?.toDomain() ?: RequestedResponseEncryption.NotRequired
         credentialResponseEncryption.ensureIsSupported(supportedEncryption)
@@ -517,8 +513,8 @@ private interface Validations : Raise<IssueCredentialError> {
             supportedCredentialConfigurations.firstOrNull { credentialConfigurationId == it.id }
                 ?.let { credentialConfiguration ->
                     val credentialRequest = when (credentialConfiguration) {
-                        is MsoMdocCredentialConfiguration -> credentialConfiguration.credentialRequest(proofs, credentialResponseEncryption)
-                        is SdJwtVcCredentialConfiguration -> credentialConfiguration.credentialRequest(proofs, credentialResponseEncryption)
+                        is MsoMdocCredentialConfiguration -> credentialConfiguration.credentialRequest(proof, credentialResponseEncryption)
+                        is SdJwtVcCredentialConfiguration -> credentialConfiguration.credentialRequest(proof, credentialResponseEncryption)
                         is JwtVcJsonCredentialConfiguration -> raise(UnsupportedCredentialType(format = JWT_VS_JSON_FORMAT))
                     }
                     UnresolvedCredentialRequest.ByCredentialConfigurationId(credentialConfigurationId, credentialRequest)
@@ -527,7 +523,7 @@ private interface Validations : Raise<IssueCredentialError> {
         fun credentialRequestByCredentialIdentifier(credentialIdentifier: String): UnresolvedCredentialRequest.ByCredentialIdentifier =
             UnresolvedCredentialRequest.ByCredentialIdentifier(
                 CredentialIdentifier(credentialIdentifier),
-                proofs,
+                proof,
                 credentialResponseEncryption,
             )
 

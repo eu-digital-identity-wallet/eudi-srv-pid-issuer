@@ -24,10 +24,6 @@ import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.AsymmetricJWK
 import com.nimbusds.jose.jwk.JWK
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.resolveDidUrl
-import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
-import java.net.URI
-import java.security.cert.X509Certificate
 
 /**
  * Proof of possession.
@@ -38,11 +34,6 @@ sealed interface UnvalidatedProof {
      * Proof of possession using a JWT.
      */
     data class Jwt(val jwt: String) : UnvalidatedProof
-
-    /**
-     * Proof of possession using a W3C Verifiable Presentation object signed using the Data Integrity Proof.
-     */
-    data class DiVp(val vp: String) : UnvalidatedProof
 
     /**
      * A JWT representing a key attestation without using a proof of possession of
@@ -56,62 +47,21 @@ sealed interface UnvalidatedProof {
  * that is provided by the wallet, via [UnvalidatedProof], to be included
  * inside the issued credential
  */
-sealed interface CredentialKey {
+@JvmInline
+value class CredentialKeys(val value: NonEmptyList<JWK>) {
 
-    /**
-     * If the Credential shall be bound to a DID, the kid refers to a DID URL
-     * which identifies a particular key in the DID Document that the Credential shall be bound to
-     */
-    data class DIDUrl(val did: URI, val jwk: JWK) : CredentialKey {
-        init {
-            require(!jwk.isPrivate) { "jwk must not contain a private key" }
-            require(jwk is AsymmetricJWK) { "'jwk' must be asymmetric" }
-        }
+    init {
+        value.forEach { it.ensureIsPublicAsymmetricKey() }
+        require(value.size == value.distinct().size) { "Duplicate keys provided in credential request" }
+    }
 
-        companion object {
-
-            /**
-             * Resolves the provided DID url. Currently, it supports 'key' and 'jwk' methods.
-             */
-            operator fun invoke(value: String): Either<Throwable, DIDUrl> = Either.catch {
-                val url = URI.create(value)
-                val jwk = resolveDidUrl(url).getOrThrow()
-                DIDUrl(url, jwk)
+    companion object {
+        private fun JWK.ensureIsPublicAsymmetricKey() {
+            require(!isPrivate) {
+                "Private key provided while expecting a public key."
             }
-        }
-    }
-
-    @JvmInline
-    value class Jwk(val value: JWK) : CredentialKey {
-        init {
-            require(!value.isPrivate) { "jwk must not contain a private key" }
-            require(value is AsymmetricJWK) { "'jwk' must be asymmetric" }
-        }
-    }
-
-    @JvmInline
-    value class X5c(val chain: NonEmptyList<X509Certificate>) : CredentialKey {
-        val certificate: X509Certificate
-            get() = chain.head
-
-        companion object
-    }
-
-    @JvmInline
-    value class AttestedKeys(val keys: NonEmptyList<JWK>) : CredentialKey {
-
-        init {
-            keys.forEach { it.isPublicAsymmetricKey() }
-        }
-
-        companion object {
-            private fun JWK.isPublicAsymmetricKey() {
-                require(!isPrivate) {
-                    "Private key provided while expecting a public key."
-                }
-                require(this is AsymmetricJWK) {
-                    "Symmetric key provided. Must be an asymmetric key."
-                }
+            require(this is AsymmetricJWK) {
+                "Symmetric key provided. Must be an asymmetric key."
             }
         }
     }
@@ -177,7 +127,7 @@ sealed interface RequestedResponseEncryption {
  */
 sealed interface CredentialRequest {
     val format: Format
-    val unvalidatedProofs: NonEmptyList<UnvalidatedProof>
+    val unvalidatedProof: UnvalidatedProof
     val credentialResponseEncryption: RequestedResponseEncryption
 }
 
