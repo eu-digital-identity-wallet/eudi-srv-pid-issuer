@@ -184,7 +184,7 @@ data class KeyStorageStatus(
     val status: Status,
     @Required
     @SerialName(RFC7519.EXPIRES_AT)
-    val exp: Instant,
+    val exp: EpochSecondsInstant,
 )
 
 @Serializable
@@ -223,6 +223,22 @@ object UrlStringSerializer : KSerializer<URL> {
     override fun deserialize(decoder: Decoder): URL = URI.create(decoder.decodeString()).toURL()
 }
 
+object InstantLongSerializer : KSerializer<Instant> {
+
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("InstantLongSerializer", PrimitiveKind.LONG)
+
+    override fun deserialize(decoder: Decoder): Instant {
+        return Instant.fromEpochSeconds(decoder.decodeLong())
+    }
+
+    override fun serialize(encoder: Encoder, value: Instant) {
+        encoder.encodeLong(value.epochSeconds)
+    }
+}
+
+typealias EpochSecondsInstant =
+    @Serializable(with = InstantLongSerializer::class)
+    Instant
 typealias StringUrl =
     @Serializable(with = UrlStringSerializer::class)
     URL
