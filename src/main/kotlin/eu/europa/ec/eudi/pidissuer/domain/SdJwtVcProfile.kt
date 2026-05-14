@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
-import arrow.core.NonEmptyList
 import arrow.core.NonEmptySet
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
@@ -49,10 +48,10 @@ data class SdJwtVcCredentialConfiguration(
 }
 
 internal fun SdJwtVcCredentialConfiguration.credentialRequest(
-    unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
+    unvalidatedProofs: UnvalidatedProof,
     credentialResponseEncryption: RequestedResponseEncryption,
 ): SdJwtVcCredentialRequest = SdJwtVcCredentialRequest(
-    unvalidatedProofs = unvalidatedProofs,
+    unvalidatedProof = unvalidatedProofs,
     credentialResponseEncryption = credentialResponseEncryption,
     type = type,
 )
@@ -61,7 +60,7 @@ internal fun SdJwtVcCredentialConfiguration.credentialRequest(
 // Credential Offer
 //
 data class SdJwtVcCredentialRequest(
-    override val unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
+    override val unvalidatedProof: UnvalidatedProof,
     override val credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
     val type: SdJwtVcType,
 ) : CredentialRequest {

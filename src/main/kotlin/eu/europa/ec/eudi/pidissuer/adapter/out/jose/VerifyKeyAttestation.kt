@@ -55,7 +55,7 @@ internal class VerifyKeyAttestation(
     suspend operator fun invoke(
         keyAttestation: KeyAttestationJWT,
         signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
-        keyAttestationRequirement: KeyAttestationRequirement.Required,
+        keyAttestationRequirement: KeyAttestationRequirement,
         expectExpirationClaim: Boolean,
         at: Instant,
     ): Either<Throwable, Pair<NonEmptyList<JWK>, String?>> = either {
@@ -131,7 +131,7 @@ internal class VerifyKeyAttestation(
     }
 
     private suspend fun KeyAttestationJWT.ensureMeetsKeyAttestationRequirements(
-        keyAttestationRequirement: KeyAttestationRequirement.Required,
+        keyAttestationRequirement: KeyAttestationRequirement,
         nonce: String?,
     ) {
         // if key storage constraints are expected, the passed key attestation must meet these constraints

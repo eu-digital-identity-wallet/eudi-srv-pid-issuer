@@ -41,14 +41,16 @@ value class AttackPotentialResistance(val value: String) {
     }
 }
 
-sealed interface KeyAttestationRequirement {
-
-    data object NotRequired : KeyAttestationRequirement
-
-    data class Required(
-        val keyStorage: NonEmptySet<AttackPotentialResistance>?,
-        val userAuthentication: NonEmptySet<AttackPotentialResistance>?,
-    ) : KeyAttestationRequirement
+data class KeyAttestationRequirement(
+    val keyStorage: NonEmptySet<AttackPotentialResistance>?,
+    val userAuthentication: NonEmptySet<AttackPotentialResistance>?,
+) {
+    companion object {
+        fun ts3(): KeyAttestationRequirement = KeyAttestationRequirement(
+            keyStorage = NonEmptySet.of(AttackPotentialResistance.Iso18045High),
+            userAuthentication = NonEmptySet.of(AttackPotentialResistance.Iso18045High),
+        )
+    }
 }
 
 sealed interface ProofType {
@@ -63,7 +65,7 @@ sealed interface ProofType {
 
     data class Attestation(
         val signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
-        val keyAttestationRequirement: KeyAttestationRequirement.Required,
+        val keyAttestationRequirement: KeyAttestationRequirement,
     ) : ProofType
 
     companion object {
@@ -80,15 +82,9 @@ sealed interface ProofType {
                 add(
                     Jwt(supportedSigningAlgorithms, keyAttestationRequirement),
                 )
-                // Attestation proof is available only when key attestations for this credential are enabled in configuration
-                when (keyAttestationRequirement) {
-                    is KeyAttestationRequirement.Required ->
-                        add(
-                            Attestation(supportedSigningAlgorithms, keyAttestationRequirement),
-                        )
-
-                    KeyAttestationRequirement.NotRequired -> Unit
-                }
+                add(
+                    Attestation(supportedSigningAlgorithms, keyAttestationRequirement),
+                )
             }
         }
     }
