@@ -25,17 +25,9 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.json.jsonSupport
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.JsonObject
-import java.net.URI
 import java.net.URL
 import kotlin.collections.isNotEmpty
 import kotlin.collections.mapIndexed
@@ -109,13 +101,14 @@ private fun SignedJWT.extractUserAuthentication(): NonEmptyList<AttackPotentialR
         AttackPotentialResistance(it)
     }?.toNonEmptyListOrThrow()
 
-private fun SignedJWT.extractCertification(): URL =
-    jwtClaimsSet.getStringClaim(OpenId4VciSpec.CERTIFICATION).let {
-        require(it.isNotBlank()) {
-            "Invalid Key Attestation JWT. 'certification' items must be url"
-        }
-        URI(it).toURL()
+private fun SignedJWT.extractCertification(): StringUrl {
+    val certificationClaim = jwtClaimsSet.getStringClaim(OpenId4VciSpec.CERTIFICATION)
+    require(certificationClaim.isNotBlank()) {
+        "Invalid Key Attestation JWT. 'certification' items must be url"
     }
+    val certification = StringUrl(certificationClaim)
+    return certification
+}
 
 private fun SignedJWT.extractKeyStorageStatus(): KeyStorageStatus =
     jwtClaimsSet.getJSONObjectClaim(TS3.KEY_STORAGE_STATUS).let { keyStorageJsonObject ->
@@ -191,50 +184,6 @@ data class KeyStorageStatus(
 data class Status(
     @Required @SerialName(TokenStatusListSpec.STATUS_LIST) val statusList: StatusListToken,
 )
-
-object JWKNonEmptyListSerializer : KSerializer<NonEmptyList<JWK>> by NonEmptyListSerializer(JWKJsonObjectSerializer)
-
-object JWKJsonObjectSerializer : KSerializer<JWK> {
-    private val serializer = JsonObject.serializer()
-
-    override val descriptor: SerialDescriptor = SerialDescriptor("JWKJsonObjectSerializer", serializer.descriptor)
-
-    override fun serialize(encoder: Encoder, value: JWK) {
-        val serialized = jsonSupport.decodeFromString<JsonObject>(value.toJSONString())
-        encoder.encodeSerializableValue(serializer, serialized)
-    }
-
-    override fun deserialize(decoder: Decoder): JWK {
-        val serialized = decoder.decodeSerializableValue(serializer)
-        return JWK.parse(jsonSupport.encodeToString(serialized))
-    }
-}
-
-object UrlStringSerializer : KSerializer<URL> {
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("UrlStringSerializer", PrimitiveKind.STRING)
-
-    override fun serialize(
-        encoder: Encoder,
-        value: URL,
-    ) {
-        encoder.encodeString(value.toString())
-    }
-
-    override fun deserialize(decoder: Decoder): URL = URI.create(decoder.decodeString()).toURL()
-}
-
-object InstantLongSerializer : KSerializer<Instant> {
-
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("InstantLongSerializer", PrimitiveKind.LONG)
-
-    override fun deserialize(decoder: Decoder): Instant {
-        return Instant.fromEpochSeconds(decoder.decodeLong())
-    }
-
-    override fun serialize(encoder: Encoder, value: Instant) {
-        encoder.encodeLong(value.epochSeconds)
-    }
-}
 
 typealias EpochSecondsInstant =
     @Serializable(with = InstantLongSerializer::class)

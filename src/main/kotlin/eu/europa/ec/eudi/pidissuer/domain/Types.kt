@@ -16,7 +16,9 @@
 package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptyList
+import arrow.core.serialization.NonEmptyListSerializer
 import com.nimbusds.jose.jwk.JWK
+import eu.europa.ec.eudi.pidissuer.adapter.out.json.jsonSupport
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -26,6 +28,7 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonObject
 import org.slf4j.LoggerFactory
 import java.net.MalformedURLException
 import java.net.URI
@@ -192,4 +195,48 @@ object UriStringSerializer : KSerializer<URI> {
     }
 
     override fun deserialize(decoder: Decoder): URI = URI.create(decoder.decodeString())
+}
+
+object UrlStringSerializer : KSerializer<URL> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("UrlStringSerializer", PrimitiveKind.STRING)
+
+    override fun serialize(
+        encoder: Encoder,
+        value: URL,
+    ) {
+        encoder.encodeString(value.toString())
+    }
+
+    override fun deserialize(decoder: Decoder): URL = URI.create(decoder.decodeString()).toURL()
+}
+
+object InstantLongSerializer : KSerializer<Instant> {
+
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("InstantLongSerializer", PrimitiveKind.LONG)
+
+    override fun deserialize(decoder: Decoder): Instant {
+        return Instant.fromEpochSeconds(decoder.decodeLong())
+    }
+
+    override fun serialize(encoder: Encoder, value: Instant) {
+        encoder.encodeLong(value.epochSeconds)
+    }
+}
+
+object JWKNonEmptyListSerializer : KSerializer<NonEmptyList<JWK>> by NonEmptyListSerializer(JWKJsonObjectSerializer)
+
+object JWKJsonObjectSerializer : KSerializer<JWK> {
+    private val serializer = JsonObject.serializer()
+
+    override val descriptor: SerialDescriptor = SerialDescriptor("JWKJsonObjectSerializer", serializer.descriptor)
+
+    override fun serialize(encoder: Encoder, value: JWK) {
+        val serialized = jsonSupport.decodeFromString<JsonObject>(value.toJSONString())
+        encoder.encodeSerializableValue(serializer, serialized)
+    }
+
+    override fun deserialize(decoder: Decoder): JWK {
+        val serialized = decoder.decodeSerializableValue(serializer)
+        return JWK.parse(jsonSupport.encodeToString(serialized))
+    }
 }
