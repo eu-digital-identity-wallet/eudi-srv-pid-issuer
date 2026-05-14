@@ -17,7 +17,15 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptyList
 import com.nimbusds.jose.jwk.JWK
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import org.slf4j.LoggerFactory
 import java.net.MalformedURLException
 import java.net.URI
@@ -145,7 +153,14 @@ value class CredentialIdentifier(val value: String)
  *
  * @see <a href="https://datatracker.ietf.org/doc/draft-ietf-oauth-status-list/">https://datatracker.ietf.org/doc/draft-ietf-oauth-status-list/</a>
  */
-data class StatusListToken(val statusList: URI, val index: UInt)
+@Serializable
+data class StatusListToken(
+    @Required @SerialName(TokenStatusListSpec.URI)
+    @Serializable(with = UriStringSerializer::class)
+    val statusList: URI,
+    @Required @SerialName(TokenStatusListSpec.IDX)
+    val index: UInt,
+)
 
 enum class IntegrityHashAlgorithm(val id: String) {
     SHA_256("sha256"),
@@ -164,4 +179,17 @@ value class NonBlankString(val value: String) {
     }
 
     override fun toString(): String = value
+}
+
+object UriStringSerializer : KSerializer<URI> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("UriStringSerializer", PrimitiveKind.STRING)
+
+    override fun serialize(
+        encoder: Encoder,
+        value: URI,
+    ) {
+        encoder.encodeString(value.toString())
+    }
+
+    override fun deserialize(decoder: Decoder): URI = URI.create(decoder.decodeString())
 }

@@ -15,6 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import com.nimbusds.jose.JWSAlgorithm
+
 internal object OpenId4VciSpec {
     const val VERSION = "v1"
 
@@ -26,6 +28,8 @@ internal object OpenId4VciSpec {
     const val KEY_ATTESTATION_ATTESTED_KEYS = "attested_keys"
     const val KEY_ATTESTATION_KEY_STORAGE = "key_storage"
     const val KEY_ATTESTATION_USER_AUTHENTICATION = "user_authentication"
+    const val NONCE: String = "nonce"
+    const val CERTIFICATION = "certification"
 
     const val TRANSACTION_ID = "transaction_id"
     const val INTERVAL = "interval"
@@ -64,5 +68,13 @@ object TokenStatusListSpec {
  * [TS3](https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md)
  */
 object TS3 {
+    const val KEY_STORAGE_STATUS: String = "key_storage_status"
     const val CLIENT_STATUS: String = "client_status"
+
+    val SUPPORTED_KEY_ATTESTATION_SIGNING_ALGORITHMS: Set<JWSAlgorithm> =
+        setOf(JWSAlgorithm.ES256, JWSAlgorithm.ES384, JWSAlgorithm.ES512)
+}
+
+object RFC7519 {
+    const val EXPIRES_AT: String = "exp"
 }
