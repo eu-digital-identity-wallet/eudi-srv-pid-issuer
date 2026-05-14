@@ -31,22 +31,28 @@ as an example and requires the use of a suitable OAuth 2.0 server.
 
 ### OpenId4VCI coverage
 
-| Feature                                                   | Coverage                                                           |
-|-----------------------------------------------------------|--------------------------------------------------------------------|
-| Authorization Code flow                                   | ✅ Using a suitable OAuth 2.0 server                                |
-| Pre-authorized code flow                                  | ❌                                                                  |
-| mso_mdoc format                                           | ✅                                                                  |
-| SD-JWT-VC format                                          | ✅ Except revocation list & meta                                    |
-| W3C VC DM                                                 | ❌                                                                  |
-| Credential Offer                                          | ✅ `authorization_code` , ❌ `pre-authorized_code`                   |
-| [Credential Endpoint](#credential-endpoint)               | Yes, including multiple proofs, encryption, repeatable invocations |
-| [Credential Issuer MetaData](#credential-issuer-metadata) | Yes, using `scopes`, and `signed_metadata`                         | 
-| Deferred Endpoint                                         | ✅                                                                  |
-| Nonce Endpoint                                            | ✅                                                                  |
-| Notification Endpoint                                     | ✅                                                                  |
-| Proof                                                     | ✅ JWT (`jwk`, `x5c`, `did:key`, `did:jwk`, `key-attestation`)      |
-|                                                           | ✅ attestation                                                      |
-|                                                           | ❌ Data Integrity Proof                                             |
+| Feature                                                   | Coverage                                                                 |
+|-----------------------------------------------------------|--------------------------------------------------------------------------|
+| Authorization Code flow                                   | ✅ Using a suitable OAuth 2.0 server                                      |
+| Pre-authorized code flow                                  | ❌                                                                        |
+| mso_mdoc format                                           | ✅                                                                        |
+| SD-JWT-VC format                                          | ✅ Except revocation list & meta                                          |
+| W3C VC DM                                                 | ❌                                                                        |
+| Credential Offer                                          | ✅ `authorization_code` , ❌ `pre-authorized_code`                         |
+| [Credential Endpoint](#credential-endpoint)               | Yes, including proofs, encryption, repeatable invocations                |
+| [Credential Issuer MetaData](#credential-issuer-metadata) | Yes, using `scopes`, and `signed_metadata`                               | 
+| Deferred Endpoint                                         | ✅                                                                        |
+| Nonce Endpoint                                            | ✅                                                                        |
+| Notification Endpoint                                     | ✅                                                                        |
+| Proof                                                     | ✅ JWT (`key-attestation` required, as per TS3 (see Proofs section below) |
+|                                                           | ✅ attestation                                                            |
+|                                                           | ❌ Data Integrity Proof                                                   |
+
+#### Proofs
+
+The pid-issuer accepts only one proof per request, either a JWT Proof with a key attestation or a Key Attestation Proof.
+The `key_storage` and `user_authentication` attributes of the key attestation shall be `iso_18045_high`.
+These requirements are mandated by the [TS3 - Specification of Wallet Unit Attestations (WUA) used in issuance of PID and Attestations](https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md)
 
 ## How to use docker
 
@@ -230,18 +236,6 @@ Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT
 Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.
 Default value: N/A
 
-Variable: `ISSUER_PID_MSO_MDOC_KEY_ATTESTATIONS_REQUIRED`      
-Description: Boolean property that when set to true makes key attestations mandatory in proofs sent for issuance of PID attestations in msoMdoc format. A key attestation is expected in a JWT proof or as a proof itself.
-Default value: N/A
-
-Variable: `ISSUER_PID_MSO_MDOC_KEY_ATTESTATIONS_CONSTRAINTS_KEY_STORAGE`      
-Description: Comma separated list of strings. Each string specifies an accepted level of attack resistance protection regarding the storage of keys included in a key attestation.  
-Default value: N/A
-
-Variable: `ISSUER_PID_MSO_MDOC_KEY_ATTESTATIONS_CONSTRAINTS_USER_AUTHENTICATION`      
-Description: Comma separated list of strings. Each string specifies an accepted level of attack resistance protection regarding the authentication of user when using the keys included in the key attestation.
-Default value: N/A
-
 Variable: `ISSUER_PID_SD_JWT_VC_ENABLED`  
 Description: Whether to enable support for PID issuance in *SD JWT VC* format.  
 Default value: `true`
@@ -303,18 +297,6 @@ Default value: N/A
 
 Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`
 Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.
-Default value: N/A
-
-Variable: `ISSUER_PID_SD_JWT_VC_KEY_ATTESTATIONS_REQUIRED`      
-Description: Boolean property that when set to true makes key attestations mandatory in proofs sent for issuance of PID attestations in sd-jwt-vc format. A key attestation is expected in a JWT proof or as a proof itself.
-Default value: N/A
-
-Variable: `ISSUER_PID_SD_JWT_VC_KEY_ATTESTATIONS_CONSTRAINTS_KEY_STORAGE`      
-Description: Comma separated list of strings. Each string specifies an accepted level of attack resistance protection regarding the storage of keys included in a key attestation.  
-Default value: N/A
-
-Variable: `ISSUER_PID_SD_JWT_VC_KEY_ATTESTATIONS_CONSTRAINTS_USER_AUTHENTICATION`      
-Description: Comma separated list of strings. Each string specifies an accepted level of attack resistance protection regarding the authentication of user when using the keys included in the key attestation.
 Default value: N/A
 
 Variable: `ISSUER_PID_ISSUINGCOUNTRY`  
@@ -380,18 +362,6 @@ Variable: `ISSUER_MDL_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`
 Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.
 Default value: N/A
 
-Variable: `ISSUER_MDL_KEY_ATTESTATIONS_REQUIRED`      
-Description: Boolean property that when set to true makes key attestations mandatory in proofs sent for issuance of PID attestations in msoMdoc format. A key attestation is expected in a JWT proof or as a proof itself.
-Default value: N/A
-
-Variable: `ISSUER_MDL_KEY_ATTESTATIONS_CONSTRAINTS_KEY_STORAGE`      
-Description: Comma separated list of strings. Each string specifies an accepted level of attack resistance protection regarding the storage of keys included in a key attestation.  
-Default value: N/A
-
-Variable: `ISSUER_MDL_KEY_ATTESTATIONS_CONSTRAINTS_USER_AUTHENTICATION`      
-Description: Comma separated list of strings. Each string specifies an accepted level of attack resistance protection regarding the authentication of user when using the keys included in the key attestation.
-Default value: N/A
-
 Variable: `ISSUER_EHIC_ENABLED`    
 Description: Whether to enabled support for issuing European Health Insurance Cards in *SD-JWT VC* format.    
 Default value: `true`
@@ -455,18 +425,6 @@ Variable: `ISSUER_EHIC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`
 Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.
 Default value: N/A
 
-Variable: `ISSUER_EHIC_KEY_ATTESTATIONS_REQUIRED`      
-Description: Boolean property that when set to true makes key attestations mandatory in proofs sent for EHIC attestation issuance. A key attestation is expected in a JWT proof or as a proof itself.
-Default value: N/A
-
-Variable: `ISSUER_EHIC_KEY_ATTESTATIONS_CONSTRAINTS_KEY_STORAGE`      
-Description: Comma separated list of strings. Each string specifies an accepted level of attack resistance protection regarding the storage of keys included in a key attestation.  
-Default value: N/A
-
-Variable: `ISSUER_EHIC_KEY_ATTESTATIONS_CONSTRAINTS_USER_AUTHENTICATION`      
-Description: Comma separated list of strings. Each string specifies an accepted level of attack resistance protection regarding the authentication of user when using the keys included in the key attestation. 
-Default value: N/A
-
 Variable: `ISSUER_LEARNINGCREDENTIAL_ENABLED`    
 Description: Whether to enabled support for issuing Learning Credentials.    
 Default value: `true`  
@@ -524,18 +482,6 @@ Default value: N/A
 
 Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`
 Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.
-Default value: N/A
-
-Variable: `ISSUER_LEARNINGCREDENTIAL_KEY_ATTESTATIONS_REQUIRED`      
-Description: Boolean property that when set to true makes key attestations mandatory in proofs sent for Learning Credential attestation issuance. A key attestation is expected in a JWT proof or as a proof itself.  
-Default value: `false`
-
-Variable: `ISSUER_LEARNINGCREDENTIAL_KEY_ATTESTATIONS_CONSTRAINTS_KEY_STORAGE`      
-Description: Comma separated list of strings. Each string specifies an accepted level of attack resistance protection regarding the storage of keys included in a key attestation.  
-Default value: N/A
-
-Variable: `ISSUER_LEARNINGCREDENTIAL_KEY_ATTESTATIONS_CONSTRAINTS_USER_AUTHENTICATION`      
-Description: Comma separated list of strings. Each string specifies an accepted level of attack resistance protection regarding the authentication of user when using the keys included in the key attestation.     
 Default value: N/A
 
 Variable: `ISSUER_CREDENTIALOFFER_URI`    
