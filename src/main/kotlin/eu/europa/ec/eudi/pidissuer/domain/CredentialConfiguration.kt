@@ -46,9 +46,9 @@ data class KeyAttestationRequirement(
     val userAuthentication: NonEmptySet<AttackPotentialResistance>?,
 ) {
     companion object {
-        fun plain(): KeyAttestationRequirement = KeyAttestationRequirement(
-            keyStorage = null,
-            userAuthentication = null,
+        fun ts3(): KeyAttestationRequirement = KeyAttestationRequirement(
+            keyStorage = NonEmptySet.of(AttackPotentialResistance.Iso18045High),
+            userAuthentication = NonEmptySet.of(AttackPotentialResistance.Iso18045High),
         )
     }
 }

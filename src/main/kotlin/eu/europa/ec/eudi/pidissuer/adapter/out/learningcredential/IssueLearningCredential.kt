@@ -44,7 +44,7 @@ private val log = LoggerFactory.getLogger(IssueLearningCredential::class.java)
 internal class IssueLearningCredential(
     override val supportedCredential: CredentialConfiguration,
     override val publicKey: JWK,
-    override val keyAttestationRequirement: KeyAttestationRequirement,
+    override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.ts3(),
     private val clock: Clock,
     private val validateProofs: ValidateProofs,
     private val getLearningCredential: GetLearningCredential,

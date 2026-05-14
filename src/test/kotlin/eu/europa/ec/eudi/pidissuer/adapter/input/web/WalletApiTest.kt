@@ -471,8 +471,6 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
         "issuer.credentialResponseEncryption.required=false",
         "issuer.credentialEndpoint.batchIssuance.enabled=true",
         "issuer.credentialEndpoint.batchIssuance.batchSize=3",
-        "issuer.pid.mso_mdoc.key_attestations.constraints.key_storage=iso_18045_high,iso_18045_moderate",
-        "issuer.pid.mso_mdoc.key_attestations.constraints.user_authentication=iso_18045_high,iso_18045_moderate",
     ],
 )
 internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWalletApiTest() {

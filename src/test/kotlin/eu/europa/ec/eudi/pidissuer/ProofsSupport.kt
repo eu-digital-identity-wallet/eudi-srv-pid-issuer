@@ -71,8 +71,8 @@ internal suspend fun jwtProofWithKeyAttestation(
     val jwtProofSigningKey = ECKeyGenerator(Curve.P_256).generate()
     val keyAttestationJwt = keyAttestationJWT(
         proofSigningKey = jwtProofSigningKey,
-        keyStorageConstraints = listOf("iso_18045_enhanced-basic"),
-        userAuthorizationConstraints = listOf("iso_18045_enhanced-basic"),
+        keyStorageConstraints = listOf("iso_18045_high"),
+        userAuthorizationConstraints = listOf("iso_18045_high"),
     ) {
         (0..<extraKeysNo).map {
             ECKeyGenerator(Curve.P_256).generate()

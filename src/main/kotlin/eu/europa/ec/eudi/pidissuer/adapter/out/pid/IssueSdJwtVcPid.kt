@@ -158,7 +158,7 @@ internal val SdJwtVcPidCredentialConfigurationId: CredentialConfigurationId = Cr
 fun pidSdJwtVcV1(
     signingAlgorithm: JWSAlgorithm,
     proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    keyAttestationRequirement: KeyAttestationRequirement,
+    keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.ts3(),
     credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(

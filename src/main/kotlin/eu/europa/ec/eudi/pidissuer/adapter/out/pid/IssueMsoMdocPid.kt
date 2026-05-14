@@ -296,7 +296,7 @@ internal class IssueMsoMdocPid(
     private val validityDuration: Duration,
     private val storeIssuedCredentials: StoreIssuedCredentials,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.plain(),
+    override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.ts3(),
     private val generateStatusListToken: GenerateStatusListToken?,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : IssueSpecificCredential {
