@@ -138,9 +138,6 @@ internal class VerifyKeyAttestation(
         // if key storage constraints are expected, the passed key attestation must meet these constraints
         keyAttestationRequirement.keyStorage?.let {
             val keyStorage = claims.keyStorage
-            requireNotNull(keyStorage) {
-                "Key Attestation expected to contain information about the key storage's attack resistance but does not."
-            }
             require(keyAttestationRequirement.keyStorage.containsAll(keyStorage)) {
                 "The provided key storage's attack resistance does not match the expected one."
             }
@@ -148,9 +145,6 @@ internal class VerifyKeyAttestation(
         // if user authentication constraints are expected, the passed key attestation must meet these constraints
         keyAttestationRequirement.userAuthentication?.let {
             val userAuthentication = claims.userAuthentication
-            requireNotNull(userAuthentication) {
-                "Key Attestation expected to contain information about the user authentication's attack resistance but does not."
-            }
             require(keyAttestationRequirement.userAuthentication.containsAll(userAuthentication)) {
                 "The provided user authentication's attack resistance does not match the expected one."
             }
