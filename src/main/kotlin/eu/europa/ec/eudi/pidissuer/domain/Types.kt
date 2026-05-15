@@ -17,6 +17,11 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptyList
 import com.nimbusds.jose.jwk.JWK
+import eu.europa.ec.eudi.pidissuer.adapter.out.json.InstantEpochSecondsSerializer
+import eu.europa.ec.eudi.pidissuer.adapter.out.json.UriStringSerializer
+import eu.europa.ec.eudi.pidissuer.adapter.out.json.UrlStringSerializer
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import java.net.MalformedURLException
@@ -145,7 +150,14 @@ value class CredentialIdentifier(val value: String)
  *
  * @see <a href="https://datatracker.ietf.org/doc/draft-ietf-oauth-status-list/">https://datatracker.ietf.org/doc/draft-ietf-oauth-status-list/</a>
  */
-data class StatusListToken(val statusList: URI, val index: UInt)
+@Serializable
+data class StatusListToken(
+    @Required @SerialName(TokenStatusListSpec.URI)
+    @Serializable(with = UriStringSerializer::class)
+    val statusList: StringUri,
+    @Required @SerialName(TokenStatusListSpec.IDX)
+    val index: UInt,
+)
 
 enum class IntegrityHashAlgorithm(val id: String) {
     SHA_256("sha256"),
@@ -165,3 +177,13 @@ value class NonBlankString(val value: String) {
 
     override fun toString(): String = value
 }
+
+typealias EpochSecondsInstant =
+    @Serializable(with = InstantEpochSecondsSerializer::class)
+    Instant
+typealias StringUrl =
+    @Serializable(with = UrlStringSerializer::class)
+    URL
+typealias StringUri =
+    @Serializable(with = UriStringSerializer::class)
+    URI

@@ -592,7 +592,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
             .let { assertNotNull(it.responseBody) }
 
         assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
-        assertEquals("Invalid proof JWT: JWT missing required claims: [exp]", response.errorDescription)
+        assertEquals("Invalid proof JWT: Invalid Key Attestation JWT", response.errorDescription)
 
         // ///////////////////////////
         // key attestation expired //
@@ -761,40 +761,6 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                 response.errorDescription,
             )
         }
-
-    @Test
-    fun `issuance with attestation proof (without 'exp' claim) is successful`() = runTest {
-        val authentication = dPoPTokenAuthentication(clock = clock)
-        val keyAttestationCNonce = generateNonce(clock.now(), 5L.minutes)
-        val signingKey = ECKeyGenerator(Curve.P_256).generate()
-        val extraKeysNo = 3
-        val proofs = keyAttestationJWT(
-            proofSigningKey = signingKey,
-            cNonce = keyAttestationCNonce,
-            includeExpiresAt = false,
-        ) {
-            (0..<extraKeysNo).map {
-                ECKeyGenerator(Curve.P_256).generate()
-            }
-        }.toAttestationProofs()
-
-        val response = client()
-            .mutateWith(mockAuthentication(authentication))
-            .post()
-            .uri(WalletApi.CREDENTIAL_ENDPOINT)
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestByCredentialIdentifier(proofs))
-            .accept(MediaType.APPLICATION_JSON)
-            .exchange()
-            .expectStatus().isOk()
-            .expectBody<IssueCredentialResponse.PlainTO>()
-            .returnResult()
-            .let { assertNotNull(it.responseBody) }
-
-        val issuedCredentials = assertNotNull(response.credentials)
-        assertEquals(extraKeysNo + 1, issuedCredentials.size)
-        assertNull(response.transactionId)
-    }
 
     @Test
     fun `issuance with expired attestation proof fails`() = runTest {

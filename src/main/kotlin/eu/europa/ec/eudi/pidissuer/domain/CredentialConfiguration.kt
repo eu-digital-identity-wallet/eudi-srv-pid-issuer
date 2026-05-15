@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptySet
 import com.nimbusds.jose.JWSAlgorithm
+import kotlinx.serialization.Serializable
 
 /**
  * The unique identifier of an offered Credential.
@@ -25,6 +26,7 @@ import com.nimbusds.jose.JWSAlgorithm
 value class CredentialConfigurationId(val value: String)
 
 @JvmInline
+@Serializable
 value class AttackPotentialResistance(val value: String) {
     init {
         require(value.isNotEmpty())
