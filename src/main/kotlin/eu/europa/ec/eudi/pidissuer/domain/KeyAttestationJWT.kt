@@ -16,85 +16,100 @@
 package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptyList
-import arrow.core.toNonEmptyListOrNull
+import arrow.core.serialization.NonEmptyListSerializer
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSObject
-import com.nimbusds.jose.crypto.MACSigner
 import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.pidissuer.adapter.out.json.JWKNonEmptyListSerializer
+import eu.europa.ec.eudi.pidissuer.adapter.out.json.jsonSupport
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 data class KeyAttestationJWT private constructor(
     val jwt: SignedJWT,
-    val attestedKeys: NonEmptyList<JWK>,
-    val keyStorage: List<AttackPotentialResistance>?,
-    val userAuthentication: List<AttackPotentialResistance>?,
+    val claims: KeyAttestationClaims,
 ) {
-    val nonce: String?
-        get() = jwt.jwtClaimsSet.getStringClaim("nonce")
-
     companion object {
         operator fun invoke(value: String): KeyAttestationJWT = KeyAttestationJWT(SignedJWT.parse(value))
 
         operator fun invoke(jwt: SignedJWT): KeyAttestationJWT {
-            jwt.ensureSignedNotMAC()
-            require(jwt.header.type != null && (jwt.header.type.type == OpenId4VciSpec.KEY_ATTESTATION_JWT_TYPE)) {
-                "Invalid Key Attestation JWT. Type must be set to `${OpenId4VciSpec.KEY_ATTESTATION_JWT_TYPE}`"
+            with(jwt) {
+                ensureSignedWithSupportedAlgorithm()
+                ensureCorrectHeaderType()
             }
-            requireNotNull(jwt.jwtClaimsSet.issueTime) { "Invalid Key Attestation JWT. Misses `iat` claim" }
+            val deserializedClaims = runCatching {
+                val serializedClaims = JSONObjectUtils.toJSONString(jwt.jwtClaimsSet.toJSONObject())
+                jsonSupport.decodeFromString<KeyAttestationClaims>(serializedClaims)
+            }.getOrElse { throw IllegalArgumentException("Invalid Key Attestation JWT", it) }
 
-            val attestedKeysClaimEntries = jwt.jwtClaimsSet.getListClaim("attested_keys")
-            requireNotNull(attestedKeysClaimEntries) { "Invalid Key Attestation JWT. Misses `attested_keys` claim" }
-            require(attestedKeysClaimEntries.isNotEmpty()) {
-                "Invalid Key Attestation JWT. `attested_keys` claim must not be empty"
-            }
-
-            val attestedKeys = attestedKeysClaimEntries.mapIndexed { index, keyObject ->
-                require(keyObject is Map<*, *>) {
-                    "Invalid Key Attestation JWT. Item at index $index in `attested_keys` is not a JSON object."
-                }
-                try {
-                    @Suppress("UNCHECKED_CAST")
-                    val jwk = JWK.parse(keyObject as Map<String, Any>)
-                    require(!jwk.isPrivate) {
-                        "Invalid Key Attestation JWT. Item at index $index in `attested_keys` must be a public key."
-                    }
-                    jwk
-                } catch (e: Exception) {
-                    throw IllegalArgumentException(
-                        "Invalid Key Attestation JWT. Item at index $index in `attested_keys` is not a valid JWK: ${e.message}",
-                        e,
-                    )
-                }
-            }.toNonEmptyListOrNull() ?: error("Invalid Key Attestation JWT. `attested_keys` cannot be empty")
-
-            val keyStorage = jwt.jwtClaimsSet.getListClaim("key_storage")?.map {
-                require(it is String) {
-                    "Invalid Key Attestation JWT. 'key_storage' items must be strings"
-                }
-                AttackPotentialResistance(it)
-            }
-
-            val userAuthentication = jwt.jwtClaimsSet.getListClaim("user_authentication")?.map {
-                require(it is String) {
-                    "Invalid Key Attestation JWT. 'user_authentication' items must be strings"
-                }
-                AttackPotentialResistance(it)
-            }
-
-            return KeyAttestationJWT(jwt, attestedKeys, keyStorage, userAuthentication)
+            return KeyAttestationJWT(jwt, deserializedClaims)
         }
     }
 }
 
-private fun SignedJWT.ensureSignedNotMAC() {
+private fun SignedJWT.ensureCorrectHeaderType() =
+    require(header.type != null && (header.type.type == OpenId4VciSpec.KEY_ATTESTATION_JWT_TYPE)) {
+        "Invalid Key Attestation JWT. Type must be set to `${OpenId4VciSpec.KEY_ATTESTATION_JWT_TYPE}`"
+    }
+
+private fun SignedJWT.ensureSignedWithSupportedAlgorithm() {
     check(state == JWSObject.State.SIGNED || state == JWSObject.State.VERIFIED) {
         "Provided JWT is not signed"
     }
-    val alg = requireNotNull(header.algorithm) { "Invalid JWT misses header alg" }
-    requireIsNotMAC(alg)
+    requireSupportedKeyAttestationAlgorithm(header.algorithm)
 }
 
-private fun requireIsNotMAC(alg: JWSAlgorithm) =
-    require(!alg.isMACSigning()) { "MAC signing algorithm not allowed" }
+private fun requireSupportedKeyAttestationAlgorithm(alg: JWSAlgorithm) =
+    require(alg in TS3.SUPPORTED_KEY_ATTESTATION_SIGNING_ALGORITHMS) {
+        "Key Attestation algorithm '${alg.name}' is not supported, must be one of: " +
+            TS3.SUPPORTED_KEY_ATTESTATION_SIGNING_ALGORITHMS.joinToString(", ") { it.name }
+    }
 
-private fun JWSAlgorithm.isMACSigning(): Boolean = this in MACSigner.SUPPORTED_ALGORITHMS
+@Serializable
+data class KeyAttestationClaims(
+    @Required @SerialName(RFC7519.ISSUED_AT) val issuedAt: EpochSecondsInstant,
+    @Required @SerialName(RFC7519.EXPIRES_AT) val expiresAt: EpochSecondsInstant,
+    @Required @SerialName(OpenId4VciSpec.KEY_ATTESTATION_ATTESTED_KEYS) val attestedKeys: AttestedKeys,
+    @Required @Serializable(with = NonEmptyListSerializer::class) @SerialName(OpenId4VciSpec.KEY_ATTESTATION_KEY_STORAGE)
+    val keyStorage: NonEmptyList<AttackPotentialResistance>,
+    @Required @Serializable(with = NonEmptyListSerializer::class) @SerialName(OpenId4VciSpec.KEY_ATTESTATION_USER_AUTHENTICATION)
+    val userAuthentication: NonEmptyList<AttackPotentialResistance>,
+    @Required @SerialName(OpenId4VciSpec.CERTIFICATION) val certification: StringUrl,
+    @SerialName(OpenId4VciSpec.NONCE) val nonce: Nonce? = null,
+    @SerialName(TokenStatusListSpec.STATUS) val status: Status? = null,
+    @Required @SerialName(TS3.KEY_STORAGE_STATUS) val keyStorageStatus: KeyStorageStatus,
+)
+
+@JvmInline
+@Serializable
+value class AttestedKeys(
+    @Serializable(with = JWKNonEmptyListSerializer::class)val value: NonEmptyList<JWK>,
+) {
+    init {
+        value.forEachIndexed { index, jwk ->
+            require(!jwk.isPrivate) {
+                "Invalid Attested Keys. Item at index $index must be a public key."
+            }
+        }
+    }
+}
+
+@Serializable
+data class KeyStorageStatus(
+    @Required
+    @SerialName(TokenStatusListSpec.STATUS)
+    val status: Status,
+    @Required
+    @SerialName(RFC7519.EXPIRES_AT)
+    val exp: EpochSecondsInstant,
+)
+
+@Serializable
+data class Status(
+    @Required @SerialName(TokenStatusListSpec.STATUS_LIST) val statusList: StatusListToken,
+)
+
+typealias Nonce = String
