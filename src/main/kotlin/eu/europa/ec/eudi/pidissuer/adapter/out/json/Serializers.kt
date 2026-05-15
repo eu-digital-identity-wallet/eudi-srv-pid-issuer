@@ -18,7 +18,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.json
 import arrow.core.NonEmptyList
 import arrow.core.serialization.NonEmptyListSerializer
 import com.nimbusds.jose.jwk.JWK
-import eu.europa.ec.eudi.pidissuer.domain.AttestedKeys
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -84,20 +83,5 @@ object JWKJsonObjectSerializer : KSerializer<JWK> {
     override fun deserialize(decoder: Decoder): JWK {
         val serialized = decoder.decodeSerializableValue(serializer)
         return JWK.parse(jsonSupport.encodeToString(serialized))
-    }
-}
-
-object AttestedKeysSerializer : KSerializer<AttestedKeys> {
-    private val delegate = JWKNonEmptyListSerializer
-
-    override val descriptor: SerialDescriptor =
-        SerialDescriptor("AttestedKeys", delegate.descriptor)
-
-    override fun serialize(encoder: Encoder, value: AttestedKeys) {
-        encoder.encodeSerializableValue(delegate, value.value)
-    }
-
-    override fun deserialize(decoder: Decoder): AttestedKeys {
-        return AttestedKeys(decoder.decodeSerializableValue(delegate))
     }
 }

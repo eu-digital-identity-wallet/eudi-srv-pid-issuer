@@ -60,7 +60,7 @@ internal class VerifyKeyAttestation(
         at: Instant,
     ): Either<Throwable, Pair<NonEmptyList<JWK>, String?>> = either {
         with(keyAttestation) {
-            val nonce = keyAttestationClaims.nonce
+            val nonce = claims.nonce
             val algorithm = extractSupportedAlgorithm(signingAlgorithmsSupported)
             val walletProviderSigningKey = extractSigningKey()
             val key = walletProviderSigningKey.key
@@ -72,7 +72,7 @@ internal class VerifyKeyAttestation(
                 walletProviderSigningKey.ensureTrustWalletProvider()
             }
 
-            keyAttestation.keyAttestationClaims.attestedKeys.value to nonce
+            keyAttestation.claims.attestedKeys.value to nonce
         }
     }
 
@@ -137,7 +137,7 @@ internal class VerifyKeyAttestation(
     ) {
         // if key storage constraints are expected, the passed key attestation must meet these constraints
         keyAttestationRequirement.keyStorage?.let {
-            val keyStorage = keyAttestationClaims.keyStorage
+            val keyStorage = claims.keyStorage
             requireNotNull(keyStorage) {
                 "Key Attestation expected to contain information about the key storage's attack resistance but does not."
             }
@@ -147,7 +147,7 @@ internal class VerifyKeyAttestation(
         }
         // if user authentication constraints are expected, the passed key attestation must meet these constraints
         keyAttestationRequirement.userAuthentication?.let {
-            val userAuthentication = keyAttestationClaims.userAuthentication
+            val userAuthentication = claims.userAuthentication
             requireNotNull(userAuthentication) {
                 "Key Attestation expected to contain information about the user authentication's attack resistance but does not."
             }
@@ -155,7 +155,7 @@ internal class VerifyKeyAttestation(
                 "The provided user authentication's attack resistance does not match the expected one."
             }
         }
-        val attestedKeys = keyAttestationClaims.attestedKeys
+        val attestedKeys = claims.attestedKeys
         verifyAttestedKey?.verify(attestedKeys.value, keyAttestationRequirement, nonce)
             ?.mapLeft {
                 error("${it.size} of the total ${attestedKeys.value.size} attested keys failed to pass verification")

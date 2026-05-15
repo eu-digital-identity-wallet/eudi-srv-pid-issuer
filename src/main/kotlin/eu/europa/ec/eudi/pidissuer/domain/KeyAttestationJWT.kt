@@ -22,8 +22,8 @@ import com.nimbusds.jose.JWSObject
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.pidissuer.adapter.out.json.AttestedKeysSerializer
 import eu.europa.ec.eudi.pidissuer.adapter.out.json.InstantEpochSecondsSerializer
+import eu.europa.ec.eudi.pidissuer.adapter.out.json.JWKNonEmptyListSerializer
 import eu.europa.ec.eudi.pidissuer.adapter.out.json.UrlStringSerializer
 import eu.europa.ec.eudi.pidissuer.adapter.out.json.jsonSupport
 import kotlinx.serialization.Required
@@ -34,7 +34,7 @@ import kotlin.time.Instant
 
 data class KeyAttestationJWT private constructor(
     val jwt: SignedJWT,
-    val keyAttestationClaims: KeyAttestationClaims,
+    val claims: KeyAttestationClaims,
 ) {
     companion object {
         operator fun invoke(value: String): KeyAttestationJWT = KeyAttestationJWT(SignedJWT.parse(value))
@@ -43,13 +43,13 @@ data class KeyAttestationJWT private constructor(
             with(jwt) {
                 ensureSignedWithSupportedAlgorithm()
                 ensureCorrectHeaderType()
-                ensureValidIssueTime()
             }
+            val deserializedClaims = runCatching {
+                val keyAttestation = JSONObjectUtils.toJSONString(jwt.jwtClaimsSet.toJSONObject())
+                jsonSupport.decodeFromString<KeyAttestationClaims>(keyAttestation)
+            }.getOrElse { throw IllegalArgumentException("Invalid Key Attestation JWT", it) }
 
-            val keyAttestation = JSONObjectUtils.toJSONString(jwt.jwtClaimsSet.toJSONObject())
-            val keyAttestationClaims = jsonSupport.decodeFromString<KeyAttestationClaims>(keyAttestation)
-
-            return KeyAttestationJWT(jwt, keyAttestationClaims)
+            return KeyAttestationJWT(jwt, deserializedClaims)
         }
     }
 }
@@ -58,8 +58,6 @@ private fun SignedJWT.ensureCorrectHeaderType() =
     require(header.type != null && (header.type.type == OpenId4VciSpec.KEY_ATTESTATION_JWT_TYPE)) {
         "Invalid Key Attestation JWT. Type must be set to `${OpenId4VciSpec.KEY_ATTESTATION_JWT_TYPE}`"
     }
-private fun SignedJWT.ensureValidIssueTime() =
-    requireNotNull(jwtClaimsSet.issueTime) { "Invalid Key Attestation JWT. Misses `iat` claim" }
 
 private fun SignedJWT.ensureSignedWithSupportedAlgorithm() {
     check(state == JWSObject.State.SIGNED || state == JWSObject.State.VERIFIED) {
@@ -76,6 +74,10 @@ private fun requireSupportedKeyAttestationAlgorithm(alg: JWSAlgorithm) =
 
 @Serializable
 data class KeyAttestationClaims(
+    @Required @SerialName(RFC7519.ISSUED_AT)
+    val iat: Long,
+    @SerialName(RFC7519.EXPIRES_AT)
+    val exp: Long? = null,
     @Required @SerialName(OpenId4VciSpec.KEY_ATTESTATION_ATTESTED_KEYS)
     val attestedKeys: AttestedKeys,
     @Required @Serializable(with = NonEmptyListSerializer::class) @SerialName(OpenId4VciSpec.KEY_ATTESTATION_KEY_STORAGE)
@@ -90,12 +92,14 @@ data class KeyAttestationClaims(
 )
 
 @JvmInline
-@Serializable(with = AttestedKeysSerializer::class)
-value class AttestedKeys(val value: NonEmptyList<JWK>) {
+@Serializable
+value class AttestedKeys(
+    @Serializable(with = JWKNonEmptyListSerializer::class)val value: NonEmptyList<JWK>,
+) {
     init {
         value.forEachIndexed { index, jwk ->
             require(!jwk.isPrivate) {
-                "Invalid Key Attestation JWT. Item at index $index in `attested_keys` must be a public key."
+                "Invalid Attested Keys. Item at index $index must be a public key."
             }
         }
     }
