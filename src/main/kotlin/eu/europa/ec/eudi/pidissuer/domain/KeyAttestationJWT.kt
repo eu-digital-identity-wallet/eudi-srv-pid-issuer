@@ -17,20 +17,19 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptyList
 import arrow.core.serialization.NonEmptyListSerializer
-import arrow.core.toNonEmptyListOrNull
-import arrow.core.toNonEmptyListOrThrow
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSObject
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.pidissuer.adapter.out.json.AttestedKeysSerializer
+import eu.europa.ec.eudi.pidissuer.adapter.out.json.InstantEpochSecondsSerializer
+import eu.europa.ec.eudi.pidissuer.adapter.out.json.UrlStringSerializer
 import eu.europa.ec.eudi.pidissuer.adapter.out.json.jsonSupport
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.net.URL
-import kotlin.collections.isNotEmpty
-import kotlin.collections.mapIndexed
 import kotlin.time.Instant
 
 data class KeyAttestationJWT private constructor(
@@ -47,25 +46,10 @@ data class KeyAttestationJWT private constructor(
                 ensureValidIssueTime()
             }
 
-            val attestedKeys = jwt.extractAttestedKeys()
-            val keyStorage = jwt.extractKeyStorage()
-            val userAuthentication = jwt.extractUserAuthentication()
-            val certification = jwt.extractCertification()
-            val keyStorageStatus = jwt.extractKeyStorageStatus()
-            val status = jwt.extractStatus()
-            val nonce = jwt.extractNonce()
+            val keyAttestation = JSONObjectUtils.toJSONString(jwt.jwtClaimsSet.toJSONObject())
+            val keyAttestationClaims = jsonSupport.decodeFromString<KeyAttestationClaims>(keyAttestation)
 
-            val attestationClaims = KeyAttestationClaims(
-                attestedKeys = attestedKeys,
-                keyStorage = keyStorage,
-                nonce = nonce,
-                userAuthentication = userAuthentication,
-                certification = certification,
-                keyStorageStatus = keyStorageStatus,
-                status = status,
-            )
-
-            return KeyAttestationJWT(jwt, attestationClaims)
+            return KeyAttestationJWT(jwt, keyAttestationClaims)
         }
     }
 }
@@ -84,71 +68,6 @@ private fun SignedJWT.ensureSignedWithSupportedAlgorithm() {
     requireSupportedKeyAttestationAlgorithm(header.algorithm)
 }
 
-private fun SignedJWT.extractNonce(): String? = jwtClaimsSet.getStringClaim(OpenId4VciSpec.NONCE)
-private fun SignedJWT.extractKeyStorage(): NonEmptyList<AttackPotentialResistance>? =
-    jwtClaimsSet.getListClaim(OpenId4VciSpec.KEY_ATTESTATION_KEY_STORAGE)?.map {
-        require(it is String) {
-            "Invalid Key Attestation JWT. 'key_storage' items must be strings"
-        }
-        AttackPotentialResistance(it)
-    }?.toNonEmptyListOrThrow()
-
-private fun SignedJWT.extractUserAuthentication(): NonEmptyList<AttackPotentialResistance>? =
-    jwtClaimsSet.getListClaim(OpenId4VciSpec.KEY_ATTESTATION_USER_AUTHENTICATION)?.map {
-        require(it is String) {
-            "Invalid Key Attestation JWT. 'user_authentication' items must be strings"
-        }
-        AttackPotentialResistance(it)
-    }?.toNonEmptyListOrThrow()
-
-private fun SignedJWT.extractCertification(): StringUrl {
-    val certificationClaim = jwtClaimsSet.getStringClaim(OpenId4VciSpec.CERTIFICATION)
-    require(certificationClaim.isNotBlank()) {
-        "Invalid Key Attestation JWT. 'certification' items must be url"
-    }
-    val certification = StringUrl(certificationClaim)
-    return certification
-}
-
-private fun SignedJWT.extractKeyStorageStatus(): KeyStorageStatus =
-    jwtClaimsSet.getJSONObjectClaim(TS3.KEY_STORAGE_STATUS).let { keyStorageJsonObject ->
-        val keyStorageStatusClaim = JSONObjectUtils.toJSONString(requireNotNull(keyStorageJsonObject))
-        jsonSupport.decodeFromString<KeyStorageStatus>(keyStorageStatusClaim)
-    }
-private fun SignedJWT.extractStatus(): Status =
-    jwtClaimsSet.getJSONObjectClaim(TokenStatusListSpec.STATUS).let { statusJsonObject ->
-        val statusClaim = JSONObjectUtils.toJSONString(requireNotNull(statusJsonObject))
-        jsonSupport.decodeFromString<Status>(statusClaim)
-    }
-
-private fun SignedJWT.extractAttestedKeys(): NonEmptyList<JWK> {
-    val attestedKeysClaimEntries = jwtClaimsSet.getListClaim(OpenId4VciSpec.KEY_ATTESTATION_ATTESTED_KEYS)
-    requireNotNull(attestedKeysClaimEntries) { "Invalid Key Attestation JWT. Misses `attested_keys` claim" }
-    require(attestedKeysClaimEntries.isNotEmpty()) {
-        "Invalid Key Attestation JWT. `attested_keys` claim must not be empty"
-    }
-
-    val attestedKeys = attestedKeysClaimEntries.mapIndexed { index, keyObject ->
-        require(keyObject is Map<*, *>) {
-            "Invalid Key Attestation JWT. Item at index $index in `attested_keys` is not a JSON object."
-        }
-        try {
-            @Suppress("UNCHECKED_CAST")
-            val jwk = JWK.parse(keyObject as Map<String, Any>)
-            require(!jwk.isPrivate) {
-                "Invalid Key Attestation JWT. Item at index $index in `attested_keys` must be a public key."
-            }
-            jwk
-        } catch (e: Exception) {
-            throw IllegalArgumentException(
-                "Invalid Key Attestation JWT. Item at index $index in `attested_keys` is not a valid JWK: ${e.message}",
-                e,
-            )
-        }
-    }.toNonEmptyListOrNull() ?: error("Invalid Key Attestation JWT. `attested_keys` cannot be empty")
-    return attestedKeys
-}
-
 private fun requireSupportedKeyAttestationAlgorithm(alg: JWSAlgorithm) =
     require(alg in TS3.SUPPORTED_KEY_ATTESTATION_SIGNING_ALGORITHMS) {
         "Key Attestation algorithm '${alg.name}' is not supported, must be one of: " +
@@ -157,8 +76,8 @@ private fun requireSupportedKeyAttestationAlgorithm(alg: JWSAlgorithm) =
 
 @Serializable
 data class KeyAttestationClaims(
-    @Required @Serializable(with = JWKNonEmptyListSerializer::class) @SerialName(OpenId4VciSpec.KEY_ATTESTATION_ATTESTED_KEYS)
-    val attestedKeys: NonEmptyList<JWK>,
+    @Required @SerialName(OpenId4VciSpec.KEY_ATTESTATION_ATTESTED_KEYS)
+    val attestedKeys: AttestedKeys,
     @Required @Serializable(with = NonEmptyListSerializer::class) @SerialName(OpenId4VciSpec.KEY_ATTESTATION_KEY_STORAGE)
     val keyStorage: NonEmptyList<AttackPotentialResistance>?,
     @Required @Serializable(with = NonEmptyListSerializer::class) @SerialName(OpenId4VciSpec.KEY_ATTESTATION_USER_AUTHENTICATION)
@@ -169,6 +88,18 @@ data class KeyAttestationClaims(
     @Required @SerialName(TS3.KEY_STORAGE_STATUS)
     val keyStorageStatus: KeyStorageStatus,
 )
+
+@JvmInline
+@Serializable(with = AttestedKeysSerializer::class)
+value class AttestedKeys(val value: NonEmptyList<JWK>) {
+    init {
+        value.forEachIndexed { index, jwk ->
+            require(!jwk.isPrivate) {
+                "Invalid Key Attestation JWT. Item at index $index in `attested_keys` must be a public key."
+            }
+        }
+    }
+}
 
 @Serializable
 data class KeyStorageStatus(
@@ -186,7 +117,7 @@ data class Status(
 )
 
 typealias EpochSecondsInstant =
-    @Serializable(with = InstantLongSerializer::class)
+    @Serializable(with = InstantEpochSecondsSerializer::class)
     Instant
 typealias StringUrl =
     @Serializable(with = UrlStringSerializer::class)

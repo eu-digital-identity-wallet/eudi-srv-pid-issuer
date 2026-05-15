@@ -72,7 +72,7 @@ internal class VerifyKeyAttestation(
                 walletProviderSigningKey.ensureTrustWalletProvider()
             }
 
-            keyAttestation.keyAttestationClaims.attestedKeys to nonce
+            keyAttestation.keyAttestationClaims.attestedKeys.value to nonce
         }
     }
 
@@ -156,9 +156,9 @@ internal class VerifyKeyAttestation(
             }
         }
         val attestedKeys = keyAttestationClaims.attestedKeys
-        verifyAttestedKey?.verify(attestedKeys, keyAttestationRequirement, nonce)
+        verifyAttestedKey?.verify(attestedKeys.value, keyAttestationRequirement, nonce)
             ?.mapLeft {
-                error("${it.size} of the total ${attestedKeys.size} attested keys failed to pass verification")
+                error("${it.size} of the total ${attestedKeys.value.size} attested keys failed to pass verification")
             }
     }
 }

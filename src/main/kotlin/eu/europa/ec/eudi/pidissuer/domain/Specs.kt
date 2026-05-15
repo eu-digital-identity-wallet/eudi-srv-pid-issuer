@@ -78,3 +78,11 @@ object TS3 {
 object RFC7519 {
     const val EXPIRES_AT: String = "exp"
 }
+
+/**
+ * [Electronic Signatures and Trust Infrastructures (ESI); Profiles for Electronic Attestation of Attributes;
+ * Part 3: Profiles for issuance of EAA or PID](https://www.etsi.org/deliver/etsi_ts/119400_119499/11947203/01.01.01_60/ts_11947203v010101p.pdf)
+ */
+object ETSI119472Part3 {
+    const val KEY_ATTESTATION_JWT_PROOF_SIGNING_KEY_INDEX: Int = 0
+}
