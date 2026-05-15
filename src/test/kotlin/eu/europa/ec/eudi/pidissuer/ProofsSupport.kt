@@ -49,6 +49,7 @@ internal suspend fun jwtProof(
 ): SignedJWT {
     val header = JWSHeader.Builder(JWSAlgorithm.ES256)
         .type(JOSEObjectType("openid4vci-proof+jwt"))
+        .keyID("0")
         .apply(headerCustomizer)
         .build()
     val claims = JWTClaimsSet.Builder()
@@ -121,18 +122,22 @@ internal suspend fun keyAttestationJWT(
     if (includeExpiresAt) {
         builder.expirationTime(expiresAt.toJavaDate())
     }
-    val keyStorageStatus = mapOf(
-        "status" to mapOf(
-            "status_list" to mapOf(
-                "idx" to 7656,
-                "uri" to "https://issuer.eudiw.dev/token_status_list/FC/key-attestation+jwt/6923e00d-2d4c-4177-b956-690152f54647",
-            ),
+
+    val status = mapOf(
+        "status_list" to mapOf(
+            "idx" to 7656,
+            "uri" to "https://issuer.eudiw.dev/token_status_list/FC/key-attestation+jwt/6923e00d-2d4c-4177-b956-690152f54647",
         ),
+    )
+    val keyStorageStatus = mapOf(
+        "status" to status,
         "exp" to expiresAt.epochSeconds,
     )
 
     val claimsSet = builder
         .issueTime(Date())
+        .claim("status", status)
+        .claim("certification", "https://issuer.eudiw.dev/certification")
         .claim("attested_keys", attestedKeysJsonArray)
         .claim("key_storage", keyStorageConstraints)
         .claim("user_authentication", userAuthorizationConstraints)

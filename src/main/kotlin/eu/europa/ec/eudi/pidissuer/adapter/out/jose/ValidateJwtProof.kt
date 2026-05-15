@@ -70,6 +70,11 @@ internal class ValidateJwtProof(
                 "must be one of: ${proofType.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
         }
         val (algorithm, credentialKeys) = algorithmAndCredentialKey(signedJwt, proofType, verifyKeyAttestation, nonce, at)
+        require(signedJwt.header.keyID == ETSI119472Part3.KEY_ATTESTATION_JWT_PROOF_SIGNING_KEY_INDEX.toString()) {
+            "JWT Proof with `key_attestation` must contain header `kid` " +
+                "with value `${ETSI119472Part3.KEY_ATTESTATION_JWT_PROOF_SIGNING_KEY_INDEX}`"
+        }
+
         val keySelector = keySelector(credentialKeys, algorithm)
         val processor = processor(credentialIssuerId, keySelector)
         processor.process(signedJwt, null)
