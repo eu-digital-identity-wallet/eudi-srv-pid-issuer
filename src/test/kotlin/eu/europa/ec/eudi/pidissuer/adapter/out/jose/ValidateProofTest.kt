@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.NonEmptyList
 import arrow.core.nonEmptySetOf
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
@@ -54,7 +53,7 @@ class ValidateProofTest {
         )
 
         // 2 attested keys, all distinct, none truncated
-        assertEquals(2, result.size)
+        assertEquals(2, result.credentialKeys.value.size)
     }
 
     @Test
@@ -70,7 +69,7 @@ class ValidateProofTest {
             policy = policy,
         )
 
-        assertEquals(1, result.size)
+        assertEquals(1, result.credentialKeys.value.size)
     }
 
     @Test
@@ -86,13 +85,13 @@ class ValidateProofTest {
             policy = policy,
         )
 
-        assertEquals(3, result.size)
+        assertEquals(3, result.credentialKeys.value.size)
     }
 
     private suspend fun runValidateProofs(
         proof: Pair<UnvalidatedProof.Jwt, *>,
         policy: CredentialReusePolicy,
-    ): NonEmptyList<JWK> {
+    ): ValidatedProof {
         val (unvalidatedProof, _) = proof
 
         val validator = ValidateProofs(

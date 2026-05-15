@@ -17,10 +17,12 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
 import arrow.core.*
 import arrow.core.raise.either
+import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CalculateCredentialExpiration
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.jwkExtensions
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -36,7 +38,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.util.*
-import kotlin.time.Duration
 
 val MobileDrivingLicenceV1Scope: Scope = Scope(mdlDocType(1u))
 
@@ -355,8 +356,9 @@ internal class IssueMobileDrivingLicence(
         credentialIdentifier: CredentialIdentifier?,
     ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Issuing mDL")
+        val validatedProof = validateProofs(request.unvalidatedProof, supportedCredential, clock.now()).bind()
         val holderKeys = with(jwkExtensions()) {
-            validateProofs(request.unvalidatedProof, supportedCredential, clock.now()).bind()
+            validatedProof.credentialKeys.value
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
         }
         val licence = getMobileDrivingLicenceData(authorizationContext).bind()

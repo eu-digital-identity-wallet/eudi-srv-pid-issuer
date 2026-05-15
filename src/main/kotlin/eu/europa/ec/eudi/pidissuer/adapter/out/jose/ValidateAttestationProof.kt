@@ -28,7 +28,7 @@ internal class ValidateAttestationProof(
         unvalidatedProof: UnvalidatedProof.Attestation,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
-    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKeys, String>> = Either.catch {
+    ): Either<IssueCredentialError.InvalidProof, ValidatedProof> = Either.catch {
         val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.ATTESTATION]
         requireNotNull(proofType) {
             "Credential configuration '${credentialConfiguration.id.value}' doesn't support 'attestation' proofs"
@@ -48,7 +48,7 @@ internal class ValidateAttestationProof(
         keyAttestationJWT: KeyAttestationJWT,
         proofType: ProofType.Attestation,
         at: Instant,
-    ): Pair<CredentialKeys, String> {
+    ): ValidatedProof {
         val (attestedKeys, nonce) = verifyKeyAttestation(
             keyAttestation = keyAttestationJWT,
             signingAlgorithmsSupported = proofType.signingAlgorithmsSupported,
@@ -58,6 +58,10 @@ internal class ValidateAttestationProof(
         ).getOrThrow()
         requireNotNull(nonce) { "Key attestation does not contain a c_nonce." }
 
-        return CredentialKeys(attestedKeys) to nonce
+        return ValidatedProof(
+            credentialKeys = CredentialKeys(attestedKeys),
+            cNonce = nonce,
+            keyStorageStatus = keyAttestationJWT.claims.keyStorageStatus,
+        )
     }
 }

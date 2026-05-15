@@ -16,14 +16,14 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.Either
-import arrow.core.NonEmptyList
 import arrow.core.raise.either
 import arrow.core.raise.ensure
-import arrow.core.toNonEmptyListOrNull
-import com.nimbusds.jose.jwk.JWK
+import arrow.core.toNonEmptyListOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
+import eu.europa.ec.eudi.pidissuer.domain.CredentialKeys
 import eu.europa.ec.eudi.pidissuer.domain.CredentialReusePolicy
 import eu.europa.ec.eudi.pidissuer.domain.EudiReusePolicy
+import eu.europa.ec.eudi.pidissuer.domain.KeyStorageStatus
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidNonce
@@ -44,9 +44,9 @@ internal class ValidateProofs(
         unvalidatedProof: UnvalidatedProof,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
-    ): Either<IssueCredentialError, NonEmptyList<JWK>> = coroutineScope {
+    ): Either<IssueCredentialError, ValidatedProof> = coroutineScope {
         either {
-            val credentialKeysAndCNonce =
+            val validatedProof =
                 when (unvalidatedProof) {
                     is UnvalidatedProof.Jwt ->
                         validateJwtProof(unvalidatedProof, credentialConfiguration, at).bind()
@@ -54,27 +54,31 @@ internal class ValidateProofs(
                         validateAttestationProof(unvalidatedProof, credentialConfiguration, at).bind()
                 }
 
-            val cNonce = credentialKeysAndCNonce.second
-            ensure(verifyNonce(cNonce, at)) {
+            ensure(verifyNonce(validatedProof.cNonce, at)) {
                 InvalidNonce("CNonce is not valid")
             }
 
-            val jwks = credentialKeysAndCNonce.first.value
+            val limitedCredentialKeys = validatedProof.credentialKeys
                 .limitTo(credentialConfiguration.credentialReusePolicy)
-                .toNonEmptyListOrNull()
 
-            checkNotNull(jwks)
+            validatedProof.copy(credentialKeys = limitedCredentialKeys)
         }
     }
 
-    private fun List<JWK>.limitTo(policy: CredentialReusePolicy): List<JWK> = when (policy) {
+    private fun CredentialKeys.limitTo(policy: CredentialReusePolicy): CredentialKeys = when (policy) {
         CredentialReusePolicy.None -> this
         is CredentialReusePolicy.EUDI -> {
             val limit = when {
                 policy.options.any { it is EudiReusePolicy.LimitedTime } -> 1
                 else -> policy.effectiveBatchSize
             }
-            if (limit == null) this else take(limit)
+            if (limit == null) this else CredentialKeys(value.take(limit).toNonEmptyListOrThrow())
         }
     }
 }
+
+internal data class ValidatedProof(
+    val credentialKeys: CredentialKeys,
+    val cNonce: String,
+    val keyStorageStatus: KeyStorageStatus,
+)

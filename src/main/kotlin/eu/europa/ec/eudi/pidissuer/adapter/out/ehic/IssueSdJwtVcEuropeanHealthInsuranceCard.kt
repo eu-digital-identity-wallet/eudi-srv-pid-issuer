@@ -19,18 +19,21 @@ import arrow.core.Either
 import arrow.core.NonEmptySet
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
+import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CalculateCredentialExpiration
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.IsAttribute
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
@@ -38,7 +41,6 @@ import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.coroutines.Dispatchers
 import org.slf4j.LoggerFactory
 import java.util.*
-import kotlin.time.Duration
 
 private val EuropeanHealthInsuranceCardScope: Scope = Scope("urn:eudi:ehic:1:dc+sd-jwt")
 
@@ -203,9 +205,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
     private val storeIssuedCredentials: StoreIssuedCredentials,
     override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.ts3(),
 ) : IssueSpecificCredential {
-    init {
-        require(validity.isPositive())
-    }
 
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
@@ -215,13 +214,17 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
         log.info("Issuing DC4EU EHIC")
 
         val now = clock.now()
-        val holderPublicKeys = validateProofs(request.unvalidatedProof, supportedCredential, now).bind()
+        val validatedProof = validateProofs(request.unvalidatedProof, supportedCredential, now).bind()
+        val holderPublicKeys = validatedProof.credentialKeys.value
         val ehic = getEuropeanHealthInsuranceCardData()
         val dateOfIssuance = now
-        val dateOfExpiry = dateOfIssuance + validity
+        val expiresAt = CalculateCredentialExpiration(authorizationContext.clientStatus, validatedProof.keyStorageStatus, clock).bind()
+        ensure(expiresAt > dateOfIssuance) {
+            Unexpected("exp should be after iat")
+        }
 
         val issuedCredentials = holderPublicKeys.parMap(Dispatchers.Default, 4) {
-            encode(ehic, authorizationContext.username, it, dateOfIssuance = dateOfIssuance, dateOfExpiry = dateOfExpiry).bind()
+            encode(ehic, authorizationContext.username, it, dateOfIssuance = dateOfIssuance, dateOfExpiry = expiresAt).bind()
         }.toNonEmptyListOrNull()
         ensureNotNull(issuedCredentials) {
             IssueCredentialError.Unexpected("Unable to issue DC4EU EHIC")
@@ -252,7 +255,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             digestsHashAlgorithm: HashAlgorithm,
             credentialIssuerId: CredentialIssuerId,
             clock: Clock,
-            validity: Duration,
             validateProofs: ValidateProofs,
             getEuropeanHealthInsuranceCardData: GetEuropeanHealthInsuranceCardData,
             notificationsEnabled: Boolean,
@@ -282,7 +284,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     credentialIssuerId,
                 ),
                 clock,
-                validity,
                 validateProofs,
                 getEuropeanHealthInsuranceCardData,
                 notificationsEnabled,
@@ -295,7 +296,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             digestsHashAlgorithm: HashAlgorithm,
             credentialIssuerId: CredentialIssuerId,
             clock: Clock,
-            validity: Duration,
             validateProofs: ValidateProofs,
             getEuropeanHealthInsuranceCardData: GetEuropeanHealthInsuranceCardData,
             notificationsEnabled: Boolean,
@@ -325,7 +325,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     credentialIssuerId,
                 ),
                 clock,
-                validity,
                 validateProofs,
                 getEuropeanHealthInsuranceCardData,
                 notificationsEnabled,

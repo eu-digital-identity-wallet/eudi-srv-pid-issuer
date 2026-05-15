@@ -199,10 +199,6 @@ Variable: `ISSUER_PID_MSO_MDOC_SIGNING_KEY_PASSWORD`
 Description: Password of the key-pair for signing MSO MDOC PIDs.       
 Default value: N/A
 
-Variable: `ISSUER_PID_MSO_MDOC_ENCODER_DURATION`    
-Description: Configures the validity of issued PIDs in *MSO MDOC* format. Uses Period syntax. 
-Default value: `P30D`
-
 Variable: `ISSUER_PID_MSO_MDOC_NOTIFICATIONS_ENABLED`  
 Description: Whether to enabled Notifications Endpoint support for PIDs issued in *MSO MDOC*.     
 Default value: `true`
@@ -252,10 +248,6 @@ Default value: N/A
 Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY_PASSWORD`  
 Description: Password of the key-pair for signing SD JWT VC PIDs.       
 Default value: N/A
-
-Variable: `ISSUER_PID_SD_JWT_VC_DURATION`  
-Description: Configures the validity of issued PIDs in *SD JWT VC* format. Uses Period syntax.  
-Default value: `P30D`
 
 Variable: `ISSUER_PID_SD_JWT_VC_NOTUSEBEFORE`  
 Description: Period after which a PID issued in *SD JWT VC* becomes valid. Used to calculate the value of the `nbf` claim.  
@@ -324,11 +316,6 @@ Variable: `ISSUER_MDL_SIGNING_KEY_PASSWORD`
 Description: Password of the key-pair for signing mDLs.       
 Default value: N/A
 
-Variable: `ISSUER_MDL_MSO_MDOC_ENCODER_DURATION`    
-Description: Configures the validity of issued mDLs when using the internal encoder. Uses Period syntax. 
-Required when `ISSUER_MDL_MSO_MDOC_ENCODER` is set to `Internal`.  
-Default value: `P5D`
-
 Variable: `ISSUER_MDL_NOTIFICATIONS_ENABLED`    
 Description: Whether to enabled Notifications Endpoint support for mDLs.    
 Default value: `true`
@@ -378,10 +365,6 @@ Default value: N/A
 Variable: `ISSUER_EHIC_SIGNING_KEY_PASSWORD`  
 Description: Password of the key-pair for signing EHICs.       
 Default value: N/A
-
-Variable: `ISSUER_EHIC_VALIDITY`    
-Description: Validity of European Health Insurance Cards issued in *SD-JWT VC* format. Uses Period syntax.      
-Default value: `P30D`
 
 Variable: `ISSUER_EHIC_ENCODER_DIGESTS_HASHALGORITHM`  
 Description: Hash algorithm used to calculate the disclosure digests of European Health Insurance Cards issued in *SD-JWT VC* format.    
@@ -446,10 +429,6 @@ Variable: `ISSUER_LEARNINGCREDENTIAL_SDJWTVC_ENCODER_DIGESTS_HASHALGORITHM`
 Description: Hash algorithm used to calculate the disclosure digests of Learning Credentials issued in *SD-JWT VC* format.    
 Allowed values: `sha-256`, `sha-384`, `sha-512`, `sha3-256`, `sha3-384`, `sha3-512`   
 Default value: `sha-256`
-
-Variable: `ISSUER_LEARNINGCREDENTIAL_VALIDITY`    
-Description: Validity of Learning Credentials issued. Uses Period syntax.      
-Default value: `P30D`
 
 Variable: `ISSUER_LEARNINGCREDENTIAL_NOTIFICATIONS_ENABLED`    
 Description: Whether to enabled Notifications Endpoint support for issued Learning Credentials.    

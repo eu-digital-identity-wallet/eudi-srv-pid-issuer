@@ -339,7 +339,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
     }
 
     @Test
-    fun `fails when providing more proofs than allowed batch_size`() = runTest {
+    fun `fails when providing multiple proofs`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
         val nonce = generateNonce(clock.now(), 5L.minutes)
         val proof1 = jwtProofWithKeyAttestation(
