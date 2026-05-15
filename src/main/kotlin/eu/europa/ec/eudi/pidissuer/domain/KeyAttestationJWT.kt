@@ -22,15 +22,11 @@ import com.nimbusds.jose.JWSObject
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.pidissuer.adapter.out.json.InstantEpochSecondsSerializer
 import eu.europa.ec.eudi.pidissuer.adapter.out.json.JWKNonEmptyListSerializer
-import eu.europa.ec.eudi.pidissuer.adapter.out.json.UrlStringSerializer
 import eu.europa.ec.eudi.pidissuer.adapter.out.json.jsonSupport
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import java.net.URL
-import kotlin.time.Instant
 
 data class KeyAttestationJWT private constructor(
     val jwt: SignedJWT,
@@ -45,8 +41,8 @@ data class KeyAttestationJWT private constructor(
                 ensureCorrectHeaderType()
             }
             val deserializedClaims = runCatching {
-                val keyAttestation = JSONObjectUtils.toJSONString(jwt.jwtClaimsSet.toJSONObject())
-                jsonSupport.decodeFromString<KeyAttestationClaims>(keyAttestation)
+                val serializedClaims = JSONObjectUtils.toJSONString(jwt.jwtClaimsSet.toJSONObject())
+                jsonSupport.decodeFromString<KeyAttestationClaims>(serializedClaims)
             }.getOrElse { throw IllegalArgumentException("Invalid Key Attestation JWT", it) }
 
             return KeyAttestationJWT(jwt, deserializedClaims)
@@ -74,21 +70,17 @@ private fun requireSupportedKeyAttestationAlgorithm(alg: JWSAlgorithm) =
 
 @Serializable
 data class KeyAttestationClaims(
-    @Required @SerialName(RFC7519.ISSUED_AT)
-    val iat: Long,
-    @SerialName(RFC7519.EXPIRES_AT)
-    val exp: Long? = null,
-    @Required @SerialName(OpenId4VciSpec.KEY_ATTESTATION_ATTESTED_KEYS)
-    val attestedKeys: AttestedKeys,
+    @Required @SerialName(RFC7519.ISSUED_AT) val issuedAt: EpochSecondsInstant,
+    @Required @SerialName(RFC7519.EXPIRES_AT) val expiresAt: EpochSecondsInstant,
+    @Required @SerialName(OpenId4VciSpec.KEY_ATTESTATION_ATTESTED_KEYS) val attestedKeys: AttestedKeys,
     @Required @Serializable(with = NonEmptyListSerializer::class) @SerialName(OpenId4VciSpec.KEY_ATTESTATION_KEY_STORAGE)
-    val keyStorage: NonEmptyList<AttackPotentialResistance>?,
+    val keyStorage: NonEmptyList<AttackPotentialResistance>,
     @Required @Serializable(with = NonEmptyListSerializer::class) @SerialName(OpenId4VciSpec.KEY_ATTESTATION_USER_AUTHENTICATION)
-    val userAuthentication: NonEmptyList<AttackPotentialResistance>?,
+    val userAuthentication: NonEmptyList<AttackPotentialResistance>,
     @Required @SerialName(OpenId4VciSpec.CERTIFICATION) val certification: StringUrl,
     @SerialName(OpenId4VciSpec.NONCE) val nonce: Nonce? = null,
     @SerialName(TokenStatusListSpec.STATUS) val status: Status? = null,
-    @Required @SerialName(TS3.KEY_STORAGE_STATUS)
-    val keyStorageStatus: KeyStorageStatus,
+    @Required @SerialName(TS3.KEY_STORAGE_STATUS) val keyStorageStatus: KeyStorageStatus,
 )
 
 @JvmInline
@@ -120,10 +112,4 @@ data class Status(
     @Required @SerialName(TokenStatusListSpec.STATUS_LIST) val statusList: StatusListToken,
 )
 
-typealias EpochSecondsInstant =
-    @Serializable(with = InstantEpochSecondsSerializer::class)
-    Instant
-typealias StringUrl =
-    @Serializable(with = UrlStringSerializer::class)
-    URL
 typealias Nonce = String

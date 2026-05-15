@@ -17,7 +17,9 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptyList
 import com.nimbusds.jose.jwk.JWK
+import eu.europa.ec.eudi.pidissuer.adapter.out.json.InstantEpochSecondsSerializer
 import eu.europa.ec.eudi.pidissuer.adapter.out.json.UriStringSerializer
+import eu.europa.ec.eudi.pidissuer.adapter.out.json.UrlStringSerializer
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -152,7 +154,7 @@ value class CredentialIdentifier(val value: String)
 data class StatusListToken(
     @Required @SerialName(TokenStatusListSpec.URI)
     @Serializable(with = UriStringSerializer::class)
-    val statusList: URI,
+    val statusList: StringUri,
     @Required @SerialName(TokenStatusListSpec.IDX)
     val index: UInt,
 )
@@ -175,3 +177,13 @@ value class NonBlankString(val value: String) {
 
     override fun toString(): String = value
 }
+
+typealias EpochSecondsInstant =
+    @Serializable(with = InstantEpochSecondsSerializer::class)
+    Instant
+typealias StringUrl =
+    @Serializable(with = UrlStringSerializer::class)
+    URL
+typealias StringUri =
+    @Serializable(with = UriStringSerializer::class)
+    URI
