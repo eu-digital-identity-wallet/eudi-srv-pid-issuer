@@ -25,14 +25,14 @@ import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.TS3
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Instant
 
 private val accessTokenSigner = ECDSASigner(ECKeyGenerator(Curve.P_256).generate())
 
-fun createAccessTokenValue(clientStatusConfiguration: ClientStatusConfiguration? = null): String {
+fun createAccessTokenValue(includeClientStatus: Boolean = true, expiresAt: Instant = (Clock.System.now() + 32.days)): String {
     val jwtClaimSet = JWTClaimsSet.Builder().apply {
-        if (clientStatusConfiguration != null) {
+        if (includeClientStatus) {
             claim(
                 TS3.CLIENT_STATUS,
                 JSONObjectUtils.parse(
@@ -44,7 +44,7 @@ fun createAccessTokenValue(clientStatusConfiguration: ClientStatusConfiguration?
                                   "uri": "https://revocation_url/wia-statuslists/42"
                                 }
                               },
-                              "exp": ${clientStatusConfiguration.expiresAt}
+                              "exp": ${expiresAt.epochSeconds}
                             }
                     """.trimIndent(),
                 ),
@@ -56,10 +56,4 @@ fun createAccessTokenValue(clientStatusConfiguration: ClientStatusConfiguration?
         JWSHeader.Builder(JWSAlgorithm.ES256).build(),
         jwtClaimSet,
     ).apply { sign(accessTokenSigner) }.serialize()
-}
-data class ClientStatusConfiguration(
-    val clock: Clock,
-    val skew: Duration = 32.days,
-) {
-    val expiresAt: Long get() = (clock.now().epochSeconds + skew.inWholeSeconds)
 }

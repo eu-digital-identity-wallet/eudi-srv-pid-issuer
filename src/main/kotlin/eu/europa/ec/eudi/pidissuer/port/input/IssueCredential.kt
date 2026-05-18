@@ -37,8 +37,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.slf4j.LoggerFactory
-import kotlin.time.Duration
-import kotlin.time.Instant
 
 @Serializable
 data class ProofsTO(
@@ -115,9 +113,14 @@ sealed interface IssueCredentialError {
     data class InvalidNonce(val msg: String, val cause: Throwable? = null) : IssueCredentialError
 
     /**
-     * Indicates a credential request contained contains an invalid 'credential_response_encryption_alg'.
+     * Indicates a credential request contains an invalid 'credential_response_encryption_alg'.
      */
     data class InvalidEncryptionParameters(val error: Throwable) : IssueCredentialError
+
+    /**
+     * Indicates a credential request contains a 'client_status.exp` value after a preferred client status period'.
+     */
+    data class InvalidClientStatus(val msg: String) : IssueCredentialError
 
     data class WrongScope(val expected: Scope) : IssueCredentialError
 
@@ -175,6 +178,9 @@ enum class CredentialErrorTypeTo {
 
     @SerialName("invalid_encryption_parameters")
     INVALID_ENCRYPTION_PARAMETERS,
+
+    @SerialName("invalid_client_status")
+    INVALID_CLIENT_STATUS,
 }
 
 /**
@@ -370,7 +376,9 @@ private class Services(
                 )
 
             val preferredClientStatusPeriod = credentialIssuerMetadata.preferredClientStatusPeriod.value
-            ensureClientStatusExpAfterPreferredPeriod(preferredClientStatusPeriod, authorizationContext.clientStatus.expiresAt)
+            ensure((authorizationContext.clientStatus.expiresAt - clock.now()) >= preferredClientStatusPeriod) {
+                InvalidClientStatus("Client Status is before preferred client status period")
+            }
 
             val request =
                 when (unresolvedRequest) {
@@ -387,11 +395,6 @@ private class Services(
             request.credentialRequest to issued
         }
 
-        private fun ensureClientStatusExpAfterPreferredPeriod(preferredClientStatusPeriod: Duration, expiresAt: Instant) {
-            val now = clock.now()
-            val minimumExpiresAt = now + preferredClientStatusPeriod
-            require(expiresAt >= minimumExpiresAt)
-        }
         private suspend fun resolve(
             unresolvedRequest: UnresolvedCredentialRequest.ByCredentialIdentifier,
         ): ResolvedCredentialRequest =
@@ -668,6 +671,9 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
 
         is WrongScope ->
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Wrong scope. Expected ${expected.value}"
+
+        is InvalidClientStatus ->
+            CredentialErrorTypeTo.INVALID_CLIENT_STATUS to "Client Status is before preferred client status period"
 
         is Unexpected ->
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to

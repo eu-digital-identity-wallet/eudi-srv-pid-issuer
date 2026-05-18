@@ -38,7 +38,6 @@ import eu.europa.ec.eudi.pidissuer.jwtProofWithKeyAttestation
 import eu.europa.ec.eudi.pidissuer.keyAttestationJWT
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
-import eu.europa.ec.eudi.pidissuer.utils.ClientStatusConfiguration
 import eu.europa.ec.eudi.pidissuer.utils.createAccessTokenValue
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
@@ -1318,9 +1317,8 @@ private fun dPoPTokenAuthentication(
         ),
         authorities + scopes.map { SimpleGrantedAuthority("SCOPE_${it.value}") },
     )
-    val calculateClientStatus = if (includeClientStatus) ClientStatusConfiguration(clock) else null
 
-    val accessTokenValue = createAccessTokenValue(calculateClientStatus)
+    val accessTokenValue = createAccessTokenValue(includeClientStatus)
     val accessToken = DPoPAccessToken(accessTokenValue)
 
     return DPoPTokenAuthentication.unauthenticated(
