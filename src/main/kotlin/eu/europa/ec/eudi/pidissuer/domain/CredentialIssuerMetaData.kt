@@ -25,6 +25,7 @@ import com.nimbusds.jose.jwk.RSAKey
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec.ZIP_ALGORITHMS
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import java.util.*
+import kotlin.time.Duration
 
 /**
  * Encryption algorithms and methods supported for encrypting Credential Responses.
@@ -212,6 +213,7 @@ data class CredentialIssuerDisplay(
  * Credential Response encrypted or not.
  * @param display display properties of a Credential Issuer for a certain language
  * @param specificCredentialIssuers the list of the specific issuers supported
+ * @param preferredClientStatusPeriod the preferred client status period in seconds
  */
 data class CredentialIssuerMetaData(
     val id: CredentialIssuerId,
@@ -225,6 +227,7 @@ data class CredentialIssuerMetaData(
     val credentialResponseEncryption: CredentialResponseEncryption,
     val display: List<CredentialIssuerDisplay> = emptyList(),
     val specificCredentialIssuers: List<IssueSpecificCredential>,
+    val preferredClientStatusPeriod: Duration,
 ) {
     init {
         val displayLocales = display.map { it.locale }
@@ -235,6 +238,10 @@ data class CredentialIssuerMetaData(
         val credentialConfigurationIds = specificCredentialIssuers.map { it.supportedCredential.id }
         require(credentialConfigurationIds.size == credentialConfigurationIds.distinct().size) {
             "credential configuration ids must be unique"
+        }
+
+        require(preferredClientStatusPeriod.isPositive()) {
+            "preferredClientStatusPeriod must be positive"
         }
     }
 

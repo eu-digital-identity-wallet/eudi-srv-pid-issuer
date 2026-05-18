@@ -61,6 +61,8 @@ data class CredentialIssuerMetaDataTO(
     val credentialConfigurationsSupported: JsonObject,
     @SerialName("openid4vci_version")
     val openid4VciVersion: String? = null,
+    @Required @SerialName("preferred_client_status_period")
+    val preferredClientStatusPeriod: Long,
 ) {
 
     @Serializable
@@ -129,6 +131,7 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
         credentialConfigurationsSupported.associate { it.id.value to credentialMetaDataJson(it) },
     ),
     openid4VciVersion = OpenId4VciSpec.VERSION,
+    preferredClientStatusPeriod = preferredClientStatusPeriod.inWholeSeconds,
 )
 
 private fun CredentialRequestEncryption.toTransferObject(): Option<CredentialIssuerMetaDataTO.CredentialRequestEncryptionTO> =

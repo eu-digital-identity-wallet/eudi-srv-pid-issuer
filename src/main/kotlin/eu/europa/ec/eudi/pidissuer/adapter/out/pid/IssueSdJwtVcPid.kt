@@ -40,6 +40,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.util.*
+import kotlin.time.Duration
 import kotlin.time.Instant
 
 val PidSdJwtVcScope: Scope = Scope("eu.europa.ec.eudi.pid_vc_sd_jwt")
@@ -188,6 +189,7 @@ private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
  * Service for issuing PID SD JWT credential
  */
 internal class IssueSdJwtVcPid(
+    override val validity: Duration,
     private val validateProofs: ValidateProofs,
     credentialIssuerId: CredentialIssuerId,
     private val clock: Clock,

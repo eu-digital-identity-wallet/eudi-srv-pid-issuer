@@ -559,6 +559,191 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     registerBean { ValidateAttestationProof(bean()) }
     registerBean { ValidateProofs(bean(), bean(), bean()) }
     registerBean {
+        val specificCredentialIssuers = buildList {
+            if (enableMsoMdocPid) {
+                val duration = env.duration("issuer.pid.mso_mdoc.encoder.duration") ?: 30.days
+                val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
+                    "issuer.pid.mso_mdoc.jwtProofs.supportedSigningAlgorithms",
+                    JWSAlgorithm::parse,
+                )
+                val pidMsoMdocReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.pid.mso_mdoc")
+                val issueMsoMdocPid = IssueMsoMdocPid(
+                    getPidData = bean(),
+                    encodePidInCbor = bean(),
+                    notificationsEnabled = env.getProperty<Boolean>("issuer.pid.mso_mdoc.notifications.enabled")
+                        ?: true,
+                    generateNotificationId = bean(),
+                    clock = clock,
+                    validity = duration,
+                    storeIssuedCredentials = bean(),
+                    validateProofs = bean(),
+                    jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
+                    keyAttestationRequirement = KeyAttestationRequirement.ts3(),
+                    generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
+                    credentialReusePolicy = pidMsoMdocReusePolicy,
+                )
+                add(issueMsoMdocPid)
+                add(issueMsoMdocPid.asDeferred(bean(), bean(), clock))
+            }
+
+            if (enableSdJwtVcPid) {
+                val expiresIn = env.duration("issuer.pid.sd_jwt_vc.duration") ?: 30.days
+                val notUseBefore = env.duration("issuer.pid.sd_jwt_vc.notUseBefore")
+                val pidSdJwtVcReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.pid.sd_jwt_vc")
+
+                val digestsHashAlgorithm = env.getProperty<HashAlgorithm>(
+                    "issuer.pid.sd_jwt_vc.digests.hashAlgorithm",
+                ) ?: HashAlgorithm.SHA_256
+                val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
+                    "issuer.pid.sd_jwt_vc.jwtProofs.supportedSigningAlgorithms",
+                    JWSAlgorithm::parse,
+                )
+
+                val issueSdJwtVcPid = IssueSdJwtVcPid(
+                    hashAlgorithm = digestsHashAlgorithm,
+                    issuerSigningKey = getIssuerSigningKey("issuer.pid.sd_jwt_vc.signing-key"),
+                    getPidData = bean(),
+                    clock = clock,
+                    credentialIssuerId = issuerPublicUrl,
+                    calculateExpiresAt = { iat -> iat + expiresIn },
+                    calculateNotUseBefore = notUseBefore?.let { duration -> { iat -> iat + duration } },
+                    notificationsEnabled = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled")
+                        ?: true,
+                    generateNotificationId = bean(),
+                    storeIssuedCredentials = bean(),
+                    validateProofs = bean(),
+                    generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
+                    jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
+                    keyAttestationRequirement = KeyAttestationRequirement.ts3(),
+                    credentialReusePolicy = pidSdJwtVcReusePolicy,
+                    validity = expiresIn,
+                )
+
+                add(issueSdJwtVcPid)
+                add(issueSdJwtVcPid.asDeferred(bean(), bean(), clock))
+            }
+
+            if (enableMobileDrivingLicence) {
+                val duration = env.duration("issuer.mdl.mso_mdoc.encoder.duration") ?: 5.days
+                val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
+                    "issuer.mdl.jwtProofs.supportedSigningAlgorithms",
+                    JWSAlgorithm::parse,
+                )
+                val mdlIssuerReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.mdl")
+                val mdlIssuer = IssueMobileDrivingLicence(
+                    getMobileDrivingLicenceData = bean(),
+                    encodeMobileDrivingLicenceInCbor = bean(),
+                    notificationsEnabled = env.getProperty<Boolean>("issuer.mdl.notifications.enabled") ?: true,
+                    generateNotificationId = bean(),
+                    clock = clock,
+                    validity = duration,
+                    storeIssuedCredentials = bean(),
+                    validateProofs = bean(),
+                    jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
+                    keyAttestationRequirement = KeyAttestationRequirement.ts3(),
+                    generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
+                    credentialReusePolicy = mdlIssuerReusePolicy,
+                )
+                add(mdlIssuer)
+                add(mdlIssuer.asDeferred(bean(), bean(), clock))
+            }
+
+            if (enableEhic) {
+                val digestHashAlgorithm = env.getProperty<HashAlgorithm>(
+                    "issuer.ehic.encoder.digests.hashAlgorithm",
+                ) ?: HashAlgorithm.SHA_256
+                val validity = Duration.parse(env.getProperty("issuer.ehic.validity", "P30D"))
+                val ehicNotificationsEnabled = env.getProperty<Boolean>("issuer.ehic.notifications.enabled") ?: true
+                val issuingCountry = EhicIssuingCountry(env.getProperty("issuer.ehic.issuingCountry", "GR"))
+                val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
+                    "issuer.ehic.jwtProofs.supportedSigningAlgorithms",
+                    JWSAlgorithm::parse,
+                )
+                val ehicReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.ehic")
+
+                val issuerSigningKey = getIssuerSigningKey("issuer.ehic.signing-key")
+                val ehicJwsJsonFlattenedIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.jwsJsonFlattened(
+                    issuerSigningKey = issuerSigningKey,
+                    digestsHashAlgorithm = digestHashAlgorithm,
+                    credentialIssuerId = issuerPublicUrl,
+                    clock = bean(),
+                    validity = validity,
+                    validateProofs = bean(),
+                    getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(
+                        bean(),
+                        issuingCountry,
+                    ),
+                    notificationsEnabled = ehicNotificationsEnabled,
+                    generateNotificationId = bean(),
+                    storeIssuedCredentials = bean(),
+                    jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
+                    keyAttestationRequirement = KeyAttestationRequirement.ts3(),
+                    credentialReusePolicy = ehicReusePolicy,
+                )
+                add(ehicJwsJsonFlattenedIssuer)
+                add(ehicJwsJsonFlattenedIssuer.asDeferred(bean(), bean(), clock))
+
+                val ehicCompactIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.compact(
+                    issuerSigningKey = issuerSigningKey,
+                    digestsHashAlgorithm = digestHashAlgorithm,
+                    credentialIssuerId = issuerPublicUrl,
+                    clock = bean(),
+                    validity = validity,
+                    validateProofs = bean(),
+                    getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(
+                        bean(),
+                        issuingCountry,
+                    ),
+                    notificationsEnabled = ehicNotificationsEnabled,
+                    generateNotificationId = bean(),
+                    storeIssuedCredentials = bean(),
+                    jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
+                    keyAttestationRequirement = KeyAttestationRequirement.ts3(),
+                    credentialReusePolicy = ehicReusePolicy,
+                )
+                add(ehicCompactIssuer)
+                add(ehicCompactIssuer.asDeferred(bean(), bean(), bean()))
+            }
+
+            if (enableLearningCredential) {
+                val issuerSigningKey = getIssuerSigningKey("issuer.learningCredential.signing-key")
+                val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
+                    "issuer.learningCredential.jwtProofs.supportedSigningAlgorithms",
+                    JWSAlgorithm::parse,
+                )
+                val learningCredentialReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.learningCredential")
+                val validity = Duration.parse(env.getProperty("issuer.learningCredential.validity", "P30D"))
+                val digestHashAlgorithm = env.getProperty<HashAlgorithm>(
+                    "issuer.learningCredential.sdJwtVc.encoder.digests.hashAlgorithm",
+                ) ?: HashAlgorithm.SHA_256
+
+                val notificationsEnabled = env.getProperty<Boolean>("issuer.learningCredential.notifications.enabled") ?: true
+
+                val sdJwtVcCompactIssuer = IssueLearningCredential.sdJwtVcCompact(
+                    issuerSigningKey,
+                    jwtProofsSupportedSigningAlgorithms,
+                    KeyAttestationRequirement.ts3(),
+                    bean(),
+                    bean(),
+                    bean(),
+                    validity,
+                    digestHashAlgorithm,
+                    if (notificationsEnabled) bean() else null,
+                    bean(),
+                    learningCredentialReusePolicy,
+                )
+
+                add(sdJwtVcCompactIssuer)
+                add(sdJwtVcCompactIssuer.asDeferred(bean(), bean(), bean()))
+            }
+        }
+
+        val maxValidityOfIssuedCredentials = specificCredentialIssuers.maxOf { it.validity }
+
+        val preferredClientStatusPeriod = bean<IssuerMetadataProperties>().preferredClientStatusPeriod
+
+        ensureValidPreferredClientStatusPeriod(preferredClientStatusPeriod, maxValidityOfIssuedCredentials)
+
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
             credentialEndPoint = issuerPublicUrl.appendPath(WalletApi.CREDENTIAL_ENDPOINT),
@@ -568,182 +753,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
             authorizationServers = listOf(env.readRequiredUrl("issuer.authorizationServer.publicUrl")),
             credentialRequestEncryption = credentialRequestEncryption(),
             credentialResponseEncryption = env.credentialResponseEncryption(),
-            specificCredentialIssuers = buildList {
-                if (enableMsoMdocPid) {
-                    val duration = env.duration("issuer.pid.mso_mdoc.encoder.duration") ?: 30.days
-                    val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
-                        "issuer.pid.mso_mdoc.jwtProofs.supportedSigningAlgorithms",
-                        JWSAlgorithm::parse,
-                    )
-                    val pidMsoMdocReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.pid.mso_mdoc")
-                    val issueMsoMdocPid = IssueMsoMdocPid(
-                        getPidData = bean(),
-                        encodePidInCbor = bean(),
-                        notificationsEnabled = env.getProperty<Boolean>("issuer.pid.mso_mdoc.notifications.enabled")
-                            ?: true,
-                        generateNotificationId = bean(),
-                        clock = clock,
-                        validityDuration = duration,
-                        storeIssuedCredentials = bean(),
-                        validateProofs = bean(),
-                        jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
-                        keyAttestationRequirement = KeyAttestationRequirement.ts3(),
-                        generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
-                        credentialReusePolicy = pidMsoMdocReusePolicy,
-                    )
-                    add(issueMsoMdocPid)
-                    add(issueMsoMdocPid.asDeferred(bean(), bean(), clock))
-                }
-
-                if (enableSdJwtVcPid) {
-                    val expiresIn = env.duration("issuer.pid.sd_jwt_vc.duration") ?: 30.days
-                    val notUseBefore = env.duration("issuer.pid.sd_jwt_vc.notUseBefore")
-                    val pidSdJwtVcReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.pid.sd_jwt_vc")
-
-                    val digestsHashAlgorithm = env.getProperty<HashAlgorithm>(
-                        "issuer.pid.sd_jwt_vc.digests.hashAlgorithm",
-                    ) ?: HashAlgorithm.SHA_256
-                    val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
-                        "issuer.pid.sd_jwt_vc.jwtProofs.supportedSigningAlgorithms",
-                        JWSAlgorithm::parse,
-                    )
-
-                    val issueSdJwtVcPid = IssueSdJwtVcPid(
-                        hashAlgorithm = digestsHashAlgorithm,
-                        issuerSigningKey = getIssuerSigningKey("issuer.pid.sd_jwt_vc.signing-key"),
-                        getPidData = bean(),
-                        clock = clock,
-                        credentialIssuerId = issuerPublicUrl,
-                        calculateExpiresAt = { iat -> iat + expiresIn },
-                        calculateNotUseBefore = notUseBefore?.let { duration -> { iat -> iat + duration } },
-                        notificationsEnabled = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled") ?: true,
-                        generateNotificationId = bean(),
-                        storeIssuedCredentials = bean(),
-                        validateProofs = bean(),
-                        generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
-                        jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
-                        keyAttestationRequirement = KeyAttestationRequirement.ts3(),
-                        credentialReusePolicy = pidSdJwtVcReusePolicy,
-                    )
-
-                    add(issueSdJwtVcPid)
-                    add(issueSdJwtVcPid.asDeferred(bean(), bean(), clock))
-                }
-
-                if (enableMobileDrivingLicence) {
-                    val duration = env.duration("issuer.mdl.mso_mdoc.encoder.duration") ?: 5.days
-                    val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
-                        "issuer.mdl.jwtProofs.supportedSigningAlgorithms",
-                        JWSAlgorithm::parse,
-                    )
-                    val mdlIssuerReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.mdl")
-                    val mdlIssuer = IssueMobileDrivingLicence(
-                        getMobileDrivingLicenceData = bean(),
-                        encodeMobileDrivingLicenceInCbor = bean(),
-                        notificationsEnabled = env.getProperty<Boolean>("issuer.mdl.notifications.enabled") ?: true,
-                        generateNotificationId = bean(),
-                        clock = clock,
-                        validityDuration = duration,
-                        storeIssuedCredentials = bean(),
-                        validateProofs = bean(),
-                        jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
-                        keyAttestationRequirement = KeyAttestationRequirement.ts3(),
-                        generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
-                        credentialReusePolicy = mdlIssuerReusePolicy,
-                    )
-                    add(mdlIssuer)
-                    add(mdlIssuer.asDeferred(bean(), bean(), clock))
-                }
-
-                if (enableEhic) {
-                    val digestHashAlgorithm = env.getProperty<HashAlgorithm>(
-                        "issuer.ehic.encoder.digests.hashAlgorithm",
-                    ) ?: HashAlgorithm.SHA_256
-                    val validity = Duration.parse(env.getProperty("issuer.ehic.validity", "P30D"))
-                    val ehicNotificationsEnabled = env.getProperty<Boolean>("issuer.ehic.notifications.enabled") ?: true
-                    val issuingCountry = EhicIssuingCountry(env.getProperty("issuer.ehic.issuingCountry", "GR"))
-                    val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
-                        "issuer.ehic.jwtProofs.supportedSigningAlgorithms",
-                        JWSAlgorithm::parse,
-                    )
-                    val ehicReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.ehic")
-
-                    val issuerSigningKey = getIssuerSigningKey("issuer.ehic.signing-key")
-                    val ehicJwsJsonFlattenedIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.jwsJsonFlattened(
-                        issuerSigningKey = issuerSigningKey,
-                        digestsHashAlgorithm = digestHashAlgorithm,
-                        credentialIssuerId = issuerPublicUrl,
-                        clock = bean(),
-                        validity = validity,
-                        validateProofs = bean(),
-                        getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(
-                            bean(),
-                            issuingCountry,
-                        ),
-                        notificationsEnabled = ehicNotificationsEnabled,
-                        generateNotificationId = bean(),
-                        storeIssuedCredentials = bean(),
-                        jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
-                        keyAttestationRequirement = KeyAttestationRequirement.ts3(),
-                        credentialReusePolicy = ehicReusePolicy,
-                    )
-                    add(ehicJwsJsonFlattenedIssuer)
-                    add(ehicJwsJsonFlattenedIssuer.asDeferred(bean(), bean(), clock))
-
-                    val ehicCompactIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.compact(
-                        issuerSigningKey = issuerSigningKey,
-                        digestsHashAlgorithm = digestHashAlgorithm,
-                        credentialIssuerId = issuerPublicUrl,
-                        clock = bean(),
-                        validity = validity,
-                        validateProofs = bean(),
-                        getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(
-                            bean(),
-                            issuingCountry,
-                        ),
-                        notificationsEnabled = ehicNotificationsEnabled,
-                        generateNotificationId = bean(),
-                        storeIssuedCredentials = bean(),
-                        jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
-                        keyAttestationRequirement = KeyAttestationRequirement.ts3(),
-                        credentialReusePolicy = ehicReusePolicy,
-                    )
-                    add(ehicCompactIssuer)
-                    add(ehicCompactIssuer.asDeferred(bean(), bean(), bean()))
-                }
-
-                if (enableLearningCredential) {
-                    val issuerSigningKey = getIssuerSigningKey("issuer.learningCredential.signing-key")
-                    val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
-                        "issuer.learningCredential.jwtProofs.supportedSigningAlgorithms",
-                        JWSAlgorithm::parse,
-                    )
-                    val learningCredentialReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.learningCredential")
-                    val validity = Duration.parse(env.getProperty("issuer.learningCredential.validity", "P30D"))
-                    val digestHashAlgorithm = env.getProperty<HashAlgorithm>(
-                        "issuer.learningCredential.sdJwtVc.encoder.digests.hashAlgorithm",
-                    ) ?: HashAlgorithm.SHA_256
-
-                    val notificationsEnabled = env.getProperty<Boolean>("issuer.learningCredential.notifications.enabled") ?: true
-
-                    val sdJwtVcCompactIssuer = IssueLearningCredential.sdJwtVcCompact(
-                        issuerSigningKey,
-                        jwtProofsSupportedSigningAlgorithms,
-                        KeyAttestationRequirement.ts3(),
-                        bean(),
-                        bean(),
-                        bean(),
-                        validity,
-                        digestHashAlgorithm,
-                        if (notificationsEnabled) bean() else null,
-                        bean(),
-                        learningCredentialReusePolicy,
-                    )
-
-                    add(sdJwtVcCompactIssuer)
-                    add(sdJwtVcCompactIssuer.asDeferred(bean(), bean(), bean()))
-                }
-            },
+            specificCredentialIssuers = specificCredentialIssuers,
             batchCredentialIssuance = run {
                 val enabled = env.getProperty<Boolean>("issuer.credentialEndpoint.batchIssuance.enabled") ?: true
                 if (enabled) {
@@ -761,6 +771,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         logo = display.logo?.let { ImageUri(it.uri, it.alternativeText) },
                     )
                 },
+            preferredClientStatusPeriod = preferredClientStatusPeriod,
         )
     }
 
@@ -1260,8 +1271,13 @@ data class KeycloakConfigurationProperties(
  */
 @ConfigurationProperties("issuer.metadata")
 internal data class IssuerMetadataProperties(
+    private val preferredClientStatusPeriodConfig: String,
     val display: List<DisplayProperties> = emptyList(),
 ) {
+    val preferredClientStatusPeriod: Duration =
+        Duration.parse(preferredClientStatusPeriodConfig).also {
+            require(it.isPositive()) { "'preferredClientStatusPeriod' must be positive" }
+        }
     data class DisplayProperties(
         val name: String? = null,
         val locale: String? = null,
@@ -1328,4 +1344,11 @@ private fun toEnvironmentVariable(property: String): String {
         .replace("]", "")
         .replace("-", "")
         .uppercase()
+}
+
+private fun ensureValidPreferredClientStatusPeriod(preferredClientStatusPeriod: Duration, maxValidityOfIssuedCredentials: Duration) {
+    require(preferredClientStatusPeriod.isPositive()) { "'preferredClientStatusPeriod' must be positive" }
+    require(preferredClientStatusPeriod >= maxValidityOfIssuedCredentials) {
+        "'preferredClientStatusPeriod' must be greater than or equal to the max validity of issued credentials configured"
+    }
 }

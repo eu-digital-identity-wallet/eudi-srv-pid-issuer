@@ -48,7 +48,7 @@ internal class IssueLearningCredential(
     private val clock: Clock,
     private val validateProofs: ValidateProofs,
     private val getLearningCredential: GetLearningCredential,
-    private val validity: Duration,
+    override val validity: Duration,
     private val encodeLearningCredential: EncodeLearningCredential,
     private val generateNotificationId: GenerateNotificationId?,
     private val storeIssuedCredentials: StoreIssuedCredentials,

@@ -32,6 +32,7 @@ interface IssueSpecificCredential {
     val supportedCredential: CredentialConfiguration
     val publicKey: JWK?
     val keyAttestationRequirement: KeyAttestationRequirement
+    val validity: Duration
 
     suspend operator fun invoke(
         authorizationContext: AuthorizationContext,
