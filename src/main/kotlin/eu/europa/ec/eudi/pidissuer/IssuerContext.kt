@@ -770,7 +770,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         logo = display.logo?.let { ImageUri(it.uri, it.alternativeText) },
                     )
                 },
-            preferredClientStatusPeriod = ClientStatusPeriod(preferredClientStatusPeriod),
+            preferredClientStatusPeriod = PreferredClientStatusPeriod(preferredClientStatusPeriod),
         )
     }
 
@@ -787,6 +787,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
             credentialIssuerMetadata = bean(),
             resolveCredentialRequestByCredentialIdentifier = bean(),
             encryptCredentialResponse = bean(),
+            clock = bean(),
         )
     }
     registerBean {

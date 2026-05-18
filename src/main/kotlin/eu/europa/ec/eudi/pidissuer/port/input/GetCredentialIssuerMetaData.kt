@@ -61,7 +61,7 @@ data class CredentialIssuerMetaDataTO(
     val credentialConfigurationsSupported: JsonObject,
     @SerialName("openid4vci_version")
     val openid4VciVersion: String? = null,
-    @Required @SerialName("preferred_client_status_period")
+    @Required @SerialName(TS3.PREFERRED_CLIENT_STATUS_PERIOD)
     val preferredClientStatusPeriod: Long,
 ) {
 

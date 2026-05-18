@@ -37,6 +37,8 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.slf4j.LoggerFactory
+import kotlin.time.Duration
+import kotlin.time.Instant
 
 @Serializable
 data class ProofsTO(
@@ -282,10 +284,11 @@ class IssueCredential(
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
     private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
     private val encryptCredentialResponse: EncryptCredentialResponse,
+    private val clock: Clock,
 ) {
 
     private fun Raise<IssueCredentialError>.services(): Services =
-        Services(this, credentialIssuerMetadata, resolveCredentialRequestByCredentialIdentifier)
+        Services(this, credentialIssuerMetadata, resolveCredentialRequestByCredentialIdentifier, clock)
 
     suspend fun fromEncryptedRequest(
         authorizationContext: AuthorizationContext,
@@ -350,6 +353,7 @@ private class Services(
     raise: Raise<IssueCredentialError>,
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
     private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
+    private val clock: Clock,
 ) :
     Validations,
     Raise<IssueCredentialError> by raise {
@@ -364,6 +368,10 @@ private class Services(
                     credentialIssuerMetadata.batchCredentialIssuance,
                     credentialIssuerMetadata.credentialConfigurationsSupported,
                 )
+
+            val preferredClientStatusPeriod = credentialIssuerMetadata.preferredClientStatusPeriod.value
+            ensureClientStatusExpAfterPreferredPeriod(preferredClientStatusPeriod, authorizationContext.clientStatus.expiresAt)
+
             val request =
                 when (unresolvedRequest) {
                     is UnresolvedCredentialRequest.ByCredentialConfigurationId ->
@@ -379,6 +387,11 @@ private class Services(
             request.credentialRequest to issued
         }
 
+        private fun ensureClientStatusExpAfterPreferredPeriod(preferredClientStatusPeriod: Duration, expiresAt: Instant) {
+            val now = clock.now()
+            val minimumExpiresAt = now + preferredClientStatusPeriod
+            require(expiresAt >= minimumExpiresAt)
+        }
         private suspend fun resolve(
             unresolvedRequest: UnresolvedCredentialRequest.ByCredentialIdentifier,
         ): ResolvedCredentialRequest =

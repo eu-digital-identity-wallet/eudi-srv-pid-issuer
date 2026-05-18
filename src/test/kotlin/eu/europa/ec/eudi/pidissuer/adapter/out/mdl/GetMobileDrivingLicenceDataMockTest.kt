@@ -18,19 +18,27 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 import arrow.core.getOrElse
 import arrow.core.nonEmptySetOf
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
+import eu.europa.ec.eudi.pidissuer.PidIssuerApplicationTest
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
+import eu.europa.ec.eudi.pidissuer.utils.ClientStatusConfiguration
 import eu.europa.ec.eudi.pidissuer.utils.createAccessTokenValue
 import kotlinx.coroutines.test.runTest
+import org.springframework.beans.factory.annotation.Autowired
 import kotlin.test.Test
 
+@PidIssuerApplicationTest
 internal class GetMobileDrivingLicenceDataMockTest {
+
+    @Autowired
+    private lateinit var clock: Clock
 
     @Test
     internal fun `get mDL success`() = runTest {
         val getMobileDrivingLicenceData = GetMobileDrivingLicenceDataMock()
-
-        val accessTokenValue = createAccessTokenValue()
+        val clientStatusConfiguration = ClientStatusConfiguration(clock)
+        val accessTokenValue = createAccessTokenValue(clientStatusConfiguration)
 
         getMobileDrivingLicenceData(
             AuthorizationContext(

@@ -229,7 +229,7 @@ data class CredentialIssuerMetaData(
     val credentialResponseEncryption: CredentialResponseEncryption,
     val display: List<CredentialIssuerDisplay> = emptyList(),
     val specificCredentialIssuers: NonEmptyList<IssueSpecificCredential>,
-    val preferredClientStatusPeriod: ClientStatusPeriod,
+    val preferredClientStatusPeriod: PreferredClientStatusPeriod,
 ) {
     init {
         val displayLocales = display.map { it.locale }
@@ -274,8 +274,8 @@ sealed interface BatchCredentialIssuance {
 }
 
 @JvmInline
-value class ClientStatusPeriod(val value: Duration) {
+value class PreferredClientStatusPeriod(val value: Duration) {
     init {
-        require(value >= 31.days) { "Client status period must be greater than 31 days" }
+        require(value >= 31.days) { "Preferred client status period must be greater than 31 days" }
     }
 }
