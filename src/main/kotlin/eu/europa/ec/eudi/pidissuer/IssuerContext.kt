@@ -1276,7 +1276,8 @@ internal data class IssuerMetadataProperties(
 ) {
     val preferredClientStatusPeriod: Duration =
         Duration.parse(preferredClientStatusPeriodConfig).also {
-            require(it.isPositive()) { "'preferredClientStatusPeriod' must be positive" }
+            require(it.isPositive()) { "preferredClientStatusPeriod must be positive" }
+            require(it >= 31.days) { "preferredClientStatusPeriod can not be less than 31 days" }
         }
     data class DisplayProperties(
         val name: String? = null,
