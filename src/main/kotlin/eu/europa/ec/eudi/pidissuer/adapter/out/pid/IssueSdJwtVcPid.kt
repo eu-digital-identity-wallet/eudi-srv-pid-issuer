@@ -23,7 +23,6 @@ import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.credential.EnsureCredentialMinExpiration
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
@@ -32,6 +31,7 @@ import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
+import eu.europa.ec.eudi.pidissuer.port.input.ensureCredentialExpirationIsMet
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
@@ -238,7 +238,7 @@ internal class IssueSdJwtVcPid(
         val (pid, pidMetaData) = getPidData(authorizationContext).bind()
         val issuedAt = clock.now()
         val expiresAt = issuedAt + validity
-        EnsureCredentialMinExpiration(expiresAt, authorizationContext.clientStatus, validatedProof.keyStorageStatus).bind()
+        ensureCredentialExpirationIsMet(expiresAt, authorizationContext.clientStatus, validatedProof.keyStorageStatus)
         val notBefore = calculateNotUseBefore?.invoke(issuedAt)
 
         ensure(expiresAt > issuedAt) {

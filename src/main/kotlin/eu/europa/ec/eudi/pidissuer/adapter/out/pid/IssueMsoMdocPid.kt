@@ -21,7 +21,6 @@ import arrow.core.raise.ensureNotNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
-import eu.europa.ec.eudi.pidissuer.adapter.out.credential.EnsureCredentialMinExpiration
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.jwkExtensions
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -29,6 +28,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
+import eu.europa.ec.eudi.pidissuer.port.input.ensureCredentialExpirationIsMet
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
@@ -331,7 +331,7 @@ internal class IssueMsoMdocPid(
 
         val issuedAt = clock.now()
         val expiresAt = issuedAt + validity
-        EnsureCredentialMinExpiration(expiresAt, authorizationContext.clientStatus, validatedProof.keyStorageStatus).bind()
+        ensureCredentialExpirationIsMet(expiresAt, authorizationContext.clientStatus, validatedProof.keyStorageStatus)
 
         val issuedCredentials = holderPubKeys.parMap(Dispatchers.Default, 4) { holderKey ->
             val statusListToken = generateStatusListToken?.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {

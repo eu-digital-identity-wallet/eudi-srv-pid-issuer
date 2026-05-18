@@ -37,6 +37,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.slf4j.LoggerFactory
+import kotlin.time.Instant
 
 @Serializable
 data class ProofsTO(
@@ -736,4 +737,17 @@ private fun RequestEncryptionError.toTO(): IssueCredentialResponse.FailedTO {
                 "supported methods: $compressionMethodsSupported"
     }
     return IssueCredentialResponse.FailedTO(type, description)
+}
+
+internal fun Raise<Unexpected>.ensureCredentialExpirationIsMet(
+    credentialExpiresAt: Instant,
+    clientStatus: ClientStatus,
+    keyStorageStatus: KeyStorageStatus,
+) {
+    ensure(credentialExpiresAt < clientStatus.expiresAt) {
+        Unexpected("Client status expiration ${clientStatus.expiresAt} cannot be before credential expiration $credentialExpiresAt")
+    }
+    ensure(credentialExpiresAt < keyStorageStatus.exp) {
+        Unexpected("Key storage expiration ${keyStorageStatus.exp} cannot be before credential expiration $credentialExpiresAt")
+    }
 }

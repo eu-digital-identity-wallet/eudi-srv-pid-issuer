@@ -24,13 +24,13 @@ import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.credential.EnsureCredentialMinExpiration
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import eu.europa.ec.eudi.pidissuer.port.input.ensureCredentialExpirationIsMet
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
@@ -75,7 +75,7 @@ internal class IssueLearningCredential(
             if (null != learningCredential.dateOfExpiry && learningCredential.dateOfExpiry < dateOfExpiry) learningCredential.dateOfExpiry
             else dateOfExpiry
         }
-        EnsureCredentialMinExpiration(expiresAt, authorizationContext.clientStatus, validatedProof.keyStorageStatus).bind()
+        ensureCredentialExpirationIsMet(expiresAt, authorizationContext.clientStatus, validatedProof.keyStorageStatus)
 
         val issuedCredentials = holderKeys.parMap(Dispatchers.Default, 4) {
             encodeLearningCredential(learningCredential, it, issuedAt = issuedAt, expiresAt = expiresAt).bind()
