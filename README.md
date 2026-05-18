@@ -633,7 +633,7 @@ Default value: N/A
 
 ### Metadata configuration
 
-Variable: `ISSUER_METADATA_PREFERRED_CLIENT_STATUS_PERIOD_CONFIG`  
+Variable: `ISSUER_METADATA_PREFERRED_CLIENT_STATUS_PERIOD`  
 Description: Duration of the preferred client status period. Can not be less than 31 days.  
 Default value: `P31D`  
 

@@ -111,7 +111,9 @@ import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
+import kotlin.time.toKotlinDuration
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IssuingCountry as EhicIssuingCountry
+import java.time.Duration as JavaDuration
 
 private val log = LoggerFactory.getLogger(PidIssuerApplication::class.java)
 
@@ -605,7 +607,6 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     getPidData = bean(),
                     clock = clock,
                     credentialIssuerId = issuerPublicUrl,
-                    calculateExpiresAt = { iat -> iat + expiresIn },
                     calculateNotUseBefore = notUseBefore?.let { duration -> { iat -> iat + duration } },
                     notificationsEnabled = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled")
                         ?: true,
@@ -736,13 +737,11 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                 add(sdJwtVcCompactIssuer)
                 add(sdJwtVcCompactIssuer.asDeferred(bean(), bean(), bean()))
             }
-        }
+        }.toNonEmptyListOrNull()
 
-        val maxValidityOfIssuedCredentials = specificCredentialIssuers.maxOf { it.validity }
+        requireNotNull(specificCredentialIssuers) { "At least one credential issuer must be configured" }
 
-        val preferredClientStatusPeriod = bean<IssuerMetadataProperties>().preferredClientStatusPeriod
-
-        ensureValidPreferredClientStatusPeriod(preferredClientStatusPeriod, maxValidityOfIssuedCredentials)
+        val preferredClientStatusPeriod = bean<IssuerMetadataProperties>().preferredClientStatusPeriod.toKotlinDuration()
 
         CredentialIssuerMetaData(
             id = issuerPublicUrl,
@@ -771,7 +770,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         logo = display.logo?.let { ImageUri(it.uri, it.alternativeText) },
                     )
                 },
-            preferredClientStatusPeriod = preferredClientStatusPeriod,
+            preferredClientStatusPeriod = ClientStatusPeriod(preferredClientStatusPeriod),
         )
     }
 
@@ -1271,14 +1270,9 @@ data class KeycloakConfigurationProperties(
  */
 @ConfigurationProperties("issuer.metadata")
 internal data class IssuerMetadataProperties(
-    private val preferredClientStatusPeriodConfig: String,
+    val preferredClientStatusPeriod: JavaDuration,
     val display: List<DisplayProperties> = emptyList(),
 ) {
-    val preferredClientStatusPeriod: Duration =
-        Duration.parse(preferredClientStatusPeriodConfig).also {
-            require(it.isPositive()) { "preferredClientStatusPeriod must be positive" }
-            require(it >= 31.days) { "preferredClientStatusPeriod can not be less than 31 days" }
-        }
     data class DisplayProperties(
         val name: String? = null,
         val locale: String? = null,
@@ -1345,11 +1339,4 @@ private fun toEnvironmentVariable(property: String): String {
         .replace("]", "")
         .replace("-", "")
         .uppercase()
-}
-
-private fun ensureValidPreferredClientStatusPeriod(preferredClientStatusPeriod: Duration, maxValidityOfIssuedCredentials: Duration) {
-    require(preferredClientStatusPeriod.isPositive()) { "'preferredClientStatusPeriod' must be positive" }
-    require(preferredClientStatusPeriod >= maxValidityOfIssuedCredentials) {
-        "'preferredClientStatusPeriod' must be greater than or equal to the max validity of issued credentials configured"
-    }
 }

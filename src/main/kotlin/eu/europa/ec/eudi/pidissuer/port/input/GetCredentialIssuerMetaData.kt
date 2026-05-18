@@ -131,7 +131,7 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
         credentialConfigurationsSupported.associate { it.id.value to credentialMetaDataJson(it) },
     ),
     openid4VciVersion = OpenId4VciSpec.VERSION,
-    preferredClientStatusPeriod = preferredClientStatusPeriod.inWholeSeconds,
+    preferredClientStatusPeriod = preferredClientStatusPeriod.value.inWholeSeconds,
 )
 
 private fun CredentialRequestEncryption.toTransferObject(): Option<CredentialIssuerMetaDataTO.CredentialRequestEncryptionTO> =
