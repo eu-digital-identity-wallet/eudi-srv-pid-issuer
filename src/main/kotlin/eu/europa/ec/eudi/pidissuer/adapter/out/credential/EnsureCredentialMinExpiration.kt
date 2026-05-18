@@ -19,23 +19,21 @@ import arrow.core.Either
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import eu.europa.ec.eudi.pidissuer.domain.ClientStatus
-import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.KeyStorageStatus
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import kotlin.time.Instant
 
-object CalculateCredentialExpiration {
+object EnsureCredentialMinExpiration {
     operator fun invoke(
+        credentialExpiresAt: Instant,
         clientStatus: ClientStatus,
         keyStorageStatus: KeyStorageStatus,
-        clock: Clock,
-    ): Either<Unexpected, Instant> = either {
-        val now = clock.now()
-        ensure(clientStatus.expiresAt > now) { Unexpected("Client Status has expired") }
-        ensure(keyStorageStatus.exp > now) { Unexpected("Key Storage Status has expired") }
-        minOf(
-            clientStatus.expiresAt,
-            keyStorageStatus.exp,
-        )
+    ): Either<Unexpected, Unit> = either {
+        ensure(credentialExpiresAt < clientStatus.expiresAt) {
+            Unexpected("Client status expiration ${clientStatus.expiresAt} cannot be before credential expiration $credentialExpiresAt")
+        }
+        ensure(credentialExpiresAt < keyStorageStatus.exp) {
+            Unexpected("Key storage expiration ${keyStorageStatus.exp} cannot be before credential expiration $credentialExpiresAt")
+        }
     }
 }

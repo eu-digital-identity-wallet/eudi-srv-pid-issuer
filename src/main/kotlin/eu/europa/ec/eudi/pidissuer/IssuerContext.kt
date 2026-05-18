@@ -589,7 +589,8 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
             }
 
             if (enableSdJwtVcPid) {
-                val notUseBefore = env.duration("issuer.pid.sd_jwt_vc.notUseBefore")
+                val expiresIn = env.duration("issuer.pid.sd_jwt_vc.duration") ?: 30.days
+                    val notUseBefore = env.duration("issuer.pid.sd_jwt_vc.notUseBefore")
                     val pidSdJwtVcReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.pid.sd_jwt_vc")
 
                 val digestsHashAlgorithm = env.getProperty<HashAlgorithm>(
@@ -606,7 +607,8 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     getPidData = bean(),
                     clock = clock,
                     credentialIssuerId = issuerPublicUrl,
-                    calculateNotUseBefore = notUseBefore?.let { duration -> { iat -> iat + duration } },
+                    calculateExpiresAt = { iat -> iat + expiresIn },
+                        calculateNotUseBefore = notUseBefore?.let { duration -> { iat -> iat + duration } },
                         notificationsEnabled = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled") ?: true,
                         generateNotificationId = bean(),
                         storeIssuedCredentials = bean(),
@@ -651,7 +653,8 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                 val digestHashAlgorithm = env.getProperty<HashAlgorithm>(
                     "issuer.ehic.encoder.digests.hashAlgorithm",
                 ) ?: HashAlgorithm.SHA_256
-                val ehicNotificationsEnabled = env.getProperty<Boolean>("issuer.ehic.notifications.enabled") ?: true
+                val validity = Duration.parse(env.getProperty("issuer.ehic.validity", "P30D"))
+                    val ehicNotificationsEnabled = env.getProperty<Boolean>("issuer.ehic.notifications.enabled") ?: true
                     val issuingCountry = EhicIssuingCountry(env.getProperty("issuer.ehic.issuingCountry", "GR"))
                     val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
                         "issuer.ehic.jwtProofs.supportedSigningAlgorithms",
@@ -665,6 +668,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         digestsHashAlgorithm = digestHashAlgorithm,
                         credentialIssuerId = issuerPublicUrl,
                         clock = bean(),
+                        validity = validity,
                         validateProofs = bean(),
                         getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(
                             bean(),
@@ -685,6 +689,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         digestsHashAlgorithm = digestHashAlgorithm,
                         credentialIssuerId = issuerPublicUrl,
                         clock = bean(),
+                        validity = validity,
                         validateProofs = bean(),
                         getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(
                             bean(),
@@ -708,7 +713,8 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     JWSAlgorithm::parse,
                 )
                 val learningCredentialReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.learningCredential")
-                val digestHashAlgorithm = env.getProperty<HashAlgorithm>(
+                val validity = Duration.parse(env.getProperty("issuer.learningCredential.validity", "P30D"))
+                    val digestHashAlgorithm = env.getProperty<HashAlgorithm>(
                         "issuer.learningCredential.sdJwtVc.encoder.digests.hashAlgorithm",
                     ) ?: HashAlgorithm.SHA_256
 
@@ -721,6 +727,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         bean(),
                         bean(),
                         bean(),
+                        validity,
                         digestHashAlgorithm,
                         if (notificationsEnabled) bean() else null,
                         bean(),

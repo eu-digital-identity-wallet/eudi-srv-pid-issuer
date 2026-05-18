@@ -18,21 +18,19 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential
 import arrow.core.Either
 import arrow.core.NonEmptySet
 import arrow.core.raise.either
-import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CalculateCredentialExpiration
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.EnsureCredentialMinExpiration
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
@@ -40,6 +38,7 @@ import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.coroutines.Dispatchers
 import org.slf4j.LoggerFactory
 import java.util.*
+import kotlin.time.Duration
 
 private val log = LoggerFactory.getLogger(IssueLearningCredential::class.java)
 
@@ -57,6 +56,7 @@ internal class IssueLearningCredential(
 ) : IssueSpecificCredential {
     init {
         require(!publicKey.isPrivate)
+        require(validity.isPositive())
     }
 
     override suspend fun invoke(
@@ -71,17 +71,11 @@ internal class IssueLearningCredential(
         val learningCredential = getLearningCredential(authorizationContext)
         val issuedAt = clock.now()
         val expiresAt = run {
-            val dateOfExpiry = CalculateCredentialExpiration(
-                authorizationContext.clientStatus,
-                validatedProof.keyStorageStatus,
-                clock,
-            ).bind()
+            val dateOfExpiry = issuedAt + validity
             if (null != learningCredential.dateOfExpiry && learningCredential.dateOfExpiry < dateOfExpiry) learningCredential.dateOfExpiry
             else dateOfExpiry
         }
-        ensure(expiresAt > issuedAt) {
-            Unexpected("exp should be after iat")
-        }
+        EnsureCredentialMinExpiration(expiresAt, authorizationContext.clientStatus, validatedProof.keyStorageStatus).bind()
 
         val issuedCredentials = holderKeys.parMap(Dispatchers.Default, 4) {
             encodeLearningCredential(learningCredential, it, issuedAt = issuedAt, expiresAt = expiresAt).bind()
@@ -117,6 +111,7 @@ internal class IssueLearningCredential(
             clock: Clock,
             validateProofs: ValidateProofs,
             getPidData: GetPidData,
+            validity: Duration,
             digestsHashAlgorithm: HashAlgorithm,
             generateNotificationId: GenerateNotificationId?,
             storeIssuedCredentials: StoreIssuedCredentials,
@@ -138,6 +133,7 @@ internal class IssueLearningCredential(
                 clock,
                 validateProofs,
                 GetLearningCredential.mock(clock, getPidData),
+                validity,
                 EncodeLearningCredential.sdJwtVcCompact(
                     digestsHashAlgorithm,
                     issuerSigningKey,

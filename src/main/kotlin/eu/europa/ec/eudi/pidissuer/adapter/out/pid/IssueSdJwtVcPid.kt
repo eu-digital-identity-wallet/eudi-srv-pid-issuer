@@ -23,7 +23,7 @@ import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CalculateCredentialExpiration
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.EnsureCredentialMinExpiration
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
@@ -197,6 +197,7 @@ internal class IssueSdJwtVcPid(
     hashAlgorithm: HashAlgorithm,
     private val issuerSigningKey: IssuerSigningKey,
     private val getPidData: GetPidData,
+    private val calculateExpiresAt: TimeDependant<Instant>,
     private val calculateNotUseBefore: TimeDependant<Instant>?,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
@@ -237,6 +238,7 @@ internal class IssueSdJwtVcPid(
         val (pid, pidMetaData) = getPidData(authorizationContext).bind()
         val issuedAt = clock.now()
         val expiresAt = issuedAt + validity
+        EnsureCredentialMinExpiration(expiresAt, authorizationContext.clientStatus, validatedProof.keyStorageStatus).bind()
         val notBefore = calculateNotUseBefore?.invoke(issuedAt)
 
         ensure(expiresAt > issuedAt) {

@@ -17,12 +17,11 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
 import arrow.core.*
 import arrow.core.raise.either
-import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
-import eu.europa.ec.eudi.pidissuer.adapter.out.credential.CalculateCredentialExpiration
+import eu.europa.ec.eudi.pidissuer.adapter.out.credential.EnsureCredentialMinExpiration
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.jwkExtensions
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -38,6 +37,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.util.*
+import kotlin.time.Duration
 
 val MobileDrivingLicenceV1Scope: Scope = Scope(mdlDocType(1u))
 
@@ -363,11 +363,12 @@ internal class IssueMobileDrivingLicence(
         }
         val licence = getMobileDrivingLicenceData(authorizationContext).bind()
         ensureNotNull(licence) {
-            IssueCredentialError.Unexpected("Unable to fetch mDL data")
+            Unexpected("Unable to fetch mDL data")
         }
 
         val issuedAt = clock.now()
         val expiresAt = issuedAt + validity
+        EnsureCredentialMinExpiration(expiresAt, authorizationContext.clientStatus, validatedProof.keyStorageStatus).bind()
 
         val issuedCredentials = holderKeys.parMap(Dispatchers.Default, 4) { holderKey ->
             val statusListToken = generateStatusListToken?.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
@@ -380,7 +381,7 @@ internal class IssueMobileDrivingLicence(
             encodeMobileDrivingLicenceInCbor(licence, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken).bind()
         }.toNonEmptyListOrNull()
         ensureNotNull(issuedCredentials) {
-            IssueCredentialError.Unexpected("Unable to issue mDL")
+            Unexpected("Unable to issue mDL")
         }
 
         val notificationId =
