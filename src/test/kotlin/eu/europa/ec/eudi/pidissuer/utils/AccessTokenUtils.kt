@@ -59,7 +59,7 @@ fun createAccessTokenValue(clientStatusConfiguration: ClientStatusConfiguration?
 }
 data class ClientStatusConfiguration(
     val clock: Clock,
-    val skew: Duration = 32.days
-){
+    val skew: Duration = 32.days,
+) {
     val expiresAt: Long get() = (clock.now().epochSeconds + skew.inWholeSeconds)
 }
