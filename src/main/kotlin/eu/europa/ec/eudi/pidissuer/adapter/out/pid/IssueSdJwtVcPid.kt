@@ -40,6 +40,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.util.*
+import kotlin.time.Duration
 import kotlin.time.Instant
 
 val PidSdJwtVcScope: Scope = Scope("eu.europa.ec.eudi.pid_vc_sd_jwt")
@@ -188,13 +189,13 @@ private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
  * Service for issuing PID SD JWT credential
  */
 internal class IssueSdJwtVcPid(
+    override val validity: Duration,
     private val validateProofs: ValidateProofs,
     credentialIssuerId: CredentialIssuerId,
     private val clock: Clock,
     hashAlgorithm: HashAlgorithm,
     private val issuerSigningKey: IssuerSigningKey,
     private val getPidData: GetPidData,
-    private val calculateExpiresAt: TimeDependant<Instant>,
     private val calculateNotUseBefore: TimeDependant<Instant>?,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
@@ -233,7 +234,7 @@ internal class IssueSdJwtVcPid(
         val holderPubKeys = validateProofs(request.unvalidatedProof, supportedCredential, clock.now()).bind()
         val (pid, pidMetaData) = getPidData(authorizationContext).bind()
         val issuedAt = clock.now()
-        val expiresAt = calculateExpiresAt(issuedAt)
+        val expiresAt = issuedAt + validity
         val notBefore = calculateNotUseBefore?.invoke(issuedAt)
 
         ensure(expiresAt > issuedAt) {

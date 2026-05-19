@@ -195,7 +195,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
     override val publicKey: JWK,
     private val encode: EncodeEuropeanHealthInsuranceCardInSdJwtVc,
     private val clock: Clock,
-    private val validity: Duration,
+    override val validity: Duration,
     private val validateProofs: ValidateProofs,
     private val getEuropeanHealthInsuranceCardData: GetEuropeanHealthInsuranceCardData,
     private val notificationsEnabled: Boolean,

@@ -330,7 +330,7 @@ internal class IssueMobileDrivingLicence(
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val clock: Clock,
-    private val validityDuration: Duration,
+    override val validity: Duration,
     private val storeIssuedCredentials: StoreIssuedCredentials,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.ts3(),
@@ -365,7 +365,7 @@ internal class IssueMobileDrivingLicence(
         }
 
         val issuedAt = clock.now()
-        val expiresAt = issuedAt + validityDuration
+        val expiresAt = issuedAt + validity
 
         val issuedCredentials = holderKeys.parMap(Dispatchers.Default, 4) { holderKey ->
             val statusListToken = generateStatusListToken?.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
