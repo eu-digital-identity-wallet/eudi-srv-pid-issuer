@@ -66,6 +66,7 @@ import java.net.URI
 import java.util.*
 import kotlin.test.*
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 
@@ -226,6 +227,37 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
             .exchange()
             .expectStatus().is5xxServerError
             .returnResult()
+    }
+
+    @Test
+    fun `fails when client_status exp is before preferred client status period`() = runTest {
+        val authentication = dPoPTokenAuthentication(
+            clock = clock,
+            clientStatusExpiresAt = clock.now() + 25.days,
+        )
+
+        val response = client()
+            .mutateWith(mockAuthentication(authentication))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(
+                requestByCredentialConfigurationId(
+                    proofs = jwtProofWithKeyAttestation(0).toJwtProofs(),
+                ),
+            )
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest
+            .expectBody<IssueCredentialResponse.FailedTO>()
+            .returnResult()
+            .let { assertNotNull(it.responseBody) }
+
+        assertEquals(CredentialErrorTypeTo.INVALID_CLIENT_STATUS, response.type)
+        assertEquals(
+            "Client Status is before preferred client status period",
+            response.errorDescription,
+        )
     }
 
     /**
@@ -1299,6 +1331,7 @@ private fun dPoPTokenAuthentication(
     scopes: List<Scope> = listOf(PidMsoMdocScope, PidSdJwtVcScope),
     authorities: List<GrantedAuthority> = listOf(SimpleGrantedAuthority("ROLE_USER")),
     includeClientStatus: Boolean = true,
+    clientStatusExpiresAt: Instant = (clock.now() + 32.days),
 ): DPoPTokenAuthentication {
     val issuedAt = clock.now()
     val principal = DefaultOAuth2AuthenticatedPrincipal(
@@ -1318,7 +1351,7 @@ private fun dPoPTokenAuthentication(
         authorities + scopes.map { SimpleGrantedAuthority("SCOPE_${it.value}") },
     )
 
-    val accessTokenValue = createAccessTokenValue(includeClientStatus)
+    val accessTokenValue = createAccessTokenValue(includeClientStatus, clientStatusExpiresAt)
     val accessToken = DPoPAccessToken(accessTokenValue)
 
     return DPoPTokenAuthentication.unauthenticated(
