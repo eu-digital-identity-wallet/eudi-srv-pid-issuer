@@ -21,7 +21,6 @@ import arrow.core.raise.ensureNotNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.jwkExtensions
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
@@ -288,7 +287,6 @@ internal fun pidMsoMdocV1(
  * Service for issuing PID MsoMdoc credential
  */
 internal class IssueMsoMdocPid(
-    private val validateProofs: ValidateProofs,
     private val getPidData: GetPidData,
     private val encodePidInCbor: EncodePidInCbor,
     private val notificationsEnabled: Boolean,
@@ -318,9 +316,9 @@ internal class IssueMsoMdocPid(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
+        validatedProof: ValidatedProof,
     ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Handling issuance request ...")
-        val validatedProof = validateProofs(request.unvalidatedProof, supportedCredential, clock.now()).bind()
         val holderPubKeys = with(jwkExtensions()) {
             validatedProof.credentialKeys.value
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }

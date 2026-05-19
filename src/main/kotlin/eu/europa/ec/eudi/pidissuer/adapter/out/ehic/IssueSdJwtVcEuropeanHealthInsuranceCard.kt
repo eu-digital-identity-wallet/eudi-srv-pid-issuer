@@ -25,7 +25,6 @@ import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.IsAttribute
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -197,7 +196,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
     private val encode: EncodeEuropeanHealthInsuranceCardInSdJwtVc,
     private val clock: Clock,
     override val validity: Duration,
-    private val validateProofs: ValidateProofs,
     private val getEuropeanHealthInsuranceCardData: GetEuropeanHealthInsuranceCardData,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
@@ -212,11 +210,11 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
+        validatedProof: ValidatedProof,
     ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Issuing DC4EU EHIC")
 
         val now = clock.now()
-        val validatedProof = validateProofs(request.unvalidatedProof, supportedCredential, now).bind()
         val holderPublicKeys = validatedProof.credentialKeys.value
         val ehic = getEuropeanHealthInsuranceCardData()
         val dateOfIssuance = now
@@ -256,7 +254,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             credentialIssuerId: CredentialIssuerId,
             clock: Clock,
             validity: Duration,
-            validateProofs: ValidateProofs,
             getEuropeanHealthInsuranceCardData: GetEuropeanHealthInsuranceCardData,
             notificationsEnabled: Boolean,
             generateNotificationId: GenerateNotificationId,
@@ -286,7 +283,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                 ),
                 clock,
                 validity,
-                validateProofs,
                 getEuropeanHealthInsuranceCardData,
                 notificationsEnabled,
                 generateNotificationId,
@@ -299,7 +295,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             credentialIssuerId: CredentialIssuerId,
             clock: Clock,
             validity: Duration,
-            validateProofs: ValidateProofs,
             getEuropeanHealthInsuranceCardData: GetEuropeanHealthInsuranceCardData,
             notificationsEnabled: Boolean,
             generateNotificationId: GenerateNotificationId,
@@ -329,7 +324,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                 ),
                 clock,
                 validity,
-                validateProofs,
                 getEuropeanHealthInsuranceCardData,
                 notificationsEnabled,
                 generateNotificationId,

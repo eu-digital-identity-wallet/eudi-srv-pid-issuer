@@ -21,7 +21,6 @@ import arrow.core.raise.ensureNotNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.jwkExtensions
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
@@ -325,7 +324,6 @@ internal fun mobileDrivingLicenceV1(
  * Issuing service for Mobile Driving Licence.
  */
 internal class IssueMobileDrivingLicence(
-    private val validateProofs: ValidateProofs,
     private val getMobileDrivingLicenceData: GetMobileDrivingLicenceData,
     private val encodeMobileDrivingLicenceInCbor: EncodeMobileDrivingLicenceInCbor,
     private val notificationsEnabled: Boolean,
@@ -354,9 +352,9 @@ internal class IssueMobileDrivingLicence(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
+        validatedProof: ValidatedProof,
     ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Issuing mDL")
-        val validatedProof = validateProofs(request.unvalidatedProof, supportedCredential, clock.now()).bind()
         val holderKeys = with(jwkExtensions()) {
             validatedProof.credentialKeys.value
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }

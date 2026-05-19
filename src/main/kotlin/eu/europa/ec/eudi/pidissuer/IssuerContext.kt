@@ -559,7 +559,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     registerBean { VerifyKeyAttestation(isTrustedKeyAttestationIssuer = bean()) }
     registerBean { ValidateJwtProof(issuerPublicUrl, bean()) }
     registerBean { ValidateAttestationProof(bean()) }
-    registerBean { ValidateProofs(bean(), bean(), bean()) }
+    registerBean { ValidateProof(bean(), bean(), bean()) }
     registerBean {
         val specificCredentialIssuers = buildList {
             if (enableMsoMdocPid) {
@@ -578,7 +578,6 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     clock = clock,
                     validity = duration,
                     storeIssuedCredentials = bean(),
-                    validateProofs = bean(),
                     jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                     keyAttestationRequirement = KeyAttestationRequirement.ts3(),
                     generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
@@ -611,7 +610,6 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     notificationsEnabled = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled") ?: true,
                     generateNotificationId = bean(),
                     storeIssuedCredentials = bean(),
-                    validateProofs = bean(),
                     generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
                     jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                     keyAttestationRequirement = KeyAttestationRequirement.ts3(),
@@ -638,7 +636,6 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     clock = clock,
                     validity = duration,
                     storeIssuedCredentials = bean(),
-                    validateProofs = bean(),
                     jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                     keyAttestationRequirement = KeyAttestationRequirement.ts3(),
                     generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
@@ -668,7 +665,6 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     credentialIssuerId = issuerPublicUrl,
                     clock = bean(),
                     validity = validity,
-                    validateProofs = bean(),
                     getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(
                         bean(),
                         issuingCountry,
@@ -689,7 +685,6 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     credentialIssuerId = issuerPublicUrl,
                     clock = bean(),
                     validity = validity,
-                    validateProofs = bean(),
                     getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(
                         bean(),
                         issuingCountry,
@@ -723,7 +718,6 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     issuerSigningKey,
                     jwtProofsSupportedSigningAlgorithms,
                     KeyAttestationRequirement.ts3(),
-                    bean(),
                     bean(),
                     bean(),
                     validity,
@@ -786,6 +780,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
             credentialIssuerMetadata = bean(),
             resolveCredentialRequestByCredentialIdentifier = bean(),
             encryptCredentialResponse = bean(),
+            validateCredentialProof = bean(),
             clock = bean(),
         )
     }

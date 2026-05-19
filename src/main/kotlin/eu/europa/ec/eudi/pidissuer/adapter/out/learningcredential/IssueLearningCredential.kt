@@ -24,7 +24,6 @@ import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -47,7 +46,6 @@ internal class IssueLearningCredential(
     override val publicKey: JWK,
     override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.ts3(),
     private val clock: Clock,
-    private val validateProofs: ValidateProofs,
     private val getLearningCredential: GetLearningCredential,
     override val validity: Duration,
     private val encodeLearningCredential: EncodeLearningCredential,
@@ -63,10 +61,10 @@ internal class IssueLearningCredential(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
+        validatedProof: ValidatedProof,
     ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Issuing Learning Credential")
 
-        val validatedProof = validateProofs(request.unvalidatedProof, supportedCredential, clock.now()).bind()
         val holderKeys = validatedProof.credentialKeys.value
         val learningCredential = getLearningCredential(authorizationContext)
         val issuedAt = clock.now()
@@ -109,7 +107,6 @@ internal class IssueLearningCredential(
             proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
             keyAttestationRequirement: KeyAttestationRequirement,
             clock: Clock,
-            validateProofs: ValidateProofs,
             getPidData: GetPidData,
             validity: Duration,
             digestsHashAlgorithm: HashAlgorithm,
@@ -131,7 +128,6 @@ internal class IssueLearningCredential(
                 issuerSigningKey.key.toPublicJWK(),
                 keyAttestationRequirement,
                 clock,
-                validateProofs,
                 GetLearningCredential.mock(clock, getPidData),
                 validity,
                 EncodeLearningCredential.sdJwtVcCompact(

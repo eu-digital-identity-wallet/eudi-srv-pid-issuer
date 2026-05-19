@@ -42,6 +42,12 @@ sealed interface UnvalidatedProof {
     data class Attestation(val jwt: String) : UnvalidatedProof
 }
 
+data class ValidatedProof(
+    val credentialKeys: CredentialKeys,
+    val cNonce: String,
+    val keyStorageStatus: KeyStorageStatus,
+)
+
 /**
  * This is the public key or reference to it
  * that is provided by the wallet, via [UnvalidatedProof], to be included

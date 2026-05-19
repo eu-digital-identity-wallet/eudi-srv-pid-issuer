@@ -19,14 +19,10 @@ import arrow.core.Either
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.toNonEmptyListOrThrow
-import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
-import eu.europa.ec.eudi.pidissuer.domain.CredentialKeys
-import eu.europa.ec.eudi.pidissuer.domain.CredentialReusePolicy
-import eu.europa.ec.eudi.pidissuer.domain.EudiReusePolicy
-import eu.europa.ec.eudi.pidissuer.domain.KeyStorageStatus
-import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
+import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidNonce
+import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateCredentialProof
 import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
 import kotlinx.coroutines.coroutineScope
 import kotlin.time.Instant
@@ -34,13 +30,13 @@ import kotlin.time.Instant
 /**
  * Validators for Proofs.
  */
-internal class ValidateProofs(
+internal class ValidateProof(
     private val validateJwtProof: ValidateJwtProof,
     private val validateAttestationProof: ValidateAttestationProof,
     private val verifyNonce: VerifyNonce,
-) {
+) : ValidateCredentialProof {
 
-    suspend operator fun invoke(
+    override suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
@@ -76,9 +72,3 @@ internal class ValidateProofs(
         }
     }
 }
-
-internal data class ValidatedProof(
-    val credentialKeys: CredentialKeys,
-    val cNonce: String,
-    val keyStorageStatus: KeyStorageStatus,
-)
