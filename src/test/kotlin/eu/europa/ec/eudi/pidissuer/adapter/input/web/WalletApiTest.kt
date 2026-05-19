@@ -960,9 +960,11 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        assertEquals(CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST, response.type)
-        assertTrue(response.errorDescription?.startsWith("Client status expiration") == true)
-        assertTrue(response.errorDescription?.contains("cannot be before credential expiration") == true)
+        assertEquals(CredentialErrorTypeTo.CREDENTIAL_REQUEST_DENIED, response.type)
+        assertEquals(
+            "Invalid Client Status: Client Status expires before preferred client status period",
+            response.errorDescription,
+        )
     }
 }
 
