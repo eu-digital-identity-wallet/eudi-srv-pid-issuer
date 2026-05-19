@@ -253,9 +253,9 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        assertEquals(CredentialErrorTypeTo.INVALID_CLIENT_STATUS, response.type)
+        assertEquals(CredentialErrorTypeTo.CREDENTIAL_REQUEST_DENIED, response.type)
         assertEquals(
-            "Client Status error: Client Status exp is before preferred client status period",
+            "Invalid Client Status: Client Status expires before preferred client status period",
             response.errorDescription,
         )
     }

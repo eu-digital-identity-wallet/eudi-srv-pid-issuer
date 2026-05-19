@@ -118,7 +118,7 @@ sealed interface IssueCredentialError {
     data class InvalidEncryptionParameters(val error: Throwable) : IssueCredentialError
 
     /**
-     * Indicates a credential request contains a 'client_status` error'.
+     * Indicates a 'client_status` error'.
      */
     data class InvalidClientStatus(val msg: String, val cause: Throwable? = null) : IssueCredentialError
 
@@ -179,8 +179,8 @@ enum class CredentialErrorTypeTo {
     @SerialName("invalid_encryption_parameters")
     INVALID_ENCRYPTION_PARAMETERS,
 
-    @SerialName("invalid_client_status")
-    INVALID_CLIENT_STATUS,
+    @SerialName("credential_request_denied")
+    CREDENTIAL_REQUEST_DENIED,
 }
 
 /**
@@ -377,7 +377,7 @@ private class Services(
 
             val preferredClientStatusPeriod = credentialIssuerMetadata.preferredClientStatusPeriod.value
             ensure((authorizationContext.clientStatus.expiresAt - clock.now()) >= preferredClientStatusPeriod) {
-                InvalidClientStatus("Client Status exp is before preferred client status period")
+                InvalidClientStatus("Client Status expires before preferred client status period")
             }
 
             val request =
@@ -673,8 +673,8 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Wrong scope. Expected ${expected.value}"
 
         is InvalidClientStatus ->
-            CredentialErrorTypeTo.INVALID_CLIENT_STATUS to
-                errorDescriptionWithErrorCauseDescription("Client Status error: $msg", cause)
+            CredentialErrorTypeTo.CREDENTIAL_REQUEST_DENIED to
+                errorDescriptionWithErrorCauseDescription("Invalid Client Status: $msg", cause)
 
         is Unexpected ->
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
