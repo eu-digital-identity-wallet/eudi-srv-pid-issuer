@@ -560,11 +560,11 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     registerBean { VerifyKeyAttestation(isTrustedKeyAttestationIssuer = bean()) }
     registerBean { ValidateJwtProof(issuerPublicUrl, bean()) }
     registerBean { ValidateAttestationProof(bean()) }
-    registerBean { ValidateProofs(bean(), bean(), bean()) }
+    registerBean { DefaultValidateProof(bean(), bean(), bean()) }
     registerBean {
         val specificCredentialIssuers = buildList {
             if (enableMsoMdocPid) {
-                val duration = env.duration("issuer.pid.mso_mdoc.encoder.duration") ?: 30.days
+                val duration = env.duration("issuer.pid.mso_mdoc.encoder.duration") ?: 31.days
                 val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
                     "issuer.pid.mso_mdoc.jwtProofs.supportedSigningAlgorithms",
                     JWSAlgorithm::parse,
@@ -579,9 +579,8 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     clock = clock,
                     validity = duration,
                     storeIssuedCredentials = bean(),
-                    validateProofs = bean(),
                     jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
-                    keyAttestationRequirement = KeyAttestationRequirement.ts3(),
+                    keyAttestationRequirement = KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(duration)),
                     generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
                     credentialReusePolicy = pidMsoMdocReusePolicy,
                 )
@@ -590,7 +589,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
             }
 
             if (enableSdJwtVcPid) {
-                val expiresIn = env.duration("issuer.pid.sd_jwt_vc.duration") ?: 30.days
+                val expiresIn = env.duration("issuer.pid.sd_jwt_vc.duration") ?: 31.days
                 val notUseBefore = env.duration("issuer.pid.sd_jwt_vc.notUseBefore")
                 val pidSdJwtVcReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.pid.sd_jwt_vc")
 
@@ -609,14 +608,12 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     clock = clock,
                     credentialIssuerId = issuerPublicUrl,
                     calculateNotUseBefore = notUseBefore?.let { duration -> { iat -> iat + duration } },
-                    notificationsEnabled = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled")
-                        ?: true,
+                    notificationsEnabled = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled") ?: true,
                     generateNotificationId = bean(),
                     storeIssuedCredentials = bean(),
-                    validateProofs = bean(),
                     generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
                     jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
-                    keyAttestationRequirement = KeyAttestationRequirement.ts3(),
+                    keyAttestationRequirement = KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(expiresIn)),
                     credentialReusePolicy = pidSdJwtVcReusePolicy,
                     validity = expiresIn,
                 )
@@ -626,7 +623,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
             }
 
             if (enableMobileDrivingLicence) {
-                val duration = env.duration("issuer.mdl.mso_mdoc.encoder.duration") ?: 5.days
+                val duration = env.duration("issuer.mdl.mso_mdoc.encoder.duration") ?: 31.days
                 val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
                     "issuer.mdl.jwtProofs.supportedSigningAlgorithms",
                     JWSAlgorithm::parse,
@@ -640,9 +637,8 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     clock = clock,
                     validity = duration,
                     storeIssuedCredentials = bean(),
-                    validateProofs = bean(),
                     jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
-                    keyAttestationRequirement = KeyAttestationRequirement.ts3(),
+                    keyAttestationRequirement = KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(duration)),
                     generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
                     credentialReusePolicy = mdlIssuerReusePolicy,
                 )
@@ -654,7 +650,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                 val digestHashAlgorithm = env.getProperty<HashAlgorithm>(
                     "issuer.ehic.encoder.digests.hashAlgorithm",
                 ) ?: HashAlgorithm.SHA_256
-                val validity = Duration.parse(env.getProperty("issuer.ehic.validity", "P30D"))
+                val validity = Duration.parse(env.getProperty("issuer.ehic.validity", "P31D"))
                 val ehicNotificationsEnabled = env.getProperty<Boolean>("issuer.ehic.notifications.enabled") ?: true
                 val issuingCountry = EhicIssuingCountry(env.getProperty("issuer.ehic.issuingCountry", "GR"))
                 val jwtProofsSupportedSigningAlgorithms = env.readNonEmptySet(
@@ -672,7 +668,6 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         credentialIssuerId = issuerPublicUrl,
                         clock = bean(),
                         validity = validity,
-                        validateProofs = bean(),
                         getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(
                             bean(),
                             issuingCountry,
@@ -681,7 +676,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         generateNotificationId = bean(),
                         storeIssuedCredentials = bean(),
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
-                        keyAttestationRequirement = KeyAttestationRequirement.ts3(),
+                        keyAttestationRequirement = KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(validity)),
                         credentialReusePolicy = ehicReusePolicy,
                     )
                     add(ehicJwsJsonFlattenedIssuer)
@@ -695,7 +690,6 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         credentialIssuerId = issuerPublicUrl,
                         clock = bean(),
                         validity = validity,
-                        validateProofs = bean(),
                         getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(
                             bean(),
                             issuingCountry,
@@ -704,7 +698,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         generateNotificationId = bean(),
                         storeIssuedCredentials = bean(),
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
-                        keyAttestationRequirement = KeyAttestationRequirement.ts3(),
+                        keyAttestationRequirement = KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(validity)),
                         credentialReusePolicy = ehicReusePolicy,
                     )
                     add(ehicCompactIssuer)
@@ -719,7 +713,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     JWSAlgorithm::parse,
                 )
                 val learningCredentialReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.learningCredential")
-                val validity = Duration.parse(env.getProperty("issuer.learningCredential.validity", "P30D"))
+                val validity = Duration.parse(env.getProperty("issuer.learningCredential.validity", "P31D"))
                 val digestHashAlgorithm = env.getProperty<HashAlgorithm>(
                     "issuer.learningCredential.sdJwtVc.encoder.digests.hashAlgorithm",
                 ) ?: HashAlgorithm.SHA_256
@@ -729,8 +723,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                 val sdJwtVcCompactIssuer = IssueLearningCredential.sdJwtVcCompact(
                     issuerSigningKey,
                     jwtProofsSupportedSigningAlgorithms,
-                    KeyAttestationRequirement.ts3(),
-                    bean(),
+                    keyAttestationRequirement = KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(validity)),
                     bean(),
                     bean(),
                     validity,
@@ -793,6 +786,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
             credentialIssuerMetadata = bean(),
             resolveCredentialRequestByCredentialIdentifier = bean(),
             encryptCredentialResponse = bean(),
+            validateProof = bean(),
             clock = bean(),
         )
     }

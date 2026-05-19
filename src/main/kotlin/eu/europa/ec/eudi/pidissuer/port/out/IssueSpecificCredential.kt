@@ -38,6 +38,7 @@ interface IssueSpecificCredential {
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
+        validatedProof: ValidatedProof,
     ): Either<IssueCredentialError, CredentialResponse>
 }
 
@@ -79,9 +80,10 @@ private class DeferredIssuer(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
+        validatedProof: ValidatedProof,
     ): Either<IssueCredentialError, CredentialResponse> = either {
         val credentialResponse =
-            issuer.invoke(authorizationContext, request, credentialIdentifier).bind()
+            issuer.invoke(authorizationContext, request, credentialIdentifier, validatedProof).bind()
 
         require(credentialResponse is CredentialResponse.Issued) { "Actual issuer should return issued credentials" }
 

@@ -28,7 +28,7 @@ internal class ValidateAttestationProof(
         unvalidatedProof: UnvalidatedProof.Attestation,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
-    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKeys, String>> = Either.catch {
+    ): Either<IssueCredentialError.InvalidProof, ValidatedProof> = Either.catch {
         val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.ATTESTATION]
         requireNotNull(proofType) {
             "Credential configuration '${credentialConfiguration.id.value}' doesn't support 'attestation' proofs"
@@ -40,7 +40,6 @@ internal class ValidateAttestationProof(
             "Key attestation signing algorithm '${keyAttestationJWT.jwt.header.algorithm}' is not supported, " +
                 "must be one of: ${proofType.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
         }
-
         credentialKeyAndNonce(keyAttestationJWT, proofType, at)
     }.mapLeft { IssueCredentialError.InvalidProof("Invalid proof Attestation", it) }
 
@@ -48,7 +47,7 @@ internal class ValidateAttestationProof(
         keyAttestationJWT: KeyAttestationJWT,
         proofType: ProofType.Attestation,
         at: Instant,
-    ): Pair<CredentialKeys, String> {
+    ): ValidatedProof {
         val (attestedKeys, nonce) = verifyKeyAttestation(
             keyAttestation = keyAttestationJWT,
             signingAlgorithmsSupported = proofType.signingAlgorithmsSupported,
@@ -58,6 +57,16 @@ internal class ValidateAttestationProof(
         ).getOrThrow()
         requireNotNull(nonce) { "Key attestation does not contain a c_nonce." }
 
-        return CredentialKeys(attestedKeys) to nonce
+        require(
+            keyAttestationJWT.claims.keyStorageStatus.exp >= at + proofType.keyAttestationRequirement.preferredKeyStorageStatusPeriod.value,
+        ) {
+            "Key Storage Status expiration date does not meet the preferred key storage status period"
+        }
+
+        return ValidatedProof(
+            credentialKeys = CredentialKeys(attestedKeys),
+            cNonce = nonce,
+            keyStorageStatus = keyAttestationJWT.claims.keyStorageStatus,
+        )
     }
 }
