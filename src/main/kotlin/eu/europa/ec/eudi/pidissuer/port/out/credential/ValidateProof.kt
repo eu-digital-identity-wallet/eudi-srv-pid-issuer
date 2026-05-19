@@ -22,7 +22,7 @@ import eu.europa.ec.eudi.pidissuer.domain.ValidatedProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import kotlin.time.Instant
 
-fun interface ValidateCredentialProof {
+fun interface ValidateProof {
 
     suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof,

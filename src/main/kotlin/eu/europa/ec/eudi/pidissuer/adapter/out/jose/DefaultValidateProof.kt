@@ -22,7 +22,7 @@ import arrow.core.toNonEmptyListOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidNonce
-import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateCredentialProof
+import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
 import kotlinx.coroutines.coroutineScope
 import kotlin.time.Instant
@@ -30,11 +30,11 @@ import kotlin.time.Instant
 /**
  * Validators for Proofs.
  */
-internal class ValidateProof(
+internal class DefaultValidateProof(
     private val validateJwtProof: ValidateJwtProof,
     private val validateAttestationProof: ValidateAttestationProof,
     private val verifyNonce: VerifyNonce,
-) : ValidateCredentialProof {
+) : ValidateProof {
 
     override suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof,

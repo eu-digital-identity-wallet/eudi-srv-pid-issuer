@@ -276,6 +276,13 @@ sealed interface BatchCredentialIssuance {
 @JvmInline
 value class PreferredClientStatusPeriod(val value: Duration) {
     init {
-        require(value >= 31.days) { "Preferred client status period must be greater than 31 days" }
+        require(value >= 31.days) { "Preferred client status period must be at least 31 days" }
+    }
+}
+
+@JvmInline
+value class PreferredKeyStorageStatus(val value: Duration) {
+    init {
+        require(value >= 31.days) { "Preferred key storage status period must be at least 31 days" }
     }
 }

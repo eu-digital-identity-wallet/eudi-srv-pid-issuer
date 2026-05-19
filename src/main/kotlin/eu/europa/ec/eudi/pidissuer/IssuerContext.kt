@@ -559,7 +559,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     registerBean { VerifyKeyAttestation(isTrustedKeyAttestationIssuer = bean()) }
     registerBean { ValidateJwtProof(issuerPublicUrl, bean()) }
     registerBean { ValidateAttestationProof(bean()) }
-    registerBean { ValidateProof(bean(), bean(), bean()) }
+    registerBean { DefaultValidateProof(bean(), bean(), bean()) }
     registerBean {
         val specificCredentialIssuers = buildList {
             if (enableMsoMdocPid) {
@@ -780,7 +780,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
             credentialIssuerMetadata = bean(),
             resolveCredentialRequestByCredentialIdentifier = bean(),
             encryptCredentialResponse = bean(),
-            validateCredentialProof = bean(),
+            validateProof = bean(),
             clock = bean(),
         )
     }

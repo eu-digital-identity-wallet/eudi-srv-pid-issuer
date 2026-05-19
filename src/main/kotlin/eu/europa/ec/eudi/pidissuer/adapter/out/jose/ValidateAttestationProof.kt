@@ -40,7 +40,6 @@ internal class ValidateAttestationProof(
             "Key attestation signing algorithm '${keyAttestationJWT.jwt.header.algorithm}' is not supported, " +
                 "must be one of: ${proofType.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
         }
-
         credentialKeyAndNonce(keyAttestationJWT, proofType, at)
     }.mapLeft { IssueCredentialError.InvalidProof("Invalid proof Attestation", it) }
 
@@ -57,6 +56,12 @@ internal class ValidateAttestationProof(
             at = at,
         ).getOrThrow()
         requireNotNull(nonce) { "Key attestation does not contain a c_nonce." }
+
+        require(
+            keyAttestationJWT.claims.keyStorageStatus.exp >= at + proofType.keyAttestationRequirement.preferredKeyStorageStatusPeriod.value,
+        ) {
+            "Key Storage Status expiration date does not meet the preferred key storage status period"
+        }
 
         return ValidatedProof(
             credentialKeys = CredentialKeys(attestedKeys),

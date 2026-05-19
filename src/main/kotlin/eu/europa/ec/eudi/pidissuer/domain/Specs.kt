@@ -71,6 +71,7 @@ object TS3 {
     const val KEY_STORAGE_STATUS: String = "key_storage_status"
     const val CLIENT_STATUS: String = "client_status"
     const val PREFERRED_CLIENT_STATUS_PERIOD = "preferred_client_status_period"
+    const val PREFERRED_KEY_STORAGE_STATUS_PERIOD = "preferred_key_storage_status_period"
 
     val SUPPORTED_KEY_ATTESTATION_SIGNING_ALGORITHMS: Set<JWSAlgorithm> =
         setOf(JWSAlgorithm.ES256, JWSAlgorithm.ES384, JWSAlgorithm.ES512)

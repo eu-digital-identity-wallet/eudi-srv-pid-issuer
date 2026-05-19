@@ -28,14 +28,15 @@ import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
 import kotlinx.coroutines.test.runTest
 import kotlin.test.*
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
-class ValidateProofTest {
+class DefaultValidateProofTest {
 
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.System
     private val verifyKeyAttestation = VerifyKeyAttestation(isTrustedKeyAttestationIssuer = IsTrustedKeyAttestationIssuer.Ignored)
-    private val validateProofs = ValidateProof(
+    private val defaultValidateProofs = DefaultValidateProof(
         validateJwtProof = ValidateJwtProof(issuer, verifyKeyAttestation),
         validateAttestationProof = ValidateAttestationProof(verifyKeyAttestation),
         verifyNonce = { _, _ ->
@@ -94,7 +95,7 @@ class ValidateProofTest {
     ): ValidatedProof {
         val (unvalidatedProof, _) = proof
 
-        val validator = ValidateProof(
+        val validator = DefaultValidateProof(
             validateJwtProof = ValidateJwtProof(issuer, verifyKeyAttestation),
             validateAttestationProof = ValidateAttestationProof(verifyKeyAttestation),
             verifyNonce = { _, _ -> true },
@@ -106,6 +107,7 @@ class ValidateProofTest {
             KeyAttestationRequirement(
                 keyStorage = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
                 userAuthentication = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
+                preferredKeyStorageStatusPeriod = PreferredKeyStorageStatus(31.days),
             ),
             credentialReusePolicy = policy,
         )

@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.domain
 import arrow.core.NonEmptySet
 import com.nimbusds.jose.JWSAlgorithm
 import kotlinx.serialization.Serializable
+import kotlin.time.Duration.Companion.days
 
 /**
  * The unique identifier of an offered Credential.
@@ -46,11 +47,13 @@ value class AttackPotentialResistance(val value: String) {
 data class KeyAttestationRequirement(
     val keyStorage: NonEmptySet<AttackPotentialResistance>?,
     val userAuthentication: NonEmptySet<AttackPotentialResistance>?,
+    val preferredKeyStorageStatusPeriod: PreferredKeyStorageStatus,
 ) {
     companion object {
         fun ts3(): KeyAttestationRequirement = KeyAttestationRequirement(
             keyStorage = NonEmptySet.of(AttackPotentialResistance.Iso18045High),
             userAuthentication = NonEmptySet.of(AttackPotentialResistance.Iso18045High),
+            preferredKeyStorageStatusPeriod = PreferredKeyStorageStatus(31.days),
         )
     }
 }

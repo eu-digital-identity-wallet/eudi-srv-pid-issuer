@@ -30,7 +30,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
 import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.*
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ResolveCredentialRequestByCredentialIdentifier
-import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateCredentialProof
+import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Required
@@ -292,12 +292,12 @@ class IssueCredential(
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
     private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
     private val encryptCredentialResponse: EncryptCredentialResponse,
-    private val validateCredentialProof: ValidateCredentialProof,
+    private val validateProof: ValidateProof,
     private val clock: Clock,
 ) {
 
     private fun Raise<IssueCredentialError>.services(): Services =
-        Services(this, credentialIssuerMetadata, resolveCredentialRequestByCredentialIdentifier, validateCredentialProof, clock)
+        Services(this, credentialIssuerMetadata, resolveCredentialRequestByCredentialIdentifier, validateProof, clock)
 
     suspend fun fromEncryptedRequest(
         authorizationContext: AuthorizationContext,
@@ -362,7 +362,7 @@ private class Services(
     raise: Raise<IssueCredentialError>,
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
     private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
-    private val validateCredentialProof: ValidateCredentialProof,
+    private val validateProof: ValidateProof,
     private val clock: Clock,
 ) :
     Validations,
@@ -416,7 +416,7 @@ private class Services(
             resolvedCredentialRequest: ResolvedCredentialRequest,
         ): CredentialResponse {
             val issueSpecificCredential = specificIssuerFor(authorizationContext, resolvedCredentialRequest)
-            val validatedProof = validateCredentialProof(
+            val validatedProof = validateProof(
                 resolvedCredentialRequest.credentialRequest.unvalidatedProof,
                 issueSpecificCredential.supportedCredential,
                 clock.now(),

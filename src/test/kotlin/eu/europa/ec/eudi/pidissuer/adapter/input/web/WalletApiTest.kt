@@ -929,9 +929,11 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
             .returnResult()
             .let { assertNotNull(it.responseBody) }
 
-        assertEquals(CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST, response.type)
-        assertTrue(response.errorDescription?.startsWith("Key storage expiration") == true)
-        assertTrue(response.errorDescription?.contains("cannot be before credential expiration") == true)
+        assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
+        assertEquals(
+            "Invalid proof JWT: Key Storage Status expiration date does not meet the preferred key storage status period",
+            response.errorDescription,
+        )
     }
 
     @Test

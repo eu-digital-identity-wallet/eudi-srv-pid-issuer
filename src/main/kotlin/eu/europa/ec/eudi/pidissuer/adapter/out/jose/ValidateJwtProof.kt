@@ -75,6 +75,10 @@ internal class ValidateJwtProof(
                 "with value `${ETSI119472Part3.KEY_ATTESTATION_JWT_PROOF_SIGNING_KEY_INDEX}`"
         }
 
+        require(keyStorageStatus.exp >= at + proofType.keyAttestationRequirement.preferredKeyStorageStatusPeriod.value) {
+            "Key Storage Status expiration date does not meet the preferred key storage status period"
+        }
+
         val keySelector = keySelector(credentialKeys, algorithm)
         val processor = processor(credentialIssuerId, keySelector)
         processor.process(signedJwt, null)
