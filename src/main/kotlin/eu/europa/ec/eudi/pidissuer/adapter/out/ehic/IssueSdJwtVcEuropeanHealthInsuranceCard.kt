@@ -30,7 +30,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.input.ensureCredentialExpirationIsMet
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
@@ -219,7 +218,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
         val ehic = getEuropeanHealthInsuranceCardData()
         val dateOfIssuance = now
         val dateOfExpiry = dateOfIssuance + validity
-        ensureCredentialExpirationIsMet(dateOfExpiry, authorizationContext.clientStatus, validatedProof.keyStorageStatus)
 
         val issuedCredentials = holderPublicKeys.parMap(Dispatchers.Default, 4) {
             encode(ehic, authorizationContext.username, it, dateOfIssuance = dateOfIssuance, dateOfExpiry = dateOfExpiry).bind()

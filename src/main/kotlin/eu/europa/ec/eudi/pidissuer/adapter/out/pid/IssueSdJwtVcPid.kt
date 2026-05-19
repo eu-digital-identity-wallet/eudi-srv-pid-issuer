@@ -30,7 +30,6 @@ import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
-import eu.europa.ec.eudi.pidissuer.port.input.ensureCredentialExpirationIsMet
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
@@ -235,7 +234,6 @@ internal class IssueSdJwtVcPid(
         val (pid, pidMetaData) = getPidData(authorizationContext).bind()
         val issuedAt = clock.now()
         val expiresAt = issuedAt + validity
-        ensureCredentialExpirationIsMet(expiresAt, authorizationContext.clientStatus, validatedProof.keyStorageStatus)
         val notBefore = calculateNotUseBefore?.invoke(issuedAt)
 
         ensure(expiresAt > issuedAt) {

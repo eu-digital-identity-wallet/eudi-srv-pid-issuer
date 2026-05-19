@@ -27,7 +27,6 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
-import eu.europa.ec.eudi.pidissuer.port.input.ensureCredentialExpirationIsMet
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
@@ -329,7 +328,6 @@ internal class IssueMsoMdocPid(
 
         val issuedAt = clock.now()
         val expiresAt = issuedAt + validity
-        ensureCredentialExpirationIsMet(expiresAt, authorizationContext.clientStatus, validatedProof.keyStorageStatus)
 
         val issuedCredentials = holderPubKeys.parMap(Dispatchers.Default, 4) { holderKey ->
             val statusListToken = generateStatusListToken?.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
