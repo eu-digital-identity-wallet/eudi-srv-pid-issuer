@@ -40,7 +40,7 @@ import kotlin.test.assertNotNull
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 
-internal suspend fun jwtProof(
+internal fun jwtProof(
     audience: CredentialIssuerId,
     clock: Clock,
     nonce: String,
@@ -100,7 +100,7 @@ internal suspend fun keyAttestationJWT(
     userAuthorizationConstraints: List<String> = listOf("iso_18045_high"),
     cNonce: String? = null,
     clock: Clock = Clock.System,
-    expiresAt: Instant = clock.now() + 1.days,
+    expiresAt: Instant = clock.now() + 60.days,
     includeExpiresAt: Boolean = true,
     extraKeys: () -> List<ECKey> = { emptyList() },
 ): SignedJWT {

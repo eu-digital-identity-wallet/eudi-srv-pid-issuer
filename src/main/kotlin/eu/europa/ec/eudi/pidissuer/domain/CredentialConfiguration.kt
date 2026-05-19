@@ -46,11 +46,13 @@ value class AttackPotentialResistance(val value: String) {
 data class KeyAttestationRequirement(
     val keyStorage: NonEmptySet<AttackPotentialResistance>?,
     val userAuthentication: NonEmptySet<AttackPotentialResistance>?,
+    val preferredKeyStorageStatusPeriod: PreferredKeyStorageStatusPeriod,
 ) {
     companion object {
-        fun ts3(): KeyAttestationRequirement = KeyAttestationRequirement(
+        fun ts3(preferredKeyStorageStatusPeriod: PreferredKeyStorageStatusPeriod): KeyAttestationRequirement = KeyAttestationRequirement(
             keyStorage = NonEmptySet.of(AttackPotentialResistance.Iso18045High),
             userAuthentication = NonEmptySet.of(AttackPotentialResistance.Iso18045High),
+            preferredKeyStorageStatusPeriod = preferredKeyStorageStatusPeriod,
         )
     }
 }

@@ -257,6 +257,7 @@ private fun ProofType.toJsonObject(): JsonObject =
                     addAll(userAuthentication.map { it.value })
                 }
             }
+            put(TS3.PREFERRED_KEY_STORAGE_STATUS_PERIOD, keyAttestationRequirement.preferredKeyStorageStatusPeriod.value.inWholeSeconds)
         }
     }
 

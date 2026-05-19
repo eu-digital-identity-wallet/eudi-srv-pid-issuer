@@ -23,7 +23,6 @@ import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -159,7 +158,7 @@ internal val SdJwtVcPidCredentialConfigurationId: CredentialConfigurationId = Cr
 fun pidSdJwtVcV1(
     signingAlgorithm: JWSAlgorithm,
     proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.ts3(),
+    keyAttestationRequirement: KeyAttestationRequirement,
     credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(
@@ -190,7 +189,6 @@ private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
  */
 internal class IssueSdJwtVcPid(
     override val validity: Duration,
-    private val validateProofs: ValidateProofs,
     credentialIssuerId: CredentialIssuerId,
     private val clock: Clock,
     hashAlgorithm: HashAlgorithm,
@@ -228,10 +226,11 @@ internal class IssueSdJwtVcPid(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
+        validatedProof: ValidatedProof,
     ): Either<IssueCredentialError, CredentialResponse> = either {
         log.info("Handling issuance request ...")
 
-        val holderPubKeys = validateProofs(request.unvalidatedProof, supportedCredential, clock.now()).bind()
+        val holderPubKeys = validatedProof.credentialKeys.value
         val (pid, pidMetaData) = getPidData(authorizationContext).bind()
         val issuedAt = clock.now()
         val expiresAt = issuedAt + validity

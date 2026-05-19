@@ -339,7 +339,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
     }
 
     @Test
-    fun `fails when providing more proofs than allowed batch_size`() = runTest {
+    fun `fails when providing multiple proofs`() = runTest {
         val authentication = dPoPTokenAuthentication(clock = clock)
         val nonce = generateNonce(clock.now(), 5L.minutes)
         val proof1 = jwtProofWithKeyAttestation(
@@ -896,6 +896,77 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
             assertEquals(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID")), it)
         }
         assertNull(response.transactionId)
+    }
+
+    @Test
+    fun `issuance fails when key attestation expiration is before credential expiration`() = runTest {
+        val keyAttestationExpiresAt = clock.now() + 1L.minutes
+        val authentication = dPoPTokenAuthentication(clock = clock)
+        val cNonce = generateNonce(clock.now(), 5L.minutes)
+        val jwtProofSigningKey = ECKeyGenerator(Curve.P_256).generate()
+        val keyAttestationJwt = keyAttestationJWT(
+            proofSigningKey = jwtProofSigningKey,
+            cNonce = cNonce,
+            expiresAt = keyAttestationExpiresAt,
+        ) {
+            (0..<3).map { ECKeyGenerator(Curve.P_256).generate() }
+        }
+
+        val proofs = jwtProof(credentialIssuerMetadata.id, clock, cNonce, jwtProofSigningKey) {
+            customParam("key_attestation", keyAttestationJwt.serialize())
+        }.toJwtProofs()
+
+        val response = client()
+            .mutateWith(mockAuthentication(authentication))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(requestByCredentialIdentifier(proofs = proofs))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest()
+            .expectBody<IssueCredentialResponse.FailedTO>()
+            .returnResult()
+            .let { assertNotNull(it.responseBody) }
+
+        assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
+        assertEquals(
+            "Invalid proof JWT: Key Storage Status expiration date does not meet the preferred key storage status period",
+            response.errorDescription,
+        )
+    }
+
+    @Test
+    fun `issuance fails when client status expiration is before credential expiration`() = runTest {
+        val authentication = dPoPTokenAuthentication(clock = clock, clientStatusExpiresAt = clock.now() + 1L.minutes)
+        val cNonce = generateNonce(clock.now(), 5L.minutes)
+        val jwtProofSigningKey = ECKeyGenerator(Curve.P_256).generate()
+        val keyAttestationJwt = keyAttestationJWT(proofSigningKey = jwtProofSigningKey, cNonce = cNonce) {
+            (0..<3).map { ECKeyGenerator(Curve.P_256).generate() }
+        }
+
+        val proofs = jwtProof(credentialIssuerMetadata.id, clock, cNonce, jwtProofSigningKey) {
+            customParam("key_attestation", keyAttestationJwt.serialize())
+        }.toJwtProofs()
+
+        val response = client()
+            .mutateWith(mockAuthentication(authentication))
+            .post()
+            .uri(WalletApi.CREDENTIAL_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(requestByCredentialIdentifier(proofs = proofs))
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isBadRequest()
+            .expectBody<IssueCredentialResponse.FailedTO>()
+            .returnResult()
+            .let { assertNotNull(it.responseBody) }
+
+        assertEquals(CredentialErrorTypeTo.CREDENTIAL_REQUEST_DENIED, response.type)
+        assertEquals(
+            "Invalid Client Status: Client Status expires before preferred client status period",
+            response.errorDescription,
+        )
     }
 }
 

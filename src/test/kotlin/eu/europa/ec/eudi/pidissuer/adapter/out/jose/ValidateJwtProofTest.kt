@@ -41,6 +41,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import java.security.cert.X509Certificate
 import kotlin.test.*
+import kotlin.time.Duration.Companion.days
 
 internal class ValidateJwtProofTest {
 
@@ -51,7 +52,7 @@ internal class ValidateJwtProofTest {
     private val credentialConfiguration = mobileDrivingLicenceV1(
         CoseAlgorithm(-7),
         checkNotNull(ECDSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
-        KeyAttestationRequirement.ts3(),
+        KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(60.days)),
     )
 
     @Test
@@ -175,7 +176,7 @@ internal class ValidateJwtProofTest {
                 mobileDrivingLicenceV1(
                     CoseAlgorithm(-7),
                     nonEmptySetOf(JWSAlgorithm.ES512),
-                    KeyAttestationRequirement.ts3(),
+                    KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(60.days)),
                 ),
                 clock.now(),
             )
