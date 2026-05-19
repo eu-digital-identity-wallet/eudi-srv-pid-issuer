@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import arrow.core.NonEmptyList
 import arrow.core.NonEmptySet
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
@@ -25,6 +26,8 @@ import com.nimbusds.jose.jwk.RSAKey
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec.ZIP_ALGORITHMS
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import java.util.*
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
 
 /**
  * Encryption algorithms and methods supported for encrypting Credential Responses.
@@ -212,6 +215,7 @@ data class CredentialIssuerDisplay(
  * Credential Response encrypted or not.
  * @param display display properties of a Credential Issuer for a certain language
  * @param specificCredentialIssuers the list of the specific issuers supported
+ * @param preferredClientStatusPeriod the preferred client status period in seconds
  */
 data class CredentialIssuerMetaData(
     val id: CredentialIssuerId,
@@ -224,7 +228,8 @@ data class CredentialIssuerMetaData(
     val credentialRequestEncryption: CredentialRequestEncryption,
     val credentialResponseEncryption: CredentialResponseEncryption,
     val display: List<CredentialIssuerDisplay> = emptyList(),
-    val specificCredentialIssuers: List<IssueSpecificCredential>,
+    val specificCredentialIssuers: NonEmptyList<IssueSpecificCredential>,
+    val preferredClientStatusPeriod: PreferredClientStatusPeriod,
 ) {
     init {
         val displayLocales = display.map { it.locale }
@@ -235,6 +240,12 @@ data class CredentialIssuerMetaData(
         val credentialConfigurationIds = specificCredentialIssuers.map { it.supportedCredential.id }
         require(credentialConfigurationIds.size == credentialConfigurationIds.distinct().size) {
             "credential configuration ids must be unique"
+        }
+
+        val maxValidityOfIssuedCredentials = specificCredentialIssuers.maxOf { it.validity }
+
+        require(preferredClientStatusPeriod.value >= maxValidityOfIssuedCredentials) {
+            "preferredClientStatusPeriod must be greater than or equal to the max validity of issued credentials configured"
         }
     }
 
@@ -259,5 +270,12 @@ sealed interface BatchCredentialIssuance {
         init {
             require(batchSize >= 2) { "Batch size must be equal or greater than 2" }
         }
+    }
+}
+
+@JvmInline
+value class PreferredClientStatusPeriod(val value: Duration) {
+    init {
+        require(value >= 31.days) { "Preferred client status period must be greater than 31 days" }
     }
 }
