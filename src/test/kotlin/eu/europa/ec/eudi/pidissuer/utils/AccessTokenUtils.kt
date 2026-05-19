@@ -23,11 +23,14 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.TS3
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Instant
 
 private val accessTokenSigner = ECDSASigner(ECKeyGenerator(Curve.P_256).generate())
 
-fun createAccessTokenValue(includeClientStatus: Boolean = true): String {
+fun createAccessTokenValue(includeClientStatus: Boolean = true, expiresAt: Instant = (Clock.System.now() + 32.days)): String {
     val jwtClaimSet = JWTClaimsSet.Builder().apply {
         if (includeClientStatus) {
             claim(
@@ -41,7 +44,7 @@ fun createAccessTokenValue(includeClientStatus: Boolean = true): String {
                                   "uri": "https://revocation_url/wia-statuslists/42"
                                 }
                               },
-                              "exp": 1303497780
+                              "exp": ${expiresAt.epochSeconds}
                             }
                     """.trimIndent(),
                 ),

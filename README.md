@@ -633,6 +633,10 @@ Default value: N/A
 
 ### Metadata configuration
 
+Variable: `ISSUER_METADATA_PREFERRED_CLIENT_STATUS_PERIOD`  
+Description: Preferred Client Status maintenance period. Can not be less than 31 days.  
+Default value: `P31D`  
+
 You can configure the display objects of the Credential Issuer Metadata of PID Issuer, using the following 
 environment variables. 
 For each display object you must configure as a bare minimum either the name or the logo uri.

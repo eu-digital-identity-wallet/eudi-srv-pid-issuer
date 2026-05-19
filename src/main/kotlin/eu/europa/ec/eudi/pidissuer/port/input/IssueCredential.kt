@@ -113,9 +113,14 @@ sealed interface IssueCredentialError {
     data class InvalidNonce(val msg: String, val cause: Throwable? = null) : IssueCredentialError
 
     /**
-     * Indicates a credential request contained contains an invalid 'credential_response_encryption_alg'.
+     * Indicates a credential request contains an invalid 'credential_response_encryption_alg'.
      */
     data class InvalidEncryptionParameters(val error: Throwable) : IssueCredentialError
+
+    /**
+     * Indicates a 'client_status` error'.
+     */
+    data class InvalidClientStatus(val msg: String, val cause: Throwable? = null) : IssueCredentialError
 
     data class WrongScope(val expected: Scope) : IssueCredentialError
 
@@ -173,6 +178,9 @@ enum class CredentialErrorTypeTo {
 
     @SerialName("invalid_encryption_parameters")
     INVALID_ENCRYPTION_PARAMETERS,
+
+    @SerialName("credential_request_denied")
+    CREDENTIAL_REQUEST_DENIED,
 }
 
 /**
@@ -282,10 +290,11 @@ class IssueCredential(
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
     private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
     private val encryptCredentialResponse: EncryptCredentialResponse,
+    private val clock: Clock,
 ) {
 
     private fun Raise<IssueCredentialError>.services(): Services =
-        Services(this, credentialIssuerMetadata, resolveCredentialRequestByCredentialIdentifier)
+        Services(this, credentialIssuerMetadata, resolveCredentialRequestByCredentialIdentifier, clock)
 
     suspend fun fromEncryptedRequest(
         authorizationContext: AuthorizationContext,
@@ -350,6 +359,7 @@ private class Services(
     raise: Raise<IssueCredentialError>,
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
     private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
+    private val clock: Clock,
 ) :
     Validations,
     Raise<IssueCredentialError> by raise {
@@ -364,6 +374,12 @@ private class Services(
                     credentialIssuerMetadata.batchCredentialIssuance,
                     credentialIssuerMetadata.credentialConfigurationsSupported,
                 )
+
+            val preferredClientStatusPeriod = credentialIssuerMetadata.preferredClientStatusPeriod.value
+            ensure((authorizationContext.clientStatus.expiresAt - clock.now()) >= preferredClientStatusPeriod) {
+                InvalidClientStatus("Client Status expires before preferred client status period")
+            }
+
             val request =
                 when (unresolvedRequest) {
                     is UnresolvedCredentialRequest.ByCredentialConfigurationId ->
@@ -655,6 +671,10 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
 
         is WrongScope ->
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Wrong scope. Expected ${expected.value}"
+
+        is InvalidClientStatus ->
+            CredentialErrorTypeTo.CREDENTIAL_REQUEST_DENIED to
+                errorDescriptionWithErrorCauseDescription("Invalid Client Status: $msg", cause)
 
         is Unexpected ->
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
