@@ -36,13 +36,6 @@ class DefaultValidateProofTest {
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.System
     private val verifyKeyAttestation = VerifyKeyAttestation(isTrustedKeyAttestationIssuer = IsTrustedKeyAttestationIssuer.Ignored)
-    private val defaultValidateProofs = DefaultValidateProof(
-        validateJwtProof = ValidateJwtProof(issuer, verifyKeyAttestation),
-        validateAttestationProof = ValidateAttestationProof(verifyKeyAttestation),
-        verifyNonce = { _, _ ->
-            fail("VerifyCNonce should not have been invoked")
-        },
-    )
 
     @Test
     internal fun `keys are not truncated when reuse policy is None`() = runTest {
@@ -107,7 +100,7 @@ class DefaultValidateProofTest {
             KeyAttestationRequirement(
                 keyStorage = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
                 userAuthentication = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
-                preferredKeyStorageStatusPeriod = PreferredKeyStorageStatus(31.days),
+                preferredKeyStorageStatusPeriod = PreferredKeyStorageStatusPeriod(31.days),
             ),
             credentialReusePolicy = policy,
         )
@@ -140,16 +133,4 @@ class DefaultValidateProofTest {
         return UnvalidatedProof.Jwt(signed.serialize()) to jwtProofSigningKey
     }
 
-    private fun generateEcKey(): ECKey =
-        ECKeyGenerator(Curve.P_256).generate()
-
-    private fun generateJwk(): JWK =
-        ECKeyGenerator(Curve.P_256).generate().toPublicJWK()
-
-    private suspend fun jwtProofWithKeyAttestation(extraKeys: Int = 3) = jwtProofWithKeyAttestation(
-        Clock.System,
-        issuer,
-        "nonce",
-        extraKeys,
-    )
 }

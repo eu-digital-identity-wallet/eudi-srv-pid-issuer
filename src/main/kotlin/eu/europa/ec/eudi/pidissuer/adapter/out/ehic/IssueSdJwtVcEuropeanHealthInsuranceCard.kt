@@ -199,7 +199,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredentials: StoreIssuedCredentials,
-    override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.ts3(),
+    override val keyAttestationRequirement: KeyAttestationRequirement,
 ) : IssueSpecificCredential {
     init {
         require(validity.isPositive())
@@ -257,7 +257,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             generateNotificationId: GenerateNotificationId,
             storeIssuedCredentials: StoreIssuedCredentials,
             jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-            keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.ts3(),
+            keyAttestationRequirement: KeyAttestationRequirement,
             credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
         ): IssueSdJwtVcEuropeanHealthInsuranceCard =
             IssueSdJwtVcEuropeanHealthInsuranceCard(
@@ -285,6 +285,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                 notificationsEnabled,
                 generateNotificationId,
                 storeIssuedCredentials,
+                keyAttestationRequirement,
             )
 
         fun compact(
@@ -298,7 +299,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             generateNotificationId: GenerateNotificationId,
             storeIssuedCredentials: StoreIssuedCredentials,
             jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-            keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.ts3(),
+            keyAttestationRequirement: KeyAttestationRequirement,
             credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
         ): IssueSdJwtVcEuropeanHealthInsuranceCard =
             IssueSdJwtVcEuropeanHealthInsuranceCard(
@@ -326,6 +327,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                 notificationsEnabled,
                 generateNotificationId,
                 storeIssuedCredentials,
+                keyAttestationRequirement,
             )
     }
 }

@@ -281,7 +281,7 @@ value class PreferredClientStatusPeriod(val value: Duration) {
 }
 
 @JvmInline
-value class PreferredKeyStorageStatus(val value: Duration) {
+value class PreferredKeyStorageStatusPeriod(val value: Duration) {
     init {
         require(value >= 31.days) { "Preferred key storage status period must be at least 31 days" }
     }

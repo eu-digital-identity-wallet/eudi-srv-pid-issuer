@@ -331,7 +331,7 @@ internal class IssueMobileDrivingLicence(
     override val validity: Duration,
     private val storeIssuedCredentials: StoreIssuedCredentials,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    override val keyAttestationRequirement: KeyAttestationRequirement = KeyAttestationRequirement.ts3(),
+    override val keyAttestationRequirement: KeyAttestationRequirement,
     private val generateStatusListToken: GenerateStatusListToken?,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : IssueSpecificCredential {
