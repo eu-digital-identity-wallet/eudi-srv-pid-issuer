@@ -1059,6 +1059,73 @@
         "urn:eudi:ehic:1:dc+sd-jwt",
         "urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt"
       ]
+    },
+    {
+      "clientId": "eudiw-abca",
+      "name": "Eudiw ABCA",
+      "rootUrl": "",
+      "description": "",
+      "adminUrl": "",
+      "baseUrl": "",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": true,
+      "clientAuthenticatorType": "abca-draft07",
+      "redirectUris": [
+        "urn:ietf:wg:oauth:2.0:oob",
+        "eudi-openid4ci://authorize",
+        "eudi-issuance://authorization",
+        "eu.europa.ec.euidi://authorization"
+      ],
+      "webOrigins": [
+        "/*"
+      ],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "frontchannelLogout": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "oidc.ciba.grant.enabled": "false",
+        "backchannel.logout.session.required": "false",
+        "post.logout.redirect.uris": "+",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "display.on.consent.screen": "false",
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "require.pushed.authorization.requests": "true",
+        "pkce.code.challenge.method": "S256",
+        "serviceUrl": "https://dev.trust-validator.eudiw.dev/trust"
+      },
+      "authenticationFlowBindingOverrides": {
+      },
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "protocolMappers": [
+        {
+          "name": "client-status-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "client-status-mapper",
+          "consentRequired": false,
+          "config": {
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "basic"
+      ],
+      "optionalClientScopes": [
+        "eu.europa.ec.eudi.pid_vc_sd_jwt",
+        "eu.europa.ec.eudi.pid_mso_mdoc",
+        "org.iso.18013.5.1.mDL",
+        "urn:eudi:ehic:1:dc+sd-jwt",
+        "urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt"
+      ]
     }
   ],
   "clientScopes": [
@@ -2680,6 +2747,56 @@
           "userSetupAllowed": false
         }
       ]
+    },
+    {
+      "id": "a2d0d32f-2f0f-4e79-9552-7b1f587839a8",
+      "alias": "clients-abca",
+      "description": "Base authentication for clients",
+      "providerId": "client-flow",
+      "topLevel": true,
+      "builtIn": true,
+      "authenticationExecutions": [
+        {
+          "authenticator": "client-secret",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 10,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "client-jwt",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 20,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "client-secret-jwt",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 30,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "client-x509",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 40,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "abca-draft07",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 41,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
     }
   ],
   "authenticatorConfig": [
@@ -2785,7 +2902,7 @@
   "registrationFlow": "registration",
   "directGrantFlow": "direct grant",
   "resetCredentialsFlow": "reset credentials",
-  "clientAuthenticationFlow": "clients",
+  "clientAuthenticationFlow": "clients-abca",
   "dockerAuthenticationFlow": "docker auth",
   "attributes": {
     "cibaBackchannelTokenDeliveryMode": "poll",

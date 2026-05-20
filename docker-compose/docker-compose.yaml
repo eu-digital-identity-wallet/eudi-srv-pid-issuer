@@ -6,7 +6,10 @@ networks:
 
 services:
   keycloak:
-    image: quay.io/keycloak/keycloak:26.3.2-0
+    build:
+      context: ./keycloak
+      dockerfile: Dockerfile
+    image: keycloak-abca:0.1.0
     container_name: keycloak
     command:
       - start-dev
