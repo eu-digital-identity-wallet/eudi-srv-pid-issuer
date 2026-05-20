@@ -392,9 +392,13 @@ Variable: `ISSUER_MDL_KEY_ATTESTATIONS_CONSTRAINTS_USER_AUTHENTICATION`
 Description: Comma separated list of strings. Each string specifies an accepted level of attack resistance protection regarding the authentication of user when using the keys included in the key attestation.
 Default value: N/A
 
-Variable: `ISSUER_EHIC_ENABLED`    
-Description: Whether to enabled support for issuing European Health Insurance Cards in *SD-JWT VC* format.    
+Variable: `ISSUER_EHIC_COMPACT_ENABLED`    
+Description: Whether to enabled support for issuing European Health Insurance Cards in *SD-JWT VC* format using compact serialization.      
 Default value: `true`
+
+Variable: `ISSUER_EHIC_JWSJSONFLATTENED_ENABLED`    
+Description: Whether to enabled support for issuing European Health Insurance Cards in *SD-JWT VC* format using JWS Json Flattened serialization.      
+Default value: `false`
 
 Variable: `ISSUER_EHIC_SIGNING_KEY`  
 Description: Whether to generate a new, or use an existing key-pair for signing EHICs.    

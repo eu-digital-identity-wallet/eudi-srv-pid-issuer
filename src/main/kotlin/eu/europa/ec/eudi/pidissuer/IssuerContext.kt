@@ -208,7 +208,8 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     val enableSdJwtVcPid = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.enabled") ?: true
     val credentialsOfferUri = env.getRequiredProperty("issuer.credentialOffer.uri")
     val enableStatusList = env.getProperty<Boolean>("issuer.statusList.enabled") ?: false
-    val enableEhic = env.getProperty<Boolean>("issuer.ehic.enabled") ?: true
+    val enableCompactEhic = env.getProperty<Boolean>("issuer.ehic.compact.enabled") ?: true
+    val enableJwsJsonFlattenedEhic = env.getProperty<Boolean>("issuer.ehic.jwsJsonFlattened.enabled") ?: false
     val enableLearningCredential = env.getProperty<Boolean>("issuer.learningCredential.enabled") ?: true
     val trustValidatorServiceUrl = env.getProperty<String>("issuer.trust.service-url")
 
@@ -659,7 +660,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     add(mdlIssuer.asDeferred(bean(), bean(), clock))
                 }
 
-                if (enableEhic) {
+                if (enableCompactEhic || enableJwsJsonFlattenedEhic) {
                     val digestHashAlgorithm = env.getProperty<HashAlgorithm>(
                         "issuer.ehic.encoder.digests.hashAlgorithm",
                     ) ?: HashAlgorithm.SHA_256
@@ -674,47 +675,52 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     val ehicReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.ehic")
 
                     val issuerSigningKey = getIssuerSigningKey("issuer.ehic.signing-key")
-                    val ehicJwsJsonFlattenedIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.jwsJsonFlattened(
-                        issuerSigningKey = issuerSigningKey,
-                        digestsHashAlgorithm = digestHashAlgorithm,
-                        credentialIssuerId = issuerPublicUrl,
-                        clock = bean(),
-                        validity = validity,
-                        validateProofs = bean(),
-                        getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(
-                            bean(),
-                            issuingCountry,
-                        ),
-                        notificationsEnabled = ehicNotificationsEnabled,
-                        generateNotificationId = bean(),
-                        storeIssuedCredentials = bean(),
-                        jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
-                        keyAttestationRequirement = keyAttestationRequirement,
-                        credentialReusePolicy = ehicReusePolicy,
-                    )
-                    add(ehicJwsJsonFlattenedIssuer)
-                    add(ehicJwsJsonFlattenedIssuer.asDeferred(bean(), bean(), clock))
 
-                    val ehicCompactIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.compact(
-                        issuerSigningKey = issuerSigningKey,
-                        digestsHashAlgorithm = digestHashAlgorithm,
-                        credentialIssuerId = issuerPublicUrl,
-                        clock = bean(),
-                        validity = validity,
-                        validateProofs = bean(),
-                        getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(
-                            bean(),
-                            issuingCountry,
-                        ),
-                        notificationsEnabled = ehicNotificationsEnabled,
-                        generateNotificationId = bean(),
-                        storeIssuedCredentials = bean(),
-                        jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
-                        keyAttestationRequirement = keyAttestationRequirement,
-                        credentialReusePolicy = ehicReusePolicy,
-                    )
-                    add(ehicCompactIssuer)
-                    add(ehicCompactIssuer.asDeferred(bean(), bean(), bean()))
+                    if (enableJwsJsonFlattenedEhic) {
+                        val ehicJwsJsonFlattenedIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.jwsJsonFlattened(
+                            issuerSigningKey = issuerSigningKey,
+                            digestsHashAlgorithm = digestHashAlgorithm,
+                            credentialIssuerId = issuerPublicUrl,
+                            clock = bean(),
+                            validity = validity,
+                            validateProofs = bean(),
+                            getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(
+                                bean(),
+                                issuingCountry,
+                            ),
+                            notificationsEnabled = ehicNotificationsEnabled,
+                            generateNotificationId = bean(),
+                            storeIssuedCredentials = bean(),
+                            jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
+                            keyAttestationRequirement = keyAttestationRequirement,
+                            credentialReusePolicy = ehicReusePolicy,
+                        )
+                        add(ehicJwsJsonFlattenedIssuer)
+                        add(ehicJwsJsonFlattenedIssuer.asDeferred(bean(), bean(), clock))
+                    }
+
+                    if (enableCompactEhic) {
+                        val ehicCompactIssuer = IssueSdJwtVcEuropeanHealthInsuranceCard.compact(
+                            issuerSigningKey = issuerSigningKey,
+                            digestsHashAlgorithm = digestHashAlgorithm,
+                            credentialIssuerId = issuerPublicUrl,
+                            clock = bean(),
+                            validity = validity,
+                            validateProofs = bean(),
+                            getEuropeanHealthInsuranceCardData = GetEuropeanHealthInsuranceCardDataMock(
+                                bean(),
+                                issuingCountry,
+                            ),
+                            notificationsEnabled = ehicNotificationsEnabled,
+                            generateNotificationId = bean(),
+                            storeIssuedCredentials = bean(),
+                            jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
+                            keyAttestationRequirement = keyAttestationRequirement,
+                            credentialReusePolicy = ehicReusePolicy,
+                        )
+                        add(ehicCompactIssuer)
+                        add(ehicCompactIssuer.asDeferred(bean(), bean(), bean()))
+                    }
                 }
 
                 if (enableLearningCredential) {
