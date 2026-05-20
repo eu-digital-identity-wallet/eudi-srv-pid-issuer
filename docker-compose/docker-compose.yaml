@@ -9,7 +9,7 @@ services:
     build:
       context: ./keycloak
       dockerfile: Dockerfile
-    image: eudi-keycloak-local:latest
+    image: keycloak-abca:0.1.0
     container_name: keycloak
     command:
       - start-dev

@@ -1062,24 +1062,20 @@
     },
     {
       "clientId": "eudiw-abca",
-      "name": "",
+      "name": "Eudiw ABCA",
+      "rootUrl": "",
       "description": "",
-      "rootUrl": "http://localhost:8080",
       "adminUrl": "",
       "baseUrl": "",
       "surrogateAuthRequired": false,
       "enabled": true,
-      "alwaysDisplayInConsole": false,
+      "alwaysDisplayInConsole": true,
       "clientAuthenticatorType": "abca-draft07",
-      "secret": "4NpAq3uEBhtgrlrhXDCpVq6PEVxTV2dj",
       "redirectUris": [
         "urn:ietf:wg:oauth:2.0:oob",
-        "http://localhost:8080",
         "eudi-openid4ci://authorize",
-        "eu.europa.ec.euidi://authorization",
-        "/*",
         "eudi-issuance://authorization",
-        "https://oauthdebugger.com/debug"
+        "eu.europa.ec.euidi://authorization"
       ],
       "webOrigins": [
         "/*"
@@ -1092,44 +1088,31 @@
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": false,
       "publicClient": false,
-      "frontchannelLogout": true,
+      "frontchannelLogout": false,
       "protocol": "openid-connect",
       "attributes": {
-        "client.secret.creation.time": "1772480429",
-        "request.object.signature.alg": "any",
-        "request.object.encryption.alg": "any",
-        "client.introspection.response.allow.jwt.claim.enabled": "false",
-        "standard.token.exchange.enabled": "false",
-        "serviceUrl": "https://dev.trust-validator.eudiw.dev/trust",
-        "frontchannel.logout.session.required": "true",
-        "oauth2.device.authorization.grant.enabled": "false",
-        "backchannel.logout.revoke.offline.tokens": "false",
-        "use.refresh.tokens": "true",
-        "realm_client": "false",
         "oidc.ciba.grant.enabled": "false",
-        "client.use.lightweight.access.token.enabled": "false",
-        "backchannel.logout.session.required": "true",
-        "request.object.required": "not required",
-        "client_credentials.use_refresh_token": "false",
-        "access.token.header.type.rfc9068": "false",
-        "tls.client.certificate.bound.access.tokens": "false",
-        "require.pushed.authorization.requests": "false",
-        "acr.loa.map": "{}",
+        "backchannel.logout.session.required": "false",
+        "post.logout.redirect.uris": "+",
+        "oauth2.device.authorization.grant.enabled": "false",
         "display.on.consent.screen": "false",
-        "request.object.encryption.enc": "any",
-        "token.response.type.bearer.lower-case": "false",
-        "dpop.bound.access.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "require.pushed.authorization.requests": "true",
+        "pkce.code.challenge.method": "S256",
+        "serviceUrl": "https://dev.trust-validator.eudiw.dev/trust"
       },
-      "authenticationFlowBindingOverrides": {},
+      "authenticationFlowBindingOverrides": {
+      },
       "fullScopeAllowed": true,
       "nodeReRegistrationTimeout": -1,
       "protocolMappers": [
         {
-          "name": "test",
+          "name": "client-status-mapper",
           "protocol": "openid-connect",
           "protocolMapper": "client-status-mapper",
           "consentRequired": false,
-          "config": {}
+          "config": {
+          }
         }
       ],
       "defaultClientScopes": [
@@ -1138,19 +1121,11 @@
       ],
       "optionalClientScopes": [
         "eu.europa.ec.eudi.pid_vc_sd_jwt",
-        "urn:eudi:ehic:1:dc+sd-jwt",
-        "service_account",
-        "urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt",
         "eu.europa.ec.eudi.pid_mso_mdoc",
-        "offline_access",
-        "roles",
-        "org.iso.18013.5.1.mDL"
-      ],
-      "access": {
-        "view": true,
-        "configure": true,
-        "manage": true
-      }
+        "org.iso.18013.5.1.mDL",
+        "urn:eudi:ehic:1:dc+sd-jwt",
+        "urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt"
+      ]
     }
   ],
   "clientScopes": [
@@ -2775,7 +2750,7 @@
     },
     {
       "id": "a2d0d32f-2f0f-4e79-9552-7b1f587839a8",
-      "alias": "Attestation-Based-Client-Authentication",
+      "alias": "clients-abca",
       "description": "Base authentication for clients",
       "providerId": "client-flow",
       "topLevel": true,
@@ -2927,7 +2902,7 @@
   "registrationFlow": "registration",
   "directGrantFlow": "direct grant",
   "resetCredentialsFlow": "reset credentials",
-  "clientAuthenticationFlow": "Attestation-Based-Client-Authentication",
+  "clientAuthenticationFlow": "clients-abca",
   "dockerAuthenticationFlow": "docker auth",
   "attributes": {
     "cibaBackchannelTokenDeliveryMode": "poll",
