@@ -13,7 +13,7 @@ RUN mvn dependency:copy \
       -Dartifact="eu.europa.ec.eudi:abca-keycloak-ext:${VERSION}" \
       -DoutputDirectory=/tmp
 
-FROM quay.io/keycloak/keycloak:26.3.2-0
+FROM quay.io/keycloak/keycloak:26.6.2-2
 COPY --from=downloader /tmp/abca-keycloak-ext-*.jar /opt/keycloak/providers/abca-keycloak-ext.jar
 USER root
 RUN chmod 644 /opt/keycloak/providers/abca-keycloak-ext.jar
