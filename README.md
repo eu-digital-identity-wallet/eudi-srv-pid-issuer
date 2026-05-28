@@ -552,14 +552,6 @@ Description: Realm of the administered users in Keycloak
 Default value: N/A  
 Example: password
 
-Variable: `ISSUER_DPOP_PROOF_MAX_AGE`  
-Description: Max duration a DPoP Access Token is considered active      
-Default value: `PT1M`  
-
-Variable: `ISSUER_DPOP_CACHE_PURGE_INTERVAL`  
-Description: Interval after which cached DPoP Access Tokens are deleted         
-Default value: `PT10M`
-
 Variable: `ISSUER_DPOP_REALM`  
 Description: Realm to report in the WWW-Authenticate header in case of DPoP authentication/authorization failure         
 Default value: `pid-issuer`
