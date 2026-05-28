@@ -10,8 +10,8 @@ services:
       context: ./keycloak
       dockerfile: Dockerfile
       args:
-        VERSION: 0.2.0-SNAPSHOT
-    image: keycloak-abca:0.2.0-SNAPSHOT
+        VERSION: ${KEYCLOAK_ABCA_EXTENSION_VERSION}
+    image: keycloak-abca:${KEYCLOAK_ABCA_EXTENSION_VERSION}
     container_name: keycloak
     command:
       - start-dev
