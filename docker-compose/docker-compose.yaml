@@ -17,16 +17,6 @@ services:
       - start-dev
       - --import-realm
       - --features=dpop,passkeys
-    environment:
-      - KC_PROXY_HEADERS=xforwarded
-      - KC_HTTP_ENABLED=true
-      - KC_HTTP_RELATIVE_PATH=/idp
-      - KC_HOSTNAME=https://localhost/idp
-      - KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true
-      - KC_HTTPS_CERTIFICATE_FILE=/etc/ssl/certs/keycloak.tls.crt
-      - KC_HTTPS_CERTIFICATE_KEY_FILE=/etc/ssl/certs/keycloak.tls.key
-      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
-      - KC_BOOTSTRAP_ADMIN_PASSWORD=password
     healthcheck:
       test: "bash /opt/keycloak/health-check.sh"
       interval: 5s
