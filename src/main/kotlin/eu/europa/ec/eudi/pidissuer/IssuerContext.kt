@@ -24,7 +24,7 @@ import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPProtectedResourceRequestVerifier
-import com.nimbusds.oauth2.sdk.dpop.verifiers.DefaultDPoPSingleUseChecker
+import com.nimbusds.oauth2.sdk.dpop.verifiers.InMemoryDPoPSingleUseChecker
 import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.util.X509CertificateUtils
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
@@ -814,11 +814,9 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
         algorithms?.let {
             log.info("DPoP support will be enabled. Supported algorithms: $it")
 
-            val proofMaxAge = env.duration("issuer.dpop.proof-max-age") ?: 1.minutes
-            val cachePurgeInterval = env.duration("issuer.dpop.cache-purge-interval") ?: 10.minutes
             val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
 
-            registerBean { DPoPConfigurationProperties(it, proofMaxAge, cachePurgeInterval, realm) }
+            registerBean { DPoPConfigurationProperties(it, realm) }
         }
     }
 
@@ -943,10 +941,11 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                 val dpopFilter = run {
                     val dPoPVerifier = DPoPProtectedResourceRequestVerifier(
                         dpopConfigurationProperties.algorithms,
-                        dpopConfigurationProperties.proofMaxAge.inWholeSeconds,
-                        DefaultDPoPSingleUseChecker(
-                            dpopConfigurationProperties.proofMaxAge.inWholeSeconds,
-                            dpopConfigurationProperties.cachePurgeInterval.inWholeSeconds,
+                        15.seconds.inWholeSeconds,
+                        30.seconds.inWholeSeconds,
+                        InMemoryDPoPSingleUseChecker(
+                            60.seconds.inWholeSeconds,
+                            10.minutes.inWholeSeconds,
                         ),
                     )
 
