@@ -27,14 +27,10 @@ import kotlin.time.Instant
  */
 data class DPoPConfigurationProperties(
     val algorithms: NonEmptySet<JWSAlgorithm>,
-    val proofMaxAge: Duration,
-    val cachePurgeInterval: Duration,
     val realm: String?,
 ) {
     init {
         require(JWSAlgorithm.Family.SIGNATURE.containsAll(algorithms)) { "'algorithms' contains invalid values" }
-        require(proofMaxAge.isPositive()) { "'proofMaxAge' must be positive" }
-        require(cachePurgeInterval.isPositive()) { "'cachePurgeInterval' must be positive" }
     }
 }
 
