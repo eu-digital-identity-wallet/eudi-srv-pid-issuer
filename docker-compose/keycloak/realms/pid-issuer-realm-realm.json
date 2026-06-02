@@ -705,7 +705,8 @@
         "urn:ietf:wg:oauth:2.0:oob",
         "eudi-openid4ci://authorize",
         "eudi-issuance://authorization",
-        "eu.europa.ec.euidi://authorization"
+        "eu.europa.ec.euidi://authorization",
+        "https://oauthdebugger.com/debug"
       ],
       "webOrigins": [
         "/*"
@@ -776,7 +777,7 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,
-      "authorizationServicesEnabled": true,
+      "authorizationServicesEnabled": false,
       "publicClient": false,
       "frontchannelLogout": false,
       "protocol": "openid-connect",
@@ -787,7 +788,15 @@
         "post.logout.redirect.uris": "+",
         "oauth2.device.authorization.grant.enabled": "false",
         "display.on.consent.screen": "false",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "allow.token.introspection.without.audience.check": "true",
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "standard.token.exchange.enabled": false,
+        "oauth2.jwt.authorization.grant.enabled": false,
+        "dpop.bound.access.tokens": "false",
+        "login_theme": "",
+        "consent.screen.text": "",
+        "backchannel.logout.url": "",
+        "logout.confirmation.enabled": "false"
       },
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,
@@ -840,7 +849,9 @@
         }
       ],
       "defaultClientScopes": [
-        "web-origins"
+        "web-origins",
+        "service_account",
+        "basic"
       ],
       "optionalClientScopes": [
         "roles"
@@ -1020,7 +1031,8 @@
         "urn:ietf:wg:oauth:2.0:oob",
         "eudi-openid4ci://authorize",
         "eudi-issuance://authorization",
-        "eu.europa.ec.euidi://authorization"
+        "eu.europa.ec.euidi://authorization",
+        "https://oauthdebugger.com/debug"
       ],
       "webOrigins": [
         "/*"
@@ -1043,7 +1055,8 @@
         "display.on.consent.screen": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
         "require.pushed.authorization.requests": "true",
-        "pkce.code.challenge.method": "S256"
+        "pkce.code.challenge.method": "S256",
+        "dpop.bound.access.tokens": "true"
       },
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,
@@ -1075,7 +1088,8 @@
         "urn:ietf:wg:oauth:2.0:oob",
         "eudi-openid4ci://authorize",
         "eudi-issuance://authorization",
-        "eu.europa.ec.euidi://authorization"
+        "eu.europa.ec.euidi://authorization",
+        "https://oauthdebugger.com/debug"
       ],
       "webOrigins": [
         "/*"
@@ -1099,6 +1113,7 @@
         "backchannel.logout.revoke.offline.tokens": "false",
         "require.pushed.authorization.requests": "true",
         "pkce.code.challenge.method": "S256",
+        "dpop.bound.access.tokens": "true",
         "serviceUrl": "https://dev.trust-validator.eudiw.dev/trust"
       },
       "authenticationFlowBindingOverrides": {
