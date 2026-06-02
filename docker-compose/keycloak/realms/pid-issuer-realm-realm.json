@@ -793,9 +793,6 @@
         "standard.token.exchange.enabled": false,
         "oauth2.jwt.authorization.grant.enabled": false,
         "dpop.bound.access.tokens": "false",
-        "login_theme": "",
-        "consent.screen.text": "",
-        "backchannel.logout.url": "",
         "logout.confirmation.enabled": "false"
       },
       "authenticationFlowBindingOverrides": {},

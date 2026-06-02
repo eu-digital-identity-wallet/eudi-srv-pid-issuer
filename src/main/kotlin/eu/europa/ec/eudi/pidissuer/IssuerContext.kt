@@ -816,7 +816,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
 
             val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
 
-            registerBean { DPoPConfigurationProperties(it,   realm) }
+            registerBean { DPoPConfigurationProperties(it, realm) }
         }
     }
 
@@ -945,7 +945,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         30.seconds.inWholeSeconds,
                         InMemoryDPoPSingleUseChecker(
                             60.seconds.inWholeSeconds,
-                            10.minutes.inWholeSeconds
+                            10.minutes.inWholeSeconds,
                         ),
                     )
 

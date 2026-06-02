@@ -18,14 +18,17 @@ services:
       - --import-realm
       - --features=dpop,passkeys
     healthcheck:
-      test: "bash /opt/keycloak/health-check.sh"
+      test:
+        [
+          "CMD-SHELL",
+          "{ printf 'HEAD /idp/health/ready HTTP/1.0\r\n\r\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000"
+        ]
       interval: 5s
       timeout: 10s
       retries: 12
       start_interval: 30s
       start_period: 30s
     volumes:
-      - ./keycloak/extra/health-check.sh:/opt/keycloak/health-check.sh
       - ./keycloak/realms/:/opt/keycloak/data/import
       - ./keycloak/certs/:/etc/ssl/certs/
       - ./keycloak/conf/keycloak.conf:/opt/keycloak/conf/keycloak.conf
