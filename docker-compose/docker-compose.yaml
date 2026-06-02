@@ -38,6 +38,7 @@ services:
       - ./keycloak/extra/health-check.sh:/opt/keycloak/health-check.sh
       - ./keycloak/realms/:/opt/keycloak/data/import
       - ./keycloak/certs/:/etc/ssl/certs/
+      - ./keycloak/conf/keycloak.conf:/opt/keycloak/conf/keycloak.conf
     networks:
       - default
 
