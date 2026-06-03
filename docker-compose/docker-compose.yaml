@@ -16,7 +16,7 @@ services:
       - --import-realm
       - --features=dpop,passkeys
     environment:
-      - KC_PROXY_HEADERS=xforwarded
+      - KC_PROXY_HEADERS=forwarded
       - KC_HTTP_ENABLED=true
       - KC_HTTP_RELATIVE_PATH=/idp
       - KC_HOSTNAME=https://localhost/idp
