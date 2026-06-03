@@ -26,13 +26,12 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.coroutines.Dispatchers
@@ -153,7 +152,8 @@ private fun pidDocType(version: Int): String = "urn:eudi:pid:$version"
 
 internal val SdJwtVcPidVct: SdJwtVcType = SdJwtVcType(pidDocType(1))
 
-internal val SdJwtVcPidCredentialConfigurationId: CredentialConfigurationId = CredentialConfigurationId(PidSdJwtVcScope.value)
+internal val SdJwtVcPidCredentialConfigurationId: CredentialConfigurationId =
+    CredentialConfigurationId(PidSdJwtVcScope.value)
 
 fun pidSdJwtVcV1(
     signingAlgorithm: JWSAlgorithm,
@@ -197,8 +197,8 @@ internal class IssueSdJwtVcPid(
     private val calculateNotUseBefore: TimeDependant<Instant>?,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
-    private val storeIssuedCredentials: StoreIssuedCredentials,
-    private val generateStatusListToken: GenerateStatusListToken?,
+    private val storeIssuedCredential: StoreIssuedCredential,
+    private val generateStatusListToken: GenerateStatusListToken,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     override val keyAttestationRequirement: KeyAttestationRequirement,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
@@ -251,14 +251,17 @@ internal class IssueSdJwtVcPid(
             }
         }
 
-        val issuedCredentials = holderPubKeys.parMap(Dispatchers.Default, 4) { holderPubKey ->
-            val statusListToken = generateStatusListToken?.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
+        val notificationId = if (notificationsEnabled) generateNotificationId() else null
+
+        // issue credentials
+        val credentialsToStatuses = holderPubKeys.parMap(Dispatchers.Default, 4) { holderPubKey ->
+            val statusListToken = generateStatusListToken.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
                 it(supportedCredential.type.value, expiresAt)
                     .getOrElse { error ->
                         raise(Unexpected("Unable to generate Status List Token", error))
                     }
             }
-            encodePidInSdJwt(
+            val encodedCredential = encodePidInSdJwt(
                 pid,
                 pidMetaData,
                 holderPubKey,
@@ -267,27 +270,29 @@ internal class IssueSdJwtVcPid(
                 notBefore = notBefore,
                 statusListToken,
             ).bind()
-        }.toNonEmptyListOrNull()
+            encodedCredential to statusListToken
+        }
+
+        // persist issued credentials
+        credentialsToStatuses.forEach {
+            storeIssuedCredential(
+                IssuedCredential(
+                    format = SD_JWT_VC_FORMAT,
+                    type = supportedCredential.type.value,
+                    issuedAt = issuedAt,
+                    expiresAt = expiresAt,
+                    notificationId = notificationId,
+                    statusListToken = it.second,
+                    clientStatusListToken = authorizationContext.clientStatus.status.statusList,
+                    keyStorageStatusListToken = validatedProof.keyStorageStatus.status.statusList,
+                ),
+            )
+        }
+
+        val issuedCredentials = credentialsToStatuses.map { it.first }.toNonEmptyListOrNull()
         ensureNotNull(issuedCredentials) {
             Unexpected("Unable to issue PID")
         }
-
-        val notificationId =
-            if (notificationsEnabled) generateNotificationId()
-            else null
-
-        storeIssuedCredentials(
-            IssuedCredentials(
-                format = SD_JWT_VC_FORMAT,
-                type = supportedCredential.type.value,
-                holder = with(pid) {
-                    "${familyName.value} ${givenName.value}"
-                },
-                holderPublicKeys = holderPubKeys,
-                issuedAt = issuedAt,
-                notificationId = notificationId,
-            ),
-        )
 
         CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
             .also {

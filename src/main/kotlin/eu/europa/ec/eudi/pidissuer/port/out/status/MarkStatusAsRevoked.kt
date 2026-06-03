@@ -13,15 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.out.persistence
+package eu.europa.ec.eudi.pidissuer.port.out.status
 
-import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
-import eu.europa.ec.eudi.pidissuer.domain.NotificationId
+import arrow.core.Either
+import java.net.URI
 
-fun interface LoadIssuedCredentialsByNotificationId {
+fun interface MarkStatusAsRevoked {
 
-    /**
-     * Loads an issued credential by its notification id.
-     */
-    suspend operator fun invoke(notificationId: NotificationId): List<IssuedCredential>
+    suspend operator fun invoke(uri: URI, index: UInt): Either<Throwable, Unit>
 }

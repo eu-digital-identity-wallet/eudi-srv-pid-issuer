@@ -51,6 +51,8 @@ dependencies {
     implementation(libs.eudi.sdjwt) {
         because("To Support issuance in SD-JWT-VC format")
     }
+    implementation(libs.statium)
+    implementation(libs.ktor.client.java)
     implementation(libs.bouncy.castle) {
         because("To support X509 certificates parsing")
     }

@@ -15,13 +15,12 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.persistence
 
-import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
-import eu.europa.ec.eudi.pidissuer.domain.NotificationId
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 
-fun interface LoadIssuedCredentialsByNotificationId {
+/**
+ * Deletes all issued credentials that have expired (i.e. whose expiry is before now).
+ */
+fun interface DeleteExpiredIssuedCredentials {
 
-    /**
-     * Loads an issued credential by its notification id.
-     */
-    suspend operator fun invoke(notificationId: NotificationId): List<IssuedCredential>
+    suspend operator fun invoke(clock: Clock)
 }

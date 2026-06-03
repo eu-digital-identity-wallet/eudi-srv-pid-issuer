@@ -15,9 +15,12 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.persistence
 
-import eu.europa.ec.eudi.pidissuer.domain.IssuedCredentials
+import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.DeleteExpiredIssuedCredentials
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.DeleteIssuedCredential
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.GetActiveIssuedCredentials
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadIssuedCredentialsByNotificationId
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.slf4j.LoggerFactory
@@ -25,27 +28,69 @@ import org.slf4j.LoggerFactory
 private val log = LoggerFactory.getLogger(InMemoryIssuedCredentialRepository::class.java)
 
 class InMemoryIssuedCredentialRepository(
-    private val data: MutableList<IssuedCredentials> = mutableListOf(),
+    private val data: MutableList<IssuedCredential> = mutableListOf(),
 ) {
     private val mutex = Mutex()
 
-    val storeIssuedCredentials: StoreIssuedCredentials =
-        StoreIssuedCredentials { credential ->
+    val storeIssuedCredential: StoreIssuedCredential =
+        StoreIssuedCredential { credential ->
             mutex.withLock(this) {
-                if (credential.notificationId != null) {
-                    require(data.find { existing -> existing.notificationId == credential.notificationId } == null) {
-                        "Notification Id '${credential.notificationId}' already in use"
-                    }
-                }
                 data.add(credential)
-                log.info("Stored credential of type '{}' with notificationId={}", credential.type, credential.notificationId)
+                log.info(
+                    "Stored credential of type '{}' with notificationId={}",
+                    credential.type,
+                    credential.notificationId,
+                )
             }
         }
 
     val loadIssuedCredentialsByNotificationId: LoadIssuedCredentialsByNotificationId =
         LoadIssuedCredentialsByNotificationId { notificationId ->
             mutex.withLock(this) {
-                data.find { credential -> credential.notificationId == notificationId }
+                data.filter { credential -> credential.notificationId == notificationId }
+            }
+        }
+
+    val getActiveIssuedCredentials: GetActiveIssuedCredentials =
+        GetActiveIssuedCredentials { clock ->
+            mutex.withLock(this) {
+                data.filter { credential -> credential.expiresAt > clock.now() && credential.statusListToken != null }
+            }
+        }
+
+    val deleteExpiredIssuedCredentials: DeleteExpiredIssuedCredentials =
+        DeleteExpiredIssuedCredentials { clock ->
+            mutex.withLock(this) {
+                val now = clock.now()
+                val expired = data.filter { credential -> credential.expiresAt <= now }
+                expired.forEach { credential ->
+                    data.remove(credential)
+                    log.info(
+                        "Deleted expired credential of type '{}' with notificationId={}",
+                        credential.type,
+                        credential.notificationId,
+                    )
+                }
+            }
+        }
+
+    val deleteIssuedCredential: DeleteIssuedCredential =
+        DeleteIssuedCredential { credential ->
+            mutex.withLock(this) {
+                val removed = data.remove(credential)
+                if (removed) {
+                    log.info(
+                        "Revoked credential of type '{}' with notificationId={}",
+                        credential.type,
+                        credential.notificationId,
+                    )
+                } else {
+                    log.warn(
+                        "Attempted to revoke credential of type '{}' with notificationId={} but it was not found",
+                        credential.type,
+                        credential.notificationId,
+                    )
+                }
             }
         }
 }

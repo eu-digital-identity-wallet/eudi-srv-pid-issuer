@@ -32,7 +32,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.coroutines.Dispatchers
 import org.slf4j.LoggerFactory
@@ -198,7 +198,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
     private val getEuropeanHealthInsuranceCardData: GetEuropeanHealthInsuranceCardData,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
-    private val storeIssuedCredentials: StoreIssuedCredentials,
+    private val storeIssuedCredential: StoreIssuedCredential,
     override val keyAttestationRequirement: KeyAttestationRequirement,
 ) : IssueSpecificCredential {
     init {
@@ -219,24 +219,38 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
         val dateOfIssuance = now
         val dateOfExpiry = dateOfIssuance + validity
 
-        val issuedCredentials = holderPublicKeys.parMap(Dispatchers.Default, 4) {
-            encode(ehic, authorizationContext.username, it, dateOfIssuance = dateOfIssuance, dateOfExpiry = dateOfExpiry).bind()
-        }.toNonEmptyListOrNull()
+        val notificationId = if (notificationsEnabled) generateNotificationId() else null
+
+        val credentialsToStatuses = holderPublicKeys.parMap(Dispatchers.Default, 4) {
+            val encodedCredential = encode(
+                ehic,
+                authorizationContext.username,
+                it,
+                dateOfIssuance = dateOfIssuance,
+                dateOfExpiry = dateOfExpiry,
+            ).bind()
+            encodedCredential to null
+        }
+
+        credentialsToStatuses.forEach {
+            storeIssuedCredential(
+                IssuedCredential(
+                    SD_JWT_VC_FORMAT,
+                    EuropeanHealthInsuranceCardVct.value,
+                    clock.now(),
+                    dateOfExpiry,
+                    notificationId,
+                    statusListToken = it.second,
+                    clientStatusListToken = authorizationContext.clientStatus.status.statusList,
+                    keyStorageStatusListToken = validatedProof.keyStorageStatus.status.statusList,
+                ),
+            )
+        }
+
+        val issuedCredentials = credentialsToStatuses.map { it.first }.toNonEmptyListOrNull()
         ensureNotNull(issuedCredentials) {
             IssueCredentialError.Unexpected("Unable to issue DC4EU EHIC")
         }
-
-        val notificationId = if (notificationsEnabled) generateNotificationId() else null
-        storeIssuedCredentials(
-            IssuedCredentials(
-                SD_JWT_VC_FORMAT,
-                EuropeanHealthInsuranceCardVct.value,
-                authorizationContext.username,
-                holderPublicKeys,
-                clock.now(),
-                notificationId,
-            ),
-        )
 
         CredentialResponse.Issued(issuedCredentials, notificationId)
             .also {
@@ -255,7 +269,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             getEuropeanHealthInsuranceCardData: GetEuropeanHealthInsuranceCardData,
             notificationsEnabled: Boolean,
             generateNotificationId: GenerateNotificationId,
-            storeIssuedCredentials: StoreIssuedCredentials,
+            storeIssuedCredential: StoreIssuedCredential,
             jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
             keyAttestationRequirement: KeyAttestationRequirement,
             credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
@@ -284,7 +298,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                 getEuropeanHealthInsuranceCardData,
                 notificationsEnabled,
                 generateNotificationId,
-                storeIssuedCredentials,
+                storeIssuedCredential,
                 keyAttestationRequirement,
             )
 
@@ -297,7 +311,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             getEuropeanHealthInsuranceCardData: GetEuropeanHealthInsuranceCardData,
             notificationsEnabled: Boolean,
             generateNotificationId: GenerateNotificationId,
-            storeIssuedCredentials: StoreIssuedCredentials,
+            storeIssuedCredential: StoreIssuedCredential,
             jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
             keyAttestationRequirement: KeyAttestationRequirement,
             credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
@@ -326,7 +340,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                 getEuropeanHealthInsuranceCardData,
                 notificationsEnabled,
                 generateNotificationId,
-                storeIssuedCredentials,
+                storeIssuedCredential,
                 keyAttestationRequirement,
             )
     }

@@ -16,12 +16,11 @@
 package eu.europa.ec.eudi.pidissuer.port.out.persistence
 
 import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
-import eu.europa.ec.eudi.pidissuer.domain.NotificationId
 
-fun interface LoadIssuedCredentialsByNotificationId {
+/**
+ * Revokes an issued credential, removing it from the active set.
+ */
+fun interface DeleteIssuedCredential {
 
-    /**
-     * Loads an issued credential by its notification id.
-     */
-    suspend operator fun invoke(notificationId: NotificationId): List<IssuedCredential>
+    suspend operator fun invoke(credential: IssuedCredential)
 }

@@ -29,7 +29,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
@@ -329,10 +329,10 @@ internal class IssueMobileDrivingLicence(
     private val generateNotificationId: GenerateNotificationId,
     private val clock: Clock,
     override val validity: Duration,
-    private val storeIssuedCredentials: StoreIssuedCredentials,
+    private val storeIssuedCredential: StoreIssuedCredential,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     override val keyAttestationRequirement: KeyAttestationRequirement,
-    private val generateStatusListToken: GenerateStatusListToken?,
+    private val generateStatusListToken: GenerateStatusListToken,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : IssueSpecificCredential {
 
@@ -366,36 +366,40 @@ internal class IssueMobileDrivingLicence(
         val issuedAt = clock.now()
         val expiresAt = issuedAt + validity
 
-        val issuedCredentials = holderKeys.parMap(Dispatchers.Default, 4) { holderKey ->
-            val statusListToken = generateStatusListToken?.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
+        val notificationId = if (notificationsEnabled) generateNotificationId() else null
+
+        val credentialsToStatuses = holderKeys.parMap(Dispatchers.Default, 4) { holderKey ->
+            val statusListToken = generateStatusListToken.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
                 it(supportedCredential.docType, expiresAt)
                     .getOrElse { error ->
                         raise(Unexpected("Unable to generate Status List Token", error))
                     }
             }
 
-            encodeMobileDrivingLicenceInCbor(licence, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken).bind()
-        }.toNonEmptyListOrNull()
+            val encodedCredential =
+                encodeMobileDrivingLicenceInCbor(licence, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken).bind()
+            encodedCredential to statusListToken
+        }
+
+        credentialsToStatuses.forEach {
+            storeIssuedCredential(
+                IssuedCredential(
+                    format = MSO_MDOC_FORMAT,
+                    type = supportedCredential.docType,
+                    issuedAt = issuedAt,
+                    expiresAt = expiresAt,
+                    notificationId = notificationId,
+                    statusListToken = it.second,
+                    clientStatusListToken = authorizationContext.clientStatus.status.statusList,
+                    keyStorageStatusListToken = validatedProof.keyStorageStatus.status.statusList,
+                ),
+            )
+        }
+
+        val issuedCredentials = credentialsToStatuses.map { it.first }.toNonEmptyListOrNull()
         ensureNotNull(issuedCredentials) {
             Unexpected("Unable to issue mDL")
         }
-
-        val notificationId =
-            if (notificationsEnabled) generateNotificationId()
-            else null
-
-        storeIssuedCredentials(
-            IssuedCredentials(
-                format = MSO_MDOC_FORMAT,
-                type = supportedCredential.docType,
-                holder = with(licence.driver) {
-                    "${familyName.latin.value} ${givenName.latin.value}"
-                },
-                holderPublicKeys = holderKeys,
-                issuedAt = issuedAt,
-                notificationId = notificationId,
-            ),
-        )
 
         CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
             .also {

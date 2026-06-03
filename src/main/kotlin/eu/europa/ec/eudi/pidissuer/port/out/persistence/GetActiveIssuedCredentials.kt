@@ -15,12 +15,10 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.persistence
 
-import eu.europa.ec.eudi.pidissuer.domain.IssuedCredentials
+import eu.europa.ec.eudi.pidissuer.domain.Clock
+import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
 
-fun interface StoreIssuedCredentials {
+fun interface GetActiveIssuedCredentials {
 
-    /**
-     * Stores an issued credential
-     */
-    suspend operator fun invoke(credentials: IssuedCredentials)
+    suspend operator fun invoke(clock: Clock): List<IssuedCredential>
 }
