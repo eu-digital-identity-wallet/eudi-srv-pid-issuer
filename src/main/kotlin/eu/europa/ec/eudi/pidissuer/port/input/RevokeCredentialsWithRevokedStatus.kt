@@ -16,14 +16,14 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import eu.europa.ec.eudi.pidissuer.domain.Clock
+import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.DeleteExpiredIssuedCredentials
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.DeleteIssuedCredential
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.GetActiveIssuedCredentials
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.GetNonExpiredIssuedCredentials
 import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.MarkStatusAsRevoked
 import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
 import org.slf4j.LoggerFactory
-import java.net.URI
 
 private val log = LoggerFactory.getLogger(RevokeCredentialsWithRevokedStatus::class.java)
 
@@ -34,7 +34,7 @@ private val log = LoggerFactory.getLogger(RevokeCredentialsWithRevokedStatus::cl
 class RevokeCredentialsWithRevokedStatus(
     private val clock: Clock,
     private val deleteExpiredIssuedCredentials: DeleteExpiredIssuedCredentials,
-    private val getActiveIssuedCredentials: GetActiveIssuedCredentials,
+    private val getNonExpiredIssuedCredentials: GetNonExpiredIssuedCredentials,
     private val getStatusListTokenStatus: GetStatusListTokenStatus,
     private val markStatusAsRevoked: MarkStatusAsRevoked,
     private val deleteIssuedCredential: DeleteIssuedCredential,
@@ -42,35 +42,29 @@ class RevokeCredentialsWithRevokedStatus(
 
     suspend operator fun invoke() {
         deleteExpiredIssuedCredentials(clock)
-        val activeCredentials = getActiveIssuedCredentials(clock)
+        val activeCredentials = getNonExpiredIssuedCredentials(clock)
         log.info("Checking revocation status for {} active credential(s)", activeCredentials.size)
 
         activeCredentials
             .filter { it.statusListToken != null }
             .forEach { credential ->
                 runCatching {
-                    val clientStatusList = credential.clientStatusListToken.let {
-                        it.statusList to it.index
-                    }
-                    val keyStorageStatusList = credential.keyStorageStatusListToken.let {
-                        it.statusList to it.index
-                    }
-                    val shouldRevoke =
-                        isStatusRevoked("client status", clientStatusList) ||
-                            isStatusRevoked("key storage status", keyStorageStatusList)
-                    if (shouldRevoke) {
+                    val mustRevoke =
+                        isStatusRevoked("client status", credential.clientStatusListToken) ||
+                            isStatusRevoked("key storage status", credential.keyStorageStatusListToken)
+                    if (mustRevoke) {
                         log.info(
                             "Revoking credential with status list '{}' due to revoked client or key storage status",
-                            credential.statusListToken,
+                            credential.statusListToken!!.statusList,
                         )
-                        markStatusAsRevoked(credential.statusListToken!!.statusList, credential.statusListToken.index)
+                        markStatusAsRevoked(credential.statusListToken.statusList, credential.statusListToken.index)
                             .onRight {
                                 deleteIssuedCredential(credential)
                             }
                             .onLeft { e ->
                                 log.warn(
                                     "Failed to revoke credential with status list '{}' due to error: {}",
-                                    credential.statusListToken,
+                                    credential.statusListToken.statusList,
                                     e.message,
                                     e,
                                 )
@@ -88,7 +82,7 @@ class RevokeCredentialsWithRevokedStatus(
 
     private suspend fun isStatusRevoked(
         statusName: String,
-        statusListToken: Pair<URI, UInt>,
+        statusListToken: StatusListToken,
     ): Boolean {
         val (uri, index) = statusListToken
         return getStatusListTokenStatus(uri, index)
@@ -97,7 +91,7 @@ class RevokeCredentialsWithRevokedStatus(
                     log.warn(
                         "Failed to check {} for credential with status list '{}': {}",
                         statusName,
-                        statusListToken.first,
+                        statusListToken.statusList,
                         error.message,
                     )
                     false

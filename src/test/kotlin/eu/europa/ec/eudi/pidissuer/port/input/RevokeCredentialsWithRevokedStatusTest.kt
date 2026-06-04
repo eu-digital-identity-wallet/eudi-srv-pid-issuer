@@ -60,7 +60,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
         val useCase = RevokeCredentialsWithRevokedStatus(
             clock = clock,
             deleteExpiredIssuedCredentials = { _ -> },
-            getActiveIssuedCredentials = { _ -> emptyList() },
+            getNonExpiredIssuedCredentials = { _ -> emptyList() },
             getStatusListTokenStatus = { _, _ -> StatusListTokenStatus.VALID.right() },
             markStatusAsRevoked = { _, _ -> Unit.right() },
             deleteIssuedCredential = { revoked.add(it) },
@@ -78,7 +78,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
         val useCase = RevokeCredentialsWithRevokedStatus(
             clock = clock,
             deleteExpiredIssuedCredentials = { _ -> },
-            getActiveIssuedCredentials = { _ -> listOf(credential) },
+            getNonExpiredIssuedCredentials = { _ -> listOf(credential) },
             getStatusListTokenStatus = { _, _ -> StatusListTokenStatus.VALID.right() },
             markStatusAsRevoked = { _, _ -> Unit.right() },
             deleteIssuedCredential = { revoked.add(it) },
@@ -97,7 +97,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
         val useCase = RevokeCredentialsWithRevokedStatus(
             clock = clock,
             deleteExpiredIssuedCredentials = { _ -> },
-            getActiveIssuedCredentials = { _ -> listOf(credential) },
+            getNonExpiredIssuedCredentials = { _ -> listOf(credential) },
             getStatusListTokenStatus = { uri, _ ->
                 if (uri == clientStatusUri) StatusListTokenStatus.INVALID.right()
                 else StatusListTokenStatus.VALID.right()
@@ -119,7 +119,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
         val useCase = RevokeCredentialsWithRevokedStatus(
             clock = clock,
             deleteExpiredIssuedCredentials = { _ -> },
-            getActiveIssuedCredentials = { _ -> listOf(credential) },
+            getNonExpiredIssuedCredentials = { _ -> listOf(credential) },
             getStatusListTokenStatus = { uri, _ ->
                 if (uri == keyStorageUri) StatusListTokenStatus.INVALID.right()
                 else StatusListTokenStatus.VALID.right()
@@ -141,7 +141,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
         val useCase = RevokeCredentialsWithRevokedStatus(
             clock = clock,
             deleteExpiredIssuedCredentials = { _ -> },
-            getActiveIssuedCredentials = { _ -> listOf(credential1, credential2) },
+            getNonExpiredIssuedCredentials = { _ -> listOf(credential1, credential2) },
             getStatusListTokenStatus = { _, _ -> StatusListTokenStatus.INVALID.right() },
             markStatusAsRevoked = { _, _ -> Unit.right() },
             deleteIssuedCredential = { credential ->
@@ -162,7 +162,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
         val useCase = RevokeCredentialsWithRevokedStatus(
             clock = clock,
             deleteExpiredIssuedCredentials = { _ -> },
-            getActiveIssuedCredentials = { _ -> listOf(credential) },
+            getNonExpiredIssuedCredentials = { _ -> listOf(credential) },
             getStatusListTokenStatus = { _, _ -> RuntimeException("Network error").left() },
             markStatusAsRevoked = { _, _ -> Unit.right() },
             deleteIssuedCredential = { revoked.add(it) },
@@ -194,7 +194,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
         val useCase = RevokeCredentialsWithRevokedStatus(
             clock = clock,
             deleteExpiredIssuedCredentials = { _ -> deleted.add(expiredCredential) },
-            getActiveIssuedCredentials = { _ -> emptyList() },
+            getNonExpiredIssuedCredentials = { _ -> emptyList() },
             getStatusListTokenStatus = { _, _ -> StatusListTokenStatus.VALID.right() },
             markStatusAsRevoked = { _, _ -> Unit.right() },
             deleteIssuedCredential = { },

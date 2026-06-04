@@ -17,7 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.persistence
 
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.DeleteExpiredIssuedCredentials
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.DeleteIssuedCredential
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.GetActiveIssuedCredentials
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.GetNonExpiredIssuedCredentials
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadIssuedCredentialsByNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import kotlinx.coroutines.flow.Flow
@@ -71,8 +71,8 @@ class JdbcIssuedCredentialRepository(
                 .toList()
         }
 
-    val getActiveIssuedCredentials: GetActiveIssuedCredentials =
-        GetActiveIssuedCredentials { clock ->
+    val getNonExpiredIssuedCredentials: GetNonExpiredIssuedCredentials =
+        GetNonExpiredIssuedCredentials { clock ->
             val now = clock.now().toOffsetDateTime()
             r2dbc.findAllActive(now)
                 .map { it.toDomain() }

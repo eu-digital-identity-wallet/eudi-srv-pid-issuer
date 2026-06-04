@@ -512,7 +512,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
         RevokeCredentialsWithRevokedStatus(
             clock = clock,
             deleteExpiredIssuedCredentials = bean(),
-            getActiveIssuedCredentials = bean(),
+            getNonExpiredIssuedCredentials = bean(),
             getStatusListTokenStatus = bean(),
             markStatusAsRevoked = bean(),
             deleteIssuedCredential = bean(),
@@ -570,7 +570,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     registerBean { JdbcIssuedCredentialRepository(bean()) }
     registerBean { bean<JdbcIssuedCredentialRepository>().storeIssuedCredential }
     registerBean { bean<JdbcIssuedCredentialRepository>().loadIssuedCredentialsByNotificationId }
-    registerBean { bean<JdbcIssuedCredentialRepository>().getActiveIssuedCredentials }
+    registerBean { bean<JdbcIssuedCredentialRepository>().getNonExpiredIssuedCredentials }
     registerBean { bean<JdbcIssuedCredentialRepository>().deleteExpiredIssuedCredentials }
     registerBean { bean<JdbcIssuedCredentialRepository>().deleteIssuedCredential }
 

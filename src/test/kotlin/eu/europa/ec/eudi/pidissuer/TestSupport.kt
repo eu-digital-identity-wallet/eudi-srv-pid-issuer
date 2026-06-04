@@ -41,7 +41,7 @@ import kotlin.reflect.KClass
         "spring.r2dbc.username=sa",
         "spring.r2dbc.password=",
         "spring.sql.init.schema-locations=classpath:schema.sql",
-        "spring.sql.init.mode=always",
+        "spring.sql.init.mode=embedded",
     ],
 )
 @ContextConfiguration(initializers = [BeansDslApplicationContextInitializer::class])
