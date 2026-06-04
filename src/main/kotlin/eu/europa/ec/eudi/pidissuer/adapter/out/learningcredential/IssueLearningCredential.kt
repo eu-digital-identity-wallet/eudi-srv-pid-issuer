@@ -75,12 +75,9 @@ internal class IssueLearningCredential(
 
         val notificationId = generateNotificationId?.invoke()
 
-        val credentialsToStatuses = holderKeys.parMap(Dispatchers.Default, 4) {
+        val issuedCredentials = holderKeys.parMap(Dispatchers.Default, 4) {
             val encodedCredential = encodeLearningCredential(learningCredential, it, issuedAt = issuedAt, expiresAt = expiresAt).bind()
-            encodedCredential to null
-        }
 
-        credentialsToStatuses.forEach {
             storeIssuedCredential(
                 IssuedCredential(
                     encodeLearningCredential.format,
@@ -88,14 +85,15 @@ internal class IssueLearningCredential(
                     issuedAt,
                     expiresAt,
                     notificationId,
-                    statusListToken = it.second,
+                    statusListToken = null,
                     clientStatusListToken = authorizationContext.clientStatus.status.statusList,
                     keyStorageStatusListToken = validatedProof.keyStorageStatus.status.statusList,
                 ),
             )
-        }
 
-        val issuedCredentials = credentialsToStatuses.map { it.first }.toNonEmptyListOrNull()
+            encodedCredential
+        }.toNonEmptyListOrNull()
+
         ensureNotNull(issuedCredentials) {
             IssueCredentialError.Unexpected("Unable to issue Learning Credential")
         }

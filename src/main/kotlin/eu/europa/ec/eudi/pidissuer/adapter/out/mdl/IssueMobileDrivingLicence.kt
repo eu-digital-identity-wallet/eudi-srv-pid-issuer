@@ -368,7 +368,7 @@ internal class IssueMobileDrivingLicence(
 
         val notificationId = if (notificationsEnabled) generateNotificationId() else null
 
-        val credentialsToStatuses = holderKeys.parMap(Dispatchers.Default, 4) { holderKey ->
+        val issuedCredentials = holderKeys.parMap(Dispatchers.Default, 4) { holderKey ->
             val statusListToken = generateStatusListToken.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
                 it(supportedCredential.docType, expiresAt)
                     .getOrElse { error ->
@@ -378,10 +378,7 @@ internal class IssueMobileDrivingLicence(
 
             val encodedCredential =
                 encodeMobileDrivingLicenceInCbor(licence, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken).bind()
-            encodedCredential to statusListToken
-        }
 
-        credentialsToStatuses.forEach {
             storeIssuedCredential(
                 IssuedCredential(
                     format = MSO_MDOC_FORMAT,
@@ -389,14 +386,15 @@ internal class IssueMobileDrivingLicence(
                     issuedAt = issuedAt,
                     expiresAt = expiresAt,
                     notificationId = notificationId,
-                    statusListToken = it.second,
+                    statusListToken = statusListToken,
                     clientStatusListToken = authorizationContext.clientStatus.status.statusList,
                     keyStorageStatusListToken = validatedProof.keyStorageStatus.status.statusList,
                 ),
             )
-        }
 
-        val issuedCredentials = credentialsToStatuses.map { it.first }.toNonEmptyListOrNull()
+            encodedCredential
+        }.toNonEmptyListOrNull()
+
         ensureNotNull(issuedCredentials) {
             Unexpected("Unable to issue mDL")
         }

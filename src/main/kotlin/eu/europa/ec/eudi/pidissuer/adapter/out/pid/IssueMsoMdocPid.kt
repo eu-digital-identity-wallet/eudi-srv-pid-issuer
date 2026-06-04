@@ -331,8 +331,7 @@ internal class IssueMsoMdocPid(
 
         val notificationId = if (notificationsEnabled) generateNotificationId() else null
 
-        // issue credentials
-        val credentialsToStatuses = holderPubKeys.parMap(Dispatchers.Default, 4) { holderKey ->
+        val issuedCredentials = holderPubKeys.parMap(Dispatchers.Default, 4) { holderKey ->
             val statusListToken = generateStatusListToken.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
                 it(supportedCredential.docType, expiresAt)
                     .getOrElse { error ->
@@ -344,11 +343,7 @@ internal class IssueMsoMdocPid(
                     .also {
                         log.info("Issued $it")
                     }
-            encodedCredential to statusListToken
-        }
 
-        // persist issued credentials
-        credentialsToStatuses.forEach {
             storeIssuedCredential(
                 IssuedCredential(
                     format = MSO_MDOC_FORMAT,
@@ -356,14 +351,15 @@ internal class IssueMsoMdocPid(
                     issuedAt = issuedAt,
                     expiresAt = expiresAt,
                     notificationId = notificationId,
-                    statusListToken = it.second,
+                    statusListToken = statusListToken,
                     clientStatusListToken = authorizationContext.clientStatus.status.statusList,
                     keyStorageStatusListToken = validatedProof.keyStorageStatus.status.statusList,
                 ),
             )
-        }
 
-        val issuedCredentials = credentialsToStatuses.map { it.first }.toNonEmptyListOrNull()
+            encodedCredential
+        }.toNonEmptyListOrNull()
+
         ensureNotNull(issuedCredentials) {
             Unexpected("Unable to issue PID")
         }

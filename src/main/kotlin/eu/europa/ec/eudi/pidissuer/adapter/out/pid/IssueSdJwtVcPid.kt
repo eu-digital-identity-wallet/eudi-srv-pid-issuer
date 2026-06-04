@@ -253,8 +253,7 @@ internal class IssueSdJwtVcPid(
 
         val notificationId = if (notificationsEnabled) generateNotificationId() else null
 
-        // issue credentials
-        val credentialsToStatuses = holderPubKeys.parMap(Dispatchers.Default, 4) { holderPubKey ->
+        val issuedCredentials = holderPubKeys.parMap(Dispatchers.Default, 4) { holderPubKey ->
             val statusListToken = generateStatusListToken.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
                 it(supportedCredential.type.value, expiresAt)
                     .getOrElse { error ->
@@ -270,11 +269,7 @@ internal class IssueSdJwtVcPid(
                 notBefore = notBefore,
                 statusListToken,
             ).bind()
-            encodedCredential to statusListToken
-        }
 
-        // persist issued credentials
-        credentialsToStatuses.forEach {
             storeIssuedCredential(
                 IssuedCredential(
                     format = SD_JWT_VC_FORMAT,
@@ -282,14 +277,15 @@ internal class IssueSdJwtVcPid(
                     issuedAt = issuedAt,
                     expiresAt = expiresAt,
                     notificationId = notificationId,
-                    statusListToken = it.second,
+                    statusListToken = statusListToken,
                     clientStatusListToken = authorizationContext.clientStatus.status.statusList,
                     keyStorageStatusListToken = validatedProof.keyStorageStatus.status.statusList,
                 ),
             )
-        }
 
-        val issuedCredentials = credentialsToStatuses.map { it.first }.toNonEmptyListOrNull()
+            encodedCredential
+        }.toNonEmptyListOrNull()
+
         ensureNotNull(issuedCredentials) {
             Unexpected("Unable to issue PID")
         }

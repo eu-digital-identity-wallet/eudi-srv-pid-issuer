@@ -38,7 +38,7 @@ interface IssuedCredentialR2dbcRepository :
     CoroutineCrudRepository<IssuedCredentialEntity, Long>,
     CoroutineSortingRepository<IssuedCredentialEntity, Long> {
 
-    suspend fun findAllByNotificationId(notificationId: String): List<IssuedCredentialEntity>
+    suspend fun findAllByNotificationId(notificationId: String): Flow<IssuedCredentialEntity>
 
     @Query(
         """
@@ -68,6 +68,7 @@ class JdbcIssuedCredentialRepository(
         LoadIssuedCredentialsByNotificationId { notificationId ->
             r2dbc.findAllByNotificationId(notificationId.value)
                 .map { it.toDomain() }
+                .toList()
         }
 
     val getActiveIssuedCredentials: GetActiveIssuedCredentials =

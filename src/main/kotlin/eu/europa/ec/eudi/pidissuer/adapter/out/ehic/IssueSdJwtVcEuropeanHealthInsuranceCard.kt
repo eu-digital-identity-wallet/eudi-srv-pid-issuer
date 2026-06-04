@@ -221,7 +221,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
 
         val notificationId = if (notificationsEnabled) generateNotificationId() else null
 
-        val credentialsToStatuses = holderPublicKeys.parMap(Dispatchers.Default, 4) {
+        val issuedCredentials = holderPublicKeys.parMap(Dispatchers.Default, 4) {
             val encodedCredential = encode(
                 ehic,
                 authorizationContext.username,
@@ -229,10 +229,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                 dateOfIssuance = dateOfIssuance,
                 dateOfExpiry = dateOfExpiry,
             ).bind()
-            encodedCredential to null
-        }
 
-        credentialsToStatuses.forEach {
             storeIssuedCredential(
                 IssuedCredential(
                     SD_JWT_VC_FORMAT,
@@ -240,14 +237,15 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     clock.now(),
                     dateOfExpiry,
                     notificationId,
-                    statusListToken = it.second,
+                    statusListToken = null,
                     clientStatusListToken = authorizationContext.clientStatus.status.statusList,
                     keyStorageStatusListToken = validatedProof.keyStorageStatus.status.statusList,
                 ),
             )
-        }
 
-        val issuedCredentials = credentialsToStatuses.map { it.first }.toNonEmptyListOrNull()
+            encodedCredential
+        }.toNonEmptyListOrNull()
+
         ensureNotNull(issuedCredentials) {
             IssueCredentialError.Unexpected("Unable to issue DC4EU EHIC")
         }
