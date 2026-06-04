@@ -13,5 +13,5 @@ CREATE TABLE IF NOT EXISTS issued_credential (
     key_storage_status_list_index BIGINT        NOT NULL
 );
 
-CREATE INDEX idx_issued_credential_notification_id ON issued_credential (notification_id);
-CREATE INDEX idx_issued_credential_expires_at ON issued_credential (expires_at);
+CREATE INDEX IF NOT EXISTS idx_issued_credential_notification_id ON issued_credential (notification_id);
+CREATE INDEX IF NOT EXISTS idx_issued_credential_expires_at ON issued_credential (expires_at);
