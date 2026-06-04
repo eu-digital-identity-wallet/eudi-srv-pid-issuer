@@ -32,8 +32,11 @@ import kotlin.time.toKotlinInstant
 @Table("issued_credential")
 data class IssuedCredentialEntity(
     @Id
+    @Column("id")
     val id: Long? = null,
+    @Column("credential_format")
     val format: String,
+    @Column("credential_type")
     val type: String,
     @Column("issued_at")
     val issuedAt: OffsetDateTime,

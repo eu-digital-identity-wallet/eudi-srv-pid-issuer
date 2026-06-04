@@ -37,8 +37,11 @@ import kotlin.reflect.KClass
     webEnvironment = SpringBootTest.WebEnvironment.MOCK,
     properties = [
         "issuer.access-token.type=Bearer",
-        "issuer.persistence=InMemory",
-        "spring.autoconfigure.exclude=org.springframework.boot.r2dbc.autoconfigure.R2dbcAutoConfiguration,org.springframework.boot.r2dbc.autoconfigure.R2dbcTransactionManagerAutoConfiguration",
+        "spring.r2dbc.url=r2dbc:h2:mem:///pid_issuer;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=FALSE",
+        "spring.r2dbc.username=sa",
+        "spring.r2dbc.password=",
+        "spring.sql.init.schema-locations=classpath:schema.sql",
+        "spring.sql.init.mode=always",
     ],
 )
 @ContextConfiguration(initializers = [BeansDslApplicationContextInitializer::class])

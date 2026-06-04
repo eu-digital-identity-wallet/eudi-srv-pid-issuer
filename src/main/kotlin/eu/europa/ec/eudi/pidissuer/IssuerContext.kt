@@ -42,8 +42,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential.IssueLearningCredential
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
-import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryIssuedCredentialRepository
-import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.PostgresIssuedCredentialRepository
+import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.JdbcIssuedCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
 import eu.europa.ec.eudi.pidissuer.adapter.out.status.GenerateStatusListTokenWithExternalService
@@ -568,24 +567,12 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     // Credentials
     //
     registerBean { GenerateNotificationId.Random }
-    if (env.getProperty("issuer.persistence").equals("Postgres", ignoreCase = true)) {
-        log.info("Using PostgreSQL-backed issued credential repository")
-        registerBean { PostgresIssuedCredentialRepository(bean()) }
-        registerBean { bean<PostgresIssuedCredentialRepository>().storeIssuedCredential }
-        registerBean { bean<PostgresIssuedCredentialRepository>().loadIssuedCredentialsByNotificationId }
-        registerBean { bean<PostgresIssuedCredentialRepository>().getActiveIssuedCredentials }
-        registerBean { bean<PostgresIssuedCredentialRepository>().deleteExpiredIssuedCredentials }
-        registerBean { bean<PostgresIssuedCredentialRepository>().deleteIssuedCredential }
-    } else {
-        log.info("Using in-memory issued credential repository")
-        with(InMemoryIssuedCredentialRepository()) {
-            registerBean { storeIssuedCredential }
-            registerBean { loadIssuedCredentialsByNotificationId }
-            registerBean { getActiveIssuedCredentials }
-            registerBean { deleteExpiredIssuedCredentials }
-            registerBean { deleteIssuedCredential }
-        }
-    }
+    registerBean { JdbcIssuedCredentialRepository(bean()) }
+    registerBean { bean<JdbcIssuedCredentialRepository>().storeIssuedCredential }
+    registerBean { bean<JdbcIssuedCredentialRepository>().loadIssuedCredentialsByNotificationId }
+    registerBean { bean<JdbcIssuedCredentialRepository>().getActiveIssuedCredentials }
+    registerBean { bean<JdbcIssuedCredentialRepository>().deleteExpiredIssuedCredentials }
+    registerBean { bean<JdbcIssuedCredentialRepository>().deleteIssuedCredential }
 
     //
     // Deferred Credentials

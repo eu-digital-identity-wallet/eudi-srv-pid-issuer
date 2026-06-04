@@ -96,6 +96,12 @@ dependencies {
     implementation("org.postgresql:r2dbc-postgresql") {
         because("R2DBC driver for PostgreSQL")
     }
+    implementation("io.r2dbc:r2dbc-h2") {
+        because("R2DBC driver for H2")
+    }
+    implementation("com.h2database:h2") {
+        because("H2 in-memory database")
+    }
 
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)

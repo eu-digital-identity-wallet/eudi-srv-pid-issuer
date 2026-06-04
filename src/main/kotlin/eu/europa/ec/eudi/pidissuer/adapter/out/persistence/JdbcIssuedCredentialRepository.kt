@@ -29,7 +29,7 @@ import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.data.repository.kotlin.CoroutineSortingRepository
 import java.time.OffsetDateTime
 
-private val log = LoggerFactory.getLogger(PostgresIssuedCredentialRepository::class.java)
+private val log = LoggerFactory.getLogger(JdbcIssuedCredentialRepository::class.java)
 
 /**
  * Spring Data R2DBC repository for [IssuedCredentialEntity].
@@ -52,30 +52,13 @@ interface IssuedCredentialR2dbcRepository :
 
     @Query("DELETE FROM issued_credential WHERE expires_at <= :now")
     suspend fun deleteAllExpiredBefore(now: OffsetDateTime): Int?
-
-    @Query(
-        """
-        DELETE FROM issued_credential
-        WHERE notification_id IS NOT DISTINCT FROM :notificationId
-          AND format = :format
-          AND type = :type
-          AND issued_at = :issuedAt
-          AND expires_at = :expiresAt
-        """,
-    )
-    suspend fun deleteByFields(
-        notificationId: String?,
-        format: String,
-        type: String,
-        issuedAt: OffsetDateTime,
-        expiresAt: OffsetDateTime,
-    ): Int?
 }
 
 /**
- * PostgreSQL-backed adapter implementing all issued-credential persistence ports.
+ * R2DBC-backed adapter implementing all issued-credential persistence ports.
+ * Compatible with PostgreSQL and H2.
  */
-class PostgresIssuedCredentialRepository(
+class JdbcIssuedCredentialRepository(
     private val r2dbc: IssuedCredentialR2dbcRepository,
 ) {
     val storeIssuedCredential: StoreIssuedCredential =
@@ -106,30 +89,8 @@ class PostgresIssuedCredentialRepository(
 
     val deleteIssuedCredential: DeleteIssuedCredential =
         DeleteIssuedCredential { credential ->
-            val deleted = if (credential.persistenceId != null) {
+            credential.persistenceId?.let {
                 r2dbc.deleteById(credential.persistenceId)
-                1
-            } else {
-                r2dbc.deleteByFields(
-                    notificationId = credential.notificationId?.value,
-                    format = credential.format.value,
-                    type = credential.type,
-                    issuedAt = credential.issuedAt.toOffsetDateTime(),
-                    expiresAt = credential.expiresAt.toOffsetDateTime(),
-                ) ?: 0
-            }
-            if (deleted > 0) {
-                log.info(
-                    "Revoked credential of type '{}' with notificationId={}",
-                    credential.type,
-                    credential.notificationId,
-                )
-            } else {
-                log.warn(
-                    "Attempted to revoke credential of type '{}' with notificationId={} but it was not found",
-                    credential.type,
-                    credential.notificationId,
-                )
             }
         }
 }
