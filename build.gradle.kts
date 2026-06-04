@@ -90,6 +90,13 @@ dependencies {
         because("To support CNonce encryption using XC20P")
     }
 
+    implementation("org.springframework.boot:spring-boot-starter-data-r2dbc") {
+        because("Reactive database access for PostgreSQL persistence adapter")
+    }
+    implementation("org.postgresql:r2dbc-postgresql") {
+        because("R2DBC driver for PostgreSQL")
+    }
+
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation("org.springframework.boot:spring-boot-starter-test")

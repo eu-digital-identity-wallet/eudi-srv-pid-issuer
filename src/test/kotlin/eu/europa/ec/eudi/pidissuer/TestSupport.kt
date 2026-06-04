@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@file:Suppress("ktlint:standard:max-line-length")
+
 package eu.europa.ec.eudi.pidissuer
 
 import eu.europa.ec.eudi.pidissuer.domain.Clock
@@ -33,7 +35,11 @@ import kotlin.reflect.KClass
 @SpringBootTest(
     classes = [PidIssuerApplication::class],
     webEnvironment = SpringBootTest.WebEnvironment.MOCK,
-    properties = ["issuer.access-token.type=Bearer"],
+    properties = [
+        "issuer.access-token.type=Bearer",
+        "issuer.persistence=InMemory",
+        "spring.autoconfigure.exclude=org.springframework.boot.r2dbc.autoconfigure.R2dbcAutoConfiguration,org.springframework.boot.r2dbc.autoconfigure.R2dbcTransactionManagerAutoConfiguration",
+    ],
 )
 @ContextConfiguration(initializers = [BeansDslApplicationContextInitializer::class])
 internal annotation class PidIssuerApplicationTest(

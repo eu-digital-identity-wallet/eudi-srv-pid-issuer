@@ -137,6 +137,7 @@ data class IssuedCredential(
     val statusListToken: StatusListToken?,
     val clientStatusListToken: StatusListToken,
     val keyStorageStatusListToken: StatusListToken,
+    val persistenceId: Long? = null,
 )
 
 /**

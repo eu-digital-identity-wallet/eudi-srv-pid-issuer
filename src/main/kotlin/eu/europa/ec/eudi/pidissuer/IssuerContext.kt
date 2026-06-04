@@ -43,10 +43,11 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential.IssueLearningC
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryIssuedCredentialRepository
+import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.PostgresIssuedCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
-import eu.europa.ec.eudi.pidissuer.adapter.out.status.GetStatusListTokenWithStatium
 import eu.europa.ec.eudi.pidissuer.adapter.out.status.GenerateStatusListTokenWithExternalService
+import eu.europa.ec.eudi.pidissuer.adapter.out.status.GetStatusListTokenWithStatium
 import eu.europa.ec.eudi.pidissuer.adapter.out.status.MarkStatusAsRevokedWithExternalService
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.usingTrustValidatorService
@@ -566,13 +567,24 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     //
     // Credentials
     //
-    with(InMemoryIssuedCredentialRepository()) {
-        registerBean { GenerateNotificationId.Random }
-        registerBean { storeIssuedCredential }
-        registerBean { loadIssuedCredentialsByNotificationId }
-        registerBean { getActiveIssuedCredentials }
-        registerBean { deleteExpiredIssuedCredentials }
-        registerBean { deleteIssuedCredential }
+    registerBean { GenerateNotificationId.Random }
+    if (env.getProperty("issuer.persistence").equals("Postgres", ignoreCase = true)) {
+        log.info("Using PostgreSQL-backed issued credential repository")
+        registerBean { PostgresIssuedCredentialRepository(bean()) }
+        registerBean { bean<PostgresIssuedCredentialRepository>().storeIssuedCredential }
+        registerBean { bean<PostgresIssuedCredentialRepository>().loadIssuedCredentialsByNotificationId }
+        registerBean { bean<PostgresIssuedCredentialRepository>().getActiveIssuedCredentials }
+        registerBean { bean<PostgresIssuedCredentialRepository>().deleteExpiredIssuedCredentials }
+        registerBean { bean<PostgresIssuedCredentialRepository>().deleteIssuedCredential }
+    } else {
+        log.info("Using in-memory issued credential repository")
+        with(InMemoryIssuedCredentialRepository()) {
+            registerBean { storeIssuedCredential }
+            registerBean { loadIssuedCredentialsByNotificationId }
+            registerBean { getActiveIssuedCredentials }
+            registerBean { deleteExpiredIssuedCredentials }
+            registerBean { deleteIssuedCredential }
+        }
     }
 
     //

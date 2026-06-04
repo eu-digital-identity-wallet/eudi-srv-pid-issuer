@@ -18,7 +18,6 @@ package eu.europa.ec.eudi.pidissuer.port.input
 import arrow.core.left
 import arrow.core.right
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.DeleteExpiredIssuedCredentials
 import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
 import kotlinx.coroutines.test.runTest
 import java.net.URI
