@@ -188,6 +188,50 @@ internal object WebClients {
     }
 }
 
+/**
+ * [KtorHttpClient] instances for usage within the application.
+ */
+internal object KtorHttpClients {
+
+    /**
+     * A [KtorHttpClient] with default settings.
+     */
+    fun default(proxy: HttpProxy?): KtorHttpClient =
+        KtorHttpClient(JavaEngine) {
+            engine {
+                configureProxy(proxy)
+            }
+        }
+
+    /**
+     * A [KtorHttpClient] that trusts *all* certificates.
+     */
+    fun insecure(proxy: HttpProxy?): KtorHttpClient {
+        log.warn("Using insecure KtorHttpClient trusting all certificates")
+        val sslContext = javax.net.ssl.SSLContext.getInstance("TLS").also {
+            it.init(null, arrayOf(InsecureTrustManagerFactory.INSTANCE.trustManagers[0]), null)
+        }
+        return KtorHttpClient(JavaEngine) {
+            engine {
+                config {
+                    sslContext(sslContext)
+                }
+                configureProxy(proxy)
+            }
+        }
+    }
+
+    private fun io.ktor.client.engine.java.JavaHttpConfig.configureProxy(proxy: HttpProxy?) {
+        proxy?.let { httpProxy ->
+            log.info("Using KtorHttpClient with proxy settings")
+            this.proxy = java.net.Proxy(
+                java.net.Proxy.Type.HTTP,
+                java.net.InetSocketAddress(httpProxy.url.host, httpProxy.url.port),
+            )
+        }
+    }
+}
+
 data class HttpProxy(
     val url: Url,
     val username: String? = null,
@@ -399,7 +443,13 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
             WebClients.default(proxy = proxy)
         }
     registerBean { webClient }
-    registerBean { KtorHttpClient(JavaEngine) }
+    val ktorHttpClient =
+        if ("insecure" in env.activeProfiles) {
+            KtorHttpClients.insecure(proxy = proxy)
+        } else {
+            KtorHttpClients.default(proxy = proxy)
+        }
+    registerBean { ktorHttpClient }
     registerBean {
         KeycloakConfigurationProperties(
             env.getRequiredProperty<URL>("issuer.keycloak.server-url"),
