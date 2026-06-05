@@ -265,7 +265,6 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     val enableJwsJsonFlattenedEhic = env.getProperty<Boolean>("issuer.ehic.jwsJsonFlattened.enabled") ?: false
     val enableLearningCredential = env.getProperty<Boolean>("issuer.learningCredential.enabled") ?: true
     val trustValidatorServiceUrl = env.getProperty<String>("issuer.trust.service-url")
-    val enableRevocationJob = env.getProperty<Boolean>("issuer.revocationJob.enabled") ?: true
 
     val issuerKeystore: KeyStore by lazy {
         val keystoreLocation = env.getRequiredProperty("issuer.keystore.file")
@@ -568,13 +567,11 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
             deleteIssuedCredential = bean(),
         )
     }
-    if (enableRevocationJob) {
-        registerBean { CredentialRevocationJob(bean()) }
-        registerBean {
-            val cron = env.getProperty("issuer.revocationJob.cron", "0 0 */8 * * *")
-            SchedulingConfigurer { taskRegistrar ->
-                taskRegistrar.addCronTask({ bean<CredentialRevocationJob>().run() }, cron)
-            }
+    registerBean { CredentialRevocationJob(bean()) }
+    registerBean {
+        val cron = env.getProperty("issuer.revocationJob.cron", "0 0 */8 * * *")
+        SchedulingConfigurer { taskRegistrar ->
+            taskRegistrar.addCronTask({ bean<CredentialRevocationJob>().run() }, cron)
         }
     }
 

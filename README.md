@@ -587,10 +587,6 @@ Example: `https://issuer.eudiw.dev/token_status_list/set`
 Variable: `ISSUER_STATUSLIST_SERVICE_APIKEY`  
 Description: API Key of the service used to generate/revoke Status List Tokens
 
-Variable: `ISSUER_REVOCATIONJOB_ENABLED`  
-Description: Whether to enable the scheduled revocation job  
-Default value: `true`
-
 Variable: `ISSUER_REVOCATIONJOB_CRON`  
 Description: Cron expression controlling how often the revocation job runs  
 Default value: `0 * */8 * * *` (every 8 hours)
