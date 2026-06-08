@@ -23,7 +23,6 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.GetNonExpiredIssuedCrede
 import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.MarkStatusAsRevoked
 import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
 import org.slf4j.LoggerFactory
 
@@ -48,25 +47,25 @@ class RevokeCredentialsWithRevokedStatus(
         log.info("Checking revocation status for active credential(s)")
 
         activeCredentials
-            .filter { it.statusListToken != null }
+            .filter { it.status != null }
             .collect { credential ->
                 runCatching {
                     val mustRevoke =
-                        isStatusRevoked("client status", credential.clientStatusListToken) ||
-                            isStatusRevoked("key storage status", credential.keyStorageStatusListToken)
+                        isStatusRevoked("client status", credential.clientStatus) ||
+                            isStatusRevoked("key storage status", credential.keyStorageStatus)
                     if (mustRevoke) {
                         log.info(
                             "Revoking credential with status list '{}' due to revoked client or key storage status",
-                            credential.statusListToken!!.statusList,
+                            credential.status!!.statusList,
                         )
-                        markStatusAsRevoked(credential.statusListToken.statusList, credential.statusListToken.index)
+                        markStatusAsRevoked(credential.status)
                             .onRight {
                                 deleteIssuedCredential(credential)
                             }
                             .onLeft { e ->
                                 log.warn(
                                     "Failed to revoke credential with status list '{}' due to error: {}",
-                                    credential.statusListToken.statusList,
+                                    credential.status.statusList,
                                     e.message,
                                     e,
                                 )

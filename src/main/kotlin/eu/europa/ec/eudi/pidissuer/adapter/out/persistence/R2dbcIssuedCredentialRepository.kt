@@ -28,15 +28,16 @@ import org.springframework.data.r2dbc.repository.Query
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.data.repository.kotlin.CoroutineSortingRepository
 import java.time.OffsetDateTime
+import java.util.UUID
 
-private val log = LoggerFactory.getLogger(JdbcIssuedCredentialRepository::class.java)
+private val log = LoggerFactory.getLogger(R2dbcIssuedCredentialRepository::class.java)
 
 /**
  * Spring Data R2DBC repository for [IssuedCredentialEntity].
  */
 interface IssuedCredentialR2dbcRepository :
-    CoroutineCrudRepository<IssuedCredentialEntity, Long>,
-    CoroutineSortingRepository<IssuedCredentialEntity, Long> {
+    CoroutineCrudRepository<IssuedCredentialEntity, UUID>,
+    CoroutineSortingRepository<IssuedCredentialEntity, UUID> {
 
     suspend fun findAllByNotificationId(notificationId: String): Flow<IssuedCredentialEntity>
 
@@ -58,7 +59,7 @@ interface IssuedCredentialR2dbcRepository :
  * R2DBC-backed adapter implementing all issued-credential persistence ports.
  * Compatible with PostgreSQL and H2.
  */
-class JdbcIssuedCredentialRepository(
+class R2dbcIssuedCredentialRepository(
     private val r2dbc: IssuedCredentialR2dbcRepository,
 ) {
     val storeIssuedCredential: StoreIssuedCredential =
@@ -89,8 +90,6 @@ class JdbcIssuedCredentialRepository(
 
     val deleteIssuedCredential: DeleteIssuedCredential =
         DeleteIssuedCredential { credential ->
-            credential.persistenceId?.let {
-                r2dbc.deleteById(credential.persistenceId)
-            }
+            r2dbc.deleteById(credential.id.value)
         }
 }

@@ -42,7 +42,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential.IssueLearningCredential
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
-import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.JdbcIssuedCredentialRepository
+import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.R2dbcIssuedCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
 import eu.europa.ec.eudi.pidissuer.adapter.out.status.GenerateStatusListTokenWithExternalService
@@ -618,12 +618,12 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     // Credentials
     //
     registerBean { GenerateNotificationId.Random }
-    registerBean { JdbcIssuedCredentialRepository(bean()) }
-    registerBean { bean<JdbcIssuedCredentialRepository>().storeIssuedCredential }
-    registerBean { bean<JdbcIssuedCredentialRepository>().loadIssuedCredentialsByNotificationId }
-    registerBean { bean<JdbcIssuedCredentialRepository>().getNonExpiredIssuedCredentials }
-    registerBean { bean<JdbcIssuedCredentialRepository>().deleteExpiredIssuedCredentials }
-    registerBean { bean<JdbcIssuedCredentialRepository>().deleteIssuedCredential }
+    registerBean { R2dbcIssuedCredentialRepository(bean()) }
+    registerBean { bean<R2dbcIssuedCredentialRepository>().storeIssuedCredential }
+    registerBean { bean<R2dbcIssuedCredentialRepository>().loadIssuedCredentialsByNotificationId }
+    registerBean { bean<R2dbcIssuedCredentialRepository>().getNonExpiredIssuedCredentials }
+    registerBean { bean<R2dbcIssuedCredentialRepository>().deleteExpiredIssuedCredentials }
+    registerBean { bean<R2dbcIssuedCredentialRepository>().deleteIssuedCredential }
 
     //
     // Deferred Credentials

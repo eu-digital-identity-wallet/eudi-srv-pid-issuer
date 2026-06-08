@@ -277,9 +277,9 @@ internal class IssueSdJwtVcPid(
                     issuedAt = issuedAt,
                     expiresAt = expiresAt,
                     notificationId = notificationId,
-                    statusListToken = statusListToken,
-                    clientStatusListToken = authorizationContext.clientStatus.status.statusList,
-                    keyStorageStatusListToken = validatedProof.keyStorageStatus.status.statusList,
+                    status = statusListToken,
+                    clientStatus = authorizationContext.clientStatus.status.statusList,
+                    keyStorageStatus = validatedProof.keyStorageStatus.status.statusList,
                 ),
             )
 

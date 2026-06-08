@@ -16,12 +16,12 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.status
 
 import arrow.core.Either
+import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.out.status.MarkStatusAsRevoked
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitExchange
-import java.net.URI
 import java.net.URL
 
 internal class MarkStatusAsRevokedWithExternalService(
@@ -29,7 +29,7 @@ internal class MarkStatusAsRevokedWithExternalService(
     private val serviceUrl: URL,
     private val apiKey: String,
 ) : MarkStatusAsRevoked {
-    override suspend fun invoke(uri: URI, index: UInt) =
+    override suspend fun invoke(status: StatusListToken) =
         webClient.post()
             .uri(serviceUrl.toExternalForm())
             .headers {
@@ -38,8 +38,8 @@ internal class MarkStatusAsRevokedWithExternalService(
             .body(
                 BodyInserters.fromFormData(
                     LinkedMultiValueMap<String, String>().apply {
-                        add(IDX_PARAM, index.toString())
-                        add(URI_PARAM, uri.toString())
+                        add(IDX_PARAM, status.index.toString())
+                        add(URI_PARAM, status.statusList.toString())
                         add(STATUS_PARAM, STATUS_REVOKED)
                     },
                 ),

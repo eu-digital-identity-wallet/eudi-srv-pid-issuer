@@ -41,15 +41,15 @@ internal class RevokeCredentialsWithRevokedStatusTest {
         type = "eu.europa.ec.eudi.pid.1",
         issuedAt = clock.now(),
         expiresAt = clock.now() + 24.hours,
-        statusListToken = StatusListToken(
+        status = StatusListToken(
             statusList = URI.create("https://example.com/issuer-status"),
             index = 0u,
         ),
-        clientStatusListToken = StatusListToken(
+        clientStatus = StatusListToken(
             statusList = clientStatusUri,
             index = clientStatusIndex,
         ),
-        keyStorageStatusListToken = StatusListToken(
+        keyStorageStatus = StatusListToken(
             statusList = keyStorageUri,
             index = keyStorageIndex,
         ),
@@ -63,7 +63,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
             deleteExpiredIssuedCredentials = { _ -> },
             getNonExpiredIssuedCredentials = { _ -> flowOf() },
             getStatusListTokenStatus = { _, _ -> StatusListTokenStatus.VALID.right() },
-            markStatusAsRevoked = { _, _ -> Unit.right() },
+            markStatusAsRevoked = { _ -> Unit.right() },
             deleteIssuedCredential = { revoked.add(it) },
         )
 
@@ -81,7 +81,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
             deleteExpiredIssuedCredentials = { _ -> },
             getNonExpiredIssuedCredentials = { _ -> flowOf(credential) },
             getStatusListTokenStatus = { _, _ -> StatusListTokenStatus.VALID.right() },
-            markStatusAsRevoked = { _, _ -> Unit.right() },
+            markStatusAsRevoked = { _ -> Unit.right() },
             deleteIssuedCredential = { revoked.add(it) },
         )
 
@@ -103,7 +103,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
                 if (uri == clientStatusUri) StatusListTokenStatus.INVALID.right()
                 else StatusListTokenStatus.VALID.right()
             },
-            markStatusAsRevoked = { _, _ -> Unit.right() },
+            markStatusAsRevoked = { _ -> Unit.right() },
             deleteIssuedCredential = { revoked.add(it) },
         )
 
@@ -125,7 +125,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
                 if (uri == keyStorageUri) StatusListTokenStatus.INVALID.right()
                 else StatusListTokenStatus.VALID.right()
             },
-            markStatusAsRevoked = { _, _ -> Unit.right() },
+            markStatusAsRevoked = { _ -> Unit.right() },
             deleteIssuedCredential = { revoked.add(it) },
         )
 
@@ -144,7 +144,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
             deleteExpiredIssuedCredentials = { _ -> },
             getNonExpiredIssuedCredentials = { _ -> flowOf(credential1, credential2) },
             getStatusListTokenStatus = { _, _ -> StatusListTokenStatus.INVALID.right() },
-            markStatusAsRevoked = { _, _ -> Unit.right() },
+            markStatusAsRevoked = { _ -> Unit.right() },
             deleteIssuedCredential = { credential ->
                 if (credential == credential1) throw RuntimeException("Persistence error")
                 revoked.add(credential)
@@ -165,7 +165,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
             deleteExpiredIssuedCredentials = { _ -> },
             getNonExpiredIssuedCredentials = { _ -> flowOf(credential) },
             getStatusListTokenStatus = { _, _ -> RuntimeException("Network error").left() },
-            markStatusAsRevoked = { _, _ -> Unit.right() },
+            markStatusAsRevoked = { _ -> Unit.right() },
             deleteIssuedCredential = { revoked.add(it) },
         )
 
@@ -181,12 +181,12 @@ internal class RevokeCredentialsWithRevokedStatusTest {
             type = "eu.europa.ec.eudi.pid.1",
             issuedAt = clock.now() - 48.hours,
             expiresAt = clock.now() - 24.hours,
-            statusListToken = null,
-            clientStatusListToken = StatusListToken(
+            status = null,
+            clientStatus = StatusListToken(
                 statusList = URI.create("https://example.com/status"),
                 index = 0u,
             ),
-            keyStorageStatusListToken = StatusListToken(
+            keyStorageStatus = StatusListToken(
                 statusList = URI.create("https://example.com/key-status"),
                 index = 0u,
             ),
@@ -197,7 +197,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
             deleteExpiredIssuedCredentials = { _ -> deleted.add(expiredCredential) },
             getNonExpiredIssuedCredentials = { _ -> flowOf() },
             getStatusListTokenStatus = { _, _ -> StatusListTokenStatus.VALID.right() },
-            markStatusAsRevoked = { _, _ -> Unit.right() },
+            markStatusAsRevoked = { _ -> Unit.right() },
             deleteIssuedCredential = { },
         )
 

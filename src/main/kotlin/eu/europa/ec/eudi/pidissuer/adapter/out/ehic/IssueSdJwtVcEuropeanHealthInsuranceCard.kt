@@ -237,9 +237,9 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     clock.now(),
                     dateOfExpiry,
                     notificationId,
-                    statusListToken = null,
-                    clientStatusListToken = authorizationContext.clientStatus.status.statusList,
-                    keyStorageStatusListToken = validatedProof.keyStorageStatus.status.statusList,
+                    status = null,
+                    clientStatus = authorizationContext.clientStatus.status.statusList,
+                    keyStorageStatus = validatedProof.keyStorageStatus.status.statusList,
                 ),
             )
 

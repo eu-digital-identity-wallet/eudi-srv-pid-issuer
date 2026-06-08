@@ -93,13 +93,13 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-r2dbc") {
         because("Reactive database access for PostgreSQL persistence adapter")
     }
-    implementation("org.postgresql:r2dbc-postgresql") {
+    runtimeOnly("org.postgresql:r2dbc-postgresql") {
         because("R2DBC driver for PostgreSQL")
     }
-    implementation("io.r2dbc:r2dbc-h2") {
+    runtimeOnly("io.r2dbc:r2dbc-h2") {
         because("R2DBC driver for H2")
     }
-    implementation("com.h2database:h2") {
+    runtimeOnly("com.h2database:h2") {
         because("H2 in-memory database")
     }
 

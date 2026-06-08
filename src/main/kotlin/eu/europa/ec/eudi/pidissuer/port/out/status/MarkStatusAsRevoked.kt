@@ -16,9 +16,9 @@
 package eu.europa.ec.eudi.pidissuer.port.out.status
 
 import arrow.core.Either
-import java.net.URI
+import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 
 fun interface MarkStatusAsRevoked {
 
-    suspend operator fun invoke(uri: URI, index: UInt): Either<Throwable, Unit>
+    suspend operator fun invoke(status: StatusListToken): Either<Throwable, Unit>
 }
