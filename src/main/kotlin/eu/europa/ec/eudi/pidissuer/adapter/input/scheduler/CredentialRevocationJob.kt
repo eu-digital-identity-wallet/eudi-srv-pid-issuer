@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.scheduler
 
 import eu.europa.ec.eudi.pidissuer.port.input.RevokeCredentialsWithRevokedStatus
-import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 
 private val log = LoggerFactory.getLogger(CredentialRevocationJob::class.java)
@@ -32,12 +31,11 @@ class CredentialRevocationJob(
     private val revokeCredentialsWithRevokedStatus: RevokeCredentialsWithRevokedStatus,
 ) {
 
-    fun run() {
+    suspend fun run() {
         log.info("Starting credential revocation job")
-        runBlocking {
-            runCatching { revokeCredentialsWithRevokedStatus() }
-                .onFailure { log.error("Credential revocation job failed", it) }
-                .onSuccess { log.info("Credential revocation job completed successfully") }
-        }
+
+        runCatching { revokeCredentialsWithRevokedStatus() }
+            .onFailure { log.error("Credential revocation job failed", it) }
+            .onSuccess { log.info("Credential revocation job completed successfully") }
     }
 }

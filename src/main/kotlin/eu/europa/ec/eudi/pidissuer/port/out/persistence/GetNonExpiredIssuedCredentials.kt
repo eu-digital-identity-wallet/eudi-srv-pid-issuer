@@ -17,8 +17,9 @@ package eu.europa.ec.eudi.pidissuer.port.out.persistence
 
 import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
+import kotlinx.coroutines.flow.Flow
 
 fun interface GetNonExpiredIssuedCredentials {
 
-    suspend operator fun invoke(clock: Clock): List<IssuedCredential>
+    suspend operator fun invoke(clock: Clock): Flow<IssuedCredential>
 }

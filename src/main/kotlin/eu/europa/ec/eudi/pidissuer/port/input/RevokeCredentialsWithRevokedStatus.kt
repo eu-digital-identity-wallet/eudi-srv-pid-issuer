@@ -23,6 +23,8 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.GetNonExpiredIssuedCrede
 import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.MarkStatusAsRevoked
 import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.filter
 import org.slf4j.LoggerFactory
 
 private val log = LoggerFactory.getLogger(RevokeCredentialsWithRevokedStatus::class.java)
@@ -43,11 +45,11 @@ class RevokeCredentialsWithRevokedStatus(
     suspend operator fun invoke() {
         deleteExpiredIssuedCredentials(clock)
         val activeCredentials = getNonExpiredIssuedCredentials(clock)
-        log.info("Checking revocation status for {} active credential(s)", activeCredentials.size)
+        log.info("Checking revocation status for active credential(s)")
 
         activeCredentials
             .filter { it.statusListToken != null }
-            .forEach { credential ->
+            .collect { credential ->
                 runCatching {
                     val mustRevoke =
                         isStatusRevoked("client status", credential.clientStatusListToken) ||

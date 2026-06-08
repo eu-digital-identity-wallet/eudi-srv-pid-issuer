@@ -571,7 +571,11 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     registerBean {
         val cron = env.getProperty("issuer.revocationJob.cron", "0 0 */8 * * *")
         SchedulingConfigurer { taskRegistrar ->
-            taskRegistrar.addCronTask({ bean<CredentialRevocationJob>().run() }, cron)
+            taskRegistrar.addCronTask({
+                runBlocking {
+                    bean<CredentialRevocationJob>().run()
+                }
+            }, cron)
         }
     }
 

@@ -76,7 +76,6 @@ class JdbcIssuedCredentialRepository(
             val now = clock.now().toOffsetDateTime()
             r2dbc.findAllActive(now)
                 .map { it.toDomain() }
-                .toList()
         }
 
     val deleteExpiredIssuedCredentials: DeleteExpiredIssuedCredentials =
