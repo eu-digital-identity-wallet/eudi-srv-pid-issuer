@@ -556,7 +556,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
             accessCertificate = bean(),
         )
     }
-    registerBean<GetStatusListTokenStatus> { GetStatusListTokenWithStatium(bean()) }
+    registerBean<GetStatusListTokenStatus> { GetStatusListTokenWithStatium(bean(), bean()) }
     registerBean {
         RevokeCredentialsWithRevokedStatus(
             clock = clock,

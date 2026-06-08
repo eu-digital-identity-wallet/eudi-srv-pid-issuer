@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.status
 
 import arrow.core.Either
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
 import eu.europa.ec.eudi.statium.GetStatus
@@ -25,19 +26,24 @@ import eu.europa.ec.eudi.statium.StatusIndex
 import eu.europa.ec.eudi.statium.StatusReference
 import io.ktor.client.HttpClient
 import java.net.URI
-import kotlin.time.Clock
+import kotlin.time.Instant
 
 /**
  * Checks the status of a single entry in a Token Status List using the statium library.
  */
 internal class GetStatusListTokenWithStatium(
     private val httpClient: HttpClient,
+    private val clock: Clock,
 ) : GetStatusListTokenStatus {
 
     override suspend fun invoke(uri: URI, index: UInt): Either<Throwable, StatusListTokenStatus> =
         Either.catch {
             val getStatusListToken = GetStatusListToken.usingJwt(
-                clock = Clock.System,
+                clock = object : kotlin.time.Clock {
+                    override fun now(): Instant {
+                        return clock.now()
+                    }
+                },
                 httpClient = httpClient,
                 verifyStatusListTokenSignature = { _, _ ->
                     Result.success(Unit) // TODO
