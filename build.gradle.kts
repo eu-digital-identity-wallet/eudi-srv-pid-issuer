@@ -96,12 +96,6 @@ dependencies {
     runtimeOnly("org.postgresql:r2dbc-postgresql") {
         because("R2DBC driver for PostgreSQL")
     }
-    runtimeOnly("io.r2dbc:r2dbc-h2") {
-        because("R2DBC driver for H2")
-    }
-    runtimeOnly("com.h2database:h2") {
-        because("H2 in-memory database")
-    }
 
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
@@ -109,6 +103,12 @@ dependencies {
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("io.projectreactor:reactor-test")
     testImplementation("org.springframework.boot:spring-boot-webtestclient")
+    testRuntimeOnly("io.r2dbc:r2dbc-h2") {
+        because("R2DBC driver for H2")
+    }
+    testRuntimeOnly("com.h2database:h2") {
+        because("H2 in-memory database")
+    }
 }
 
 java {

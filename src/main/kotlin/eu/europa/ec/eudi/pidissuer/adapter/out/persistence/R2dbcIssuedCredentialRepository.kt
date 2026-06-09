@@ -28,7 +28,6 @@ import org.springframework.data.r2dbc.repository.Query
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.data.repository.kotlin.CoroutineSortingRepository
 import java.time.OffsetDateTime
-import java.util.UUID
 
 private val log = LoggerFactory.getLogger(R2dbcIssuedCredentialRepository::class.java)
 
@@ -36,8 +35,8 @@ private val log = LoggerFactory.getLogger(R2dbcIssuedCredentialRepository::class
  * Spring Data R2DBC repository for [IssuedCredentialEntity].
  */
 interface IssuedCredentialR2dbcRepository :
-    CoroutineCrudRepository<IssuedCredentialEntity, UUID>,
-    CoroutineSortingRepository<IssuedCredentialEntity, UUID> {
+    CoroutineCrudRepository<IssuedCredentialEntity, Long>,
+    CoroutineSortingRepository<IssuedCredentialEntity, Long> {
 
     suspend fun findAllByNotificationId(notificationId: String): Flow<IssuedCredentialEntity>
 
@@ -90,6 +89,6 @@ class R2dbcIssuedCredentialRepository(
 
     val deleteIssuedCredential: DeleteIssuedCredential =
         DeleteIssuedCredential { credential ->
-            r2dbc.deleteById(credential.id.value)
+            credential.id?.let { r2dbc.deleteById(it.value) }
         }
 }

@@ -22,5 +22,5 @@ fun interface StoreIssuedCredential {
     /**
      * Stores an issued credential
      */
-    suspend operator fun invoke(credentials: IssuedCredential)
+    suspend operator fun invoke(credential: IssuedCredential)
 }

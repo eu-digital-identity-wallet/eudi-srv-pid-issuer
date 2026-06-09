@@ -15,18 +15,13 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.persistence
 
-import eu.europa.ec.eudi.pidissuer.domain.Format
-import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
-import eu.europa.ec.eudi.pidissuer.domain.IssuedCredentialId
-import eu.europa.ec.eudi.pidissuer.domain.NotificationId
-import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
+import eu.europa.ec.eudi.pidissuer.domain.*
 import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 import java.net.URI
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
-import java.util.UUID
 import kotlin.time.Instant
 import kotlin.time.toJavaInstant
 import kotlin.time.toKotlinInstant
@@ -35,7 +30,7 @@ import kotlin.time.toKotlinInstant
 data class IssuedCredentialEntity(
     @Id
     @Column("id")
-    val id: UUID? = null,
+    val id: Long? = null,
     @Column("credential_format")
     val format: String,
     @Column("credential_type")
@@ -55,9 +50,9 @@ data class IssuedCredentialEntity(
     @Column("client_status_list_index")
     val clientStatusListIndex: Long,
     @Column("key_storage_status_list_uri")
-    val keyStorageStatusListUri: String,
+    val keyStorageStatusListUri: String?,
     @Column("key_storage_status_list_index")
-    val keyStorageStatusListIndex: Long,
+    val keyStorageStatusListIndex: Long?,
 ) {
     fun toDomain(): IssuedCredential =
         IssuedCredential(
@@ -78,17 +73,21 @@ data class IssuedCredentialEntity(
                 statusList = URI.create(clientStatusListUri),
                 index = clientStatusListIndex.toUInt(),
             ),
-            keyStorageStatus = StatusListToken(
-                statusList = URI.create(keyStorageStatusListUri),
-                index = keyStorageStatusListIndex.toUInt(),
-            ),
-            id = IssuedCredentialId(requireNotNull(id) { "IssuedCredentialEntity must have an id" }),
+            keyStorageStatus = if (keyStorageStatusListUri != null && keyStorageStatusListIndex != null) {
+                StatusListToken(
+                    statusList = URI.create(keyStorageStatusListUri),
+                    index = keyStorageStatusListIndex.toUInt(),
+                )
+            } else {
+                null
+            },
+            id = id?.let { IssuedCredentialId(it) },
         )
 
     companion object {
         fun fromDomain(credential: IssuedCredential): IssuedCredentialEntity =
             IssuedCredentialEntity(
-                id = credential.id.value,
+                id = credential.id?.value,
                 format = credential.format.value,
                 type = credential.type,
                 issuedAt = credential.issuedAt.toOffsetDateTime(),
@@ -98,8 +97,8 @@ data class IssuedCredentialEntity(
                 statusListIndex = credential.status?.index?.toLong(),
                 clientStatusListUri = credential.clientStatus.statusList.toString(),
                 clientStatusListIndex = credential.clientStatus.index.toLong(),
-                keyStorageStatusListUri = credential.keyStorageStatus.statusList.toString(),
-                keyStorageStatusListIndex = credential.keyStorageStatus.index.toLong(),
+                keyStorageStatusListUri = credential.keyStorageStatus?.statusList?.toString(),
+                keyStorageStatusListIndex = credential.keyStorageStatus?.index?.toLong(),
             )
     }
 }
