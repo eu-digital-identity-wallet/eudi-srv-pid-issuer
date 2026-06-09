@@ -25,7 +25,6 @@ import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.MarkStatusAsRevoked
 import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import org.slf4j.LoggerFactory
@@ -54,7 +53,6 @@ class RevokeCredentialsWithRevokedStatus(
         val activeCredentials = getNonExpiredIssuedCredentials(clock)
 
         activeCredentials
-            .filter { it.status != null }
             .flatMapMerge { credential ->
                 flow {
                     emit(processCredential(credential))
@@ -64,18 +62,28 @@ class RevokeCredentialsWithRevokedStatus(
     }
 
     private suspend fun processCredential(credential: IssuedCredential) = runCatching {
-        val mustRevoke = isStatusRevoked("client status", credential.clientStatus) ||
-            (
-                credential.keyStorageStatus != null && isStatusRevoked(
-                    "key storage status",
-                    credential.keyStorageStatus,
-                )
-                )
-        if (mustRevoke) {
-            log.info(
-                "Revoking credential with status list '{}' due to revoked client or key storage status",
-                credential.status!!.statusList,
+        val mustRevoke = isStatusRevoked(
+            "client status",
+            credential.clientStatus,
+        ) || (
+            credential.keyStorageStatus != null && isStatusRevoked(
+                "key storage status",
+                credential.keyStorageStatus,
             )
+            )
+        if (mustRevoke) {
+            revokeCredential(credential)
+        }
+    }.onFailure { e ->
+        log.error(
+            "Unexpected error processing credential: {}",
+            e.message,
+            e,
+        )
+    }
+
+    private suspend fun revokeCredential(credential: IssuedCredential) {
+        if (credential.status != null) {
             markStatusAsRevoked(credential.status).onRight {
                 deleteIssuedCredential(credential)
             }.onLeft { e ->
@@ -86,13 +94,9 @@ class RevokeCredentialsWithRevokedStatus(
                     e,
                 )
             }
+        } else {
+            deleteIssuedCredential(credential)
         }
-    }.onFailure { e ->
-        log.error(
-            "Unexpected error processing credential: {}",
-            e.message,
-            e,
-        )
     }
 
     private suspend fun isStatusRevoked(

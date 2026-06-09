@@ -44,8 +44,6 @@ interface IssuedCredentialR2dbcRepository :
         """
         SELECT * FROM issued_credential
         WHERE expires_at > :now
-          AND status_list_uri IS NOT NULL
-          AND status_list_index IS NOT NULL
         """,
     )
     fun findAllActive(now: OffsetDateTime): Flow<IssuedCredentialEntity>
