@@ -576,15 +576,20 @@ Variable: `ISSUER_CNONCE_EXPIRATION`
 Description: Duration after which CNonce values expire    
 Default value: `PT5M`
 
-Variable: `ISSUER_STATUSLIST_ENABLED`  
-Description: Whether to enable support for Status List Tokens      
-Default value: `false`
+Variable: `ISSUER_STATUSLIST_SERVICE_GENERATE_URI`  
+Description: URI of the service used to generate (take) Status List Tokens  
+Example: `https://issuer.eudiw.dev/token_status_list/take`
 
-Variable: `ISSUER_STATUSLIST_SERVICE_URI`  
-Description: URI of the service used to generate Status List Tokens  
+Variable: `ISSUER_STATUSLIST_SERVICE_REVOKE_URI`  
+Description: URI of the service used to revoke (set) Status List Tokens  
+Example: `https://issuer.eudiw.dev/token_status_list/set`
 
 Variable: `ISSUER_STATUSLIST_SERVICE_APIKEY`  
-Description: API Key of the service used to generate Status List Tokens
+Description: API Key of the service used to generate/revoke Status List Tokens
+
+Variable: `ISSUER_REVOCATIONJOB_CRON`  
+Description: Cron expression controlling how often the revocation job runs  
+Default value: `0 * */8 * * *` (every 8 hours)
 
 Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS`  
 Description: Whether to generate a new, or use an existing key-pair for credential request encryption.    

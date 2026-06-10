@@ -31,7 +31,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.coroutines.Dispatchers
 import org.slf4j.LoggerFactory
@@ -49,7 +49,7 @@ internal class IssueLearningCredential(
     override val validity: Duration,
     private val encodeLearningCredential: EncodeLearningCredential,
     private val generateNotificationId: GenerateNotificationId?,
-    private val storeIssuedCredentials: StoreIssuedCredentials,
+    private val storeIssuedCredential: StoreIssuedCredential,
 ) : IssueSpecificCredential {
     init {
         require(!publicKey.isPrivate)
@@ -73,24 +73,30 @@ internal class IssueLearningCredential(
             else dateOfExpiry
         }
 
+        val notificationId = generateNotificationId?.invoke()
+
         val issuedCredentials = holderKeys.parMap(Dispatchers.Default, 4) {
-            encodeLearningCredential(learningCredential, it, issuedAt = issuedAt, expiresAt = expiresAt).bind()
+            val encodedCredential = encodeLearningCredential(learningCredential, it, issuedAt = issuedAt, expiresAt = expiresAt).bind()
+
+            storeIssuedCredential(
+                IssuedCredential(
+                    encodeLearningCredential.format,
+                    encodeLearningCredential.type,
+                    issuedAt,
+                    expiresAt,
+                    notificationId,
+                    status = null,
+                    clientStatus = authorizationContext.clientStatus.status.statusList,
+                    keyStorageStatus = validatedProof.keyStorageStatus.status.statusList,
+                ),
+            )
+
+            encodedCredential
         }.toNonEmptyListOrNull()
+
         ensureNotNull(issuedCredentials) {
             IssueCredentialError.Unexpected("Unable to issue Learning Credential")
         }
-
-        val notificationId = generateNotificationId?.invoke()
-        storeIssuedCredentials(
-            IssuedCredentials(
-                encodeLearningCredential.format,
-                encodeLearningCredential.type,
-                authorizationContext.username,
-                holderKeys,
-                issuedAt,
-                notificationId,
-            ),
-        )
 
         CredentialResponse.Issued(issuedCredentials, notificationId)
             .also {
@@ -109,7 +115,7 @@ internal class IssueLearningCredential(
             validity: Duration,
             digestsHashAlgorithm: HashAlgorithm,
             generateNotificationId: GenerateNotificationId?,
-            storeIssuedCredentials: StoreIssuedCredentials,
+            storeIssuedCredential: StoreIssuedCredential,
             credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
         ): IssueLearningCredential {
             val credentialConfiguration = LearningCredential.sdJwtVcCredentialConfiguration(
@@ -134,7 +140,7 @@ internal class IssueLearningCredential(
                     credentialConfiguration.type,
                 ),
                 generateNotificationId,
-                storeIssuedCredentials,
+                storeIssuedCredential,
             )
         }
     }

@@ -15,12 +15,11 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.persistence
 
-import eu.europa.ec.eudi.pidissuer.domain.IssuedCredentials
+import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
+import kotlinx.coroutines.flow.Flow
+import kotlin.time.Instant
 
-fun interface StoreIssuedCredentials {
+fun interface GetNonExpiredIssuedCredentials {
 
-    /**
-     * Stores an issued credential
-     */
-    suspend operator fun invoke(credentials: IssuedCredentials)
+    suspend operator fun invoke(now: Instant): Flow<IssuedCredential>
 }

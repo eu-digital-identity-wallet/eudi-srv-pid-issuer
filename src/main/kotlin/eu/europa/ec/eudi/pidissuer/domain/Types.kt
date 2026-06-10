@@ -15,8 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
-import arrow.core.NonEmptyList
-import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.json.InstantEpochSecondsSerializer
 import eu.europa.ec.eudi.pidissuer.adapter.out.json.UriStringSerializer
 import eu.europa.ec.eudi.pidissuer.adapter.out.json.UrlStringSerializer
@@ -128,15 +126,24 @@ sealed interface CryptographicBindingMethod {
 }
 
 /**
+ * The unique identifier of an [IssuedCredential].
+ */
+@JvmInline
+value class IssuedCredentialId(val value: UUID)
+
+/**
  * Credential that have issued by a specific issuing service.
  */
-data class IssuedCredentials(
+data class IssuedCredential(
     val format: Format,
     val type: String,
-    val holder: String,
-    val holderPublicKeys: NonEmptyList<JWK>,
     val issuedAt: Instant,
+    val expiresAt: Instant,
     val notificationId: NotificationId? = null,
+    val status: StatusListToken?,
+    val clientStatus: StatusListToken,
+    val keyStorageStatus: StatusListToken?,
+    val identifier: IssuedCredentialId = IssuedCredentialId(UUID.randomUUID()),
 )
 
 /**

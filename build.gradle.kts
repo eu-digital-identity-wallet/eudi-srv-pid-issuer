@@ -51,6 +51,8 @@ dependencies {
     implementation(libs.eudi.sdjwt) {
         because("To Support issuance in SD-JWT-VC format")
     }
+    implementation(libs.statium)
+    implementation(libs.ktor.client.java)
     implementation(libs.bouncy.castle) {
         because("To support X509 certificates parsing")
     }
@@ -88,12 +90,25 @@ dependencies {
         because("To support CNonce encryption using XC20P")
     }
 
+    implementation("org.springframework.boot:spring-boot-starter-data-r2dbc") {
+        because("Reactive database access for PostgreSQL persistence adapter")
+    }
+    runtimeOnly("org.postgresql:r2dbc-postgresql") {
+        because("R2DBC driver for PostgreSQL")
+    }
+
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("io.projectreactor:reactor-test")
     testImplementation("org.springframework.boot:spring-boot-webtestclient")
+    testRuntimeOnly("io.r2dbc:r2dbc-h2") {
+        because("R2DBC driver for H2")
+    }
+    testRuntimeOnly("com.h2database:h2") {
+        because("H2 in-memory database")
+    }
 }
 
 java {
