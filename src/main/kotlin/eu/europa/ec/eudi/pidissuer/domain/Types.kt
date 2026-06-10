@@ -129,7 +129,7 @@ sealed interface CryptographicBindingMethod {
  * The unique identifier of an [IssuedCredential].
  */
 @JvmInline
-value class IssuedCredentialId(val value: Long)
+value class IssuedCredentialId(val value: UUID)
 
 /**
  * Credential that have issued by a specific issuing service.
@@ -143,7 +143,7 @@ data class IssuedCredential(
     val status: StatusListToken?,
     val clientStatus: StatusListToken,
     val keyStorageStatus: StatusListToken?,
-    val id: IssuedCredentialId? = null,
+    val identifier: IssuedCredentialId = IssuedCredentialId(UUID.randomUUID()),
 )
 
 /**

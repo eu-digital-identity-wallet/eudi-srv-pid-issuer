@@ -28,6 +28,7 @@ import org.springframework.data.r2dbc.repository.Query
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.data.repository.kotlin.CoroutineSortingRepository
 import java.time.OffsetDateTime
+import java.util.UUID
 
 private val log = LoggerFactory.getLogger(R2dbcIssuedCredentialRepository::class.java)
 
@@ -50,6 +51,9 @@ interface IssuedCredentialR2dbcRepository :
 
     @Query("DELETE FROM issued_credential WHERE expires_at <= :now")
     suspend fun deleteAllExpiredBefore(now: OffsetDateTime): Int?
+
+    @Query("DELETE FROM issued_credential WHERE identifier = :identifier")
+    suspend fun deleteByIdentifier(identifier: UUID): Int?
 }
 
 /**
@@ -87,6 +91,6 @@ class R2dbcIssuedCredentialRepository(
 
     val deleteIssuedCredential: DeleteIssuedCredential =
         DeleteIssuedCredential { credential ->
-            credential.id?.let { r2dbc.deleteById(it.value) }
+            r2dbc.deleteByIdentifier(credential.identifier.value)
         }
 }

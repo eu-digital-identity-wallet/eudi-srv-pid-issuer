@@ -10,8 +10,10 @@ CREATE TABLE IF NOT EXISTS issued_credential (
     client_status_list_uri      VARCHAR(2048) NOT NULL,
     client_status_list_index    BIGINT        NOT NULL,
     key_storage_status_list_uri   VARCHAR(2048),
-    key_storage_status_list_index BIGINT
+    key_storage_status_list_index BIGINT,
+    credential_identifier       UUID          NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_issued_credential_notification_id ON issued_credential (notification_id);
 CREATE INDEX IF NOT EXISTS idx_issued_credential_expires_at ON issued_credential (expires_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_issued_credential_uuid ON issued_credential (credential_identifier);

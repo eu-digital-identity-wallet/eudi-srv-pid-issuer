@@ -22,6 +22,7 @@ import org.springframework.data.relational.core.mapping.Table
 import java.net.URI
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.util.UUID
 import kotlin.time.Instant
 import kotlin.time.toJavaInstant
 import kotlin.time.toKotlinInstant
@@ -53,6 +54,8 @@ data class IssuedCredentialEntity(
     val keyStorageStatusListUri: String?,
     @Column("key_storage_status_list_index")
     val keyStorageStatusListIndex: Long?,
+    @Column("credential_identifier")
+    val identifier: UUID,
 ) {
     fun toDomain(): IssuedCredential =
         IssuedCredential(
@@ -81,13 +84,12 @@ data class IssuedCredentialEntity(
             } else {
                 null
             },
-            id = id?.let { IssuedCredentialId(it) },
+            identifier = IssuedCredentialId(identifier),
         )
 
     companion object {
         fun fromDomain(credential: IssuedCredential): IssuedCredentialEntity =
             IssuedCredentialEntity(
-                id = credential.id?.value,
                 format = credential.format.value,
                 type = credential.type,
                 issuedAt = credential.issuedAt.toOffsetDateTime(),
@@ -99,6 +101,7 @@ data class IssuedCredentialEntity(
                 clientStatusListIndex = credential.clientStatus.index.toLong(),
                 keyStorageStatusListUri = credential.keyStorageStatus?.statusList?.toString(),
                 keyStorageStatusListIndex = credential.keyStorageStatus?.index?.toLong(),
+                identifier = credential.identifier.value,
             )
     }
 }
