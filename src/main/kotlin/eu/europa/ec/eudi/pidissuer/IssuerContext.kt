@@ -28,6 +28,7 @@ import com.nimbusds.oauth2.sdk.dpop.verifiers.InMemoryDPoPSingleUseChecker
 import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.util.X509CertificateUtils
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
+import eu.europa.ec.eudi.pidissuer.adapter.input.scheduler.CredentialRevocationJob
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerUi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
@@ -41,10 +42,12 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential.IssueLearningCredential
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
-import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryIssuedCredentialRepository
+import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.R2dbcIssuedCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
 import eu.europa.ec.eudi.pidissuer.adapter.out.status.GenerateStatusListTokenWithExternalService
+import eu.europa.ec.eudi.pidissuer.adapter.out.status.GetStatusListTokenWithStatium
+import eu.europa.ec.eudi.pidissuer.adapter.out.status.MarkStatusAsRevokedWithExternalService
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.usingTrustValidatorService
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -54,6 +57,8 @@ import eu.europa.ec.eudi.pidissuer.port.out.jose.GenerateSignedMetadata
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
+import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
+import eu.europa.ec.eudi.pidissuer.port.out.status.MarkStatusAsRevoked
 import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import eu.europa.ec.eudi.sdjwt.vc.Vct
@@ -79,6 +84,7 @@ import org.springframework.http.MediaType
 import org.springframework.http.client.reactive.ReactorClientHttpConnector
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
 import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
+import org.springframework.scheduling.annotation.SchedulingConfigurer
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.config.web.server.invoke
@@ -113,6 +119,8 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import kotlin.time.toKotlinDuration
 import eu.europa.ec.eudi.pidissuer.adapter.out.ehic.IssuingCountry as EhicIssuingCountry
+import io.ktor.client.HttpClient as KtorHttpClient
+import io.ktor.client.engine.java.Java as JavaEngine
 import java.time.Duration as JavaDuration
 
 private val log = LoggerFactory.getLogger(PidIssuerApplication::class.java)
@@ -180,6 +188,50 @@ internal object WebClients {
     }
 }
 
+/**
+ * [KtorHttpClient] instances for usage within the application.
+ */
+internal object KtorHttpClients {
+
+    /**
+     * A [KtorHttpClient] with default settings.
+     */
+    fun default(proxy: HttpProxy?): KtorHttpClient =
+        KtorHttpClient(JavaEngine) {
+            engine {
+                configureProxy(proxy)
+            }
+        }
+
+    /**
+     * A [KtorHttpClient] that trusts *all* certificates.
+     */
+    fun insecure(proxy: HttpProxy?): KtorHttpClient {
+        log.warn("Using insecure KtorHttpClient trusting all certificates")
+        val sslContext = javax.net.ssl.SSLContext.getInstance("TLS").also {
+            it.init(null, arrayOf(InsecureTrustManagerFactory.INSTANCE.trustManagers[0]), null)
+        }
+        return KtorHttpClient(JavaEngine) {
+            engine {
+                config {
+                    sslContext(sslContext)
+                }
+                configureProxy(proxy)
+            }
+        }
+    }
+
+    private fun io.ktor.client.engine.java.JavaHttpConfig.configureProxy(proxy: HttpProxy?) {
+        proxy?.let { httpProxy ->
+            log.info("Using KtorHttpClient with proxy settings")
+            this.proxy = java.net.Proxy(
+                java.net.Proxy.Type.HTTP,
+                java.net.InetSocketAddress(httpProxy.url.host, httpProxy.url.port),
+            )
+        }
+    }
+}
+
 data class HttpProxy(
     val url: Url,
     val username: String? = null,
@@ -209,7 +261,6 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     val enableMsoMdocPid = env.getProperty<Boolean>("issuer.pid.mso_mdoc.enabled") ?: true
     val enableSdJwtVcPid = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.enabled") ?: true
     val credentialsOfferUri = env.getRequiredProperty("issuer.credentialOffer.uri")
-    val enableStatusList = env.getProperty<Boolean>("issuer.statusList.enabled") ?: false
     val enableCompactEhic = env.getProperty<Boolean>("issuer.ehic.compact.enabled") ?: true
     val enableJwsJsonFlattenedEhic = env.getProperty<Boolean>("issuer.ehic.jwsJsonFlattened.enabled") ?: false
     val enableLearningCredential = env.getProperty<Boolean>("issuer.learningCredential.enabled") ?: true
@@ -391,6 +442,13 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
             WebClients.default(proxy = proxy)
         }
     registerBean { webClient }
+    val ktorHttpClient =
+        if ("insecure" in env.activeProfiles) {
+            KtorHttpClients.insecure(proxy = proxy)
+        } else {
+            KtorHttpClients.default(proxy = proxy)
+        }
+    registerBean { ktorHttpClient }
     registerBean {
         KeycloakConfigurationProperties(
             env.getRequiredProperty<URL>("issuer.keycloak.server-url"),
@@ -498,17 +556,46 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
             accessCertificate = bean(),
         )
     }
-    if (enableStatusList) {
-        registerBean<GenerateStatusListToken> {
-            val serviceUrl = URL(env.getRequiredProperty("issuer.statusList.service.uri"))
-            log.info("Token Status List support enabled. Service URL: ${serviceUrl.toExternalForm()}")
-            GenerateStatusListTokenWithExternalService(
-                webClient = bean(),
-                serviceUrl = serviceUrl,
-                apiKey = env.getRequiredProperty("issuer.statusList.service.apiKey"),
-                clock = bean(),
-            )
+    registerBean<GetStatusListTokenStatus> { GetStatusListTokenWithStatium(bean(), bean()) }
+    registerBean {
+        RevokeCredentialsWithRevokedStatus(
+            clock = clock,
+            deleteExpiredIssuedCredentials = bean(),
+            getNonExpiredIssuedCredentials = bean(),
+            getStatusListTokenStatus = bean(),
+            markStatusAsRevoked = bean(),
+            deleteIssuedCredential = bean(),
+        )
+    }
+    registerBean { CredentialRevocationJob(bean()) }
+    registerBean {
+        val cron = env.getProperty("issuer.revocationJob.cron", "0 0 */8 * * *")
+        SchedulingConfigurer { taskRegistrar ->
+            taskRegistrar.addCronTask({
+                runBlocking {
+                    bean<CredentialRevocationJob>().run()
+                }
+            }, cron)
         }
+    }
+
+    registerBean<GenerateStatusListToken> {
+        val serviceUrl = URL(env.getRequiredProperty("issuer.statusList.service.generate-uri"))
+        GenerateStatusListTokenWithExternalService(
+            webClient = bean(),
+            serviceUrl = serviceUrl,
+            apiKey = env.getRequiredProperty("issuer.statusList.service.apiKey"),
+            clock = bean(),
+        )
+    }
+
+    registerBean<MarkStatusAsRevoked> {
+        val serviceUrl = URL(env.getRequiredProperty("issuer.statusList.service.revoke-uri"))
+        MarkStatusAsRevokedWithExternalService(
+            webClient = bean(),
+            serviceUrl = serviceUrl,
+            apiKey = env.getRequiredProperty("issuer.statusList.service.apiKey"),
+        )
     }
 
     //
@@ -530,11 +617,13 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     //
     // Credentials
     //
-    with(InMemoryIssuedCredentialRepository()) {
-        registerBean { GenerateNotificationId.Random }
-        registerBean { storeIssuedCredentials }
-        registerBean { loadIssuedCredentialsByNotificationId }
-    }
+    registerBean { GenerateNotificationId.Random }
+    registerBean { R2dbcIssuedCredentialRepository(bean()) }
+    registerBean { bean<R2dbcIssuedCredentialRepository>().storeIssuedCredential }
+    registerBean { bean<R2dbcIssuedCredentialRepository>().loadIssuedCredentialsByNotificationId }
+    registerBean { bean<R2dbcIssuedCredentialRepository>().getNonExpiredIssuedCredentials }
+    registerBean { bean<R2dbcIssuedCredentialRepository>().deleteExpiredIssuedCredentials }
+    registerBean { bean<R2dbcIssuedCredentialRepository>().deleteIssuedCredential }
 
     //
     // Deferred Credentials
@@ -578,10 +667,10 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     generateNotificationId = bean(),
                     clock = clock,
                     validity = duration,
-                    storeIssuedCredentials = bean(),
+                    storeIssuedCredential = bean(),
                     jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                     keyAttestationRequirement = KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(duration)),
-                    generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
+                    generateStatusListToken = bean(),
                     credentialReusePolicy = pidMsoMdocReusePolicy,
                 )
                 add(issueMsoMdocPid)
@@ -610,8 +699,8 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     calculateNotUseBefore = notUseBefore?.let { duration -> { iat -> iat + duration } },
                     notificationsEnabled = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled") ?: true,
                     generateNotificationId = bean(),
-                    storeIssuedCredentials = bean(),
-                    generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
+                    storeIssuedCredential = bean(),
+                    generateStatusListToken = bean(),
                     jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                     keyAttestationRequirement = KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(expiresIn)),
                     credentialReusePolicy = pidSdJwtVcReusePolicy,
@@ -636,10 +725,10 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                     generateNotificationId = bean(),
                     clock = clock,
                     validity = duration,
-                    storeIssuedCredentials = bean(),
+                    storeIssuedCredential = bean(),
                     jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                     keyAttestationRequirement = KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(duration)),
-                    generateStatusListToken = beanProvider<GenerateStatusListToken>().ifAvailable,
+                    generateStatusListToken = bean(),
                     credentialReusePolicy = mdlIssuerReusePolicy,
                 )
                 add(mdlIssuer)
@@ -674,7 +763,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         ),
                         notificationsEnabled = ehicNotificationsEnabled,
                         generateNotificationId = bean(),
-                        storeIssuedCredentials = bean(),
+                        storeIssuedCredential = bean(),
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                         keyAttestationRequirement = KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(validity)),
                         credentialReusePolicy = ehicReusePolicy,
@@ -696,7 +785,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
                         ),
                         notificationsEnabled = ehicNotificationsEnabled,
                         generateNotificationId = bean(),
-                        storeIssuedCredentials = bean(),
+                        storeIssuedCredential = bean(),
                         jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                         keyAttestationRequirement = KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(validity)),
                         credentialReusePolicy = ehicReusePolicy,

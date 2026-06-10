@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.nonEmptyListOf
+import arrow.core.right
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.nimbusds.jose.*
@@ -38,6 +39,7 @@ import eu.europa.ec.eudi.pidissuer.jwtProofWithKeyAttestation
 import eu.europa.ec.eudi.pidissuer.keyAttestationJWT
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
+import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
 import eu.europa.ec.eudi.pidissuer.utils.createAccessTokenValue
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
@@ -130,6 +132,16 @@ internal class BaseWalletApiTest {
                     issuingJurisdiction = null,
                 )
                 pid to pidMetaData
+            }
+
+        @Bean
+        @Primary
+        fun generateStatusListToken(): GenerateStatusListToken =
+            GenerateStatusListToken { _, _ ->
+                StatusListToken(
+                    statusList = URI.create("https://example.com/status-list"),
+                    index = 0u,
+                ).right()
             }
 
         @Bean

@@ -30,11 +30,5 @@ data class ClientStatus(
 
 @Serializable
 data class StatusClaim(
-    @Required @SerialName(TokenStatusListSpec.STATUS_LIST) val statusList: StatusListTokenClaim,
-)
-
-@Serializable
-data class StatusListTokenClaim(
-    @Required @SerialName(TokenStatusListSpec.IDX) val index: UInt,
-    @Required @SerialName(TokenStatusListSpec.URI) val uri: NonBlankString,
+    @Required @SerialName(TokenStatusListSpec.STATUS_LIST) val statusList: StatusListToken,
 )

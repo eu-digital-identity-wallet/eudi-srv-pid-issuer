@@ -5,6 +5,21 @@ networks:
     driver: bridge
 
 services:
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    environment:
+      - POSTGRES_DB=pid_issuer
+      - POSTGRES_USER=pid_issuer
+      - POSTGRES_PASSWORD=pid_issuer
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U pid_issuer -d pid_issuer" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - default
+
   keycloak:
     build:
       context: ./keycloak
@@ -52,6 +67,8 @@ services:
     depends_on:
       keycloak:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     environment:
       - SPRING_PROFILES_ACTIVE=insecure
       - SPRING_WEBFLUX_BASE_PATH=/pid-issuer
@@ -91,6 +108,9 @@ services:
       - ISSUER_CREDENTIALENDPOINT_BATCHISSUANCE_ENABLED=true
       - ISSUER_CREDENTIALENDPOINT_BATCHISSUANCE_BATCHSIZE=10
       - ISSUER_CNONCE_EXPIRATION=PT5M
+      - SPRING_R2DBC_URL=r2dbc:postgresql://postgres:5432/pid_issuer
+      - SPRING_R2DBC_USERNAME=pid_issuer
+      - SPRING_R2DBC_PASSWORD=pid_issuer
     networks:
       - default
 

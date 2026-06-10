@@ -104,10 +104,12 @@ class HandleNotificationRequest(
                     val notificationId = NotificationId(notificationRequest.notificationId)
                     val credentials = loadIssuedCredentialsByNotificationId(notificationId)
 
-                    credentials?.let {
-                        log.info("Received Notification Request '$notificationRequest' for Credentials '$it'")
+                    if (credentials.isNotEmpty()) {
+                        log.info("Received Notification Request '$notificationRequest' for Credentials '$credentials'")
                         NotificationResponse.Success
-                    } ?: NotificationResponse.NotificationErrorResponseTO(ErrorTypeTO.InvalidNotificationId)
+                    } else {
+                        NotificationResponse.NotificationErrorResponseTO(ErrorTypeTO.InvalidNotificationId)
+                    }
                 },
             )
 }
