@@ -15,12 +15,12 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.persistence
 
-import eu.europa.ec.eudi.pidissuer.domain.Clock
+import kotlin.time.Instant
 
 /**
  * Deletes all issued credentials that have expired (i.e. whose expiry is before now).
  */
 fun interface DeleteExpiredIssuedCredentials {
 
-    suspend operator fun invoke(clock: Clock)
+    suspend operator fun invoke(now: Instant)
 }

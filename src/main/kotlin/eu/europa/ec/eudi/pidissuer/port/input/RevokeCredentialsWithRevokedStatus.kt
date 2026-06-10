@@ -47,10 +47,10 @@ class RevokeCredentialsWithRevokedStatus(
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend operator fun invoke() {
         log.info("Deleting expired issued credentials")
-        deleteExpiredIssuedCredentials(clock)
+        deleteExpiredIssuedCredentials(clock.now())
 
         log.info("Checking revocation status for active credential(s)")
-        val activeCredentials = getNonExpiredIssuedCredentials(clock)
+        val activeCredentials = getNonExpiredIssuedCredentials(clock.now())
 
         activeCredentials
             .flatMapMerge { credential ->

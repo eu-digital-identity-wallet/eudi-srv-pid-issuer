@@ -74,16 +74,14 @@ class R2dbcIssuedCredentialRepository(
         }
 
     val getNonExpiredIssuedCredentials: GetNonExpiredIssuedCredentials =
-        GetNonExpiredIssuedCredentials { clock ->
-            val now = clock.now().toOffsetDateTime()
-            r2dbc.findAllActive(now)
+        GetNonExpiredIssuedCredentials { now ->
+            r2dbc.findAllActive(now.toOffsetDateTime())
                 .map { it.toDomain() }
         }
 
     val deleteExpiredIssuedCredentials: DeleteExpiredIssuedCredentials =
-        DeleteExpiredIssuedCredentials { clock ->
-            val now = clock.now().toOffsetDateTime()
-            val deleted = r2dbc.deleteAllExpiredBefore(now) ?: 0
+        DeleteExpiredIssuedCredentials { now ->
+            val deleted = r2dbc.deleteAllExpiredBefore(now.toOffsetDateTime()) ?: 0
             if (deleted > 0) {
                 log.info("Deleted {} expired issued credential(s)", deleted)
             }
