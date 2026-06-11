@@ -33,18 +33,5 @@ data class AuthorizationContext(
     val accessToken: AccessToken,
     val scopes: NonEmptySet<Scope>,
     val clientId: ClientId? = null,
-) {
-    val clientStatus: ClientStatus = accessToken.extractClientStatus()
-}
-
-private fun AccessToken.extractClientStatus(): ClientStatus {
-    val jwtClaimSet: JWTClaimsSet = SignedJWT.parse(value).jwtClaimsSet
-
-    val clientStatus = JSONObjectUtils.toJSONString(
-        requireNotNull(jwtClaimSet.getJSONObjectClaim(TS3.CLIENT_STATUS)) {
-            "${TS3.CLIENT_STATUS} is missing"
-        },
-    )
-
-    return jsonSupport.decodeFromString<ClientStatus>(clientStatus)
-}
+    val clientStatus: ClientStatus
+)

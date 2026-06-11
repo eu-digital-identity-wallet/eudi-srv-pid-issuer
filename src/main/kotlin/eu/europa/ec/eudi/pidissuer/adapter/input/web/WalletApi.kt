@@ -18,12 +18,16 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 import arrow.core.Either
 import arrow.core.NonEmptySet
 import arrow.core.toNonEmptySetOrNull
+import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
+import eu.europa.ec.eudi.pidissuer.adapter.out.json.jsonSupport
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
+import eu.europa.ec.eudi.pidissuer.domain.ClientStatus
 import eu.europa.ec.eudi.pidissuer.domain.Scope
+import eu.europa.ec.eudi.pidissuer.domain.TS3
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -187,16 +191,19 @@ private suspend fun ServerRequest.authorizationContext(): Either<Throwable, Auth
             val clientId: Any? = null,
             val username: Any? = null,
             val accessToken: AccessToken,
+            val clientStatus: Any?,
         )
 
-        val (scopes, clientId, username, accessToken) = when (authentication) {
-            is DPoPTokenAuthentication ->
+        val (scopes, clientId, username, accessToken, clientStatus) = when (authentication) {
+            is DPoPTokenAuthentication ->{
                 AuthenticationDetails(
                     authentication.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull(),
                     authentication.principal?.attributes?.get(OAuth2TokenIntrospectionClaimNames.CLIENT_ID),
                     authentication.name,
                     authentication.accessToken,
+                    authentication.principal?.attributes?.get(TS3.CLIENT_STATUS)
                 )
+            }
 
             is BearerTokenAuthentication ->
                 AuthenticationDetails(
@@ -204,6 +211,7 @@ private suspend fun ServerRequest.authorizationContext(): Either<Throwable, Auth
                     authentication.tokenAttributes[OAuth2TokenIntrospectionClaimNames.CLIENT_ID],
                     authentication.tokenAttributes[OAuth2TokenIntrospectionClaimNames.USERNAME],
                     BearerAccessToken.parse("${authentication.token.tokenType.value} ${authentication.token.tokenValue}"),
+                    authentication.tokenAttributes[TS3.CLIENT_STATUS]
                 )
 
             else -> error("Unexpected Authentication type '${authentication::class.java}'")
@@ -212,9 +220,15 @@ private suspend fun ServerRequest.authorizationContext(): Either<Throwable, Auth
         requireNotNull(scopes) { "OAuth2 scopes are expected" }
         require(clientId is String) { "Unexpected client_id claim type '${clientId?.let { it::class.java }}'" }
         require(username is String) { "Unexpected username claim type '${username?.let { it::class.java }}'" }
+        require(clientStatus is Map<*, *>) { "Unexpected client_status claim type '${clientStatus?.let { it::class.java }}'" }
 
-        AuthorizationContext(username, accessToken, scopes, clientId)
+        AuthorizationContext(username, accessToken, scopes, clientId, clientStatus.toClientStatus())
     }
+
+private fun Map<*, *>.toClientStatus(): ClientStatus {
+    val parsedString = JSONObjectUtils.toJSONString(this as Map<String, Any?>)
+    return jsonSupport.decodeFromString(parsedString)
+}
 
 private suspend fun IssueCredentialResponse.toServerResponse(): ServerResponse =
     when (this) {
