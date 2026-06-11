@@ -176,6 +176,12 @@ internal class WalletApi(
 
 private suspend fun ServerRequest.authorizationContext(): Either<Throwable, AuthorizationContext> =
     Either.catch {
+        @Suppress("UNCHECKED_CAST")
+        fun Map<*, *>.toClientStatus(): ClientStatus {
+            val parsedString = JSONObjectUtils.toJSONString(this as Map<String, Any?>)
+            return jsonSupport.decodeFromString(parsedString)
+        }
+
         val authentication = awaitPrincipal()
 
         requireNotNull(authentication) { "Authentication is expected" }
@@ -195,13 +201,13 @@ private suspend fun ServerRequest.authorizationContext(): Either<Throwable, Auth
         )
 
         val (scopes, clientId, username, accessToken, clientStatus) = when (authentication) {
-            is DPoPTokenAuthentication ->{
+            is DPoPTokenAuthentication -> {
                 AuthenticationDetails(
                     authentication.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull(),
                     authentication.principal?.attributes?.get(OAuth2TokenIntrospectionClaimNames.CLIENT_ID),
                     authentication.name,
                     authentication.accessToken,
-                    authentication.principal?.attributes?.get(TS3.CLIENT_STATUS)
+                    authentication.principal?.attributes?.get(TS3.CLIENT_STATUS),
                 )
             }
 
@@ -211,7 +217,7 @@ private suspend fun ServerRequest.authorizationContext(): Either<Throwable, Auth
                     authentication.tokenAttributes[OAuth2TokenIntrospectionClaimNames.CLIENT_ID],
                     authentication.tokenAttributes[OAuth2TokenIntrospectionClaimNames.USERNAME],
                     BearerAccessToken.parse("${authentication.token.tokenType.value} ${authentication.token.tokenValue}"),
-                    authentication.tokenAttributes[TS3.CLIENT_STATUS]
+                    authentication.tokenAttributes[TS3.CLIENT_STATUS],
                 )
 
             else -> error("Unexpected Authentication type '${authentication::class.java}'")
@@ -224,11 +230,6 @@ private suspend fun ServerRequest.authorizationContext(): Either<Throwable, Auth
 
         AuthorizationContext(username, accessToken, scopes, clientId, clientStatus.toClientStatus())
     }
-
-private fun Map<*, *>.toClientStatus(): ClientStatus {
-    val parsedString = JSONObjectUtils.toJSONString(this as Map<String, Any?>)
-    return jsonSupport.decodeFromString(parsedString)
-}
 
 private suspend fun IssueCredentialResponse.toServerResponse(): ServerResponse =
     when (this) {
