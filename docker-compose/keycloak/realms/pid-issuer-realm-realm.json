@@ -1119,11 +1119,15 @@
       "nodeReRegistrationTimeout": -1,
       "protocolMappers": [
         {
-          "name": "client-status-mapper",
+          "name": "client-status-protocol-mapper",
           "protocol": "openid-connect",
-          "protocolMapper": "client-status-mapper",
+          "protocolMapper": "client-status-protocol-mapper",
           "consentRequired": false,
           "config": {
+            "lightweight.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "access.tokenResponse.claim": "true"
           }
         }
       ],
