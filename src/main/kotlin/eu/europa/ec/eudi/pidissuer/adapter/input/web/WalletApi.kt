@@ -178,8 +178,8 @@ private suspend fun ServerRequest.authorizationContext(): Either<Throwable, Auth
     Either.catch {
         @Suppress("UNCHECKED_CAST")
         fun Map<*, *>.toClientStatus(): ClientStatus {
-            val parsedString = JSONObjectUtils.toJSONString(this as Map<String, Any?>)
-            return jsonSupport.decodeFromString(parsedString)
+            val serialized = JSONObjectUtils.toJSONString(this as Map<String, Any?>)
+            return jsonSupport.decodeFromString(serialized)
         }
 
         val authentication = awaitPrincipal()
