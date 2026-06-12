@@ -8,6 +8,8 @@ services:
   postgres:
     image: postgres:16
     container_name: postgres
+    ports:
+      - "5432:5432"
     environment:
       - POSTGRES_DB=pid_issuer
       - POSTGRES_USER=pid_issuer
@@ -108,7 +110,7 @@ services:
       - ISSUER_CREDENTIALENDPOINT_BATCHISSUANCE_ENABLED=true
       - ISSUER_CREDENTIALENDPOINT_BATCHISSUANCE_BATCHSIZE=10
       - ISSUER_CNONCE_EXPIRATION=PT5M
-      - SPRING_R2DBC_URL=r2dbc:postgresql://postgres:5432/pid_issuer
+      - SPRING_R2DBC_URL=r2dbc:pool:postgresql://postgres:5432/pid_issuer
       - SPRING_R2DBC_USERNAME=pid_issuer
       - SPRING_R2DBC_PASSWORD=pid_issuer
     networks:
