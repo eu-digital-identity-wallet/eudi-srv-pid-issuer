@@ -18,24 +18,40 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 import arrow.core.getOrElse
 import arrow.core.nonEmptySetOf
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
+import eu.europa.ec.eudi.pidissuer.domain.ClientStatus
+import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.Scope
+import eu.europa.ec.eudi.pidissuer.domain.StatusClaim
+import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
-import eu.europa.ec.eudi.pidissuer.utils.createAccessTokenValue
 import kotlinx.coroutines.test.runTest
+import java.net.URI
 import kotlin.test.Test
+import kotlin.time.Duration.Companion.days
 
 internal class GetMobileDrivingLicenceDataMockTest {
 
     @Test
     internal fun `get mDL success`() = runTest {
         val getMobileDrivingLicenceData = GetMobileDrivingLicenceDataMock()
-        val accessTokenValue = createAccessTokenValue()
+
+        val expiresAt = (Clock.System.now() + 32.days)
+        val clientStatus = ClientStatus(
+            status = StatusClaim(
+                statusList = StatusListToken(
+                    statusList = URI.create("https://revocation_url/wia-statuslists/42"),
+                    index = 1337u,
+                ),
+            ),
+            expiresAt = expiresAt,
+        )
 
         getMobileDrivingLicenceData(
             AuthorizationContext(
                 "username",
-                BearerAccessToken.parse("Bearer $accessTokenValue"),
+                BearerAccessToken.parse("Bearer token"),
                 nonEmptySetOf(Scope("test")),
+                clientStatus = clientStatus,
             ),
         ).getOrElse { throw RuntimeException(it.msg, it.cause) }
     }

@@ -40,7 +40,6 @@ import eu.europa.ec.eudi.pidissuer.keyAttestationJWT
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
 import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
-import eu.europa.ec.eudi.pidissuer.utils.createAccessTokenValue
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Month
@@ -1419,23 +1418,42 @@ private fun dPoPTokenAuthentication(
     val issuedAt = clock.now()
     val principal = DefaultOAuth2AuthenticatedPrincipal(
         subject,
-        mapOf(
-            OAuth2TokenIntrospectionClaimNames.ACTIVE to true,
-            OAuth2TokenIntrospectionClaimNames.USERNAME to subject,
-            OAuth2TokenIntrospectionClaimNames.CLIENT_ID to "wallet-dev",
-            OAuth2TokenIntrospectionClaimNames.SCOPE to scopes.map { it.value },
-            OAuth2TokenIntrospectionClaimNames.TOKEN_TYPE to TokenType.BEARER.value,
-            OAuth2TokenIntrospectionClaimNames.EXP to (issuedAt + expiresIn),
-            OAuth2TokenIntrospectionClaimNames.IAT to issuedAt,
-            OAuth2TokenIntrospectionClaimNames.NBF to issuedAt,
-            OAuth2TokenIntrospectionClaimNames.SUB to subject,
-            OAuth2TokenIntrospectionClaimNames.JTI to UUID.randomUUID().toString(),
-        ),
+        buildMap {
+            put(OAuth2TokenIntrospectionClaimNames.ACTIVE, true)
+            put(OAuth2TokenIntrospectionClaimNames.USERNAME, subject)
+            put(OAuth2TokenIntrospectionClaimNames.CLIENT_ID, "wallet-dev")
+            put(OAuth2TokenIntrospectionClaimNames.SCOPE, scopes.map { it.value })
+            put(OAuth2TokenIntrospectionClaimNames.TOKEN_TYPE, TokenType.BEARER.value)
+            put(OAuth2TokenIntrospectionClaimNames.EXP, (issuedAt + expiresIn))
+            put(OAuth2TokenIntrospectionClaimNames.IAT, issuedAt)
+            put(OAuth2TokenIntrospectionClaimNames.NBF, issuedAt)
+            put(OAuth2TokenIntrospectionClaimNames.SUB, subject)
+            put(OAuth2TokenIntrospectionClaimNames.JTI, UUID.randomUUID().toString())
+            if (includeClientStatus) {
+                put(
+                    TS3.CLIENT_STATUS,
+                    buildMap {
+                        put(
+                            TokenStatusListSpec.STATUS,
+                            buildMap {
+                                put(
+                                    TokenStatusListSpec.STATUS_LIST,
+                                    buildMap {
+                                        put(TokenStatusListSpec.URI, "https://revocation_url/wia-statuslists/42")
+                                        put(TokenStatusListSpec.IDX, 1337)
+                                    },
+                                )
+                            },
+                        )
+                        put(RFC7519.EXPIRES_AT, clientStatusExpiresAt.epochSeconds)
+                    },
+                )
+            }
+        },
         authorities + scopes.map { SimpleGrantedAuthority("SCOPE_${it.value}") },
     )
 
-    val accessTokenValue = createAccessTokenValue(includeClientStatus, clientStatusExpiresAt)
-    val accessToken = DPoPAccessToken(accessTokenValue)
+    val accessToken = DPoPAccessToken("token")
 
     return DPoPTokenAuthentication.unauthenticated(
         SignedJWT(JWSHeader.Builder(JWSAlgorithm.ES256).build(), JWTClaimsSet.Builder().build()),
