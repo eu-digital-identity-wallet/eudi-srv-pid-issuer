@@ -4,7 +4,8 @@ ARG VERSION
 RUN \
     wget https://github.com/eu-digital-identity-wallet/eudi-srv-statuslist-py/archive/refs/tags/$VERSION.zip -O /tmp/app.zip && \
     unzip /tmp/app.zip && \
-    mv eudi-srv-statuslist-py-* status-list
+    mv eudi-srv-statuslist-py-* status-list && \
+    rm /tmp/app.zip
 
 WORKDIR /status-list
 
