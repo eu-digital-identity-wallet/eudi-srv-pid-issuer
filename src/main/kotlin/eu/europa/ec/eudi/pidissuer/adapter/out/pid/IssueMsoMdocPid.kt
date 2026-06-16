@@ -15,19 +15,22 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
-import arrow.core.*
-import arrow.core.raise.either
-import arrow.core.raise.ensureNotNull
+import arrow.core.NonEmptySet
+import arrow.core.nonEmptySetOf
+import arrow.core.raise.Raise
+import arrow.core.raise.catch
+import arrow.core.raise.context.ensureNotNull
+import arrow.core.raise.context.raise
+import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.JWKExtensions
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.jwkExtensions
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
@@ -350,71 +353,72 @@ internal class IssueMsoMdocPid(
 
     override val publicKey: JWK? = null
 
+    context(_: Raise<IssueCredentialError>)
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): Either<IssueCredentialError, CredentialResponse> =
-        either {
-            log.info("Handling issuance request ...")
-            val holderPubKeys =
-                with(jwkExtensions()) {
-                    validateProofs(request.unvalidatedProofs, supportedCredential, clock.now())
-                        .bind()
-                        .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
-                }
-
-            val pidData = getPidData(authorizationContext)
-            val (pid, pidMetaData) = pidData.bind()
-
-            val issuedAt = clock.now()
-            val expiresAt = issuedAt + validityDuration
-
-            val issuedCredentials =
-                holderPubKeys
-                    .parMap(Dispatchers.Default, 4) { holderKey ->
-                        val statusListToken =
-                            generateStatusListToken?.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
-                                it(supportedCredential.docType, expiresAt)
-                                    .getOrElse { error ->
-                                        raise(Unexpected("Unable to generate Status List Token", error))
-                                    }
-                            }
-
-                        encodePidInCbor(pid, pidMetaData, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
-                            .also {
-                                log.info("Issued $it")
-                            }
-                    }.toNonEmptyListOrNull()
-            ensureNotNull(issuedCredentials) {
-                IssueCredentialError.Unexpected("Unable to issue PID")
+    ): CredentialResponse {
+        log.info("Handling issuance request ...")
+        val holderPubKeys =
+            with(JWKExtensions) {
+                validateProofs(request.unvalidatedProofs, supportedCredential, clock.now())
+                    .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
             }
 
-            val notificationId =
-                if (notificationsEnabled)
-                    generateNotificationId()
-                else
-                    null
+        val (pid, pidMetaData) = getPidData(authorizationContext)
 
-            storeIssuedCredentials(
-                IssuedCredentials(
-                    format = MSO_MDOC_FORMAT,
-                    type = supportedCredential.docType,
-                    holder =
-                        with(pid) {
-                            "${familyName.value} ${givenName.value}"
-                        },
-                    holderPublicKeys = holderPubKeys,
-                    issuedAt = issuedAt,
-                    notificationId = notificationId,
-                ),
-            )
+        val issuedAt = clock.now()
+        val expiresAt = issuedAt + validityDuration
 
-            CredentialResponse
-                .Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
-                .also {
-                    log.info("Successfully issued PIDs")
-                    log.debug("Issued PIDs data {}", it)
-                }
+        val issuedCredentials =
+            holderPubKeys
+                .parMap(Dispatchers.Default, 4) { holderKey ->
+                    val statusListToken =
+                        generateStatusListToken
+                            ?.takeIf { credentialReusePolicy.shouldIncludeStatusList }
+                            ?.let { srv -> srv(supportedCredential.docType, expiresAt) }
+
+                    encodePidInCbor(
+                        pid,
+                        pidMetaData,
+                        holderKey,
+                        issuedAt = issuedAt,
+                        expiresAt = expiresAt,
+                        statusListToken,
+                    ).also {
+                        log.info("Issued $it")
+                    }
+                }.toNonEmptyListOrNull()
+        ensureNotNull(issuedCredentials) {
+            IssueCredentialError.Unexpected("Unable to issue PID")
         }
+
+        val notificationId =
+            if (notificationsEnabled)
+                generateNotificationId()
+            else
+                null
+
+        storeIssuedCredentials(
+            IssuedCredentials(
+                format = MSO_MDOC_FORMAT,
+                type = supportedCredential.docType,
+                holder =
+                    with(pid) {
+                        "${familyName.value} ${givenName.value}"
+                    },
+                holderPublicKeys = holderPubKeys,
+                issuedAt = issuedAt,
+                notificationId = notificationId,
+            ),
+        )
+
+        return CredentialResponse
+            .Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
+            .also {
+                log.info("Successfully issued PIDs")
+                log.debug("Issued PIDs data {}", it)
+            }
+    }
 }

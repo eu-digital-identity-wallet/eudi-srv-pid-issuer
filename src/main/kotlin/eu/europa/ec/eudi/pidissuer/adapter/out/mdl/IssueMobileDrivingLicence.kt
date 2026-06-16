@@ -15,19 +15,20 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
-import arrow.core.*
-import arrow.core.raise.either
-import arrow.core.raise.ensureNotNull
+import arrow.core.NonEmptySet
+import arrow.core.nonEmptySetOf
+import arrow.core.raise.Raise
+import arrow.core.raise.context.ensureNotNull
+import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.JWKExtensions
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.jwkExtensions
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
@@ -388,71 +389,67 @@ internal class IssueMobileDrivingLicence(
     override val publicKey: JWK?
         get() = null
 
+    context(_: Raise<IssueCredentialError>)
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): Either<IssueCredentialError, CredentialResponse> =
-        either {
-            log.info("Issuing mDL")
-            val holderKeys =
-                with(jwkExtensions()) {
-                    validateProofs(request.unvalidatedProofs, supportedCredential, clock.now())
-                        .bind()
-                        .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
-                }
-            val licence = getMobileDrivingLicenceData(authorizationContext).bind()
-            ensureNotNull(licence) {
-                IssueCredentialError.Unexpected("Unable to fetch mDL data")
+    ): CredentialResponse {
+        log.info("Issuing mDL")
+        val holderKeys =
+            with(JWKExtensions) {
+                validateProofs(request.unvalidatedProofs, supportedCredential, clock.now())
+                    .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
             }
 
-            val issuedAt = clock.now()
-            val expiresAt = issuedAt + validityDuration
-
-            val issuedCredentials =
-                holderKeys
-                    .parMap(Dispatchers.Default, 4) { holderKey ->
-                        val statusListToken =
-                            generateStatusListToken?.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
-                                it(supportedCredential.docType, expiresAt)
-                                    .getOrElse { error ->
-                                        raise(Unexpected("Unable to generate Status List Token", error))
-                                    }
-                            }
-
-                        encodeMobileDrivingLicenceInCbor(licence, holderKey, issuedAt, expiresAt, statusListToken).bind()
-                    }.toNonEmptyListOrNull()
-            ensureNotNull(issuedCredentials) {
-                IssueCredentialError.Unexpected("Unable to issue mDL")
-            }
-
-            val notificationId =
-                if (notificationsEnabled)
-                    generateNotificationId()
-                else
-                    null
-
-            storeIssuedCredentials(
-                IssuedCredentials(
-                    format = MSO_MDOC_FORMAT,
-                    type = supportedCredential.docType,
-                    holder =
-                        with(licence.driver) {
-                            "${familyName.latin.value} ${givenName.latin.value}"
-                        },
-                    holderPublicKeys = holderKeys,
-                    issuedAt = issuedAt,
-                    notificationId = notificationId,
-                ),
-            )
-
-            CredentialResponse
-                .Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
-                .also {
-                    log.info("Successfully issued mDL(s)")
-                    log.debug("Issued mDL(s) data {}", it)
-                }
+        val licence = getMobileDrivingLicenceData(authorizationContext)
+        ensureNotNull(licence) {
+            IssueCredentialError.Unexpected("Unable to fetch mDL data")
         }
+
+        val issuedAt = clock.now()
+        val expiresAt = issuedAt + validityDuration
+
+        val issuedCredentials =
+            holderKeys
+                .parMap(Dispatchers.Default, 4) { holderKey ->
+                    val statusListToken =
+                        generateStatusListToken
+                            ?.takeIf { credentialReusePolicy.shouldIncludeStatusList }
+                            ?.let { srv -> srv(supportedCredential.docType, expiresAt) }
+                    encodeMobileDrivingLicenceInCbor(licence, holderKey, issuedAt, expiresAt, statusListToken)
+                }.toNonEmptyListOrNull()
+        ensureNotNull(issuedCredentials) {
+            IssueCredentialError.Unexpected("Unable to issue mDL")
+        }
+
+        val notificationId =
+            if (notificationsEnabled)
+                generateNotificationId()
+            else
+                null
+
+        storeIssuedCredentials(
+            IssuedCredentials(
+                format = MSO_MDOC_FORMAT,
+                type = supportedCredential.docType,
+                holder =
+                    with(licence.driver) {
+                        "${familyName.latin.value} ${givenName.latin.value}"
+                    },
+                holderPublicKeys = holderKeys,
+                issuedAt = issuedAt,
+                notificationId = notificationId,
+            ),
+        )
+
+        return CredentialResponse
+            .Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
+            .also {
+                log.info("Successfully issued mDL(s)")
+                log.debug("Issued mDL(s) data {}", it)
+            }
+    }
 
     companion object {
         private val log = LoggerFactory.getLogger(IssueMobileDrivingLicence::class.java)

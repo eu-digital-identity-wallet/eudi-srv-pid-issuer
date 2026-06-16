@@ -15,7 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
-import arrow.core.Either
+import arrow.core.raise.Raise
+import arrow.core.raise.catch
+import arrow.core.raise.context.raise
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.coseAlgorithm
@@ -47,17 +49,20 @@ class DefaultEncodeMobileDrivingLicenceInCbor(
             addItemsToSign(licence)
         }
 
+    context(_: Raise<Unexpected>)
     override suspend fun invoke(
         licence: MobileDrivingLicence,
         holderKey: ECKey,
         issuedAt: Instant,
         expiresAt: Instant,
         statusListToken: StatusListToken?,
-    ): Either<Unexpected, String> =
-        Either
-            .catch {
+    ): String =
+        catch(
+            block = {
                 signer.sign(licence, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
-            }.mapLeft { Unexpected("Failed to encode mDL", it) }
+            },
+            catch = { raise(Unexpected("Failed to encode mDL", it)) },
+        )
 }
 
 private fun MDocBuilder.addItemsToSign(licence: MobileDrivingLicence) {
@@ -66,7 +71,12 @@ private fun MDocBuilder.addItemsToSign(licence: MobileDrivingLicence) {
     addItemsToSign(licence.issuer)
     addItemToSign(MsoMdocMdlV1Claims.DocumentNumber, licence.documentNumber.value.toDataElement())
     addItemToSign(MsoMdocMdlV1Claims.DrivingPrivileges, licence.privileges.map { it.toDE() }.toDataElement())
-    licence.administrativeNumber?.let { addItemToSign(MsoMdocMdlV1Claims.AdministrativeNumber, it.value.toDataElement()) }
+    licence.administrativeNumber?.let {
+        addItemToSign(
+            MsoMdocMdlV1Claims.AdministrativeNumber,
+            it.value.toDataElement(),
+        )
+    }
 }
 
 private fun MDocBuilder.addItemsToSign(driver: Driver) {

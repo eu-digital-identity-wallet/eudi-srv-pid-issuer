@@ -15,9 +15,12 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.status
 
-import arrow.core.Either
+import arrow.core.raise.Raise
+import arrow.core.raise.catch
+import arrow.core.raise.context.raise
 import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -39,36 +42,45 @@ internal class GenerateStatusListTokenWithExternalService(
     private val apiKey: String,
     private val clock: Clock,
 ) : GenerateStatusListToken {
+    context(_: Raise<IssueCredentialError.Unexpected>)
     override suspend fun invoke(
         type: String,
         expiration: Instant,
-    ): Either<Throwable, StatusListToken> =
-        Either.catch {
-            require(type.isNotBlank()) { "type cannot be blank" }
+    ): StatusListToken =
+        catch(
+            {
+                require(type.isNotBlank()) { "type cannot be blank" }
 
-            val statusTokens =
-                webClient
-                    .post()
-                    .uri(serviceUrl.toExternalForm())
-                    .headers {
-                        it.contentType = MediaType.APPLICATION_FORM_URLENCODED
-                        it.accept = listOf(MediaType.APPLICATION_JSON)
-                        it.set("X-API-Key", apiKey)
-                    }.body(
-                        BodyInserters.fromFormData(
-                            LinkedMultiValueMap<String, String>().apply {
-                                add("country", "FC")
-                                add("doctype", type)
-                                add("expiry_date", with(clock) { expiration.toZonedDateTime().format(DateTimeFormatter.ISO_LOCAL_DATE) })
-                            },
-                        ),
-                    ).awaitExchange { it.awaitBody<StatusTokensTO>() }
+                val statusTokens =
+                    webClient
+                        .post()
+                        .uri(serviceUrl.toExternalForm())
+                        .headers {
+                            it.contentType = MediaType.APPLICATION_FORM_URLENCODED
+                            it.accept = listOf(MediaType.APPLICATION_JSON)
+                            it.set("X-API-Key", apiKey)
+                        }.body(
+                            BodyInserters.fromFormData(
+                                LinkedMultiValueMap<String, String>().apply {
+                                    add("country", "FC")
+                                    add("doctype", type)
+                                    add(
+                                        "expiry_date",
+                                        with(clock) {
+                                            expiration.toZonedDateTime().format(DateTimeFormatter.ISO_LOCAL_DATE)
+                                        },
+                                    )
+                                },
+                            ),
+                        ).awaitExchange { it.awaitBody<StatusTokensTO>() }
 
-            StatusListToken(
-                statusList = URI.create(statusTokens.statusListToken.statusList),
-                index = statusTokens.statusListToken.index.toUInt(),
-            )
-        }
+                StatusListToken(
+                    statusList = URI.create(statusTokens.statusListToken.statusList),
+                    index = statusTokens.statusListToken.index.toUInt(),
+                )
+            },
+            catch = { raise(IssueCredentialError.Unexpected("Unable to generate status list token", it)) },
+        )
 }
 
 @Serializable

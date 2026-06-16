@@ -15,11 +15,11 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.Either
 import arrow.core.NonEmptyList
-import arrow.core.getOrElse
-import arrow.core.raise.either
-import arrow.core.raise.ensure
+import arrow.core.raise.Raise
+import arrow.core.raise.catch
+import arrow.core.raise.context.ensure
+import arrow.core.raise.context.raise
 import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
@@ -27,9 +27,9 @@ import eu.europa.ec.eudi.pidissuer.domain.CredentialReusePolicy
 import eu.europa.ec.eudi.pidissuer.domain.EudiReusePolicy
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidNonce
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
-import kotlinx.coroutines.coroutineScope
 import kotlin.time.Instant
 
 /**
@@ -41,50 +41,49 @@ internal class ValidateProofs(
     private val verifyNonce: VerifyNonce,
     private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
 ) {
+    context(_: Raise<IssueCredentialError>)
     suspend operator fun invoke(
         unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
-    ): Either<IssueCredentialError, NonEmptyList<JWK>> =
-        coroutineScope {
-            either {
-                val credentialKeysAndCNonces =
-                    unvalidatedProofs.map {
-                        when (it) {
-                            is UnvalidatedProof.Jwt -> {
-                                validateJwtProof(it, credentialConfiguration, at).bind()
-                            }
-
-                            is UnvalidatedProof.Attestation -> {
-                                validateAttestationProof(it, credentialConfiguration, at).bind()
-                            }
-
-                            is UnvalidatedProof.DiVp -> {
-                                raise(InvalidProof("Supporting only JWT proof"))
-                            }
-                        }
+    ): NonEmptyList<JWK> {
+        val credentialKeysAndCNonces =
+            unvalidatedProofs.map {
+                when (it) {
+                    is UnvalidatedProof.Jwt -> {
+                        validateJwtProof(it, credentialConfiguration, at)
                     }
 
-                val cnonces = credentialKeysAndCNonces.map { it.second }.toNonEmptyListOrNull()
-                checkNotNull(cnonces)
-                ensure(verifyNonce(cnonces, at)) {
-                    InvalidNonce("CNonce is not valid")
+                    is UnvalidatedProof.Attestation -> {
+                        validateAttestationProof(it, credentialConfiguration, at)
+                    }
+
+                    is UnvalidatedProof.DiVp -> {
+                        raise(InvalidProof("Supporting only JWT proof"))
+                    }
                 }
-
-                val jwks =
-                    credentialKeysAndCNonces
-                        .map {
-                            extractJwkFromCredentialKey(it.first).getOrElse { error ->
-                                raise(InvalidProof("Unable to extract JWK from CredentialKey", error))
-                            }
-                        }.flatten()
-                        .distinct()
-                        .limitTo(credentialConfiguration.credentialReusePolicy)
-                        .toNonEmptyListOrNull()
-
-                checkNotNull(jwks)
             }
+
+        val cnonces = credentialKeysAndCNonces.map { it.second }.toNonEmptyListOrNull()
+        checkNotNull(cnonces)
+        ensure(verifyNonce(cnonces, at)) {
+            InvalidNonce("CNonce is not valid")
         }
+
+        val jwks =
+            credentialKeysAndCNonces
+                .map {
+                    catch(
+                        block = { extractJwkFromCredentialKey(it.first) },
+                        catch = { error -> raise(InvalidProof("Unable to extract JWK from CredentialKey", error)) },
+                    )
+                }.flatten()
+                .distinct()
+                .limitTo(credentialConfiguration.credentialReusePolicy)
+                .toNonEmptyListOrNull()
+
+        return checkNotNull(jwks)
+    }
 
     private fun List<JWK>.limitTo(policy: CredentialReusePolicy): List<JWK> =
         when (policy) {

@@ -15,9 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.ehic
 
-import arrow.core.Either
+import arrow.core.raise.Raise
 import arrow.core.raise.catch
-import arrow.core.raise.either
+import arrow.core.raise.context.raise
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
@@ -41,13 +41,14 @@ import kotlin.time.Instant
 import kotlin.time.toJavaInstant
 
 sealed interface EncodeEuropeanHealthInsuranceCardInSdJwtVc {
+    context(_: Raise<IssueCredentialError>)
     suspend operator fun invoke(
         ehic: EuropeanHealthInsuranceCard,
         holder: Username,
         holderPublicKey: JWK,
         dateOfIssuance: Instant,
         dateOfExpiry: Instant,
-    ): Either<IssueCredentialError, JsonElement>
+    ): JsonElement
 
     companion object {
         fun jwsJsonFlattened(
@@ -86,21 +87,30 @@ private class JwsJsonFlattenedEncoder(
 ) : EncodeEuropeanHealthInsuranceCardInSdJwtVc {
     private val issuer: SdJwtIssuer<SignedJWT> by lazy { issuerSigningKey.sdJwtVcIssuer(digestsHashAlgorithm) }
 
+    context(_: Raise<IssueCredentialError>)
     override suspend operator fun invoke(
         ehic: EuropeanHealthInsuranceCard,
         holder: Username,
         holderPublicKey: JWK,
         dateOfIssuance: Instant,
         dateOfExpiry: Instant,
-    ): Either<IssueCredentialError, JsonElement> =
-        either {
-            val sdJwt =
-                catch({
-                    issuer.createSdJwt(vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
-                }) { raise(IssueCredentialError.Unexpected("Unable to create SD-JWT VC", it)) }
-
-            sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)
-        }
+    ): JsonElement =
+        catch(
+            block = {
+                val sdJwt =
+                    issuer.createSdJwt(
+                        vct,
+                        ehic,
+                        holder,
+                        holderPublicKey,
+                        credentialIssuerId,
+                        dateOfIssuance,
+                        dateOfExpiry,
+                    )
+                sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)
+            },
+            catch = { raise(IssueCredentialError.Unexpected("Unable to create SD-JWT VC", it)) },
+        )
 }
 
 private class CompactEncoder(
@@ -111,21 +121,32 @@ private class CompactEncoder(
 ) : EncodeEuropeanHealthInsuranceCardInSdJwtVc {
     private val issuer: SdJwtIssuer<SignedJWT> by lazy { issuerSigningKey.sdJwtVcIssuer(digestsHashAlgorithm) }
 
+    context(_: Raise<IssueCredentialError>)
     override suspend operator fun invoke(
         ehic: EuropeanHealthInsuranceCard,
         holder: Username,
         holderPublicKey: JWK,
         dateOfIssuance: Instant,
         dateOfExpiry: Instant,
-    ): Either<IssueCredentialError, JsonElement> =
-        either {
-            val sdJwt =
-                catch({
-                    issuer.createSdJwt(vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
-                }) { raise(IssueCredentialError.Unexpected("Unable to create SD-JWT VC", it)) }
-
-            JsonPrimitive(sdJwt.serialize())
-        }
+    ): JsonElement =
+        catch(
+            block = {
+                val sdJwt =
+                    issuer.createSdJwt(
+                        vct,
+                        ehic,
+                        holder,
+                        holderPublicKey,
+                        credentialIssuerId,
+                        dateOfIssuance,
+                        dateOfExpiry,
+                    )
+                JsonPrimitive(sdJwt.serialize())
+            },
+            catch = {
+                raise(IssueCredentialError.Unexpected("Unable to create SD-JWT VC", it))
+            },
+        )
 }
 
 private fun sdJwt(
@@ -148,7 +169,10 @@ private fun sdJwt(
         cnf(holderPublicKey)
         claim(RFC7519.EXPIRATION_TIME, dateOfExpiry.epochSeconds)
         claim(RFC7519.NOT_BEFORE, dateOfIssuance.epochSeconds)
-        sdClaim(EuropeanHealthInsuranceCardClaims.PersonalAdministrativeNumber.name, ehic.personalAdministrativeNumber.value)
+        sdClaim(
+            EuropeanHealthInsuranceCardClaims.PersonalAdministrativeNumber.name,
+            ehic.personalAdministrativeNumber.value,
+        )
         claim(EuropeanHealthInsuranceCardClaims.IssuingCountry.name, ehic.issuingCountry.value)
         objClaim(EuropeanHealthInsuranceCardClaims.IssuingAuthority.attribute.name) {
             claim(EuropeanHealthInsuranceCardClaims.IssuingAuthority.Id.name, ehic.issuingAuthority.id.value)
@@ -167,10 +191,16 @@ private fun sdJwt(
             claim(EuropeanHealthInsuranceCardClaims.AuthenticSource.Name.name, ehic.authenticSource.name.value)
         }
         ehic.endingDate?.let {
-            claim(EuropeanHealthInsuranceCardClaims.EndingDate.name, formatter.format(it.withZoneSameInstant(ZoneOffset.UTC)))
+            claim(
+                EuropeanHealthInsuranceCardClaims.EndingDate.name,
+                formatter.format(it.withZoneSameInstant(ZoneOffset.UTC)),
+            )
         }
         ehic.startingDate?.let {
-            claim(EuropeanHealthInsuranceCardClaims.StartingDate.name, formatter.format(it.withZoneSameInstant(ZoneOffset.UTC)))
+            claim(
+                EuropeanHealthInsuranceCardClaims.StartingDate.name,
+                formatter.format(it.withZoneSameInstant(ZoneOffset.UTC)),
+            )
         }
         sdClaim(EuropeanHealthInsuranceCardClaims.DocumentNumber.name, ehic.documentNumber.value)
     }

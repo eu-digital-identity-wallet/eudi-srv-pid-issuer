@@ -17,6 +17,9 @@ package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.*
 import arrow.core.raise.*
+import arrow.core.raise.context.ensure
+import arrow.core.raise.context.ensureNotNull
+import arrow.core.raise.context.raise
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
@@ -28,7 +31,6 @@ import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.*
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ResolveCredentialRequestByCredentialIdentifier
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
-import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -307,8 +309,8 @@ class IssueCredential(
     private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
     private val encryptCredentialResponse: EncryptCredentialResponse,
 ) {
-    private fun Raise<IssueCredentialError>.services(): Services =
-        Services(this, credentialIssuerMetadata, resolveCredentialRequestByCredentialIdentifier)
+    private val services: Services =
+        Services(credentialIssuerMetadata, resolveCredentialRequestByCredentialIdentifier)
 
     suspend fun fromEncryptedRequest(
         authorizationContext: AuthorizationContext,
@@ -349,7 +351,7 @@ class IssueCredential(
                     ?: credentialRequestTO.credentialIdentifier
             log.info("Handling issuance request for $credentialConfigurationIdOrCredentialIdentifier..")
             val (request, issued) =
-                services().issueCredential(authorizationContext, credentialRequestTO)
+                services.issueCredential(authorizationContext, credentialRequestTO)
             successResponse(request, issued)
         }.getOrElse { error ->
             errorResponse(error)
@@ -378,53 +380,52 @@ class IssueCredential(
 }
 
 private class Services(
-    raise: Raise<IssueCredentialError>,
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
     private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
-) : Validations,
-    Raise<IssueCredentialError> by raise {
+) : Validations {
+    context(_: Raise<IssueCredentialError>)
     suspend fun issueCredential(
         authorizationContext: AuthorizationContext,
         credentialRequestTO: CredentialRequestTO,
-    ): Pair<CredentialRequest, CredentialResponse> =
-        coroutineScope {
-            val unresolvedRequest =
-                credentialRequestTO.toDomain(
-                    credentialIssuerMetadata.credentialResponseEncryption,
-                    credentialIssuerMetadata.batchCredentialIssuance,
-                    credentialIssuerMetadata.credentialConfigurationsSupported,
-                )
-            val request =
-                when (unresolvedRequest) {
-                    is UnresolvedCredentialRequest.ByCredentialConfigurationId -> {
-                        ResolvedCredentialRequest(
-                            unresolvedRequest.credentialConfigurationId,
-                            unresolvedRequest.credentialRequest,
-                            null,
-                        )
-                    }
-
-                    is UnresolvedCredentialRequest.ByCredentialIdentifier -> {
-                        resolve(unresolvedRequest)
-                    }
+    ): Pair<CredentialRequest, CredentialResponse> {
+        val unresolvedRequest =
+            credentialRequestTO.toDomain(
+                credentialIssuerMetadata.credentialResponseEncryption,
+                credentialIssuerMetadata.batchCredentialIssuance,
+                credentialIssuerMetadata.credentialConfigurationsSupported,
+            )
+        val request =
+            when (unresolvedRequest) {
+                is UnresolvedCredentialRequest.ByCredentialConfigurationId -> {
+                    ResolvedCredentialRequest(
+                        unresolvedRequest.credentialConfigurationId,
+                        unresolvedRequest.credentialRequest,
+                        null,
+                    )
                 }
-            val issued = issue(authorizationContext, request)
-            request.credentialRequest to issued
-        }
 
-    private suspend fun resolve(unresolvedRequest: UnresolvedCredentialRequest.ByCredentialIdentifier): ResolvedCredentialRequest =
-        either {
-            val resolvedRequest =
-                resolveCredentialRequestByCredentialIdentifier(
-                    unresolvedRequest.credentialIdentifier,
-                    unresolvedRequest.unvalidatedProofs,
-                    unresolvedRequest.credentialResponseEncryption,
-                )
-            ensureNotNull(resolvedRequest) {
-                InvalidCredentialIdentifier(unresolvedRequest.credentialIdentifier)
+                is UnresolvedCredentialRequest.ByCredentialIdentifier -> {
+                    resolve(unresolvedRequest)
+                }
             }
-        }.bind()
+        val issued = issue(authorizationContext, request)
+        return request.credentialRequest to issued
+    }
 
+    context(_: Raise<IssueCredentialError>)
+    private suspend fun resolve(unresolvedRequest: UnresolvedCredentialRequest.ByCredentialIdentifier): ResolvedCredentialRequest {
+        val resolvedRequest =
+            resolveCredentialRequestByCredentialIdentifier(
+                unresolvedRequest.credentialIdentifier,
+                unresolvedRequest.unvalidatedProofs,
+                unresolvedRequest.credentialResponseEncryption,
+            )
+        return ensureNotNull(resolvedRequest) {
+            InvalidCredentialIdentifier(unresolvedRequest.credentialIdentifier)
+        }
+    }
+
+    context(_: Raise<IssueCredentialError>)
     private suspend fun issue(
         authorizationContext: AuthorizationContext,
         resolvedCredentialRequest: ResolvedCredentialRequest,
@@ -434,9 +435,10 @@ private class Services(
             authorizationContext,
             resolvedCredentialRequest.credentialRequest,
             resolvedCredentialRequest.credentialIdentifier,
-        ).bind()
+        )
     }
 
+    context(_: Raise<IssueCredentialError>)
     private fun specificIssuerFor(
         authorizationContext: AuthorizationContext,
         resolvedCredentialRequest: ResolvedCredentialRequest,
@@ -506,10 +508,11 @@ private val BatchCredentialIssuance.maxProofsSupported: Int
         }
 
 @Suppress("ktlint:standard:max-line-length")
-private interface Validations : Raise<IssueCredentialError> {
+private interface Validations {
     /**
      * Tries to convert a [CredentialRequestTO] to a [CredentialRequest].
      */
+    context(_: Raise<IssueCredentialError>)
     fun CredentialRequestTO.toDomain(
         supportedEncryption: CredentialResponseEncryption,
         supportedBatchIssuance: BatchCredentialIssuance,
@@ -607,6 +610,7 @@ private interface Validations : Raise<IssueCredentialError> {
     /**
      * Gets the [RequestedResponseEncryption] that corresponds to the provided values.
      */
+    context(_: Raise<InvalidEncryptionParameters>)
     fun CredentialResponseEncryptionTO.toDomain(): RequestedResponseEncryption.Required =
         RequestedResponseEncryption
             .Required(
@@ -619,6 +623,7 @@ private interface Validations : Raise<IssueCredentialError> {
      * Verifies this [RequestedResponseEncryption] is supported by the provided [CredentialResponseEncryption], otherwise
      * raises an [InvalidEncryptionParameters].
      */
+    context(_: Raise<InvalidEncryptionParameters>)
     fun RequestedResponseEncryption.ensureIsSupported(supported: CredentialResponseEncryption) {
         when (supported) {
             is CredentialResponseEncryption.NotSupported -> {
@@ -753,7 +758,10 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
 
             is InvalidClaims -> {
                 CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
-                    errorDescriptionWithErrorCauseDescription("'claims' does not have the expected structure", error)
+                    errorDescriptionWithErrorCauseDescription(
+                        "'claims' does not have the expected structure",
+                        error,
+                    )
             }
         }
     return IssueCredentialResponse.FailedTO(type, description)

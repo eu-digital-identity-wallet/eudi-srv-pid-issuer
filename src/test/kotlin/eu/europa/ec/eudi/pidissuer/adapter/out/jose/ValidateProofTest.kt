@@ -19,6 +19,7 @@ import arrow.core.Either
 import arrow.core.NonEmptyList
 import arrow.core.nonEmptyListOf
 import arrow.core.nonEmptySetOf
+import arrow.core.raise.either
 import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
@@ -68,15 +69,17 @@ class ValidateProofTest {
             val proof = UnvalidatedProof.DiVp("foo")
 
             val result =
-                validateProofs(
-                    nonEmptyListOf(proof),
-                    pidMsoMdocV1(
-                        CoseAlgorithm(-7),
-                        nonEmptySetOf(JWSAlgorithm.ES256),
-                        KeyAttestationRequirement.NotRequired,
-                    ),
-                    clock.now(),
-                )
+                either {
+                    validateProofs(
+                        nonEmptyListOf(proof),
+                        pidMsoMdocV1(
+                            CoseAlgorithm(-7),
+                            nonEmptySetOf(JWSAlgorithm.ES256),
+                            KeyAttestationRequirement.NotRequired,
+                        ),
+                        clock.now(),
+                    )
+                }
 
             assert(result.isLeft())
 
@@ -178,7 +181,7 @@ class ValidateProofTest {
                 val match =
                     keysByProofKey[jwk.computeThumbprint().toString()]
                         ?: error("Unexpected credential key in test")
-                Either.Right<NonEmptyList<JWK>>(match)
+                match
             }
 
         val validator =
@@ -198,11 +201,13 @@ class ValidateProofTest {
             )
 
         val result =
-            validator(
-                checkNotNull(proofs.map { it.first }.toNonEmptyListOrNull()),
-                configuration,
-                clock.now(),
-            )
+            either {
+                validator(
+                    checkNotNull(proofs.map { it.first }.toNonEmptyListOrNull()),
+                    configuration,
+                    clock.now(),
+                )
+            }
         return result.fold({ fail("Expected success but got $it") }, { it })
     }
 

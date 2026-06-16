@@ -110,6 +110,7 @@ kotlin {
         freeCompilerArgs.addAll(
             "-Xjsr305=strict",
             "-Xconsistent-data-class-copy-visibility",
+            "-Xcontext-parameters",
         )
         optIn =
             listOf(

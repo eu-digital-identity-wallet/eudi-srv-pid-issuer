@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.NonEmptyList
 import arrow.core.nonEmptySetOf
+import arrow.core.raise.either
 import arrow.core.toNonEmptyListOrNull
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.JOSEObjectType
@@ -64,11 +65,13 @@ internal class ValidateJwtProofTest {
                     jwk(key.toPublicJWK())
                 }
             val result =
-                validateJwtProof(
-                    UnvalidatedProof.Jwt(signedJwt.serialize()),
-                    credentialConfiguration,
-                    clock.now(),
-                )
+                either {
+                    validateJwtProof(
+                        UnvalidatedProof.Jwt(signedJwt.serialize()),
+                        credentialConfiguration,
+                        clock.now(),
+                    )
+                }
 
             assert(result.isLeft())
         }
@@ -80,11 +83,13 @@ internal class ValidateJwtProofTest {
             val signedJwt = generateSignedJwt(key, "nonce")
 
             val result =
-                validateJwtProof(
-                    UnvalidatedProof.Jwt(signedJwt.serialize()),
-                    credentialConfiguration,
-                    clock.now(),
-                )
+                either {
+                    validateJwtProof(
+                        UnvalidatedProof.Jwt(signedJwt.serialize()),
+                        credentialConfiguration,
+                        clock.now(),
+                    )
+                }
 
             assert(result.isLeft())
         }
@@ -101,11 +106,13 @@ internal class ValidateJwtProofTest {
                 }
 
             val result =
-                validateJwtProof(
-                    UnvalidatedProof.Jwt(signedJwt.serialize()),
-                    credentialConfiguration,
-                    clock.now(),
-                )
+                either {
+                    validateJwtProof(
+                        UnvalidatedProof.Jwt(signedJwt.serialize()),
+                        credentialConfiguration,
+                        clock.now(),
+                    )
+                }
 
             assertTrue { result.isLeft() }
         }
@@ -120,11 +127,13 @@ internal class ValidateJwtProofTest {
                     x509CertChain(chain.map { Base64.encode(it.encoded) })
                 }
 
-            validateJwtProof(
-                UnvalidatedProof.Jwt(signedJwt.serialize()),
-                credentialConfiguration,
-                clock.now(),
-            ).fold(
+            either {
+                validateJwtProof(
+                    UnvalidatedProof.Jwt(signedJwt.serialize()),
+                    credentialConfiguration,
+                    clock.now(),
+                )
+            }.fold(
                 ifLeft = { fail("Unexpected $it", it.cause) },
                 ifRight = { credentialKey ->
                     val x5c = assertIs<Pair<CredentialKey.X5c, String?>>(credentialKey, "expected 'x5c' credential key")
@@ -142,11 +151,13 @@ internal class ValidateJwtProofTest {
                     jwk(key.toPublicJWK())
                 }
 
-            validateJwtProof(
-                UnvalidatedProof.Jwt(signedJwt.serialize()),
-                credentialConfiguration,
-                clock.now(),
-            ).fold(
+            either {
+                validateJwtProof(
+                    UnvalidatedProof.Jwt(signedJwt.serialize()),
+                    credentialConfiguration,
+                    clock.now(),
+                )
+            }.fold(
                 ifLeft = { fail("Unexpected $it", it.cause) },
                 ifRight = { credentialKey ->
                     val jwk = assertIs<Pair<CredentialKey.Jwk, String?>>(credentialKey, "expected 'jwk' credential key")
@@ -164,11 +175,13 @@ internal class ValidateJwtProofTest {
                     keyID("did:jwk:${Base64URL.encode(key.toPublicJWK().toJSONString())}#0")
                 }
 
-            validateJwtProof(
-                UnvalidatedProof.Jwt(signedJwt.serialize()),
-                credentialConfiguration,
-                clock.now(),
-            ).fold(
+            either {
+                validateJwtProof(
+                    UnvalidatedProof.Jwt(signedJwt.serialize()),
+                    credentialConfiguration,
+                    clock.now(),
+                )
+            }.fold(
                 ifLeft = { fail("Unexpected $it", it.cause) },
                 ifRight = { credentialKey ->
                     val jwk = assertIs<Pair<CredentialKey.DIDUrl, String?>>(credentialKey, "expected 'jwk' credential key")
@@ -188,11 +201,13 @@ internal class ValidateJwtProofTest {
                 }
 
             val result =
-                validateJwtProof(
-                    UnvalidatedProof.Jwt(signedJwt.serialize()),
-                    credentialConfiguration,
-                    clock.now(),
-                )
+                either {
+                    validateJwtProof(
+                        UnvalidatedProof.Jwt(signedJwt.serialize()),
+                        credentialConfiguration,
+                        clock.now(),
+                    )
+                }
 
             assertTrue { result.isLeft() }
         }
@@ -208,11 +223,13 @@ internal class ValidateJwtProofTest {
                 }
 
             val result =
-                validateJwtProof(
-                    UnvalidatedProof.Jwt(signedJwt.serialize()),
-                    credentialConfiguration,
-                    clock.now(),
-                )
+                either {
+                    validateJwtProof(
+                        UnvalidatedProof.Jwt(signedJwt.serialize()),
+                        credentialConfiguration,
+                        clock.now(),
+                    )
+                }
 
             assertTrue { result.isLeft() }
         }
@@ -227,11 +244,13 @@ internal class ValidateJwtProofTest {
                     keyID("did:jwk:${Base64URL.encode(incorrectKey.toPublicJWK().toJSONString())}#0")
                 }
             val result =
-                validateJwtProof(
-                    UnvalidatedProof.Jwt(signedJwt.serialize()),
-                    credentialConfiguration,
-                    clock.now(),
-                )
+                either {
+                    validateJwtProof(
+                        UnvalidatedProof.Jwt(signedJwt.serialize()),
+                        credentialConfiguration,
+                        clock.now(),
+                    )
+                }
 
             assertTrue { result.isLeft() }
         }
@@ -245,15 +264,17 @@ internal class ValidateJwtProofTest {
                     jwk(key.toPublicJWK())
                 }
             val result =
-                validateJwtProof(
-                    UnvalidatedProof.Jwt(signedJwt.serialize()),
-                    mobileDrivingLicenceV1(
-                        CoseAlgorithm(-7),
-                        nonEmptySetOf(JWSAlgorithm.ES512),
-                        KeyAttestationRequirement.NotRequired,
-                    ),
-                    clock.now(),
-                )
+                either {
+                    validateJwtProof(
+                        UnvalidatedProof.Jwt(signedJwt.serialize()),
+                        mobileDrivingLicenceV1(
+                            CoseAlgorithm(-7),
+                            nonEmptySetOf(JWSAlgorithm.ES512),
+                            KeyAttestationRequirement.NotRequired,
+                        ),
+                        clock.now(),
+                    )
+                }
 
             assertTrue { result.isLeft() }
         }

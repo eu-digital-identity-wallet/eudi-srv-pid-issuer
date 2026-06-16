@@ -15,9 +15,10 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.Either
-import arrow.core.raise.either
-import arrow.core.raise.ensureNotNull
+import arrow.core.raise.Raise
+import arrow.core.raise.catch
+import arrow.core.raise.context.ensureNotNull
+import arrow.core.raise.context.raise
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
@@ -47,41 +48,54 @@ internal class ValidateJwtProof(
     private val credentialIssuerId: CredentialIssuerId,
     private val verifyKeyAttestation: VerifyKeyAttestation,
 ) {
+    context(_: Raise<IssueCredentialError.InvalidProof>)
     suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof.Jwt,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
-    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey, String>> =
-        either {
-            val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.JWT]
-            ensureNotNull(proofType) {
-                val msg = "Credential configuration '${credentialConfiguration.id.value}' doesn't support 'jwt' proofs"
-                IssueCredentialError.InvalidProof(msg)
-            }
-            check(proofType is ProofType.Jwt)
-            credentialKeyAndNonce(unvalidatedProof, proofType, at).bind()
+    ): Pair<CredentialKey, String> {
+        val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.JWT]
+        ensureNotNull(proofType) {
+            val msg = "Credential configuration '${credentialConfiguration.id.value}' doesn't support 'jwt' proofs"
+            IssueCredentialError.InvalidProof(msg)
         }
+        check(proofType is ProofType.Jwt)
+        return credentialKeyAndNonce(unvalidatedProof, proofType, at)
+    }
 
+    context(_: Raise<IssueCredentialError.InvalidProof>)
     private suspend fun credentialKeyAndNonce(
         unvalidatedProof: UnvalidatedProof.Jwt,
         proofType: ProofType.Jwt,
         at: Instant,
-    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey, String>> =
-        Either
-            .catch {
+    ): Pair<CredentialKey, String> =
+        catch(
+            block = {
                 val signedJwt = SignedJWT.parse(unvalidatedProof.jwt)
                 val nonce = requireNotNull(signedJwt.jwtClaimsSet.getStringClaim("nonce")) { "Missing 'nonce'" }
                 require(signedJwt.header.algorithm in proofType.signingAlgorithmsSupported) {
                     "JWT proof signing algorithm '${signedJwt.header.algorithm}' is not supported, " +
                         "must be one of: ${proofType.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
                 }
-                val (algorithm, credentialKey) = algorithmAndCredentialKey(signedJwt, proofType, verifyKeyAttestation, nonce, at)
+                val (algorithm, credentialKey) =
+                    algorithmAndCredentialKey(
+                        signedJwt,
+                        proofType,
+                        verifyKeyAttestation,
+                        nonce,
+                        at,
+                    )
                 val keySelector = keySelector(signedJwt, credentialKey, algorithm)
                 val processor = processor(credentialIssuerId, keySelector)
                 processor.process(signedJwt, null)
 
                 credentialKey to nonce
-            }.mapLeft { IssueCredentialError.InvalidProof("Invalid proof JWT", it) }
+            },
+            catch = { exception ->
+                val error = IssueCredentialError.InvalidProof("Invalid proof JWT", exception)
+                raise(error)
+            },
+        )
 }
 
 private suspend fun algorithmAndCredentialKey(

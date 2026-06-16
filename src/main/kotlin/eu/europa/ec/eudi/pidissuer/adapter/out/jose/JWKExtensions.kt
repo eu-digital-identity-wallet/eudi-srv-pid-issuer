@@ -16,18 +16,18 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.raise.Raise
+import arrow.core.raise.context.raise
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 
-internal interface JWKExtensions<in Error> : Raise<Error> {
+object JWKExtensions {
     /**
      * Converts this [JWK] to an [ECKey] or raises [onFailure].
      */
-    fun JWK.toECKeyOrFail(onFailure: () -> Error): ECKey =
+    context(_: Raise<Error>)
+    fun <Error> JWK.toECKeyOrFail(onFailure: () -> Error): ECKey =
         when (this) {
             is ECKey -> this
             else -> raise(onFailure())
         }
 }
-
-internal fun <Error> Raise<Error>.jwkExtensions(): JWKExtensions<Error> = object : JWKExtensions<Error>, Raise<Error> by this {}

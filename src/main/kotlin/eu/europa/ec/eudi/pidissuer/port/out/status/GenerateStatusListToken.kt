@@ -16,7 +16,9 @@
 package eu.europa.ec.eudi.pidissuer.port.out.status
 
 import arrow.core.Either
+import arrow.core.raise.Raise
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import kotlin.time.Instant
 
 fun interface GenerateStatusListToken {
@@ -27,8 +29,9 @@ fun interface GenerateStatusListToken {
      * e.g. 'urn:eu.europa.ec.eudi:pid:', or 'eu.europa.ec.eudi.pid.1', or 'org.iso.18013.5.1.mDL'
      * @param expiration expiration date of the issued VC
      */
+    context(_: Raise<IssueCredentialError.Unexpected>)
     suspend operator fun invoke(
         type: String,
         expiration: Instant,
-    ): Either<Throwable, StatusListToken>
+    ): StatusListToken
 }

@@ -15,8 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out
 
-import arrow.core.Either
-import arrow.core.raise.either
+import arrow.core.raise.Raise
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
@@ -32,11 +31,12 @@ interface IssueSpecificCredential {
     val publicKey: JWK?
     val keyAttestationRequirement: KeyAttestationRequirement
 
+    context(_: Raise<IssueCredentialError>)
     suspend operator fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): Either<IssueCredentialError, CredentialResponse>
+    ): CredentialResponse
 }
 
 fun IssueSpecificCredential.asDeferred(
@@ -80,22 +80,21 @@ private class DeferredIssuer(
 
     private val log = LoggerFactory.getLogger(DeferredIssuer::class.java)
 
+    context(_: Raise<IssueCredentialError>)
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): Either<IssueCredentialError, CredentialResponse> =
-        either {
-            val credentialResponse =
-                issuer.invoke(authorizationContext, request, credentialIdentifier).bind()
+    ): CredentialResponse {
+        val credentialResponse =
+            issuer.invoke(authorizationContext, request, credentialIdentifier)
+        require(credentialResponse is CredentialResponse.Issued) { "Actual issuer should return issued credentials" }
 
-            require(credentialResponse is CredentialResponse.Issued) { "Actual issuer should return issued credentials" }
-
-            val transactionId = generateTransactionId()
-            val notIssuedBefore = clock.now() + interval
-            storeDeferredCredential.invoke(transactionId, credentialResponse, notIssuedBefore)
-            CredentialResponse.Deferred(transactionId, interval).also {
-                log.info("Repackaged $credentialResponse  as $it")
-            }
+        val transactionId = generateTransactionId()
+        val notIssuedBefore = clock.now() + interval
+        storeDeferredCredential.invoke(transactionId, credentialResponse, notIssuedBefore)
+        return CredentialResponse.Deferred(transactionId, interval).also {
+            log.info("Repackaged $credentialResponse  as $it")
         }
+    }
 }

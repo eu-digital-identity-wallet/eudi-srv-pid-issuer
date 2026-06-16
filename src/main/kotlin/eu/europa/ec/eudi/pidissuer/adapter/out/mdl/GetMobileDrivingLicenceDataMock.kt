@@ -15,14 +15,16 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
-import arrow.core.Either
 import arrow.core.nonEmptySetOf
-import arrow.core.raise.either
+import arrow.core.raise.Raise
+import arrow.core.raise.context.raise
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.GenericRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.ParameterizedRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.loadResource
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.time.Month
@@ -31,10 +33,10 @@ import java.time.Month
  * Mock implementation for [GetMobileDrivingLicenceData].
  */
 class GetMobileDrivingLicenceDataMock : GetMobileDrivingLicenceData {
-    override suspend fun invoke(context: AuthorizationContext): Either<IssueCredentialError.Unexpected, MobileDrivingLicence> =
-        either {
+    context(_: Raise<IssueCredentialError>)
+    override suspend fun invoke(context: AuthorizationContext): MobileDrivingLicence =
+        withContext(Dispatchers.IO) {
             log.info("Getting mock data for Mobile Driving Licence")
-
             val portrait =
                 loadResource("/eu/europa/ec/eudi/pidissuer/adapter/out/mdl/Portrait.jpg") { message, cause ->
                     raise(IssueCredentialError.Unexpected(message, cause))

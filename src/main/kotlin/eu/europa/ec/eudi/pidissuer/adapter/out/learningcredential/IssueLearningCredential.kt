@@ -15,10 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential
 
-import arrow.core.Either
 import arrow.core.NonEmptySet
-import arrow.core.raise.either
-import arrow.core.raise.ensureNotNull
+import arrow.core.raise.Raise
+import arrow.core.raise.context.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
@@ -58,54 +57,54 @@ internal class IssueLearningCredential(
         require(validity.isPositive())
     }
 
+    context(_: Raise<IssueCredentialError>)
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): Either<IssueCredentialError, CredentialResponse> =
-        either {
-            log.info("Issuing Learning Credential")
+    ): CredentialResponse {
+        log.info("Issuing Learning Credential")
 
-            val holderKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.now()).bind()
-            val learningCredential = getLearningCredential(authorizationContext)
-            val issuedAt = clock.now()
-            val expiresAt =
-                run {
-                    val dateOfExpiry = issuedAt + validity
-                    if (null != learningCredential.dateOfExpiry && learningCredential.dateOfExpiry < dateOfExpiry)
-                        learningCredential.dateOfExpiry
-                    else
-                        dateOfExpiry
-                }
-
-            val issuedCredentials =
-                holderKeys
-                    .parMap(Dispatchers.Default, 4) {
-                        encodeLearningCredential(learningCredential, it, issuedAt = issuedAt, expiresAt = expiresAt).bind()
-                    }.toNonEmptyListOrNull()
-            ensureNotNull(issuedCredentials) {
-                IssueCredentialError.Unexpected("Unable to issue Learning Credential")
+        val holderKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.now())
+        val learningCredential = getLearningCredential(authorizationContext)
+        val issuedAt = clock.now()
+        val expiresAt =
+            run {
+                val dateOfExpiry = issuedAt + validity
+                if (null != learningCredential.dateOfExpiry && learningCredential.dateOfExpiry < dateOfExpiry)
+                    learningCredential.dateOfExpiry
+                else
+                    dateOfExpiry
             }
 
-            val notificationId = generateNotificationId?.invoke()
-            storeIssuedCredentials(
-                IssuedCredentials(
-                    encodeLearningCredential.format,
-                    encodeLearningCredential.type,
-                    authorizationContext.username,
-                    holderKeys,
-                    issuedAt,
-                    notificationId,
-                ),
-            )
-
-            CredentialResponse
-                .Issued(issuedCredentials, notificationId)
-                .also {
-                    log.info("Successfully issued Learning Credential")
-                    log.debug("Issued Learning Credential data {}", it)
-                }
+        val issuedCredentials =
+            holderKeys
+                .parMap(Dispatchers.Default, 4) {
+                    encodeLearningCredential(learningCredential, it, issuedAt = issuedAt, expiresAt = expiresAt)
+                }.toNonEmptyListOrNull()
+        ensureNotNull(issuedCredentials) {
+            IssueCredentialError.Unexpected("Unable to issue Learning Credential")
         }
+
+        val notificationId = generateNotificationId?.invoke()
+        storeIssuedCredentials(
+            IssuedCredentials(
+                encodeLearningCredential.format,
+                encodeLearningCredential.type,
+                authorizationContext.username,
+                holderKeys,
+                issuedAt,
+                notificationId,
+            ),
+        )
+
+        return CredentialResponse
+            .Issued(issuedCredentials, notificationId)
+            .also {
+                log.info("Successfully issued Learning Credential")
+                log.debug("Issued Learning Credential data {}", it)
+            }
+    }
 
     companion object {
         fun sdJwtVcCompact(

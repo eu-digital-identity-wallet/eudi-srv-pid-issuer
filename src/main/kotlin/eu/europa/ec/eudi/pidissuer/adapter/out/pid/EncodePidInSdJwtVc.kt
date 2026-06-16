@@ -15,8 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
-import arrow.core.Either
-import arrow.core.raise.either
+import arrow.core.raise.Raise
+import arrow.core.raise.catch
+import arrow.core.raise.context.raise
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
@@ -57,6 +58,7 @@ class EncodePidInSdJwtVc(
      */
     private val issuer: SdJwtIssuer<SignedJWT> by lazy { issuerSigningKey.sdJwtVcIssuer(hashAlgorithm) }
 
+    context(_: Raise<IssueCredentialError>)
     suspend operator fun invoke(
         pid: Pid,
         pidMetaData: PidMetaData,
@@ -65,32 +67,33 @@ class EncodePidInSdJwtVc(
         expiresAt: Instant,
         notBefore: Instant?,
         statusListToken: StatusListToken?,
-    ): Either<IssueCredentialError, String> =
-        either {
-            val sdJwtSpec =
-                selectivelyDisclosed(
-                    pid = pid,
-                    pidMetaData = pidMetaData,
-                    vct = vct,
-                    credentialIssuerId = credentialIssuerId,
-                    holderPubKey = holderKey,
-                    iat = issuedAt,
-                    exp = expiresAt,
-                    nbf = notBefore,
-                    statusListToken = statusListToken,
-                )
-            val issuedSdJwt: SdJwt<SignedJWT> =
-                issuer.issue(sdJwtSpec).getOrElse {
-                    raise(Unexpected("Error while creating SD-JWT", it))
+    ): String =
+        catch(
+            block = {
+                val sdJwtSpec =
+                    selectivelyDisclosed(
+                        pid = pid,
+                        pidMetaData = pidMetaData,
+                        vct = vct,
+                        credentialIssuerId = credentialIssuerId,
+                        holderPubKey = holderKey,
+                        iat = issuedAt,
+                        exp = expiresAt,
+                        nbf = notBefore,
+                        statusListToken = statusListToken,
+                    )
+                val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow()
+                if (log.isInfoEnabled) {
+                    log.info(with(Printer) { issuedSdJwt.prettyPrint() })
                 }
-            if (log.isInfoEnabled) {
-                log.info(with(Printer) { issuedSdJwt.prettyPrint() })
-            }
 
-            with(NimbusSdJwtOps) {
-                issuedSdJwt.serialize()
-            }
-        }
+                with(NimbusSdJwtOps) { issuedSdJwt.serialize() }
+            },
+            catch = { ex ->
+                val error = Unexpected("Error while creating SD-JWT", ex)
+                raise(error)
+            },
+        )
 }
 
 private fun selectivelyDisclosed(
