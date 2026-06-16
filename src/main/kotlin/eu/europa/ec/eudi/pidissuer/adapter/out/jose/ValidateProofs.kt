@@ -41,50 +41,64 @@ internal class ValidateProofs(
     private val verifyNonce: VerifyNonce,
     private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
 ) {
-
     suspend operator fun invoke(
         unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
-    ): Either<IssueCredentialError, NonEmptyList<JWK>> = coroutineScope {
-        either {
-            val credentialKeysAndCNonces = unvalidatedProofs.map {
-                when (it) {
-                    is UnvalidatedProof.Jwt ->
-                        validateJwtProof(it, credentialConfiguration, at).bind()
-                    is UnvalidatedProof.Attestation ->
-                        validateAttestationProof(it, credentialConfiguration, at).bind()
-                    is UnvalidatedProof.DiVp -> raise(InvalidProof("Supporting only JWT proof"))
+    ): Either<IssueCredentialError, NonEmptyList<JWK>> =
+        coroutineScope {
+            either {
+                val credentialKeysAndCNonces =
+                    unvalidatedProofs.map {
+                        when (it) {
+                            is UnvalidatedProof.Jwt -> {
+                                validateJwtProof(it, credentialConfiguration, at).bind()
+                            }
+
+                            is UnvalidatedProof.Attestation -> {
+                                validateAttestationProof(it, credentialConfiguration, at).bind()
+                            }
+
+                            is UnvalidatedProof.DiVp -> {
+                                raise(InvalidProof("Supporting only JWT proof"))
+                            }
+                        }
+                    }
+
+                val cnonces = credentialKeysAndCNonces.map { it.second }.toNonEmptyListOrNull()
+                checkNotNull(cnonces)
+                ensure(verifyNonce(cnonces, at)) {
+                    InvalidNonce("CNonce is not valid")
                 }
+
+                val jwks =
+                    credentialKeysAndCNonces
+                        .map {
+                            extractJwkFromCredentialKey(it.first).getOrElse { error ->
+                                raise(InvalidProof("Unable to extract JWK from CredentialKey", error))
+                            }
+                        }.flatten()
+                        .distinct()
+                        .limitTo(credentialConfiguration.credentialReusePolicy)
+                        .toNonEmptyListOrNull()
+
+                checkNotNull(jwks)
             }
-
-            val cnonces = credentialKeysAndCNonces.map { it.second }.toNonEmptyListOrNull()
-            checkNotNull(cnonces)
-            ensure(verifyNonce(cnonces, at)) {
-                InvalidNonce("CNonce is not valid")
-            }
-
-            val jwks = credentialKeysAndCNonces.map {
-                extractJwkFromCredentialKey(it.first).getOrElse { error ->
-                    raise(InvalidProof("Unable to extract JWK from CredentialKey", error))
-                }
-            }.flatten()
-                .distinct()
-                .limitTo(credentialConfiguration.credentialReusePolicy)
-                .toNonEmptyListOrNull()
-
-            checkNotNull(jwks)
         }
-    }
 
-    private fun List<JWK>.limitTo(policy: CredentialReusePolicy): List<JWK> = when (policy) {
-        CredentialReusePolicy.None -> this
-        is CredentialReusePolicy.EUDI -> {
-            val limit = when {
-                policy.options.any { it is EudiReusePolicy.LimitedTime } -> 1
-                else -> policy.effectiveBatchSize
+    private fun List<JWK>.limitTo(policy: CredentialReusePolicy): List<JWK> =
+        when (policy) {
+            CredentialReusePolicy.None -> {
+                this
             }
-            if (limit == null) this else take(limit)
+
+            is CredentialReusePolicy.EUDI -> {
+                val limit =
+                    when {
+                        policy.options.any { it is EudiReusePolicy.LimitedTime } -> 1
+                        else -> policy.effectiveBatchSize
+                    }
+                if (limit == null) this else take(limit)
+            }
         }
-    }
 }

@@ -36,28 +36,32 @@ internal class GenerateNonceAndEncryptWithNimbus(
     private val encryptionKey: NonceEncryptionKey,
     private val generator: suspend () -> String = { Nonce(128).value },
 ) : GenerateNonce {
+    private val encrypter =
+        ECDHEncrypter(encryptionKey.encryptionKey)
+            .apply {
+                jcaContext.provider = BouncyCastleProvider()
+            }
 
-    private val encrypter = ECDHEncrypter(encryptionKey.encryptionKey)
-        .apply {
-            jcaContext.provider = BouncyCastleProvider()
-        }
-
-    override suspend fun invoke(generatedAt: Instant, expiresIn: Duration): String {
+    override suspend fun invoke(
+        generatedAt: Instant,
+        expiresIn: Duration,
+    ): String {
         val expiresAt = generatedAt + expiresIn
 
         return EncryptedJWT(
-            JWEHeader.Builder(encryptionKey.algorithm, encryptionKey.method)
+            JWEHeader
+                .Builder(encryptionKey.algorithm, encryptionKey.method)
                 .type(JOSEObjectType("nonce+jwt"))
                 .build(),
-            JWTClaimsSet.Builder()
+            JWTClaimsSet
+                .Builder()
                 .apply {
                     issuer(issuer.externalForm)
                     audience(issuer.externalForm)
                     claim("nonce", generator())
                     issueTime(generatedAt.toJavaDate())
                     expirationTime(expiresAt.toJavaDate())
-                }
-                .build(),
+                }.build(),
         ).apply {
             encrypt(encrypter)
         }.serialize()

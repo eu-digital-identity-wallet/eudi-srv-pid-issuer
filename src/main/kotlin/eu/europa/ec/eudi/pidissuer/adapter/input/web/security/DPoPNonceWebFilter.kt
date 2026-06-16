@@ -28,7 +28,10 @@ class DPoPNonceWebFilter(
     private val clock: Clock,
     private val paths: List<String>,
 ) : CoWebFilter() {
-    override suspend fun filter(exchange: ServerWebExchange, chain: CoWebFilterChain) {
+    override suspend fun filter(
+        exchange: ServerWebExchange,
+        chain: CoWebFilterChain,
+    ) {
         val request = exchange.request
         if (request.path.pathWithinApplication().value() in paths) {
             val newDPoPNonce = dpopNonce.generateDPoPNonce(clock.now())

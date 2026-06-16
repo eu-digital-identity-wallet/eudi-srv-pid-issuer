@@ -33,25 +33,27 @@ import reactor.core.publisher.Mono
 class DPoPTokenServerAccessDeniedHandler(
     private val realm: String? = null,
 ) : ServerAccessDeniedHandler {
-
-    override fun handle(exchange: ServerWebExchange, denied: AccessDeniedException): Mono<Void> =
+    override fun handle(
+        exchange: ServerWebExchange,
+        denied: AccessDeniedException,
+    ): Mono<Void> =
         mono {
-            val details = buildList {
-                if (!realm.isNullOrBlank()) {
-                    add("realm" to realm)
-                }
-                add("error" to OAuth2ErrorCodes.INSUFFICIENT_SCOPE)
-                add("error_description" to "The request requires higher privileges than provided by the access token.")
-                add("error_uri" to "https://tools.ietf.org/html/rfc6750#section-3.1")
-            }.joinToString(separator = ", ", transform = { "${it.first}=\"${it.second}\"" })
+            val details =
+                buildList {
+                    if (!realm.isNullOrBlank()) {
+                        add("realm" to realm)
+                    }
+                    add("error" to OAuth2ErrorCodes.INSUFFICIENT_SCOPE)
+                    add("error_description" to "The request requires higher privileges than provided by the access token.")
+                    add("error_uri" to "https://tools.ietf.org/html/rfc6750#section-3.1")
+                }.joinToString(separator = ", ", transform = { "${it.first}=\"${it.second}\"" })
             val wwwAuthenticate = "${AccessTokenType.DPOP.value} $details"
 
             exchange.response
                 .apply {
                     statusCode = HttpStatus.FORBIDDEN
                     headers[HttpHeaders.WWW_AUTHENTICATE] = wwwAuthenticate
-                }
-                .setComplete()
+                }.setComplete()
                 .awaitSingleOrNull()
         }
 }

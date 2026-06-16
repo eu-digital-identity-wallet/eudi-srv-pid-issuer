@@ -28,7 +28,6 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
 interface IssueSpecificCredential {
-
     val supportedCredential: CredentialConfiguration
     val publicKey: JWK?
     val keyAttestationRequirement: KeyAttestationRequirement
@@ -45,8 +44,7 @@ fun IssueSpecificCredential.asDeferred(
     storeDeferredCredential: StoreDeferredCredential,
     clock: Clock,
     interval: Duration = 1.minutes,
-): IssueSpecificCredential =
-    DeferredIssuer(this, generateTransactionId, storeDeferredCredential, clock, interval)
+): IssueSpecificCredential = DeferredIssuer(this, generateTransactionId, storeDeferredCredential, clock, interval)
 
 private class DeferredIssuer(
     val issuer: IssueSpecificCredential,
@@ -55,22 +53,30 @@ private class DeferredIssuer(
     val clock: Clock,
     val interval: Duration,
 ) : IssueSpecificCredential by issuer {
-
     override val supportedCredential: CredentialConfiguration
-        get() = when (val cfg = issuer.supportedCredential) {
-            is JwtVcJsonCredentialConfiguration -> cfg.copy(
-                id = CredentialConfigurationId(cfg.id.value + "_deferred"),
-                display = cfg.display.map { it.copy(name = it.name.copy(name = it.name.name + " (deferred)")) },
-            )
-            is MsoMdocCredentialConfiguration -> cfg.copy(
-                id = CredentialConfigurationId(cfg.id.value + "_deferred"),
-                display = cfg.display.map { it.copy(name = it.name.copy(name = it.name.name + " (deferred)")) },
-            )
-            is SdJwtVcCredentialConfiguration -> cfg.copy(
-                id = CredentialConfigurationId(cfg.id.value + "_deferred"),
-                display = cfg.display.map { it.copy(name = it.name.copy(name = it.name.name + " (deferred)")) },
-            )
-        }
+        get() =
+            when (val cfg = issuer.supportedCredential) {
+                is JwtVcJsonCredentialConfiguration -> {
+                    cfg.copy(
+                        id = CredentialConfigurationId(cfg.id.value + "_deferred"),
+                        display = cfg.display.map { it.copy(name = it.name.copy(name = it.name.name + " (deferred)")) },
+                    )
+                }
+
+                is MsoMdocCredentialConfiguration -> {
+                    cfg.copy(
+                        id = CredentialConfigurationId(cfg.id.value + "_deferred"),
+                        display = cfg.display.map { it.copy(name = it.name.copy(name = it.name.name + " (deferred)")) },
+                    )
+                }
+
+                is SdJwtVcCredentialConfiguration -> {
+                    cfg.copy(
+                        id = CredentialConfigurationId(cfg.id.value + "_deferred"),
+                        display = cfg.display.map { it.copy(name = it.name.copy(name = it.name.name + " (deferred)")) },
+                    )
+                }
+            }
 
     private val log = LoggerFactory.getLogger(DeferredIssuer::class.java)
 
@@ -78,17 +84,18 @@ private class DeferredIssuer(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): Either<IssueCredentialError, CredentialResponse> = either {
-        val credentialResponse =
-            issuer.invoke(authorizationContext, request, credentialIdentifier).bind()
+    ): Either<IssueCredentialError, CredentialResponse> =
+        either {
+            val credentialResponse =
+                issuer.invoke(authorizationContext, request, credentialIdentifier).bind()
 
-        require(credentialResponse is CredentialResponse.Issued) { "Actual issuer should return issued credentials" }
+            require(credentialResponse is CredentialResponse.Issued) { "Actual issuer should return issued credentials" }
 
-        val transactionId = generateTransactionId()
-        val notIssuedBefore = clock.now() + interval
-        storeDeferredCredential.invoke(transactionId, credentialResponse, notIssuedBefore)
-        CredentialResponse.Deferred(transactionId, interval).also {
-            log.info("Repackaged $credentialResponse  as $it")
+            val transactionId = generateTransactionId()
+            val notIssuedBefore = clock.now() + interval
+            storeDeferredCredential.invoke(transactionId, credentialResponse, notIssuedBefore)
+            CredentialResponse.Deferred(transactionId, interval).also {
+                log.info("Repackaged $credentialResponse  as $it")
+            }
         }
-    }
 }

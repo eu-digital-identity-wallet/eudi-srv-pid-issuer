@@ -43,216 +43,252 @@ val PidMsoMdocScope: Scope = Scope("eu.europa.ec.eudi.pid_mso_mdoc")
 val PidMsoMdocNamespace: MsoNameSpace = pidNameSpace(1)
 
 internal object MsoMdocPidClaims {
+    val GivenName =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "given_name",
+            mandatory = true,
+            display = mapOf(ENGLISH to "Given Name(s)"),
+        )
+    val FamilyName =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "family_name",
+            mandatory = true,
+            display = mapOf(ENGLISH to "Family Name(s)"),
+        )
+    val BirthDate =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "birth_date",
+            mandatory = true,
+            display = mapOf(ENGLISH to "Birth Date"),
+        )
+    val FamilyNameBirth =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "family_name_birth",
+            mandatory = false,
+            display = mapOf(ENGLISH to "Birth Family Name(s)"),
+        )
+    val GivenNameBirth =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "given_name_birth",
+            mandatory = false,
+            display = mapOf(ENGLISH to "Birth Given Name(s)"),
+        )
+    val Sex =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "sex",
+            mandatory = false,
+            display = mapOf(ENGLISH to "Sex"),
+        )
+    val Nationality =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "nationality",
+            mandatory = true,
+            display = mapOf(ENGLISH to "Nationality"),
+        )
+    val IssuanceDate =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "issuance_date",
+            mandatory = false,
+            display = mapOf(ENGLISH to "Issuance Date"),
+        )
+    val ExpiryDate =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "expiry_date",
+            mandatory = true,
+            display = mapOf(ENGLISH to "Expiry Date"),
+        )
+    val IssuingAuthority =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "issuing_authority",
+            mandatory = true,
+            display = mapOf(ENGLISH to "Issuance Authority"),
+        )
+    val PlaceOfBirth =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "place_of_birth",
+            mandatory = true,
+            display = mapOf(ENGLISH to "Place of Birth"),
+        )
+    val ResidenceAddress =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "resident_address",
+            mandatory = false,
+            display = mapOf(ENGLISH to "Resident Address"),
+        )
+    val ResidenceCountry =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "resident_country",
+            mandatory = false,
+            display = mapOf(ENGLISH to "Resident Country"),
+        )
+    val ResidenceState =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "resident_state",
+            mandatory = false,
+            display = mapOf(ENGLISH to "Resident State"),
+        )
+    val ResidenceCity =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "resident_city",
+            mandatory = false,
+            display = mapOf(ENGLISH to "Resident City"),
+        )
+    val ResidencePostalCode =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "resident_postal_code",
+            mandatory = false,
+            display = mapOf(ENGLISH to "Resident Postal Code"),
+        )
+    val ResidenceStreet =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "resident_street",
+            mandatory = false,
+            display = mapOf(ENGLISH to "Resident Street"),
+        )
+    val ResidenceHouseNumber =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "resident_house_number",
+            mandatory = false,
+            display = mapOf(ENGLISH to "Resident House Number"),
+        )
+    val DocumentNumber =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "document_number",
+            mandatory = false,
+            display = mapOf(ENGLISH to "Document Number"),
+        )
+    val PersonalAdministrativeNumber =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "personal_administrative_number",
+            mandatory = false,
+            display = mapOf(ENGLISH to "Personal Administrative Number"),
+        )
+    val IssuingCountry =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "issuing_country",
+            mandatory = true,
+            display = mapOf(ENGLISH to "Issuing Country"),
+        )
+    val IssuingJurisdiction =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "issuing_jurisdiction",
+            mandatory = false,
+            display = mapOf(ENGLISH to "Issuing Jurisdiction"),
+        )
+    val Portrait =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "portrait",
+            mandatory = false,
+            display = mapOf(ENGLISH to "Portrait Image"),
+        )
+    val EmailAddress =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "email_address",
+            mandatory = false,
+            display = mapOf(ENGLISH to "Email Address"),
+        )
+    val MobilePhoneNumberAttribute =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "mobile_phone_number",
+            mandatory = false,
+            display = mapOf(ENGLISH to "Mobile Phone Number"),
+        )
+    val TrustAnchor =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "trust_anchor",
+            mandatory = false,
+            display =
+                mapOf(
+                    ENGLISH to "Trust Anchor",
+                ),
+        )
+    val AttestationLegalCategory =
+        ClaimDefinition(
+            PidMsoMdocNamespace,
+            "attestation_legal_category",
+            mandatory = false,
+            display =
+                mapOf(
+                    ENGLISH to "Attestation Legal Category",
+                ),
+        )
 
-    val GivenName = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "given_name",
-        mandatory = true,
-        display = mapOf(ENGLISH to "Given Name(s)"),
-    )
-    val FamilyName = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "family_name",
-        mandatory = true,
-        display = mapOf(ENGLISH to "Family Name(s)"),
-    )
-    val BirthDate = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "birth_date",
-        mandatory = true,
-        display = mapOf(ENGLISH to "Birth Date"),
-    )
-    val FamilyNameBirth = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "family_name_birth",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Birth Family Name(s)"),
-    )
-    val GivenNameBirth = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "given_name_birth",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Birth Given Name(s)"),
-    )
-    val Sex = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "sex",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Sex"),
-    )
-    val Nationality = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "nationality",
-        mandatory = true,
-        display = mapOf(ENGLISH to "Nationality"),
-    )
-    val IssuanceDate = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "issuance_date",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Issuance Date"),
-    )
-    val ExpiryDate = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "expiry_date",
-        mandatory = true,
-        display = mapOf(ENGLISH to "Expiry Date"),
-    )
-    val IssuingAuthority = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "issuing_authority",
-        mandatory = true,
-        display = mapOf(ENGLISH to "Issuance Authority"),
-    )
-    val PlaceOfBirth = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "place_of_birth",
-        mandatory = true,
-        display = mapOf(ENGLISH to "Place of Birth"),
-    )
-    val ResidenceAddress = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "resident_address",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Resident Address"),
-    )
-    val ResidenceCountry = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "resident_country",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Resident Country"),
-    )
-    val ResidenceState = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "resident_state",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Resident State"),
-    )
-    val ResidenceCity = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "resident_city",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Resident City"),
-    )
-    val ResidencePostalCode = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "resident_postal_code",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Resident Postal Code"),
-    )
-    val ResidenceStreet = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "resident_street",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Resident Street"),
-    )
-    val ResidenceHouseNumber = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "resident_house_number",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Resident House Number"),
-    )
-    val DocumentNumber = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "document_number",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Document Number"),
-    )
-    val PersonalAdministrativeNumber = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "personal_administrative_number",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Personal Administrative Number"),
-    )
-    val IssuingCountry = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "issuing_country",
-        mandatory = true,
-        display = mapOf(ENGLISH to "Issuing Country"),
-    )
-    val IssuingJurisdiction = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "issuing_jurisdiction",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Issuing Jurisdiction"),
-    )
-    val Portrait = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "portrait",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Portrait Image"),
-    )
-    val EmailAddress = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "email_address",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Email Address"),
-    )
-    val MobilePhoneNumberAttribute = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "mobile_phone_number",
-        mandatory = false,
-        display = mapOf(ENGLISH to "Mobile Phone Number"),
-    )
-    val TrustAnchor = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "trust_anchor",
-        mandatory = false,
-        display = mapOf(
-            ENGLISH to "Trust Anchor",
-        ),
-    )
-    val AttestationLegalCategory = ClaimDefinition(
-        PidMsoMdocNamespace,
-        "attestation_legal_category",
-        mandatory = false,
-        display = mapOf(
-            ENGLISH to "Attestation Legal Category",
-        ),
-    )
-
-    fun all(): List<ClaimDefinition> = listOf(
-        FamilyName,
-        GivenName,
-        BirthDate,
-        PlaceOfBirth,
-        Nationality,
-        ResidenceAddress,
-        ResidenceCountry,
-        ResidenceState,
-        ResidenceCity,
-        ResidencePostalCode,
-        ResidenceStreet,
-        ResidenceHouseNumber,
-        PersonalAdministrativeNumber,
-        Portrait,
-        FamilyNameBirth,
-        GivenNameBirth,
-        Sex,
-        EmailAddress,
-        MobilePhoneNumberAttribute,
-        ExpiryDate,
-        IssuingAuthority,
-        IssuingCountry,
-        DocumentNumber,
-        IssuingJurisdiction,
-        IssuanceDate,
-        TrustAnchor,
-        AttestationLegalCategory,
-    )
+    fun all(): List<ClaimDefinition> =
+        listOf(
+            FamilyName,
+            GivenName,
+            BirthDate,
+            PlaceOfBirth,
+            Nationality,
+            ResidenceAddress,
+            ResidenceCountry,
+            ResidenceState,
+            ResidenceCity,
+            ResidencePostalCode,
+            ResidenceStreet,
+            ResidenceHouseNumber,
+            PersonalAdministrativeNumber,
+            Portrait,
+            FamilyNameBirth,
+            GivenNameBirth,
+            Sex,
+            EmailAddress,
+            MobilePhoneNumberAttribute,
+            ExpiryDate,
+            IssuingAuthority,
+            IssuingCountry,
+            DocumentNumber,
+            IssuingJurisdiction,
+            IssuanceDate,
+            TrustAnchor,
+            AttestationLegalCategory,
+        )
 }
 
 private const val PID_DOCTYPE = "eu.europa.ec.eudi.pid"
 
 private fun pidDocType(v: Int?): String =
-    if (v == null) PID_DOCTYPE
-    else "$PID_DOCTYPE.$v"
+    if (v == null)
+        PID_DOCTYPE
+    else
+        "$PID_DOCTYPE.$v"
 
 private fun pidNameSpace(v: Int?): MsoNameSpace = pidDocType(v)
 
-private fun pidDomesticNameSpace(v: Int?, countryCode: String): MsoNameSpace =
-    if (v == null) "$PID_DOCTYPE.$countryCode"
-    else "$PID_DOCTYPE.$countryCode.$v"
+private fun pidDomesticNameSpace(
+    v: Int?,
+    countryCode: String,
+): MsoNameSpace =
+    if (v == null)
+        "$PID_DOCTYPE.$countryCode"
+    else
+        "$PID_DOCTYPE.$countryCode.$v"
 
 val PidMsoMdocV1CredentialConfigurationId: CredentialConfigurationId = CredentialConfigurationId(PidMsoMdocScope.value)
 
@@ -267,18 +303,20 @@ internal fun pidMsoMdocV1(
     MsoMdocCredentialConfiguration(
         id = PidMsoMdocV1CredentialConfigurationId,
         docType = PidMsoMdocV1DocType,
-        display = listOf(
-            CredentialDisplay(
-                name = DisplayName("PID (MSO MDoc)", ENGLISH),
+        display =
+            listOf(
+                CredentialDisplay(
+                    name = DisplayName("PID (MSO MDoc)", ENGLISH),
+                ),
             ),
-        ),
         claims = MsoMdocPidClaims.all(),
         cryptographicBindingMethodsSupported = setOf(CryptographicBindingMethod.CoseKey),
         credentialSigningAlgorithmsSupported = nonEmptySetOf(credentialSigningAlgorithm),
         scope = PidMsoMdocScope,
-        proofTypesSupported = ProofTypesSupported(
-            ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
-        ),
+        proofTypesSupported =
+            ProofTypesSupported(
+                ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
+            ),
         attestationCategory = AttestationCategory.Pid,
         credentialReusePolicy = credentialReusePolicy,
     )
@@ -300,7 +338,6 @@ internal class IssueMsoMdocPid(
     private val generateStatusListToken: GenerateStatusListToken?,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : IssueSpecificCredential {
-
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
 
     override val supportedCredential: MsoMdocCredentialConfiguration =
@@ -317,58 +354,67 @@ internal class IssueMsoMdocPid(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): Either<IssueCredentialError, CredentialResponse> = either {
-        log.info("Handling issuance request ...")
-        val holderPubKeys = with(jwkExtensions()) {
-            validateProofs(request.unvalidatedProofs, supportedCredential, clock.now())
-                .bind()
-                .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
-        }
-
-        val pidData = getPidData(authorizationContext)
-        val (pid, pidMetaData) = pidData.bind()
-
-        val issuedAt = clock.now()
-        val expiresAt = issuedAt + validityDuration
-
-        val issuedCredentials = holderPubKeys.parMap(Dispatchers.Default, 4) { holderKey ->
-            val statusListToken = generateStatusListToken?.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
-                it(supportedCredential.docType, expiresAt)
-                    .getOrElse { error ->
-                        raise(Unexpected("Unable to generate Status List Token", error))
-                    }
-            }
-
-            encodePidInCbor(pid, pidMetaData, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
-                .also {
-                    log.info("Issued $it")
+    ): Either<IssueCredentialError, CredentialResponse> =
+        either {
+            log.info("Handling issuance request ...")
+            val holderPubKeys =
+                with(jwkExtensions()) {
+                    validateProofs(request.unvalidatedProofs, supportedCredential, clock.now())
+                        .bind()
+                        .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
                 }
-        }.toNonEmptyListOrNull()
-        ensureNotNull(issuedCredentials) {
-            IssueCredentialError.Unexpected("Unable to issue PID")
-        }
 
-        val notificationId =
-            if (notificationsEnabled) generateNotificationId()
-            else null
+            val pidData = getPidData(authorizationContext)
+            val (pid, pidMetaData) = pidData.bind()
 
-        storeIssuedCredentials(
-            IssuedCredentials(
-                format = MSO_MDOC_FORMAT,
-                type = supportedCredential.docType,
-                holder = with(pid) {
-                    "${familyName.value} ${givenName.value}"
-                },
-                holderPublicKeys = holderPubKeys,
-                issuedAt = issuedAt,
-                notificationId = notificationId,
-            ),
-        )
+            val issuedAt = clock.now()
+            val expiresAt = issuedAt + validityDuration
 
-        CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
-            .also {
-                log.info("Successfully issued PIDs")
-                log.debug("Issued PIDs data {}", it)
+            val issuedCredentials =
+                holderPubKeys
+                    .parMap(Dispatchers.Default, 4) { holderKey ->
+                        val statusListToken =
+                            generateStatusListToken?.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
+                                it(supportedCredential.docType, expiresAt)
+                                    .getOrElse { error ->
+                                        raise(Unexpected("Unable to generate Status List Token", error))
+                                    }
+                            }
+
+                        encodePidInCbor(pid, pidMetaData, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
+                            .also {
+                                log.info("Issued $it")
+                            }
+                    }.toNonEmptyListOrNull()
+            ensureNotNull(issuedCredentials) {
+                IssueCredentialError.Unexpected("Unable to issue PID")
             }
-    }
+
+            val notificationId =
+                if (notificationsEnabled)
+                    generateNotificationId()
+                else
+                    null
+
+            storeIssuedCredentials(
+                IssuedCredentials(
+                    format = MSO_MDOC_FORMAT,
+                    type = supportedCredential.docType,
+                    holder =
+                        with(pid) {
+                            "${familyName.value} ${givenName.value}"
+                        },
+                    holderPublicKeys = holderPubKeys,
+                    issuedAt = issuedAt,
+                    notificationId = notificationId,
+                ),
+            )
+
+            CredentialResponse
+                .Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
+                .also {
+                    log.info("Successfully issued PIDs")
+                    log.debug("Issued PIDs data {}", it)
+                }
+        }
 }

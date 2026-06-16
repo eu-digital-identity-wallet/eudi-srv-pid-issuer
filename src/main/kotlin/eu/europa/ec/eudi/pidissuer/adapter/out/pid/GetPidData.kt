@@ -25,9 +25,11 @@ import eu.europa.ec.eudi.pidissuer.port.input.Username
 fun interface GetPidData {
     suspend operator fun invoke(username: Username): Pair<Pid, PidMetaData>?
 
-    suspend operator fun invoke(authorizationContext: AuthorizationContext):
-        Either<IssueCredentialError.Unexpected, Pair<Pid, PidMetaData>> = either {
-        val data = invoke(authorizationContext.username)
-        ensureNotNull(data) { IssueCredentialError.Unexpected("Cannot obtain data") }
-    }
+    suspend operator fun invoke(
+        authorizationContext: AuthorizationContext,
+    ): Either<IssueCredentialError.Unexpected, Pair<Pid, PidMetaData>> =
+        either {
+            val data = invoke(authorizationContext.username)
+            ensureNotNull(data) { IssueCredentialError.Unexpected("Cannot obtain data") }
+        }
 }

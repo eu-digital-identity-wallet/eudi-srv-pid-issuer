@@ -49,7 +49,6 @@ data class ProtectedResourceMetadataTO(
     @SerialName(RFC9728.BEARER_METHODS_SUPPORTED) val bearerMethodsSupported: NonEmptyList<BearerMethodTO>? = null,
     @SerialName(RFC9728.DPOP_SIGNING_ALGORITHMS_SUPPORTED) val dpopSigningAlgorithmsSupported: NonEmptyList<String>? = null,
     @SerialName(RFC9728.DPOP_BOUND_ACCESS_TOKEN_REQUIRED) val dpopBoundAccessTokenRequired: Boolean? = null,
-
 )
 
 class GetProtectedResourceMetadata(
@@ -65,9 +64,12 @@ class GetProtectedResourceMetadata(
         return ProtectedResourceMetadataTO(
             resource = credentialIssuerMetadata.id.externalForm,
             authorizationServers = credentialIssuerMetadata.authorizationServers.map { it.externalForm }.toNonEmptyListOrNull(),
-            scopesSupported = credentialIssuerMetadata.specificCredentialIssuers.map {
-                it.supportedCredential.scope.value
-            }.distinct().toNonEmptyListOrNull(),
+            scopesSupported =
+                credentialIssuerMetadata.specificCredentialIssuers
+                    .map {
+                        it.supportedCredential.scope.value
+                    }.distinct()
+                    .toNonEmptyListOrNull(),
             bearerMethodsSupported = bearerMethodsSupported,
             dpopSigningAlgorithmsSupported = dPoPSigningAlgorithmsSupported,
             dpopBoundAccessTokenRequired = dPoPBoundAccessTokenRequired,

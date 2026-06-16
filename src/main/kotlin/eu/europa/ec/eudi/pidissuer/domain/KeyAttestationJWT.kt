@@ -55,38 +55,42 @@ data class KeyAttestationJWT private constructor(
                 "Invalid Key Attestation JWT. `attested_keys` claim must not be empty"
             }
 
-            val attestedKeys = attestedKeysClaimEntries.mapIndexed { index, keyObject ->
-                require(keyObject is Map<*, *>) {
-                    "Invalid Key Attestation JWT. Item at index $index in `attested_keys` is not a JSON object."
-                }
-                try {
-                    @Suppress("UNCHECKED_CAST")
-                    val jwk = JWK.parse(keyObject as Map<String, Any>)
-                    require(!jwk.isPrivate) {
-                        "Invalid Key Attestation JWT. Item at index $index in `attested_keys` must be a public key."
+            val attestedKeys =
+                attestedKeysClaimEntries
+                    .mapIndexed { index, keyObject ->
+                        require(keyObject is Map<*, *>) {
+                            "Invalid Key Attestation JWT. Item at index $index in `attested_keys` is not a JSON object."
+                        }
+                        try {
+                            @Suppress("UNCHECKED_CAST")
+                            val jwk = JWK.parse(keyObject as Map<String, Any>)
+                            require(!jwk.isPrivate) {
+                                "Invalid Key Attestation JWT. Item at index $index in `attested_keys` must be a public key."
+                            }
+                            jwk
+                        } catch (e: Exception) {
+                            throw IllegalArgumentException(
+                                "Invalid Key Attestation JWT. Item at index $index in `attested_keys` is not a valid JWK: ${e.message}",
+                                e,
+                            )
+                        }
+                    }.toNonEmptyListOrNull() ?: error("Invalid Key Attestation JWT. `attested_keys` cannot be empty")
+
+            val keyStorage =
+                jwt.jwtClaimsSet.getListClaim("key_storage")?.map {
+                    require(it is String) {
+                        "Invalid Key Attestation JWT. 'key_storage' items must be strings"
                     }
-                    jwk
-                } catch (e: Exception) {
-                    throw IllegalArgumentException(
-                        "Invalid Key Attestation JWT. Item at index $index in `attested_keys` is not a valid JWK: ${e.message}",
-                        e,
-                    )
+                    AttackPotentialResistance(it)
                 }
-            }.toNonEmptyListOrNull() ?: error("Invalid Key Attestation JWT. `attested_keys` cannot be empty")
 
-            val keyStorage = jwt.jwtClaimsSet.getListClaim("key_storage")?.map {
-                require(it is String) {
-                    "Invalid Key Attestation JWT. 'key_storage' items must be strings"
+            val userAuthentication =
+                jwt.jwtClaimsSet.getListClaim("user_authentication")?.map {
+                    require(it is String) {
+                        "Invalid Key Attestation JWT. 'user_authentication' items must be strings"
+                    }
+                    AttackPotentialResistance(it)
                 }
-                AttackPotentialResistance(it)
-            }
-
-            val userAuthentication = jwt.jwtClaimsSet.getListClaim("user_authentication")?.map {
-                require(it is String) {
-                    "Invalid Key Attestation JWT. 'user_authentication' items must be strings"
-                }
-                AttackPotentialResistance(it)
-            }
 
             return KeyAttestationJWT(jwt, attestedKeys, keyStorage, userAuthentication)
         }
@@ -101,27 +105,33 @@ private fun SignedJWT.ensureSignedNotMAC() {
     requireIsNotMAC(alg)
 }
 
-private fun requireIsNotMAC(alg: JWSAlgorithm) =
-    require(!alg.isMACSigning()) { "MAC signing algorithm not allowed" }
+private fun requireIsNotMAC(alg: JWSAlgorithm) = require(!alg.isMACSigning()) { "MAC signing algorithm not allowed" }
 
 private fun JWSAlgorithm.isMACSigning(): Boolean = this in MACSigner.SUPPORTED_ALGORITHMS
 
 internal suspend fun List<JWK>.signingKeyOf(signedJwt: SignedJWT): JWK? {
-    val tasks = map { jwk: JWK ->
-        suspend { verifiesSignature(jwk, signedJwt) }
-    }
+    val tasks =
+        map { jwk: JWK ->
+            suspend { verifiesSignature(jwk, signedJwt) }
+        }
     return signatureVerifiedByKey(*tasks.toTypedArray())
 }
 
-internal fun verifiesSignature(jwk: JWK, signedJwt: SignedJWT): JWK? =
+internal fun verifiesSignature(
+    jwk: JWK,
+    signedJwt: SignedJWT,
+): JWK? =
     try {
-        val verifier = when (jwk) {
-            is RSAKey -> RSASSAVerifier(jwk)
-            is ECKey -> ECDSAVerifier(jwk)
-            else -> null
-        }
-        if (verifier != null && signedJwt.verify(verifier)) jwk
-        else null
+        val verifier =
+            when (jwk) {
+                is RSAKey -> RSASSAVerifier(jwk)
+                is ECKey -> ECDSAVerifier(jwk)
+                else -> null
+            }
+        if (verifier != null && signedJwt.verify(verifier))
+            jwk
+        else
+            null
     } catch (_: Exception) {
         null
     }

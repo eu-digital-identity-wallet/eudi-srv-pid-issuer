@@ -21,10 +21,14 @@ import kotlinx.coroutines.withContext
 
 private object Resources
 
-suspend fun loadResource(path: String, onError: (String, Throwable?) -> Nothing): ByteArray =
+suspend fun loadResource(
+    path: String,
+    onError: (String, Throwable?) -> Nothing,
+): ByteArray =
     withContext(Dispatchers.IO) {
-        val resource = Resources::class.java.getResourceAsStream(path)
-            ?: onError("Unable to load resource $path", null)
+        val resource =
+            Resources::class.java.getResourceAsStream(path)
+                ?: onError("Unable to load resource $path", null)
 
         resource.use {
             catch({ it.readAllBytes() }) { error ->

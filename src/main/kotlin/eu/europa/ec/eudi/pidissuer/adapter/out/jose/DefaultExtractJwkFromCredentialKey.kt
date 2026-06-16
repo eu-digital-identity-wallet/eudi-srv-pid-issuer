@@ -20,13 +20,14 @@ import arrow.core.nonEmptyListOf
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
 
-val DefaultExtractJwkFromCredentialKey = ExtractJwkFromCredentialKey { key ->
-    Either.catch {
-        when (key) {
-            is CredentialKey.Jwk -> nonEmptyListOf(key.value)
-            is CredentialKey.X5c -> nonEmptyListOf(JWK.parse(key.certificate))
-            is CredentialKey.DIDUrl -> nonEmptyListOf(key.jwk)
-            is CredentialKey.AttestedKeys -> key.keys
+val DefaultExtractJwkFromCredentialKey =
+    ExtractJwkFromCredentialKey { key ->
+        Either.catch {
+            when (key) {
+                is CredentialKey.Jwk -> nonEmptyListOf(key.value)
+                is CredentialKey.X5c -> nonEmptyListOf(JWK.parse(key.certificate))
+                is CredentialKey.DIDUrl -> nonEmptyListOf(key.jwk)
+                is CredentialKey.AttestedKeys -> key.keys
+            }
         }
     }
-}

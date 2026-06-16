@@ -39,36 +39,36 @@ internal class GenerateStatusListTokenWithExternalService(
     private val apiKey: String,
     private val clock: Clock,
 ) : GenerateStatusListToken {
-
     override suspend fun invoke(
         type: String,
         expiration: Instant,
-    ): Either<Throwable, StatusListToken> = Either.catch {
-        require(type.isNotBlank()) { "type cannot be blank" }
+    ): Either<Throwable, StatusListToken> =
+        Either.catch {
+            require(type.isNotBlank()) { "type cannot be blank" }
 
-        val statusTokens = webClient.post()
-            .uri(serviceUrl.toExternalForm())
-            .headers {
-                it.contentType = MediaType.APPLICATION_FORM_URLENCODED
-                it.accept = listOf(MediaType.APPLICATION_JSON)
-                it.set("X-API-Key", apiKey)
-            }
-            .body(
-                BodyInserters.fromFormData(
-                    LinkedMultiValueMap<String, String>().apply {
-                        add("country", "FC")
-                        add("doctype", type)
-                        add("expiry_date", with(clock) { expiration.toZonedDateTime().format(DateTimeFormatter.ISO_LOCAL_DATE) })
-                    },
-                ),
+            val statusTokens =
+                webClient
+                    .post()
+                    .uri(serviceUrl.toExternalForm())
+                    .headers {
+                        it.contentType = MediaType.APPLICATION_FORM_URLENCODED
+                        it.accept = listOf(MediaType.APPLICATION_JSON)
+                        it.set("X-API-Key", apiKey)
+                    }.body(
+                        BodyInserters.fromFormData(
+                            LinkedMultiValueMap<String, String>().apply {
+                                add("country", "FC")
+                                add("doctype", type)
+                                add("expiry_date", with(clock) { expiration.toZonedDateTime().format(DateTimeFormatter.ISO_LOCAL_DATE) })
+                            },
+                        ),
+                    ).awaitExchange { it.awaitBody<StatusTokensTO>() }
+
+            StatusListToken(
+                statusList = URI.create(statusTokens.statusListToken.statusList),
+                index = statusTokens.statusListToken.index.toUInt(),
             )
-            .awaitExchange { it.awaitBody<StatusTokensTO>() }
-
-        StatusListToken(
-            statusList = URI.create(statusTokens.statusListToken.statusList),
-            index = statusTokens.statusListToken.index.toUInt(),
-        )
-    }
+        }
 }
 
 @Serializable

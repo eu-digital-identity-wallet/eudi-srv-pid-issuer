@@ -24,17 +24,17 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 
 internal class GetMobileDrivingLicenceDataMockTest {
-
     @Test
-    internal fun `get mDL success`() = runTest {
-        val getMobileDrivingLicenceData = GetMobileDrivingLicenceDataMock()
+    internal fun `get mDL success`() =
+        runTest {
+            val getMobileDrivingLicenceData = GetMobileDrivingLicenceDataMock()
 
-        getMobileDrivingLicenceData(
-            AuthorizationContext(
-                "username",
-                BearerAccessToken.parse("Bearer access-token"),
-                nonEmptySetOf(Scope("test")),
-            ),
-        ).getOrElse { throw RuntimeException(it.msg, it.cause) }
-    }
+            getMobileDrivingLicenceData(
+                AuthorizationContext(
+                    "username",
+                    BearerAccessToken.parse("Bearer access-token"),
+                    nonEmptySetOf(Scope("test")),
+                ),
+            ).getOrElse { throw RuntimeException(it.msg, it.cause) }
+        }
 }

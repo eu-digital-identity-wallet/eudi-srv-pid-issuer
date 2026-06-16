@@ -62,43 +62,50 @@ internal class IssueLearningCredential(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): Either<IssueCredentialError, CredentialResponse> = either {
-        log.info("Issuing Learning Credential")
+    ): Either<IssueCredentialError, CredentialResponse> =
+        either {
+            log.info("Issuing Learning Credential")
 
-        val holderKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.now()).bind()
-        val learningCredential = getLearningCredential(authorizationContext)
-        val issuedAt = clock.now()
-        val expiresAt = run {
-            val dateOfExpiry = issuedAt + validity
-            if (null != learningCredential.dateOfExpiry && learningCredential.dateOfExpiry < dateOfExpiry) learningCredential.dateOfExpiry
-            else dateOfExpiry
-        }
+            val holderKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.now()).bind()
+            val learningCredential = getLearningCredential(authorizationContext)
+            val issuedAt = clock.now()
+            val expiresAt =
+                run {
+                    val dateOfExpiry = issuedAt + validity
+                    if (null != learningCredential.dateOfExpiry && learningCredential.dateOfExpiry < dateOfExpiry)
+                        learningCredential.dateOfExpiry
+                    else
+                        dateOfExpiry
+                }
 
-        val issuedCredentials = holderKeys.parMap(Dispatchers.Default, 4) {
-            encodeLearningCredential(learningCredential, it, issuedAt = issuedAt, expiresAt = expiresAt).bind()
-        }.toNonEmptyListOrNull()
-        ensureNotNull(issuedCredentials) {
-            IssueCredentialError.Unexpected("Unable to issue Learning Credential")
-        }
-
-        val notificationId = generateNotificationId?.invoke()
-        storeIssuedCredentials(
-            IssuedCredentials(
-                encodeLearningCredential.format,
-                encodeLearningCredential.type,
-                authorizationContext.username,
-                holderKeys,
-                issuedAt,
-                notificationId,
-            ),
-        )
-
-        CredentialResponse.Issued(issuedCredentials, notificationId)
-            .also {
-                log.info("Successfully issued Learning Credential")
-                log.debug("Issued Learning Credential data {}", it)
+            val issuedCredentials =
+                holderKeys
+                    .parMap(Dispatchers.Default, 4) {
+                        encodeLearningCredential(learningCredential, it, issuedAt = issuedAt, expiresAt = expiresAt).bind()
+                    }.toNonEmptyListOrNull()
+            ensureNotNull(issuedCredentials) {
+                IssueCredentialError.Unexpected("Unable to issue Learning Credential")
             }
-    }
+
+            val notificationId = generateNotificationId?.invoke()
+            storeIssuedCredentials(
+                IssuedCredentials(
+                    encodeLearningCredential.format,
+                    encodeLearningCredential.type,
+                    authorizationContext.username,
+                    holderKeys,
+                    issuedAt,
+                    notificationId,
+                ),
+            )
+
+            CredentialResponse
+                .Issued(issuedCredentials, notificationId)
+                .also {
+                    log.info("Successfully issued Learning Credential")
+                    log.debug("Issued Learning Credential data {}", it)
+                }
+        }
 
     companion object {
         fun sdJwtVcCompact(
@@ -114,15 +121,16 @@ internal class IssueLearningCredential(
             storeIssuedCredentials: StoreIssuedCredentials,
             credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
         ): IssueLearningCredential {
-            val credentialConfiguration = LearningCredential.sdJwtVcCredentialConfiguration(
-                CredentialConfigurationId("urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt-compact"),
-                Scope("urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt"),
-                issuerSigningKey.signingAlgorithm,
-                CredentialDisplay(DisplayName("Learning Credential (SD-JWT VC Compact)", Locale.ENGLISH)),
-                proofsSupportedSigningAlgorithms,
-                keyAttestationRequirement,
-                credentialReusePolicy,
-            )
+            val credentialConfiguration =
+                LearningCredential.sdJwtVcCredentialConfiguration(
+                    CredentialConfigurationId("urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt-compact"),
+                    Scope("urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt"),
+                    issuerSigningKey.signingAlgorithm,
+                    CredentialDisplay(DisplayName("Learning Credential (SD-JWT VC Compact)", Locale.ENGLISH)),
+                    proofsSupportedSigningAlgorithms,
+                    keyAttestationRequirement,
+                    credentialReusePolicy,
+                )
             return IssueLearningCredential(
                 credentialConfiguration,
                 issuerSigningKey.key.toPublicJWK(),

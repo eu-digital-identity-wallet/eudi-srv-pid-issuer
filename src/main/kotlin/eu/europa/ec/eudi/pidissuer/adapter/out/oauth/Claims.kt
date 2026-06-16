@@ -81,53 +81,60 @@ data class OidcAddressClaim(
     @SerialName("country") val country: String? = null,
     @SerialName("formatted") val formatted: String? = null,
 ) {
-
     companion object : IsAttribute {
         const val NAME = "address"
 
         override val attribute: ClaimDefinition
-            get() = ClaimDefinition(
-                path = ClaimPath.claim(NAME),
-                mandatory = false,
-                display = mapOf(Locale.ENGLISH to "Address"),
-                nested = listOf(HouseNumber, Street, Locality, Region, PostalCode, Country, Formatted),
-            )
+            get() =
+                ClaimDefinition(
+                    path = ClaimPath.claim(NAME),
+                    mandatory = false,
+                    display = mapOf(Locale.ENGLISH to "Address"),
+                    nested = listOf(HouseNumber, Street, Locality, Region, PostalCode, Country, Formatted),
+                )
 
-        val HouseNumber = ClaimDefinition(
-            path = ClaimPath.claim(NAME).claim("house_number"),
-            mandatory = false,
-            display = mapOf(Locale.ENGLISH to "House Number"),
-        )
-        val Street = ClaimDefinition(
-            path = ClaimPath.claim(NAME).claim("street_address"),
-            mandatory = false,
-            display = mapOf(Locale.ENGLISH to "Street"),
-        )
-        val Locality = ClaimDefinition(
-            path = ClaimPath.claim(NAME).claim("locality"),
-            mandatory = false,
-            display = mapOf(Locale.ENGLISH to "Locality"),
-        )
-        val Region = ClaimDefinition(
-            path = ClaimPath.claim(NAME).claim("region"),
-            mandatory = false,
-            display = mapOf(Locale.ENGLISH to "Region"),
-        )
-        val PostalCode = ClaimDefinition(
-            path = ClaimPath.claim(NAME).claim("postal_code"),
-            mandatory = false,
-            display = mapOf(Locale.ENGLISH to "Postal Code"),
-        )
-        val Country = ClaimDefinition(
-            path = ClaimPath.claim(NAME).claim("country"),
-            mandatory = false,
-            display = mapOf(Locale.ENGLISH to "Country"),
-        )
-        val Formatted = ClaimDefinition(
-            path = ClaimPath.claim(NAME).claim("formatted"),
-            mandatory = false,
-            display = mapOf(Locale.ENGLISH to "Full Address"),
-        )
+        val HouseNumber =
+            ClaimDefinition(
+                path = ClaimPath.claim(NAME).claim("house_number"),
+                mandatory = false,
+                display = mapOf(Locale.ENGLISH to "House Number"),
+            )
+        val Street =
+            ClaimDefinition(
+                path = ClaimPath.claim(NAME).claim("street_address"),
+                mandatory = false,
+                display = mapOf(Locale.ENGLISH to "Street"),
+            )
+        val Locality =
+            ClaimDefinition(
+                path = ClaimPath.claim(NAME).claim("locality"),
+                mandatory = false,
+                display = mapOf(Locale.ENGLISH to "Locality"),
+            )
+        val Region =
+            ClaimDefinition(
+                path = ClaimPath.claim(NAME).claim("region"),
+                mandatory = false,
+                display = mapOf(Locale.ENGLISH to "Region"),
+            )
+        val PostalCode =
+            ClaimDefinition(
+                path = ClaimPath.claim(NAME).claim("postal_code"),
+                mandatory = false,
+                display = mapOf(Locale.ENGLISH to "Postal Code"),
+            )
+        val Country =
+            ClaimDefinition(
+                path = ClaimPath.claim(NAME).claim("country"),
+                mandatory = false,
+                display = mapOf(Locale.ENGLISH to "Country"),
+            )
+        val Formatted =
+            ClaimDefinition(
+                path = ClaimPath.claim(NAME).claim("formatted"),
+                mandatory = false,
+                display = mapOf(Locale.ENGLISH to "Full Address"),
+            )
     }
 }
 
@@ -169,33 +176,38 @@ data class OidcAssurancePlaceOfBirth(
             "At least one of 'country', 'region' or 'locality' must be non-null"
         }
     }
+
     companion object : IsAttribute {
         const val NAME = "place_of_birth"
 
         override val attribute: ClaimDefinition
-            get() = ClaimDefinition(
-                path = ClaimPath.claim(NAME),
-                mandatory = true,
-                display = mapOf(Locale.ENGLISH to "Birth Place"),
-                nested = listOf(Locality, Region, Country),
+            get() =
+                ClaimDefinition(
+                    path = ClaimPath.claim(NAME),
+                    mandatory = true,
+                    display = mapOf(Locale.ENGLISH to "Birth Place"),
+                    nested = listOf(Locality, Region, Country),
+                )
+
+        val Locality =
+            ClaimDefinition(
+                path = ClaimPath.claim(NAME).claim("locality"),
+                mandatory = false,
+                display = mapOf(Locale.ENGLISH to "Locality"),
             )
 
-        val Locality = ClaimDefinition(
-            path = ClaimPath.claim(NAME).claim("locality"),
-            mandatory = false,
-            display = mapOf(Locale.ENGLISH to "Locality"),
-        )
+        val Region =
+            ClaimDefinition(
+                path = ClaimPath.claim(NAME).claim("region"),
+                mandatory = false,
+                display = mapOf(Locale.ENGLISH to "Region"),
+            )
 
-        val Region = ClaimDefinition(
-            path = ClaimPath.claim(NAME).claim("region"),
-            mandatory = false,
-            display = mapOf(Locale.ENGLISH to "Region"),
-        )
-
-        val Country = ClaimDefinition(
-            path = ClaimPath.claim(NAME).claim("country"),
-            mandatory = false,
-            display = mapOf(Locale.ENGLISH to "Country"),
-        )
+        val Country =
+            ClaimDefinition(
+                path = ClaimPath.claim(NAME).claim("country"),
+                mandatory = false,
+                display = mapOf(Locale.ENGLISH to "Country"),
+            )
     }
 }

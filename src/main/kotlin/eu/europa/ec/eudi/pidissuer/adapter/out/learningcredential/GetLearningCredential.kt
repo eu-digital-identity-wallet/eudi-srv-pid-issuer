@@ -29,7 +29,10 @@ fun interface GetLearningCredential {
     suspend operator fun invoke(context: AuthorizationContext): LearningCredential
 
     companion object {
-        fun mock(clock: Clock, getPidData: GetPidData): GetLearningCredential = GetMockLearningCredential(clock, getPidData)
+        fun mock(
+            clock: Clock,
+            getPidData: GetPidData,
+        ): GetLearningCredential = GetMockLearningCredential(clock, getPidData)
     }
 }
 
@@ -42,15 +45,17 @@ private class GetMockLearningCredential(
         val now = clock.now()
         val pid = checkNotNull(getPidData(context.username)?.first)
         return LearningCredential(
-            issuer = Issuer(
-                name = Issuer.Name("Technical University of Munich: Department of Applied Sciences"),
-                country = IsoAlpha2CountryCode("DE"),
-                uri = HttpsUrl.unsafe("https://university.de/department-of-applied-sciences"),
-            ),
-            dateOfIssuance = run {
-                val twoYearsAgo = now - (2 * 365).days
-                Instant.fromEpochSeconds(random.nextLong(twoYearsAgo.epochSeconds, now.epochSeconds))
-            },
+            issuer =
+                Issuer(
+                    name = Issuer.Name("Technical University of Munich: Department of Applied Sciences"),
+                    country = IsoAlpha2CountryCode("DE"),
+                    uri = HttpsUrl.unsafe("https://university.de/department-of-applied-sciences"),
+                ),
+            dateOfIssuance =
+                run {
+                    val twoYearsAgo = now - (2 * 365).days
+                    Instant.fromEpochSeconds(random.nextLong(twoYearsAgo.epochSeconds, now.epochSeconds))
+                },
             dateOfExpiry =
                 run {
                     val inTwoYears = now + (2 * 365).days

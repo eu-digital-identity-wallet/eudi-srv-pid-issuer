@@ -58,22 +58,24 @@ internal class VerifyKeyAttestation(
         keyAttestationRequirement: KeyAttestationRequirement.Required,
         expectExpirationClaim: Boolean,
         at: Instant,
-    ): Either<Throwable, Pair<NonEmptyList<JWK>, String?>> = either {
-        with(keyAttestation) {
-            val algorithm = extractSupportedAlgorithm(signingAlgorithmsSupported)
-            val walletProviderSigningKey = extractSigningKey()
-            val key = walletProviderSigningKey.key
-                .ensureCompatibleWith(algorithm)
-                .ensureIsPublicAsymmetricKey()
-            verifySignature(key, algorithm, expectExpirationClaim)
-            ensureMeetsKeyAttestationRequirements(keyAttestationRequirement, nonce)
-            if (walletProviderSigningKey is WalletProviderSigningKey.X5C) {
-                walletProviderSigningKey.ensureTrustWalletProvider()
-            }
+    ): Either<Throwable, Pair<NonEmptyList<JWK>, String?>> =
+        either {
+            with(keyAttestation) {
+                val algorithm = extractSupportedAlgorithm(signingAlgorithmsSupported)
+                val walletProviderSigningKey = extractSigningKey()
+                val key =
+                    walletProviderSigningKey.key
+                        .ensureCompatibleWith(algorithm)
+                        .ensureIsPublicAsymmetricKey()
+                verifySignature(key, algorithm, expectExpirationClaim)
+                ensureMeetsKeyAttestationRequirements(keyAttestationRequirement, nonce)
+                if (walletProviderSigningKey is WalletProviderSigningKey.X5C) {
+                    walletProviderSigningKey.ensureTrustWalletProvider()
+                }
 
-            keyAttestation.attestedKeys to nonce
+                keyAttestation.attestedKeys to nonce
+            }
         }
-    }
 
     private suspend fun WalletProviderSigningKey.X5C.ensureTrustWalletProvider() {
         val result = isTrustedKeyAttestationIssuer(x5c)
@@ -93,13 +95,17 @@ internal class VerifyKeyAttestation(
                 val jwk = resolveDidUrl(didUrl).getOrThrow()
                 WalletProviderSigningKey.DIDUrl(jwk, didUrl)
             }
+
             kid == null && !x5c.isNullOrEmpty() -> {
                 val chain = X509CertChainUtils.parse(x5c).toNonEmptyListOrNull()
                 requireNotNull(chain) { "x5c chain cannot be empty" }
                 val jwk = JWK.parse(chain.head)
                 WalletProviderSigningKey.X5C(jwk, chain)
             }
-            else -> error("Invalid Key attestation : No signing key found in one of 'kid' or 'x5c'. 'trust_chain not yet supported'")
+
+            else -> {
+                error("Invalid Key attestation : No signing key found in one of 'kid' or 'x5c'. 'trust_chain not yet supported'")
+            }
         }
     }
 
@@ -110,23 +116,25 @@ internal class VerifyKeyAttestation(
     ) {
         val expectedType = JOSEObjectType(OpenId4VciSpec.KEY_ATTESTATION_JWT_TYPE)
         val keySelector = SingleKeyJWSKeySelector<SecurityContext>(algorithm, key.toPublicKey())
-        val requiredClaims = if (expectExpirationClaim) {
-            setOf("iat", "attested_keys", "exp")
-        } else {
-            setOf("iat", "attested_keys")
-        }
-        val processor = DefaultJWTProcessor<SecurityContext>()
-            .apply {
-                jwsTypeVerifier = DefaultJOSEObjectTypeVerifier(expectedType)
-                jwsKeySelector = keySelector
-                jwtClaimsSetVerifier =
-                    DefaultJWTClaimsVerifier<SecurityContext?>(
-                        JWTClaimsSet.Builder().build(),
-                        requiredClaims,
-                    ).apply {
-                        maxClockSkew = maxSkew.toInt(DurationUnit.SECONDS)
-                    }
+        val requiredClaims =
+            if (expectExpirationClaim) {
+                setOf("iat", "attested_keys", "exp")
+            } else {
+                setOf("iat", "attested_keys")
             }
+        val processor =
+            DefaultJWTProcessor<SecurityContext>()
+                .apply {
+                    jwsTypeVerifier = DefaultJOSEObjectTypeVerifier(expectedType)
+                    jwsKeySelector = keySelector
+                    jwtClaimsSetVerifier =
+                        DefaultJWTClaimsVerifier<SecurityContext?>(
+                            JWTClaimsSet.Builder().build(),
+                            requiredClaims,
+                        ).apply {
+                            maxClockSkew = maxSkew.toInt(DurationUnit.SECONDS)
+                        }
+                }
         processor.process(jwt, null)
     }
 
@@ -152,7 +160,8 @@ internal class VerifyKeyAttestation(
                 "The provided user authentication's attack resistance does not match the expected one."
             }
         }
-        verifyAttestedKey?.verify(attestedKeys, keyAttestationRequirement, nonce)
+        verifyAttestedKey
+            ?.verify(attestedKeys, keyAttestationRequirement, nonce)
             ?.mapLeft {
                 error("${it.size} of the total ${attestedKeys.size} attested keys failed to pass verification")
             }
@@ -190,6 +199,13 @@ private fun JWK.ensureIsPublicAsymmetricKey(): AsymmetricJWK {
 private sealed interface WalletProviderSigningKey {
     val key: JWK
 
-    data class DIDUrl(override val key: JWK, val didUrl: URI) : WalletProviderSigningKey
-    data class X5C(override val key: JWK, val x5c: NonEmptyList<X509Certificate>) : WalletProviderSigningKey
+    data class DIDUrl(
+        override val key: JWK,
+        val didUrl: URI,
+    ) : WalletProviderSigningKey
+
+    data class X5C(
+        override val key: JWK,
+        val x5c: NonEmptyList<X509Certificate>,
+    ) : WalletProviderSigningKey
 }

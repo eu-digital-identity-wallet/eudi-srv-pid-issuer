@@ -20,11 +20,15 @@ import java.security.cert.TrustAnchor
 import java.security.cert.X509Certificate
 
 sealed interface TrustResult {
-    data class IsTrusted(val trustAnchor: TrustAnchor) : TrustResult
+    data class IsTrusted(
+        val trustAnchor: TrustAnchor,
+    ) : TrustResult
+
     object IsUntrusted : TrustResult
 }
 
 fun interface IsTrustedKeyAttestationIssuer {
     suspend operator fun invoke(x5c: NonEmptyList<X509Certificate>): TrustResult
+
     companion object
 }

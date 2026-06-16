@@ -22,10 +22,14 @@ import com.nimbusds.jose.JWSAlgorithm
  * The unique identifier of an offered Credential.
  */
 @JvmInline
-value class CredentialConfigurationId(val value: String)
+value class CredentialConfigurationId(
+    val value: String,
+)
 
 @JvmInline
-value class AttackPotentialResistance(val value: String) {
+value class AttackPotentialResistance(
+    val value: String,
+) {
     init {
         require(value.isNotEmpty())
     }
@@ -42,7 +46,6 @@ value class AttackPotentialResistance(val value: String) {
 }
 
 sealed interface KeyAttestationRequirement {
-
     data object NotRequired : KeyAttestationRequirement
 
     data class Required(
@@ -52,7 +55,6 @@ sealed interface KeyAttestationRequirement {
 }
 
 sealed interface ProofType {
-
     /**
      * A JWT is used as proof of possession.
      */
@@ -82,34 +84,41 @@ sealed interface ProofType {
                 )
                 // Attestation proof is available only when key attestations for this credential are enabled in configuration
                 when (keyAttestationRequirement) {
-                    is KeyAttestationRequirement.Required ->
+                    is KeyAttestationRequirement.Required -> {
                         add(
                             Attestation(supportedSigningAlgorithms, keyAttestationRequirement),
                         )
+                    }
 
-                    KeyAttestationRequirement.NotRequired -> Unit
+                    KeyAttestationRequirement.NotRequired -> {
+                        Unit
+                    }
                 }
             }
         }
     }
 }
 
-fun ProofType.type(): ProofTypeEnum = when (this) {
-    is ProofType.Jwt -> ProofTypeEnum.JWT
-    is ProofType.Attestation -> ProofTypeEnum.ATTESTATION
-}
+fun ProofType.type(): ProofTypeEnum =
+    when (this) {
+        is ProofType.Jwt -> ProofTypeEnum.JWT
+        is ProofType.Attestation -> ProofTypeEnum.ATTESTATION
+    }
 
 enum class ProofTypeEnum {
-    JWT, ATTESTATION
+    JWT,
+    ATTESTATION,
 }
 
 @JvmInline
-value class ProofTypesSupported private constructor(val values: Set<ProofType>) {
-
+value class ProofTypesSupported private constructor(
+    val values: Set<ProofType>,
+) {
     operator fun get(type: ProofTypeEnum): ProofType? = values.firstOrNull { it.type() == type }
 
     companion object {
         val Empty: ProofTypesSupported = ProofTypesSupported(emptySet())
+
         operator fun invoke(values: Set<ProofType>): ProofTypesSupported {
             require(values.groupBy(ProofType::type).all { (_, instances) -> instances.size == 1 }) {
                 "Multiple instance of the same proof type are not allowed"

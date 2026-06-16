@@ -20,7 +20,6 @@ import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
 
 fun interface EncryptCredentialResponse {
-
     operator fun invoke(
         response: IssueCredentialResponse.PlainTO,
         parameters: RequestedResponseEncryption.Required,

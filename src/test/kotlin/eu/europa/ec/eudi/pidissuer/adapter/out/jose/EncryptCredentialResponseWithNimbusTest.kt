@@ -46,47 +46,52 @@ import kotlin.test.assertEquals
 import kotlin.test.fail
 
 internal class EncryptCredentialResponseWithNimbusTest {
-
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.System
     private val encrypter = EncryptCredentialResponseNimbus(issuer, clock)
     private val jacksonObjectMapper: ObjectMapper by lazy { jacksonObjectMapper() }
 
     @Test
-    internal fun `encrypt response with RSA`() = runTest {
-        val key = RSAKeyGenerator(2048, false)
-            .keyUse(KeyUse.ENCRYPTION)
-            .algorithm(JWEAlgorithm.RSA_OAEP_256)
-            .keyID("rsa-jwt")
-            .generate()
-        val jwk = key.toPublicJWK()
-        val parameters = RequestedResponseEncryption.Required(jwk)
-        val unencrypted = IssueCredentialResponse.PlainTO(
-            credentials = listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("credential"))),
-            transactionId = null,
-            notificationId = UUID.randomUUID().toString(),
-        )
+    internal fun `encrypt response with RSA`() =
+        runTest {
+            val key =
+                RSAKeyGenerator(2048, false)
+                    .keyUse(KeyUse.ENCRYPTION)
+                    .algorithm(JWEAlgorithm.RSA_OAEP_256)
+                    .keyID("rsa-jwt")
+                    .generate()
+            val jwk = key.toPublicJWK()
+            val parameters = RequestedResponseEncryption.Required(jwk)
+            val unencrypted =
+                IssueCredentialResponse.PlainTO(
+                    credentials = listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("credential"))),
+                    transactionId = null,
+                    notificationId = UUID.randomUUID().toString(),
+                )
 
-        encryptAndVerify(unencrypted, parameters, key)
-    }
+            encryptAndVerify(unencrypted, parameters, key)
+        }
 
     @Test
-    internal fun `encrypt response with ECDH`() = runTest {
-        val key = ECKeyGenerator(Curve.P_521)
-            .keyUse(KeyUse.ENCRYPTION)
-            .algorithm(JWEAlgorithm.ECDH_ES)
-            .keyID("ec-jwt")
-            .generate()
-        val jwk = key.toPublicJWK()
-        val parameters = RequestedResponseEncryption.Required(jwk)
-        val unencrypted = IssueCredentialResponse.PlainTO(
-            credentials = listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("credential"))),
-            transactionId = null,
-            notificationId = UUID.randomUUID().toString(),
-        )
+    internal fun `encrypt response with ECDH`() =
+        runTest {
+            val key =
+                ECKeyGenerator(Curve.P_521)
+                    .keyUse(KeyUse.ENCRYPTION)
+                    .algorithm(JWEAlgorithm.ECDH_ES)
+                    .keyID("ec-jwt")
+                    .generate()
+            val jwk = key.toPublicJWK()
+            val parameters = RequestedResponseEncryption.Required(jwk)
+            val unencrypted =
+                IssueCredentialResponse.PlainTO(
+                    credentials = listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("credential"))),
+                    transactionId = null,
+                    notificationId = UUID.randomUUID().toString(),
+                )
 
-        encryptAndVerify(unencrypted, parameters, key)
-    }
+            encryptAndVerify(unencrypted, parameters, key)
+        }
 
     private fun encryptAndVerify(
         unencrypted: IssueCredentialResponse.PlainTO,
@@ -95,39 +100,50 @@ internal class EncryptCredentialResponseWithNimbusTest {
     ) {
         val encrypted = encrypter(unencrypted, parameters).getOrElse { fail(it.message, it) }
 
-        val processor = DefaultJWTProcessor<SecurityContext>().apply {
-            jweTypeVerifier = DefaultJOSEObjectTypeVerifier.JWT
-            jweKeySelector = JWEDecryptionKeySelector(
-                parameters.encryptionAlgorithm,
-                parameters.encryptionMethod,
-                ImmutableJWKSet(JWKSet(decryptionKey)),
-            )
-            jwtClaimsSetVerifier = DefaultJWTClaimsVerifier(
-                JWTClaimsSet.Builder()
-                    .issuer(issuer.externalForm)
-                    .apply {
-                        unencrypted.transactionId?.let { claim("transaction_id", it) }
-                        unencrypted.notificationId?.let { claim("notification_id", it) }
-                    }
-                    .build(),
-                setOf("iat") + (unencrypted.credentials?.let { setOf("credentials") } ?: emptySet()),
-            )
-        }
+        val processor =
+            DefaultJWTProcessor<SecurityContext>().apply {
+                jweTypeVerifier = DefaultJOSEObjectTypeVerifier.JWT
+                jweKeySelector =
+                    JWEDecryptionKeySelector(
+                        parameters.encryptionAlgorithm,
+                        parameters.encryptionMethod,
+                        ImmutableJWKSet(JWKSet(decryptionKey)),
+                    )
+                jwtClaimsSetVerifier =
+                    DefaultJWTClaimsVerifier(
+                        JWTClaimsSet
+                            .Builder()
+                            .issuer(issuer.externalForm)
+                            .apply {
+                                unencrypted.transactionId?.let { claim("transaction_id", it) }
+                                unencrypted.notificationId?.let { claim("notification_id", it) }
+                            }.build(),
+                        setOf("iat") + (unencrypted.credentials?.let { setOf("credentials") } ?: emptySet()),
+                    )
+            }
 
         val claims = Either.catch { processor.process(encrypted.jwt, null) }.getOrElse { fail(it.message, it) }
-        val credential = claims.getListClaim("credentials")
-            ?.let {
-                it.map { credential ->
-                    when (credential) {
-                        is Map<*, *> -> Either.catch {
-                            Json.decodeFromString<IssueCredentialResponse.PlainTO.CredentialTO>(
-                                jacksonObjectMapper.writeValueAsString(credential),
-                            )
-                        }.getOrElse { error -> fail(error.message, error) }
-                        else -> fail("unexpected type in 'credentials' claim ${credential::class.java}")
+        val credential =
+            claims
+                .getListClaim("credentials")
+                ?.let {
+                    it.map { credential ->
+                        when (credential) {
+                            is Map<*, *> -> {
+                                Either
+                                    .catch {
+                                        Json.decodeFromString<IssueCredentialResponse.PlainTO.CredentialTO>(
+                                            jacksonObjectMapper.writeValueAsString(credential),
+                                        )
+                                    }.getOrElse { error -> fail(error.message, error) }
+                            }
+
+                            else -> {
+                                fail("unexpected type in 'credentials' claim ${credential::class.java}")
+                            }
+                        }
                     }
                 }
-            }
 
         assertEquals(unencrypted.credentials, credential)
     }

@@ -46,22 +46,23 @@ class EncryptDeferredResponseNimbus(
     issuer: CredentialIssuerId,
     clock: Clock,
 ) : EncryptDeferredResponse {
-
     private val encryptResponse = EncryptResponse(issuer, clock)
 
     override fun invoke(
         response: IssuedTO,
         parameters: RequestedResponseEncryption.Required,
-    ): Either<Throwable, EncryptedJWT> = Either.catch {
-        encryptResponse(response, parameters).getOrThrow()
-    }
+    ): Either<Throwable, EncryptedJWT> =
+        Either.catch {
+            encryptResponse(response, parameters).getOrThrow()
+        }
 
     override fun invoke(
         response: IssuancePendingTO,
         parameters: RequestedResponseEncryption.Required,
-    ): Either<Throwable, EncryptedJWT> = Either.catch {
-        encryptResponse(response, parameters).getOrThrow()
-    }
+    ): Either<Throwable, EncryptedJWT> =
+        Either.catch {
+            encryptResponse(response, parameters).getOrThrow()
+        }
 }
 
 /**
@@ -71,58 +72,63 @@ class EncryptCredentialResponseNimbus(
     issuer: CredentialIssuerId,
     clock: Clock,
 ) : EncryptCredentialResponse {
-
     private val encryptResponse = EncryptResponse(issuer, clock)
 
     override fun invoke(
         response: IssueCredentialResponse.PlainTO,
         parameters: RequestedResponseEncryption.Required,
-    ): Either<Throwable, IssueCredentialResponse.EncryptedJwtIssued> = Either.catch {
-        val jwt = encryptResponse(response, parameters).getOrThrow()
-        IssueCredentialResponse.EncryptedJwtIssued(jwt.serialize())
-    }
+    ): Either<Throwable, IssueCredentialResponse.EncryptedJwtIssued> =
+        Either.catch {
+            val jwt = encryptResponse(response, parameters).getOrThrow()
+            IssueCredentialResponse.EncryptedJwtIssued(jwt.serialize())
+        }
 }
 
 private class EncryptResponse(
     private val issuer: CredentialIssuerId,
     private val clock: Clock,
 ) {
-
     inline operator fun <reified T> invoke(
         response: T,
         parameters: RequestedResponseEncryption.Required,
         serializer: KSerializer<T> = serializer(),
         customize: JWTClaimsSet.Builder.() -> Unit = {},
-    ): Either<Throwable, EncryptedJWT> = Either.catch {
-        val jweHeader = parameters.asHeader()
-        val claimsJson = Json.encodeToString(serializer, response)
-        val baseClaims = JWTClaimsSet.parse(claimsJson)
-        val jwtClaimSet = JWTClaimsSet.Builder(baseClaims)
-            .issuer(issuer.externalForm)
-            .issueTime(clock.now().toJavaDate())
-            .apply(customize)
-            .build()
+    ): Either<Throwable, EncryptedJWT> =
+        Either.catch {
+            val jweHeader = parameters.asHeader()
+            val claimsJson = Json.encodeToString(serializer, response)
+            val baseClaims = JWTClaimsSet.parse(claimsJson)
+            val jwtClaimSet =
+                JWTClaimsSet
+                    .Builder(baseClaims)
+                    .issuer(issuer.externalForm)
+                    .issueTime(clock.now().toJavaDate())
+                    .apply(customize)
+                    .build()
 
-        EncryptedJWT(jweHeader, jwtClaimSet)
-            .apply { encrypt(parameters.encryptionJwk) }
-    }
+            EncryptedJWT(jweHeader, jwtClaimSet)
+                .apply { encrypt(parameters.encryptionJwk) }
+        }
 
     private fun RequestedResponseEncryption.Required.asHeader() =
-        JWEHeader.Builder(encryptionAlgorithm, encryptionMethod).apply {
-            jwk(encryptionJwk)
-            keyID(encryptionJwk.keyID)
-            type(JOSEObjectType.JWT)
-            compressionAlgorithm?.let {
-                compressionAlgorithm(it)
-            }
-        }.build()
+        JWEHeader
+            .Builder(encryptionAlgorithm, encryptionMethod)
+            .apply {
+                jwk(encryptionJwk)
+                keyID(encryptionJwk.keyID)
+                type(JOSEObjectType.JWT)
+                compressionAlgorithm?.let {
+                    compressionAlgorithm(it)
+                }
+            }.build()
 
     private fun EncryptedJWT.encrypt(jwk: JWK) {
-        val enc = when (jwk) {
-            is RSAKey -> RSAEncrypter(jwk)
-            is ECKey -> ECDHEncrypter(jwk)
-            else -> null
-        }
+        val enc =
+            when (jwk) {
+                is RSAKey -> RSAEncrypter(jwk)
+                is ECKey -> ECDHEncrypter(jwk)
+                else -> null
+            }
         enc?.let { encrypt(it) }
             ?: error("unsupported 'kty': '${jwk.keyType.value}'")
     }

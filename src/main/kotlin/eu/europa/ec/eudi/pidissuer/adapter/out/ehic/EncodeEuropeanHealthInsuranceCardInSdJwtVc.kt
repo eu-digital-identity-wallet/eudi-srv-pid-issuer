@@ -55,24 +55,26 @@ sealed interface EncodeEuropeanHealthInsuranceCardInSdJwtVc {
             issuerSigningKey: IssuerSigningKey,
             vct: SdJwtVcType,
             credentialIssuerId: CredentialIssuerId,
-        ): EncodeEuropeanHealthInsuranceCardInSdJwtVc = JwsJsonFlattenedEncoder(
-            digestsHashAlgorithm,
-            issuerSigningKey,
-            vct,
-            credentialIssuerId,
-        )
+        ): EncodeEuropeanHealthInsuranceCardInSdJwtVc =
+            JwsJsonFlattenedEncoder(
+                digestsHashAlgorithm,
+                issuerSigningKey,
+                vct,
+                credentialIssuerId,
+            )
 
         fun compact(
             digestsHashAlgorithm: HashAlgorithm,
             issuerSigningKey: IssuerSigningKey,
             vct: SdJwtVcType,
             credentialIssuerId: CredentialIssuerId,
-        ): EncodeEuropeanHealthInsuranceCardInSdJwtVc = CompactEncoder(
-            digestsHashAlgorithm,
-            issuerSigningKey,
-            vct,
-            credentialIssuerId,
-        )
+        ): EncodeEuropeanHealthInsuranceCardInSdJwtVc =
+            CompactEncoder(
+                digestsHashAlgorithm,
+                issuerSigningKey,
+                vct,
+                credentialIssuerId,
+            )
     }
 }
 
@@ -90,13 +92,15 @@ private class JwsJsonFlattenedEncoder(
         holderPublicKey: JWK,
         dateOfIssuance: Instant,
         dateOfExpiry: Instant,
-    ): Either<IssueCredentialError, JsonElement> = either {
-        val sdJwt = catch({
-            issuer.createSdJwt(vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
-        }) { raise(IssueCredentialError.Unexpected("Unable to create SD-JWT VC", it)) }
+    ): Either<IssueCredentialError, JsonElement> =
+        either {
+            val sdJwt =
+                catch({
+                    issuer.createSdJwt(vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
+                }) { raise(IssueCredentialError.Unexpected("Unable to create SD-JWT VC", it)) }
 
-        sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)
-    }
+            sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)
+        }
 }
 
 private class CompactEncoder(
@@ -113,13 +117,15 @@ private class CompactEncoder(
         holderPublicKey: JWK,
         dateOfIssuance: Instant,
         dateOfExpiry: Instant,
-    ): Either<IssueCredentialError, JsonElement> = either {
-        val sdJwt = catch({
-            issuer.createSdJwt(vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
-        }) { raise(IssueCredentialError.Unexpected("Unable to create SD-JWT VC", it)) }
+    ): Either<IssueCredentialError, JsonElement> =
+        either {
+            val sdJwt =
+                catch({
+                    issuer.createSdJwt(vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
+                }) { raise(IssueCredentialError.Unexpected("Unable to create SD-JWT VC", it)) }
 
-        JsonPrimitive(sdJwt.serialize())
-    }
+            JsonPrimitive(sdJwt.serialize())
+        }
 }
 
 private fun sdJwt(
@@ -181,15 +187,16 @@ private suspend fun SdJwtIssuer<SignedJWT>.createSdJwt(
 ): SdJwt<SignedJWT> {
     require(dateOfExpiry >= dateOfIssuance)
 
-    val spec = sdJwt(
-        vct = vct,
-        ehic = ehic,
-        holder = holder,
-        holderPublicKey = holderPublicKey,
-        credentialIssuerId = credentialIssuerId,
-        dateOfIssuance = dateOfIssuance,
-        dateOfExpiry = dateOfExpiry,
-    )
+    val spec =
+        sdJwt(
+            vct = vct,
+            ehic = ehic,
+            holder = holder,
+            holderPublicKey = holderPublicKey,
+            credentialIssuerId = credentialIssuerId,
+            dateOfIssuance = dateOfIssuance,
+            dateOfExpiry = dateOfExpiry,
+        )
 
     return issue(spec).getOrThrow()
 }

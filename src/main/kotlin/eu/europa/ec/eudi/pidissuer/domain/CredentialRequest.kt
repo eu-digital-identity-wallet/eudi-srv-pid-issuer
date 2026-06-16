@@ -33,22 +33,27 @@ import java.security.cert.X509Certificate
  * Proof of possession.
  */
 sealed interface UnvalidatedProof {
-
     /**
      * Proof of possession using a JWT.
      */
-    data class Jwt(val jwt: String) : UnvalidatedProof
+    data class Jwt(
+        val jwt: String,
+    ) : UnvalidatedProof
 
     /**
      * Proof of possession using a W3C Verifiable Presentation object signed using the Data Integrity Proof.
      */
-    data class DiVp(val vp: String) : UnvalidatedProof
+    data class DiVp(
+        val vp: String,
+    ) : UnvalidatedProof
 
     /**
      * A JWT representing a key attestation without using a proof of possession of
      * the cryptographic key material that is being attested.
      */
-    data class Attestation(val jwt: String) : UnvalidatedProof
+    data class Attestation(
+        val jwt: String,
+    ) : UnvalidatedProof
 }
 
 /**
@@ -57,32 +62,36 @@ sealed interface UnvalidatedProof {
  * inside the issued credential
  */
 sealed interface CredentialKey {
-
     /**
      * If the Credential shall be bound to a DID, the kid refers to a DID URL
      * which identifies a particular key in the DID Document that the Credential shall be bound to
      */
-    data class DIDUrl(val did: URI, val jwk: JWK) : CredentialKey {
+    data class DIDUrl(
+        val did: URI,
+        val jwk: JWK,
+    ) : CredentialKey {
         init {
             require(!jwk.isPrivate) { "jwk must not contain a private key" }
             require(jwk is AsymmetricJWK) { "'jwk' must be asymmetric" }
         }
 
         companion object {
-
             /**
              * Resolves the provided DID url. Currently, it supports 'key' and 'jwk' methods.
              */
-            operator fun invoke(value: String): Either<Throwable, DIDUrl> = Either.catch {
-                val url = URI.create(value)
-                val jwk = resolveDidUrl(url).getOrThrow()
-                DIDUrl(url, jwk)
-            }
+            operator fun invoke(value: String): Either<Throwable, DIDUrl> =
+                Either.catch {
+                    val url = URI.create(value)
+                    val jwk = resolveDidUrl(url).getOrThrow()
+                    DIDUrl(url, jwk)
+                }
         }
     }
 
     @JvmInline
-    value class Jwk(val value: JWK) : CredentialKey {
+    value class Jwk(
+        val value: JWK,
+    ) : CredentialKey {
         init {
             require(!value.isPrivate) { "jwk must not contain a private key" }
             require(value is AsymmetricJWK) { "'jwk' must be asymmetric" }
@@ -90,7 +99,9 @@ sealed interface CredentialKey {
     }
 
     @JvmInline
-    value class X5c(val chain: NonEmptyList<X509Certificate>) : CredentialKey {
+    value class X5c(
+        val chain: NonEmptyList<X509Certificate>,
+    ) : CredentialKey {
         val certificate: X509Certificate
             get() = chain.head
 
@@ -98,8 +109,9 @@ sealed interface CredentialKey {
     }
 
     @JvmInline
-    value class AttestedKeys(val keys: NonEmptyList<JWK>) : CredentialKey {
-
+    value class AttestedKeys(
+        val keys: NonEmptyList<JWK>,
+    ) : CredentialKey {
         init {
             keys.forEach { it.isPublicAsymmetricKey() }
         }
@@ -118,7 +130,6 @@ sealed interface CredentialKey {
 }
 
 sealed interface RequestedResponseEncryption {
-
     /**
      * Credential response encryption is not required.
      */
@@ -181,7 +192,10 @@ sealed interface CredentialRequest {
     val credentialResponseEncryption: RequestedResponseEncryption
 }
 
-fun Raise<String>.assertIsSupported(credentialRequest: CredentialRequest, meta: CredentialConfiguration) {
+fun Raise<String>.assertIsSupported(
+    credentialRequest: CredentialRequest,
+    meta: CredentialConfiguration,
+) {
     when (credentialRequest) {
         is MsoMdocCredentialRequest -> {
             ensure(meta is MsoMdocCredentialConfiguration) { "Was expecting a ${MSO_MDOC_FORMAT.value}" }

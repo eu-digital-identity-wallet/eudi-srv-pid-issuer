@@ -73,7 +73,6 @@ enum class ErrorTypeTO {
 }
 
 sealed interface NotificationResponse {
-
     /**
      * Indicate a Notification Request was successfully handled.
      */
@@ -97,7 +96,8 @@ class HandleNotificationRequest(
     private val loadIssuedCredentialsByNotificationId: LoadIssuedCredentialsByNotificationId,
 ) {
     suspend operator fun invoke(requestBody: JsonElement): NotificationResponse =
-        Either.catch { Json.decodeFromJsonElement<NotificationRequestTO>(requestBody) }
+        Either
+            .catch { Json.decodeFromJsonElement<NotificationRequestTO>(requestBody) }
             .fold(
                 ifLeft = { NotificationResponse.NotificationErrorResponseTO(ErrorTypeTO.InvalidNotificationRequest) },
                 ifRight = { notificationRequest ->

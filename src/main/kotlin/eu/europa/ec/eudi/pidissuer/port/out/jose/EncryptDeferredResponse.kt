@@ -22,7 +22,6 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssuancePendingTO
 import eu.europa.ec.eudi.pidissuer.port.input.IssuedTO
 
 interface EncryptDeferredResponse {
-
     operator fun invoke(
         response: IssuedTO,
         parameters: RequestedResponseEncryption.Required,

@@ -18,7 +18,9 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.ehic
 import java.time.ZonedDateTime
 
 @JvmInline
-value class PersonalAdministrativeNumber(val value: String) {
+value class PersonalAdministrativeNumber(
+    val value: String,
+) {
     init {
         require(value.length in 4..50)
     }
@@ -27,7 +29,9 @@ value class PersonalAdministrativeNumber(val value: String) {
 }
 
 @JvmInline
-value class Name(val value: String) {
+value class Name(
+    val value: String,
+) {
     init {
         require(value.length in 1..100)
     }
@@ -39,9 +43,10 @@ data class IssuingAuthority(
     val id: Id,
     val name: Name,
 ) {
-
     @JvmInline
-    value class Id(val value: String) {
+    value class Id(
+        val value: String,
+    ) {
         init {
             require(value.length in 1..20)
         }
@@ -51,7 +56,9 @@ data class IssuingAuthority(
 }
 
 @JvmInline
-value class IssuingCountry(val value: String) {
+value class IssuingCountry(
+    val value: String,
+) {
     init {
         require(Regex("^[A-Z]{2}$").matches(value))
     }
@@ -64,7 +71,9 @@ data class AuthenticSource(
     val name: Name,
 ) {
     @JvmInline
-    value class Id(val value: String) {
+    value class Id(
+        val value: String,
+    ) {
         init {
             require(value.length in 1..20)
         }
@@ -74,7 +83,9 @@ data class AuthenticSource(
 }
 
 @JvmInline
-value class DocumentNumber(val value: String) {
+value class DocumentNumber(
+    val value: String,
+) {
     init {
         require(value.length in 4..50)
     }

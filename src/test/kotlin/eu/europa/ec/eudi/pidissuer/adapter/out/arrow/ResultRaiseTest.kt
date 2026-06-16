@@ -22,20 +22,21 @@ import kotlin.test.assertTrue
 import kotlin.test.fail
 
 internal class ResultRaiseTest {
-
     @Test
     internal fun `catches all non fatal exceptions`() {
-        val nonFatal = listOf(
-            IllegalArgumentException::class.java,
-            IllegalStateException::class.java,
-            NumberFormatException::class.java,
-        )
+        val nonFatal =
+            listOf(
+                IllegalArgumentException::class.java,
+                IllegalStateException::class.java,
+                NumberFormatException::class.java,
+            )
 
         nonFatal.forEach {
             try {
-                val result = result {
-                    throw it.getDeclaredConstructor().newInstance()
-                }
+                val result =
+                    result {
+                        throw it.getDeclaredConstructor().newInstance()
+                    }
                 assertTrue { result.isFailure }
             } catch (e: Throwable) {
                 fail("Did not expect Throwable to be thrown", e)
@@ -45,11 +46,12 @@ internal class ResultRaiseTest {
 
     @Test
     internal fun `does not catch fatal exceptions`() {
-        val fatal = listOf(
-            ThreadDeath::class.java,
-            CancellationException::class.java,
-            InterruptedException::class.java,
-        )
+        val fatal =
+            listOf(
+                ThreadDeath::class.java,
+                CancellationException::class.java,
+                InterruptedException::class.java,
+            )
 
         fatal.forEach {
             try {

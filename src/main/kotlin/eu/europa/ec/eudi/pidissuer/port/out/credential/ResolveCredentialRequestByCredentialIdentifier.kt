@@ -26,7 +26,6 @@ import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
  * If the Credential Identifier is invalid, no Credential Request is resolved.
  */
 fun interface ResolveCredentialRequestByCredentialIdentifier {
-
     suspend operator fun invoke(
         identifier: CredentialIdentifier,
         unvalidatedProofs: NonEmptyList<UnvalidatedProof>,

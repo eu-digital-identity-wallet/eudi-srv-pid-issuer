@@ -26,15 +26,19 @@ enum class Format {
 }
 
 @JvmInline
-value class Pixels(val value: UInt)
+value class Pixels(
+    val value: UInt,
+)
 
-data class Dimensions(val width: Pixels, val height: Pixels)
+data class Dimensions(
+    val width: Pixels,
+    val height: Pixels,
+)
 
 /**
  * Generates a QR Code.
  */
 fun interface GenerateQqCode {
-
     /**
      * Generates a new QR Code.
      *
@@ -42,5 +46,9 @@ fun interface GenerateQqCode {
      * @param format the image format to use
      * @param dimensions the dimensions of the generated QR Code
      */
-    operator fun invoke(content: URI, format: Format, dimensions: Dimensions): Either<Throwable, ByteArray>
+    operator fun invoke(
+        content: URI,
+        format: Format,
+        dimensions: Dimensions,
+    ): Either<Throwable, ByteArray>
 }

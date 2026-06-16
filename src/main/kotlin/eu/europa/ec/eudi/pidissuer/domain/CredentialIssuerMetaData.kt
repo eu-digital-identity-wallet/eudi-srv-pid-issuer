@@ -96,7 +96,6 @@ data class CredentialResponseEncryptionSupportedParameters(
 }
 
 sealed interface CredentialResponseEncryption {
-
     /**
      * The Credential Issuer indicates that additional
      * Credential Response encryption is not supported
@@ -127,7 +126,6 @@ sealed interface CredentialResponseEncryption {
 }
 
 sealed interface CredentialRequestEncryption {
-
     /**
      * The Credential Issuer indicates that additional
      * Credential Request encryption is not supported
@@ -161,21 +159,23 @@ fun <T> CredentialRequestEncryption.fold(
     ifNotSupported: T,
     ifOptional: (CredentialRequestEncryption.Optional) -> T,
     ifRequired: (CredentialRequestEncryption.Required) -> T,
-): T = when (this) {
-    CredentialRequestEncryption.NotSupported -> ifNotSupported
-    is CredentialRequestEncryption.Optional -> ifOptional(this)
-    is CredentialRequestEncryption.Required -> ifRequired(this)
-}
+): T =
+    when (this) {
+        CredentialRequestEncryption.NotSupported -> ifNotSupported
+        is CredentialRequestEncryption.Optional -> ifOptional(this)
+        is CredentialRequestEncryption.Required -> ifRequired(this)
+    }
 
 fun <T> CredentialResponseEncryption.fold(
     ifNotSupported: T,
     ifOptional: (CredentialResponseEncryption.Optional) -> T,
     ifRequired: (CredentialResponseEncryption.Required) -> T,
-): T = when (this) {
-    CredentialResponseEncryption.NotSupported -> ifNotSupported
-    is CredentialResponseEncryption.Optional -> ifOptional(this)
-    is CredentialResponseEncryption.Required -> ifRequired(this)
-}
+): T =
+    when (this) {
+        CredentialResponseEncryption.NotSupported -> ifNotSupported
+        is CredentialResponseEncryption.Optional -> ifOptional(this)
+        is CredentialResponseEncryption.Required -> ifRequired(this)
+    }
 
 data class CredentialIssuerDisplay(
     val name: String? = null,
@@ -246,7 +246,6 @@ data class CredentialIssuerMetaData(
  * Indicates whether the Credential Endpoint can support batch issuance or not.
  */
 sealed interface BatchCredentialIssuance {
-
     /**
      * Batch credential issuance is not supported.
      */
@@ -255,7 +254,9 @@ sealed interface BatchCredentialIssuance {
     /**
      * Batch credential issuance is supported.
      */
-    data class Supported(val batchSize: Int) : BatchCredentialIssuance {
+    data class Supported(
+        val batchSize: Int,
+    ) : BatchCredentialIssuance {
         init {
             require(batchSize >= 2) { "Batch size must be equal or greater than 2" }
         }

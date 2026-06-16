@@ -37,14 +37,12 @@ import kotlin.reflect.KClass
 )
 @ContextConfiguration(initializers = [BeansDslApplicationContextInitializer::class])
 internal annotation class PidIssuerApplicationTest(
-
     /**
      * [Configuration] classes that contain extra bean definitions.
      * Useful for bean overriding using [Primary] annotation.
      */
     @get:AliasFor(annotation = ContextConfiguration::class)
     val classes: Array<KClass<*>> = [],
-
 )
 
 /**

@@ -110,15 +110,15 @@ kotlin {
         freeCompilerArgs.addAll(
             "-Xjsr305=strict",
             "-Xconsistent-data-class-copy-visibility",
-            "-Xnested-type-aliases",
         )
-        optIn = listOf(
-            "kotlinx.serialization.ExperimentalSerializationApi",
-            "kotlin.io.encoding.ExperimentalEncodingApi",
-            "kotlin.contracts.ExperimentalContracts",
-            "kotlin.time.ExperimentalTime",
-            "kotlin.uuid.ExperimentalUuidApi",
-        )
+        optIn =
+            listOf(
+                "kotlinx.serialization.ExperimentalSerializationApi",
+                "kotlin.io.encoding.ExperimentalEncodingApi",
+                "kotlin.contracts.ExperimentalContracts",
+                "kotlin.time.ExperimentalTime",
+                "kotlin.uuid.ExperimentalUuidApi",
+            )
     }
 }
 

@@ -21,7 +21,9 @@ import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import kotlin.time.Instant
 
 @JvmInline
-value class NonBlankString(val value: String) {
+value class NonBlankString(
+    val value: String,
+) {
     init {
         require(value.isNotBlank())
     }

@@ -28,34 +28,37 @@ internal class ValidateAttestationProof(
         unvalidatedProof: UnvalidatedProof.Attestation,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
-    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey.AttestedKeys, String>> = Either.catch {
-        val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.ATTESTATION]
-        requireNotNull(proofType) {
-            "Credential configuration '${credentialConfiguration.id.value}' doesn't support 'attestation' proofs"
-        }
-        check(proofType is ProofType.Attestation)
-        val keyAttestationJWT = KeyAttestationJWT(unvalidatedProof.jwt)
+    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey.AttestedKeys, String>> =
+        Either
+            .catch {
+                val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.ATTESTATION]
+                requireNotNull(proofType) {
+                    "Credential configuration '${credentialConfiguration.id.value}' doesn't support 'attestation' proofs"
+                }
+                check(proofType is ProofType.Attestation)
+                val keyAttestationJWT = KeyAttestationJWT(unvalidatedProof.jwt)
 
-        require(keyAttestationJWT.jwt.header.algorithm in proofType.signingAlgorithmsSupported) {
-            "Key attestation signing algorithm '${keyAttestationJWT.jwt.header.algorithm}' is not supported, " +
-                "must be one of: ${proofType.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
-        }
+                require(keyAttestationJWT.jwt.header.algorithm in proofType.signingAlgorithmsSupported) {
+                    "Key attestation signing algorithm '${keyAttestationJWT.jwt.header.algorithm}' is not supported, " +
+                        "must be one of: ${proofType.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
+                }
 
-        credentialKeyAndNonce(keyAttestationJWT, proofType, at)
-    }.mapLeft { IssueCredentialError.InvalidProof("Invalid proof Attestation", it) }
+                credentialKeyAndNonce(keyAttestationJWT, proofType, at)
+            }.mapLeft { IssueCredentialError.InvalidProof("Invalid proof Attestation", it) }
 
     private suspend fun credentialKeyAndNonce(
         keyAttestationJWT: KeyAttestationJWT,
         proofType: ProofType.Attestation,
         at: Instant,
     ): Pair<CredentialKey.AttestedKeys, String> {
-        val (attestedKeys, nonce) = verifyKeyAttestation(
-            keyAttestation = keyAttestationJWT,
-            signingAlgorithmsSupported = proofType.signingAlgorithmsSupported,
-            keyAttestationRequirement = proofType.keyAttestationRequirement,
-            expectExpirationClaim = false,
-            at = at,
-        ).getOrThrow()
+        val (attestedKeys, nonce) =
+            verifyKeyAttestation(
+                keyAttestation = keyAttestationJWT,
+                signingAlgorithmsSupported = proofType.signingAlgorithmsSupported,
+                keyAttestationRequirement = proofType.keyAttestationRequirement,
+                expectExpirationClaim = false,
+                at = at,
+            ).getOrThrow()
         requireNotNull(nonce) { "Key attestation does not contain a c_nonce." }
 
         return CredentialKey.AttestedKeys(attestedKeys) to nonce
