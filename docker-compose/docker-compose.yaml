@@ -62,6 +62,24 @@ services:
     networks:
       - default
 
+  status-list:
+    build:
+      context: ./status-list
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${STATUS_LIST_VERSION}
+    image: status-list:${STATUS_LIST_VERSION}
+    container_name: status-list
+    environment:
+      API_key: aaa-bbb-ccc
+    volumes:
+      - ./status-list/config/config_service.py:/status-list/app/config_service.py
+      - ./status-list/certs:/status-list/certs
+      - status-lists:/var/opt/status_lists
+      - status-lists-backups:/var/opt/status_list_backup
+    networks:
+      - default
+
   pid-issuer:
     image: ghcr.io/eu-digital-identity-wallet/eudi-srv-pid-issuer:edge
     pull_policy: always
@@ -71,6 +89,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      status-list:
+        condition: service_started
     environment:
       - SPRING_PROFILES_ACTIVE=insecure
       - SPRING_WEBFLUX_BASE_PATH=/pid-issuer
@@ -113,6 +133,9 @@ services:
       - SPRING_R2DBC_URL=r2dbc:pool:postgresql://postgres:5432/pid_issuer
       - SPRING_R2DBC_USERNAME=pid_issuer
       - SPRING_R2DBC_PASSWORD=pid_issuer
+      - ISSUER_STATUSLIST_SERVICE_GENERATE_URI=http://status-list:5000/token_status_list/take
+      - ISSUER_STATUSLIST_SERVICE_REVOKE_URI=http://status-list:5000/token_status_list/take
+      - ISSUER_STATUSLIST_SERVICE_APIKEY=aaa-bbb-ccc
     networks:
       - default
 
@@ -127,8 +150,14 @@ services:
         condition: service_healthy
       pid-issuer:
         condition: service_started
+      status-list:
+        condition: service_started
     volumes:
       - ./haproxy/haproxy.conf:/usr/local/etc/haproxy/haproxy.cfg
       - ./haproxy/certs/:/etc/ssl/certs/
     networks:
       - default
+
+volumes:
+  status-lists:
+  status-lists-backups:
