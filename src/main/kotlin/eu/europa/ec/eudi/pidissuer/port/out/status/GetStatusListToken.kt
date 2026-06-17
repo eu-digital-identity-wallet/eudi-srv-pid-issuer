@@ -34,5 +34,8 @@ fun interface GetStatusListTokenStatus {
      * @param uri the URI of the status list token
      * @param index the index of the entry within the status list
      */
-    suspend operator fun invoke(uri: URI, index: UInt): Either<Throwable, StatusListTokenStatus>
+    suspend operator fun invoke(
+        uri: URI,
+        index: UInt,
+    ): Either<Throwable, StatusListTokenStatus>
 }

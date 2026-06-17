@@ -30,8 +30,10 @@ val MSO_MDOC_FORMAT = Format(MSO_MDOC_FORMAT_VALUE)
 
 fun ClaimPath.isMsoMDoc(): Boolean = 2 == size && all { it is ClaimPathElement.Claim }
 
-operator fun ClaimPath.Companion.invoke(nameSpace: MsoNameSpace, attributeName: String): ClaimPath =
-    claim(nameSpace).claim(attributeName)
+operator fun ClaimPath.Companion.invoke(
+    nameSpace: MsoNameSpace,
+    attributeName: String,
+): ClaimPath = claim(nameSpace).claim(attributeName)
 
 fun ClaimDefinition.isMsoMDoc(): Boolean = nested.isEmpty() && path.isMsoMDoc()
 
@@ -42,7 +44,9 @@ operator fun ClaimDefinition.Companion.invoke(
     display: Display = emptyMap(),
 ): ClaimDefinition = ClaimDefinition(ClaimPath(nameSpace, attributeName), mandatory, display)
 
-data class MsoMdocPolicy(val oneTimeUse: Boolean)
+data class MsoMdocPolicy(
+    val oneTimeUse: Boolean,
+)
 
 /**
  * @param docType string identifying the credential type as defined in ISO.18013-5.
@@ -70,11 +74,12 @@ data class MsoMdocCredentialConfiguration(
 internal fun MsoMdocCredentialConfiguration.credentialRequest(
     unvalidatedProof: UnvalidatedProof,
     credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
-): MsoMdocCredentialRequest = MsoMdocCredentialRequest(
-    unvalidatedProof = unvalidatedProof,
-    credentialResponseEncryption = credentialResponseEncryption,
-    docType = docType,
-)
+): MsoMdocCredentialRequest =
+    MsoMdocCredentialRequest(
+        unvalidatedProof = unvalidatedProof,
+        credentialResponseEncryption = credentialResponseEncryption,
+        docType = docType,
+    )
 
 //
 // Credential Request
@@ -87,7 +92,10 @@ data class MsoMdocCredentialRequest(
     override val format: Format = MSO_MDOC_FORMAT
 }
 
-internal fun Raise<String>.validate(msoMdocCredentialRequest: MsoMdocCredentialRequest, meta: MsoMdocCredentialConfiguration) {
+internal fun Raise<String>.validate(
+    msoMdocCredentialRequest: MsoMdocCredentialRequest,
+    meta: MsoMdocCredentialConfiguration,
+) {
     ensure(msoMdocCredentialRequest.docType == meta.docType) {
         "doctype is ${msoMdocCredentialRequest.docType} but was expecting ${meta.docType}"
     }

@@ -23,29 +23,38 @@ import kotlin.time.Duration
  * String identifying an issued Credential that the Wallet includes in the Notification Request.
  */
 @JvmInline
-value class NotificationId(val value: String)
+value class NotificationId(
+    val value: String,
+)
 
 /**
  * The identifier of a deferred issuance transaction.
  */
 @JvmInline
-value class TransactionId(val value: String)
+value class TransactionId(
+    val value: String,
+)
 
 /**
  * The response to a Credential Request.
  */
 sealed interface CredentialResponse {
-
     /**
      * An unencrypted Credential has been issued.
      */
-    data class Issued(val credentials: NonEmptyList<JsonElement>, val notificationId: NotificationId? = null) : CredentialResponse
+    data class Issued(
+        val credentials: NonEmptyList<JsonElement>,
+        val notificationId: NotificationId? = null,
+    ) : CredentialResponse
 
     /**
      * The issuance of the requested Credential has been deferred.
      * The deferred transaction can be identified by [transactionId].
      */
-    data class Deferred(val transactionId: TransactionId, val interval: Duration) : CredentialResponse {
+    data class Deferred(
+        val transactionId: TransactionId,
+        val interval: Duration,
+    ) : CredentialResponse {
         init {
             require(interval.isPositive()) { "interval must be a positive number" }
         }

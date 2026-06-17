@@ -36,7 +36,9 @@ import id.walt.mdoc.SimpleCOSECryptoProvider
 import java.security.cert.X509Certificate
 
 @JvmInline
-value class IssuerSigningKey(val key: ECKey) {
+value class IssuerSigningKey(
+    val key: ECKey,
+) {
     init {
         require(key.isPrivate) { "a private key is required for signing" }
         require(!key.keyID.isNullOrBlank()) { "issuer key must have kid" }
@@ -45,31 +47,34 @@ value class IssuerSigningKey(val key: ECKey) {
 }
 
 internal val IssuerSigningKey.signingAlgorithm: JWSAlgorithm
-    get() = when (val curve = key.curve) {
-        Curve.P_256 -> JWSAlgorithm.ES256
-        Curve.P_384 -> JWSAlgorithm.ES384
-        Curve.P_521 -> JWSAlgorithm.ES512
-        else -> error("Unsupported ECKey Curve '$curve'")
-    }
+    get() =
+        when (val curve = key.curve) {
+            Curve.P_256 -> JWSAlgorithm.ES256
+            Curve.P_384 -> JWSAlgorithm.ES384
+            Curve.P_521 -> JWSAlgorithm.ES512
+            else -> error("Unsupported ECKey Curve '$curve'")
+        }
 
 internal val IssuerSigningKey.algorithmId: AlgorithmID
-    get() = when (val curve = key.curve) {
-        Curve.P_256 -> AlgorithmID.ECDSA_256
-        Curve.P_384 -> AlgorithmID.ECDSA_384
-        Curve.P_521 -> AlgorithmID.ECDSA_512
-        else -> error("Unsupported ECKey Curve '$curve'")
-    }
+    get() =
+        when (val curve = key.curve) {
+            Curve.P_256 -> AlgorithmID.ECDSA_256
+            Curve.P_384 -> AlgorithmID.ECDSA_384
+            Curve.P_521 -> AlgorithmID.ECDSA_512
+            else -> error("Unsupported ECKey Curve '$curve'")
+        }
 
 internal val IssuerSigningKey.coseAlgorithm: CoseAlgorithm
-    get() = when (val curve = key.curve) {
-        Curve.P_256 -> CoseAlgorithm(-7)
-        Curve.P_384 -> CoseAlgorithm(-35)
-        Curve.P_521 -> CoseAlgorithm(-36)
-        else -> error("Unsupported ECKey Curve '$curve'")
-    }
+    get() =
+        when (val curve = key.curve) {
+            Curve.P_256 -> CoseAlgorithm(-7)
+            Curve.P_384 -> CoseAlgorithm(-35)
+            Curve.P_521 -> CoseAlgorithm(-36)
+            else -> error("Unsupported ECKey Curve '$curve'")
+        }
 
-internal fun IssuerSigningKey.cryptoProvider(includeRootCA: Boolean): SimpleCOSECryptoProvider {
-    return SimpleCOSECryptoProvider(
+internal fun IssuerSigningKey.cryptoProvider(includeRootCA: Boolean): SimpleCOSECryptoProvider =
+    SimpleCOSECryptoProvider(
         listOf(
             COSECryptoProviderKeyInfo(
                 keyID = key.keyID,
@@ -77,13 +82,14 @@ internal fun IssuerSigningKey.cryptoProvider(includeRootCA: Boolean): SimpleCOSE
                 publicKey = key.toECPublicKey(),
                 privateKey = key.toECPrivateKey(),
                 x5Chain =
-                    if (includeRootCA) key.parsedX509CertChain
-                    else key.parsedX509CertChain.dropRootCA(),
+                    if (includeRootCA)
+                        key.parsedX509CertChain
+                    else
+                        key.parsedX509CertChain.dropRootCA(),
                 trustedRootCAs = emptyList(),
             ),
         ),
     )
-}
 
 internal val IssuerSigningKey.certificate: X509Certificate
     get() = X509CertUtils.parse(key.x509CertChain.first().decode())

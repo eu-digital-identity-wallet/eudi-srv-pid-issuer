@@ -64,26 +64,29 @@ data class IssuedCredentialEntity(
             issuedAt = issuedAt.toInstant().toKotlinInstant(),
             expiresAt = expiresAt.toInstant().toKotlinInstant(),
             notificationId = notificationId?.let { NotificationId(it) },
-            status = if (statusListUri != null && statusListIndex != null) {
+            status =
+                if (statusListUri != null && statusListIndex != null) {
+                    StatusListToken(
+                        statusList = URI.create(statusListUri),
+                        index = statusListIndex.toUInt(),
+                    )
+                } else {
+                    null
+                },
+            clientStatus =
                 StatusListToken(
-                    statusList = URI.create(statusListUri),
-                    index = statusListIndex.toUInt(),
-                )
-            } else {
-                null
-            },
-            clientStatus = StatusListToken(
-                statusList = URI.create(clientStatusListUri),
-                index = clientStatusListIndex.toUInt(),
-            ),
-            keyStorageStatus = if (keyStorageStatusListUri != null && keyStorageStatusListIndex != null) {
-                StatusListToken(
-                    statusList = URI.create(keyStorageStatusListUri),
-                    index = keyStorageStatusListIndex.toUInt(),
-                )
-            } else {
-                null
-            },
+                    statusList = URI.create(clientStatusListUri),
+                    index = clientStatusListIndex.toUInt(),
+                ),
+            keyStorageStatus =
+                if (keyStorageStatusListUri != null && keyStorageStatusListIndex != null) {
+                    StatusListToken(
+                        statusList = URI.create(keyStorageStatusListUri),
+                        index = keyStorageStatusListIndex.toUInt(),
+                    )
+                } else {
+                    null
+                },
             identifier = IssuedCredentialId(identifier),
         )
 
@@ -106,5 +109,4 @@ data class IssuedCredentialEntity(
     }
 }
 
-internal fun Instant.toOffsetDateTime(): OffsetDateTime =
-    OffsetDateTime.ofInstant(toJavaInstant(), ZoneOffset.UTC)
+internal fun Instant.toOffsetDateTime(): OffsetDateTime = OffsetDateTime.ofInstant(toJavaInstant(), ZoneOffset.UTC)

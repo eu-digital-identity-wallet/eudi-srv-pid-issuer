@@ -20,7 +20,6 @@ import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 
 class CredentialRequestTOTest {
-
     @Test
     fun checkMsoMdoc() {
         assert("eu.europa.ec.eudi.pid_mso_mdo" == Json.decodeFromString<CredentialRequestTO>(msoMdoc).credentialConfigurationId)
@@ -32,7 +31,8 @@ class CredentialRequestTOTest {
     }
 }
 
-val msoMdoc = """
+val msoMdoc =
+    """
     {
        "credential_configuration_id": "eu.europa.ec.eudi.pid_mso_mdo",
        "credential_response_encryption": {
@@ -44,20 +44,21 @@ val msoMdoc = """
           "jwt": ["eyJraWQiOiJkaWQ6ZXhhbXBsZ"]
        }
     }
-""".trimIndent()
+    """.trimIndent()
 
-val sdJwtVc = """
+val sdJwtVc =
+    """
     {
        "credential_configuration_id": "eu.europa.ec.eudi.pid_vc_sd_jwt",
        "proofs": {
           "jwt":["${
-    """
-                eyJraWQiOiJkaWQ6ZXhhbXBsZTplYmZlYjFmNzEyZWJjNmYxYzI3NmUxMmVjMjEva2V5cy8
-                xIiwiYWxnIjoiRVMyNTYiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJzNkJoZFJrcXQzIiwiYXVkIjoiaHR
-                0cHM6Ly9zZXJ2ZXIuZXhhbXBsZS5jb20iLCJpYXQiOiIyMDE4LTA5LTE0VDIxOjE5OjEwWiIsIm5vbm
-                NlIjoidFppZ25zbkZicCJ9.ewdkIkPV50iOeBUqMXCC_aZKPxgihac0aW9EkL1nOzM        
-    """.trimIndent().replace("\n","")
-}"]
+        """
+        eyJraWQiOiJkaWQ6ZXhhbXBsZTplYmZlYjFmNzEyZWJjNmYxYzI3NmUxMmVjMjEva2V5cy8
+        xIiwiYWxnIjoiRVMyNTYiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJzNkJoZFJrcXQzIiwiYXVkIjoiaHR
+        0cHM6Ly9zZXJ2ZXIuZXhhbXBsZS5jb20iLCJpYXQiOiIyMDE4LTA5LTE0VDIxOjE5OjEwWiIsIm5vbm
+        NlIjoidFppZ25zbkZicCJ9.ewdkIkPV50iOeBUqMXCC_aZKPxgihac0aW9EkL1nOzM        
+        """.trimIndent().replace("\n","")
+    }"]
        }
     }
-""".trimIndent()
+    """.trimIndent()

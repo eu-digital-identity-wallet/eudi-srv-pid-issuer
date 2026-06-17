@@ -21,6 +21,5 @@ import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
  * Revokes an issued credential, removing it from the active set.
  */
 fun interface DeleteIssuedCredential {
-
     suspend operator fun invoke(credential: IssuedCredential)
 }

@@ -26,60 +26,71 @@ import kotlin.test.Test
 
 @PidIssuerApplicationTest
 internal class MetaDataApiTest {
-
     @Autowired
     private lateinit var applicationContext: ApplicationContext
 
     private fun client(): WebTestClient =
-        WebTestClient.bindToApplicationContext(applicationContext)
+        WebTestClient
+            .bindToApplicationContext(applicationContext)
             .configureClient()
             .build()
 
-    private val MEDIA_TYPE_APPLICATION_JWT = MediaType("application", "jwt")
+    private val applicationJwt = MediaType("application", "jwt")
 
     @Test
-    fun `returns signed credential issuer metadata when accept header is ANY`() = runTest {
-        client()
-            .get()
-            .uri(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER)
-            .accept(MediaType.ALL)
-            .exchange()
-            .expectStatus().isOk()
-            .expectHeader().contentType(MEDIA_TYPE_APPLICATION_JWT)
-            .expectBody<String>()
-    }
+    fun `returns signed credential issuer metadata when accept header is ANY`() =
+        runTest {
+            client()
+                .get()
+                .uri(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER)
+                .accept(MediaType.ALL)
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectHeader()
+                .contentType(applicationJwt)
+                .expectBody<String>()
+        }
 
     @Test
-    fun `returns signed credential issuer metadata when accept header is empty`() = runTest {
-        client()
-            .get()
-            .uri(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER)
-            .exchange()
-            .expectStatus().isOk()
-            .expectHeader().contentType(MEDIA_TYPE_APPLICATION_JWT)
-            .expectBody<String>()
-    }
+    fun `returns signed credential issuer metadata when accept header is empty`() =
+        runTest {
+            client()
+                .get()
+                .uri(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER)
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectHeader()
+                .contentType(applicationJwt)
+                .expectBody<String>()
+        }
 
     @Test
-    fun `returns signed credential issuer metadata when accept header is JWT`() = runTest {
-        client()
-            .get()
-            .uri(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER)
-            .accept(MEDIA_TYPE_APPLICATION_JWT)
-            .exchange()
-            .expectStatus().isOk()
-            .expectHeader().contentType(MEDIA_TYPE_APPLICATION_JWT)
-            .expectBody<String>()
-    }
+    fun `returns signed credential issuer metadata when accept header is JWT`() =
+        runTest {
+            client()
+                .get()
+                .uri(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER)
+                .accept(applicationJwt)
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectHeader()
+                .contentType(applicationJwt)
+                .expectBody<String>()
+        }
 
     @Test
-    fun `returns unsigned credential issuer metadata when accept header is Json`() = runTest {
-        client()
-            .get()
-            .uri(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER)
-            .accept(MediaType.APPLICATION_JSON)
-            .exchange()
-            .expectHeader().contentType(MediaType.APPLICATION_JSON)
-            .expectBody<String>()
-    }
+    fun `returns unsigned credential issuer metadata when accept header is Json`() =
+        runTest {
+            client()
+                .get()
+                .uri(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER)
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectHeader()
+                .contentType(MediaType.APPLICATION_JSON)
+                .expectBody<String>()
+        }
 }

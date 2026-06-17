@@ -36,15 +36,18 @@ class DPoPTokenServerAuthenticationEntryPoint(
     private val dpopNonce: DPoPNoncePolicy,
     private val clock: Clock,
 ) : ServerAuthenticationEntryPoint {
-
-    override fun commence(exchange: ServerWebExchange, ex: AuthenticationException): Mono<Void> =
+    override fun commence(
+        exchange: ServerWebExchange,
+        ex: AuthenticationException,
+    ): Mono<Void> =
         mono {
-            val details = buildList {
-                if (!realm.isNullOrBlank()) {
-                    add("realm" to realm)
-                }
-                addAll(ex.details())
-            }.joinToString(separator = ", ", transform = { "${it.first}=\"${it.second}\"" })
+            val details =
+                buildList {
+                    if (!realm.isNullOrBlank()) {
+                        add("realm" to realm)
+                    }
+                    addAll(ex.details())
+                }.joinToString(separator = ", ", transform = { "${it.first}=\"${it.second}\"" })
             val wwwAuthenticate = "${AccessTokenType.DPOP.value} $details"
             val dpopNonce = ex.dpopNonce()
             exchange.response
@@ -54,8 +57,7 @@ class DPoPTokenServerAuthenticationEntryPoint(
                     dpopNonce?.let {
                         headers["DPoP-Nonce"] = it
                     }
-                }
-                .setComplete()
+                }.setComplete()
                 .awaitSingleOrNull()
         }
 
@@ -64,15 +66,22 @@ class DPoPTokenServerAuthenticationEntryPoint(
      */
     private suspend fun AuthenticationException.dpopNonce(): String? =
         when (this) {
-            is OAuth2AuthenticationException ->
+            is OAuth2AuthenticationException -> {
                 when (error) {
                     is DPoPTokenError.UseDPoPNonce -> {
                         check(dpopNonce is DPoPNoncePolicy.Enforcing)
                         dpopNonce.generateDPoPNonce(clock.now())
                     }
-                    else -> null
+
+                    else -> {
+                        null
+                    }
                 }
-            else -> null
+            }
+
+            else -> {
+                null
+            }
         }
 }
 
@@ -81,7 +90,10 @@ class DPoPTokenServerAuthenticationEntryPoint(
  */
 private fun AuthenticationException.details(): List<Pair<String, String>> =
     if (this is OAuth2AuthenticationException) {
-        fun MutableList<Pair<String, String>>.addIfNotBlank(key: String, value: String?) {
+        fun MutableList<Pair<String, String>>.addIfNotBlank(
+            key: String,
+            value: String?,
+        ) {
             if (!value.isNullOrBlank()) {
                 add(key to value)
             }
@@ -101,11 +113,14 @@ private fun AuthenticationException.details(): List<Pair<String, String>> =
  */
 private fun AuthenticationException.status(): HttpStatus =
     when (this) {
-        is OAuth2AuthenticationException ->
+        is OAuth2AuthenticationException -> {
             when (val error = error) {
                 is DPoPTokenError -> error.status
                 else -> HttpStatus.UNAUTHORIZED
             }
+        }
 
-        else -> HttpStatus.UNAUTHORIZED
+        else -> {
+            HttpStatus.UNAUTHORIZED
+        }
     }

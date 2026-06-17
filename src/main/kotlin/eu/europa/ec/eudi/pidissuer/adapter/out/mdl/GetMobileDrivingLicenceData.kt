@@ -23,7 +23,6 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
  * Gets the data of the Mobile Driving Licence of an authorized user.
  */
 fun interface GetMobileDrivingLicenceData {
-
     /**
      * Gets the data of the Mobile Driving Licence of an authorized user. In case the authorized user
      * has no Driving Licence, null is returned.

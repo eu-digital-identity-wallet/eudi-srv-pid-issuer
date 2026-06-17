@@ -25,7 +25,9 @@ const val SD_JWT_VC_FORMAT_VALUE = SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT
 val SD_JWT_VC_FORMAT = Format(SD_JWT_VC_FORMAT_VALUE)
 
 @JvmInline
-value class SdJwtVcType(val value: String)
+value class SdJwtVcType(
+    val value: String,
+)
 
 /**
  * @param type As defined in https://datatracker.ietf.org/doc/html/draft-ietf-oauth-sd-jwt-vc-00#type-claim
@@ -50,11 +52,12 @@ data class SdJwtVcCredentialConfiguration(
 internal fun SdJwtVcCredentialConfiguration.credentialRequest(
     unvalidatedProofs: UnvalidatedProof,
     credentialResponseEncryption: RequestedResponseEncryption,
-): SdJwtVcCredentialRequest = SdJwtVcCredentialRequest(
-    unvalidatedProof = unvalidatedProofs,
-    credentialResponseEncryption = credentialResponseEncryption,
-    type = type,
-)
+): SdJwtVcCredentialRequest =
+    SdJwtVcCredentialRequest(
+        unvalidatedProof = unvalidatedProofs,
+        credentialResponseEncryption = credentialResponseEncryption,
+        type = type,
+    )
 
 //
 // Credential Offer
@@ -67,7 +70,10 @@ data class SdJwtVcCredentialRequest(
     override val format: Format = SD_JWT_VC_FORMAT
 }
 
-internal fun Raise<String>.validate(sdJwtVcCredentialRequest: SdJwtVcCredentialRequest, meta: SdJwtVcCredentialConfiguration) {
+internal fun Raise<String>.validate(
+    sdJwtVcCredentialRequest: SdJwtVcCredentialRequest,
+    meta: SdJwtVcCredentialConfiguration,
+) {
     ensure(sdJwtVcCredentialRequest.type == meta.type) {
         "doctype is ${sdJwtVcCredentialRequest.type} but was expecting ${meta.type}"
     }

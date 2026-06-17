@@ -38,7 +38,6 @@ data class DPoPConfigurationProperties(
  * Policy for DPoP Nonce.
  */
 sealed interface DPoPNoncePolicy {
-
     /**
      * DPoP Nonce is enforced.
      */

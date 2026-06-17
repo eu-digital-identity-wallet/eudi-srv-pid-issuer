@@ -44,145 +44,153 @@ import kotlin.test.*
 import kotlin.time.Duration.Companion.days
 
 internal class ValidateJwtProofTest {
-
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.System
     private val verifyKeyAttestation = VerifyKeyAttestation(isTrustedKeyAttestationIssuer = IsTrustedKeyAttestationIssuer.Ignored)
     private val validateJwtProof = ValidateJwtProof(issuer, verifyKeyAttestation)
-    private val credentialConfiguration = mobileDrivingLicenceV1(
-        CoseAlgorithm(-7),
-        checkNotNull(ECDSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
-        KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(60.days)),
-    )
+    private val credentialConfiguration =
+        mobileDrivingLicenceV1(
+            CoseAlgorithm(-7),
+            checkNotNull(ECDSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
+            KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(60.days)),
+        )
 
     @Test
-    internal fun `proof validation fails with incorrect 'typ'`() = runTest {
-        val key = loadKey()
-        val signedJwt =
-            generateSignedJwt(key, "nonce") {
-                type(JOSEObjectType.JWT)
-                jwk(key.toPublicJWK())
-            }
-        val result =
-            validateJwtProof(
-                UnvalidatedProof.Jwt(signedJwt.serialize()),
-                credentialConfiguration,
-                clock.now(),
-            )
+    internal fun `proof validation fails with incorrect 'typ'`() =
+        runTest {
+            val key = loadKey()
+            val signedJwt =
+                generateSignedJwt(key, "nonce") {
+                    type(JOSEObjectType.JWT)
+                    jwk(key.toPublicJWK())
+                }
+            val result =
+                validateJwtProof(
+                    UnvalidatedProof.Jwt(signedJwt.serialize()),
+                    credentialConfiguration,
+                    clock.now(),
+                )
 
-        assert(result.isLeft())
-    }
-
-    @Test
-    internal fun `proof validation fails when header contains neither 'jwk' nor 'x5c'`() = runTest {
-        val key = loadKey()
-        val signedJwt = generateSignedJwt(key, "nonce")
-
-        val result =
-            validateJwtProof(
-                UnvalidatedProof.Jwt(signedJwt.serialize()),
-                credentialConfiguration,
-                clock.now(),
-            )
-
-        assert(result.isLeft())
-    }
-
-    @Test
-    internal fun `proof validation fails when header contains both 'jwk' and 'x5c'`() = runTest {
-        val key = loadKey()
-        val chain = loadChain()
-        val signedJwt = generateSignedJwt(key, "nonce") {
-            jwk(key.toPublicJWK())
-            x509CertChain(chain.map { Base64.encode(it.encoded) })
+            assert(result.isLeft())
         }
 
-        val result =
-            validateJwtProof(
-                UnvalidatedProof.Jwt(signedJwt.serialize()),
-                credentialConfiguration,
-                clock.now(),
-            )
+    @Test
+    internal fun `proof validation fails when header contains neither 'jwk' nor 'x5c'`() =
+        runTest {
+            val key = loadKey()
+            val signedJwt = generateSignedJwt(key, "nonce")
 
-        assertTrue { result.isLeft() }
-    }
+            val result =
+                validateJwtProof(
+                    UnvalidatedProof.Jwt(signedJwt.serialize()),
+                    credentialConfiguration,
+                    clock.now(),
+                )
+
+            assert(result.isLeft())
+        }
 
     @Test
-    internal fun `proof validation fails with incorrect 'jwk' in header`() = runTest {
-        val key = loadKey()
-        val incorrectKey = RSAKeyGenerator(2048, false).generate()
-        val signedJwt =
-            generateSignedJwt(key, "nonce") {
-                jwk(incorrectKey.toPublicJWK())
-            }
+    internal fun `proof validation fails when header contains both 'jwk' and 'x5c'`() =
+        runTest {
+            val key = loadKey()
+            val chain = loadChain()
+            val signedJwt =
+                generateSignedJwt(key, "nonce") {
+                    jwk(key.toPublicJWK())
+                    x509CertChain(chain.map { Base64.encode(it.encoded) })
+                }
 
-        val result =
-            validateJwtProof(
-                UnvalidatedProof.Jwt(signedJwt.serialize()),
-                credentialConfiguration,
-                clock.now(),
-            )
+            val result =
+                validateJwtProof(
+                    UnvalidatedProof.Jwt(signedJwt.serialize()),
+                    credentialConfiguration,
+                    clock.now(),
+                )
 
-        assertTrue { result.isLeft() }
-    }
-
-    @Test
-    internal fun `proof validation fails with incorrect 'x5c' in header`() = runTest {
-        val key = loadKey()
-        val incorrectKey = RSAKeyGenerator(2048, false).generate()
-        val signedJwt =
-            generateSignedJwt(key, "nonce") {
-                x509CertChain(incorrectKey.toPublicJWK().x509CertChain)
-            }
-
-        val result =
-            validateJwtProof(
-                UnvalidatedProof.Jwt(signedJwt.serialize()),
-                credentialConfiguration,
-                clock.now(),
-            )
-
-        assertTrue { result.isLeft() }
-    }
+            assertTrue { result.isLeft() }
+        }
 
     @Test
-    internal fun `proof validation fails with incorrect 'kid' in header`() = runTest {
-        val key = loadKey()
-        val incorrectKey = RSAKeyGenerator(2048, false).generate()
-        val signedJwt =
-            generateSignedJwt(key, "nonce") {
-                keyID("did:jwk:${Base64URL.encode(incorrectKey.toPublicJWK().toJSONString())}#0")
-            }
-        val result =
-            validateJwtProof(
-                UnvalidatedProof.Jwt(signedJwt.serialize()),
-                credentialConfiguration,
-                clock.now(),
-            )
+    internal fun `proof validation fails with incorrect 'jwk' in header`() =
+        runTest {
+            val key = loadKey()
+            val incorrectKey = RSAKeyGenerator(2048, false).generate()
+            val signedJwt =
+                generateSignedJwt(key, "nonce") {
+                    jwk(incorrectKey.toPublicJWK())
+                }
 
-        assertTrue { result.isLeft() }
-    }
+            val result =
+                validateJwtProof(
+                    UnvalidatedProof.Jwt(signedJwt.serialize()),
+                    credentialConfiguration,
+                    clock.now(),
+                )
+
+            assertTrue { result.isLeft() }
+        }
 
     @Test
-    internal fun `proof validation fails with unsupported 'alg' in header`() = runTest {
-        val key = loadKey()
-        val signedJwt =
-            generateSignedJwt(key, "nonce") {
-                jwk(key.toPublicJWK())
-            }
-        val result =
-            validateJwtProof(
-                UnvalidatedProof.Jwt(signedJwt.serialize()),
-                mobileDrivingLicenceV1(
-                    CoseAlgorithm(-7),
-                    nonEmptySetOf(JWSAlgorithm.ES512),
-                    KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(60.days)),
-                ),
-                clock.now(),
-            )
+    internal fun `proof validation fails with incorrect 'x5c' in header`() =
+        runTest {
+            val key = loadKey()
+            val incorrectKey = RSAKeyGenerator(2048, false).generate()
+            val signedJwt =
+                generateSignedJwt(key, "nonce") {
+                    x509CertChain(incorrectKey.toPublicJWK().x509CertChain)
+                }
 
-        assertTrue { result.isLeft() }
-    }
+            val result =
+                validateJwtProof(
+                    UnvalidatedProof.Jwt(signedJwt.serialize()),
+                    credentialConfiguration,
+                    clock.now(),
+                )
+
+            assertTrue { result.isLeft() }
+        }
+
+    @Test
+    internal fun `proof validation fails with incorrect 'kid' in header`() =
+        runTest {
+            val key = loadKey()
+            val incorrectKey = RSAKeyGenerator(2048, false).generate()
+            val signedJwt =
+                generateSignedJwt(key, "nonce") {
+                    keyID("did:jwk:${Base64URL.encode(incorrectKey.toPublicJWK().toJSONString())}#0")
+                }
+            val result =
+                validateJwtProof(
+                    UnvalidatedProof.Jwt(signedJwt.serialize()),
+                    credentialConfiguration,
+                    clock.now(),
+                )
+
+            assertTrue { result.isLeft() }
+        }
+
+    @Test
+    internal fun `proof validation fails with unsupported 'alg' in header`() =
+        runTest {
+            val key = loadKey()
+            val signedJwt =
+                generateSignedJwt(key, "nonce") {
+                    jwk(key.toPublicJWK())
+                }
+            val result =
+                validateJwtProof(
+                    UnvalidatedProof.Jwt(signedJwt.serialize()),
+                    mobileDrivingLicenceV1(
+                        CoseAlgorithm(-7),
+                        nonEmptySetOf(JWSAlgorithm.ES512),
+                        KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(60.days)),
+                    ),
+                    clock.now(),
+                )
+
+            assertTrue { result.isLeft() }
+        }
 
     private fun generateSignedJwt(
         key: ECKey,
@@ -190,16 +198,20 @@ internal class ValidateJwtProofTest {
         algorithm: JWSAlgorithm = ECDSASigner.SUPPORTED_ALGORITHMS.first(),
         headersProvider: JWSHeader.Builder.() -> Unit = {},
     ): SignedJWT {
-        val header = JWSHeader.Builder(algorithm)
-            .type(JOSEObjectType("openid4vci-proof+jwt"))
-            .apply { headersProvider() }
-            .build()
+        val header =
+            JWSHeader
+                .Builder(algorithm)
+                .type(JOSEObjectType("openid4vci-proof+jwt"))
+                .apply { headersProvider() }
+                .build()
 
-        val claims = JWTClaimsSet.Builder()
-            .audience(issuer.externalForm)
-            .issueTime(clock.now().toJavaDate())
-            .claim("nonce", nonce)
-            .build()
+        val claims =
+            JWTClaimsSet
+                .Builder()
+                .audience(issuer.externalForm)
+                .issueTime(clock.now().toJavaDate())
+                .claim("nonce", nonce)
+                .build()
 
         return SignedJWT(header, claims).apply { sign(ECDSASigner(key)) }
     }
@@ -211,8 +223,7 @@ private suspend fun loadChain(): NonEmptyList<X509Certificate> =
             .readText()
             .let {
                 X509CertChainUtils.parse(it)
-            }
-            .let {
+            }.let {
                 assertEquals(3, it.size, "expected 3 certificates in the chain")
                 assertNotNull(it.toNonEmptyListOrNull())
             }

@@ -44,7 +44,6 @@ import kotlin.time.Instant
 val PidSdJwtVcScope: Scope = Scope("eu.europa.ec.eudi.pid_vc_sd_jwt")
 
 internal object SdJwtVcPidClaims {
-
     val FamilyName = OidcFamilyName
     val GivenName = OidcGivenName
     val BirthDate = OidcBirthDate
@@ -52,100 +51,116 @@ internal object SdJwtVcPidClaims {
     val BirthGivenName = OidcAssuranceBirthGivenName
     val PlaceOfBirth = OidcAssurancePlaceOfBirth
     val Address = OidcAddressClaim
-    val Sex = ClaimDefinition(
-        path = ClaimPath.claim("sex"),
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Sex"),
-    )
+    val Sex =
+        ClaimDefinition(
+            path = ClaimPath.claim("sex"),
+            mandatory = false,
+            display = mapOf(Locale.ENGLISH to "Sex"),
+        )
     val Nationalities = OidcAssuranceNationalities
-    val IssuingAuthority = ClaimDefinition(
-        path = ClaimPath.claim("issuing_authority"),
-        mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Issuing Authority"),
-    )
-    val DocumentNumber = ClaimDefinition(
-        path = ClaimPath.claim("document_number"),
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Document Number"),
-    )
-    val PersonalAdministrativeNumber = ClaimDefinition(
-        path = ClaimPath.claim("personal_administrative_number"),
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Personal Administrative Number"),
-    )
-    val IssuingCountry = ClaimDefinition(
-        path = ClaimPath.claim("issuing_country"),
-        mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Issuing Country"),
-    )
-    val IssuingJurisdiction = ClaimDefinition(
-        path = ClaimPath.claim("issuing_jurisdiction"),
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Issuing Jurisdiction"),
-    )
-    val Email = ClaimDefinition(
-        path = ClaimPath.claim("email"),
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Email Address"),
-    )
-    val PhoneNumber = ClaimDefinition(
-        path = ClaimPath.claim("phone_number"),
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Mobile Phone Number"),
-    )
-    val Picture = ClaimDefinition(
-        path = ClaimPath.claim("picture"),
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Portrait Image"),
-    )
-    val DateOfExpiry = ClaimDefinition(
-        path = ClaimPath.claim("date_of_expiry"),
-        mandatory = true,
-        display = mapOf(Locale.ENGLISH to "Expiry Date"),
-    )
-    val DateOfIssuance = ClaimDefinition(
-        path = ClaimPath.claim("date_of_issuance"),
-        mandatory = false,
-        display = mapOf(Locale.ENGLISH to "Issuance Date"),
-    )
-    val TrustAnchor = ClaimDefinition(
-        path = ClaimPath.claim("trust_anchor"),
-        mandatory = false,
-        display = mapOf(
-            Locale.ENGLISH to "Trust Anchor",
-        ),
-    )
-    val AttestationLegalCategory = ClaimDefinition(
-        path = ClaimPath.claim("attestation_legal_category"),
-        mandatory = false,
-        display = mapOf(
-            Locale.ENGLISH to "Attestation Legal Category",
-        ),
-    )
+    val IssuingAuthority =
+        ClaimDefinition(
+            path = ClaimPath.claim("issuing_authority"),
+            mandatory = true,
+            display = mapOf(Locale.ENGLISH to "Issuing Authority"),
+        )
+    val DocumentNumber =
+        ClaimDefinition(
+            path = ClaimPath.claim("document_number"),
+            mandatory = false,
+            display = mapOf(Locale.ENGLISH to "Document Number"),
+        )
+    val PersonalAdministrativeNumber =
+        ClaimDefinition(
+            path = ClaimPath.claim("personal_administrative_number"),
+            mandatory = false,
+            display = mapOf(Locale.ENGLISH to "Personal Administrative Number"),
+        )
+    val IssuingCountry =
+        ClaimDefinition(
+            path = ClaimPath.claim("issuing_country"),
+            mandatory = true,
+            display = mapOf(Locale.ENGLISH to "Issuing Country"),
+        )
+    val IssuingJurisdiction =
+        ClaimDefinition(
+            path = ClaimPath.claim("issuing_jurisdiction"),
+            mandatory = false,
+            display = mapOf(Locale.ENGLISH to "Issuing Jurisdiction"),
+        )
+    val Email =
+        ClaimDefinition(
+            path = ClaimPath.claim("email"),
+            mandatory = false,
+            display = mapOf(Locale.ENGLISH to "Email Address"),
+        )
+    val PhoneNumber =
+        ClaimDefinition(
+            path = ClaimPath.claim("phone_number"),
+            mandatory = false,
+            display = mapOf(Locale.ENGLISH to "Mobile Phone Number"),
+        )
+    val Picture =
+        ClaimDefinition(
+            path = ClaimPath.claim("picture"),
+            mandatory = false,
+            display = mapOf(Locale.ENGLISH to "Portrait Image"),
+        )
+    val DateOfExpiry =
+        ClaimDefinition(
+            path = ClaimPath.claim("date_of_expiry"),
+            mandatory = true,
+            display = mapOf(Locale.ENGLISH to "Expiry Date"),
+        )
+    val DateOfIssuance =
+        ClaimDefinition(
+            path = ClaimPath.claim("date_of_issuance"),
+            mandatory = false,
+            display = mapOf(Locale.ENGLISH to "Issuance Date"),
+        )
+    val TrustAnchor =
+        ClaimDefinition(
+            path = ClaimPath.claim("trust_anchor"),
+            mandatory = false,
+            display =
+                mapOf(
+                    Locale.ENGLISH to "Trust Anchor",
+                ),
+        )
+    val AttestationLegalCategory =
+        ClaimDefinition(
+            path = ClaimPath.claim("attestation_legal_category"),
+            mandatory = false,
+            display =
+                mapOf(
+                    Locale.ENGLISH to "Attestation Legal Category",
+                ),
+        )
 
-    fun all(): List<ClaimDefinition> = listOf(
-        FamilyName,
-        GivenName,
-        BirthDate,
-        PlaceOfBirth.attribute,
-        Nationalities,
-        Address.attribute,
-        PersonalAdministrativeNumber,
-        Picture,
-        BirthFamilyName,
-        BirthGivenName,
-        Sex,
-        Email,
-        PhoneNumber,
-        DateOfExpiry,
-        IssuingAuthority,
-        IssuingCountry,
-        DocumentNumber,
-        IssuingJurisdiction,
-        DateOfIssuance,
-        TrustAnchor,
-        AttestationLegalCategory,
-    )
+    fun all(): List<ClaimDefinition> =
+        listOf(
+            FamilyName,
+            GivenName,
+            BirthDate,
+            PlaceOfBirth.attribute,
+            Nationalities,
+            Address.attribute,
+            PersonalAdministrativeNumber,
+            Picture,
+            BirthFamilyName,
+            BirthGivenName,
+            Sex,
+            Email,
+            PhoneNumber,
+            DateOfExpiry,
+            IssuingAuthority,
+            IssuingCountry,
+            DocumentNumber,
+            IssuingJurisdiction,
+            DateOfIssuance,
+            TrustAnchor,
+            AttestationLegalCategory,
+        )
 }
 
 private fun pidDocType(version: Int): String = "urn:eudi:pid:$version"
@@ -164,18 +179,20 @@ fun pidSdJwtVcV1(
     SdJwtVcCredentialConfiguration(
         id = SdJwtVcPidCredentialConfigurationId,
         type = SdJwtVcPidVct,
-        display = listOf(
-            CredentialDisplay(
-                name = DisplayName("PID (SD-JWT VC Compact)", Locale.ENGLISH),
+        display =
+            listOf(
+                CredentialDisplay(
+                    name = DisplayName("PID (SD-JWT VC Compact)", Locale.ENGLISH),
+                ),
             ),
-        ),
         claims = SdJwtVcPidClaims.all(),
         cryptographicBindingMethodsSupported = nonEmptySetOf(CryptographicBindingMethod.Jwk),
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
         scope = PidSdJwtVcScope,
-        proofTypesSupported = ProofTypesSupported(
-            ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
-        ),
+        proofTypesSupported =
+            ProofTypesSupported(
+                ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
+            ),
         attestationCategory = AttestationCategory.Pid,
         credentialReusePolicy = credentialReusePolicy,
     )
@@ -203,7 +220,6 @@ internal class IssueSdJwtVcPid(
     override val keyAttestationRequirement: KeyAttestationRequirement,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : IssueSpecificCredential {
-
     override val supportedCredential: SdJwtVcCredentialConfiguration =
         pidSdJwtVcV1(
             issuerSigningKey.signingAlgorithm,
@@ -215,85 +231,92 @@ internal class IssueSdJwtVcPid(
     override val publicKey: JWK
         get() = issuerSigningKey.key.toPublicJWK()
 
-    private val encodePidInSdJwt = EncodePidInSdJwtVc(
-        credentialIssuerId,
-        hashAlgorithm,
-        issuerSigningKey,
-        supportedCredential.type,
-    )
+    private val encodePidInSdJwt =
+        EncodePidInSdJwtVc(
+            credentialIssuerId,
+            hashAlgorithm,
+            issuerSigningKey,
+            supportedCredential.type,
+        )
 
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
         validatedProof: ValidatedProof,
-    ): Either<IssueCredentialError, CredentialResponse> = either {
-        log.info("Handling issuance request ...")
+    ): Either<IssueCredentialError, CredentialResponse> =
+        either {
+            log.info("Handling issuance request ...")
 
-        val holderPubKeys = validatedProof.credentialKeys.value
-        val (pid, pidMetaData) = getPidData(authorizationContext).bind()
-        val issuedAt = clock.now()
-        val expiresAt = issuedAt + validity
-        val notBefore = calculateNotUseBefore?.invoke(issuedAt)
+            val holderPubKeys = validatedProof.credentialKeys.value
+            val (pid, pidMetaData) = getPidData(authorizationContext).bind()
+            val issuedAt = clock.now()
+            val expiresAt = issuedAt + validity
+            val notBefore = calculateNotUseBefore?.invoke(issuedAt)
 
-        ensure(expiresAt > issuedAt) {
-            Unexpected("exp should be after iat")
-        }
-        notBefore?.let {
-            ensure(it > issuedAt) {
-                Unexpected("nbf should be after iat")
+            ensure(expiresAt > issuedAt) {
+                Unexpected("exp should be after iat")
             }
-        }
-        if (null != pidMetaData.issuanceDate && null != notBefore) {
-            val issuanceDateAtStartOfDay = with(clock) { pidMetaData.issuanceDate.atStartOfDay() }
-            ensure(issuanceDateAtStartOfDay <= notBefore) {
-                Unexpected("date_of_issuance must not be after nbf")
+            notBefore?.let {
+                ensure(it > issuedAt) {
+                    Unexpected("nbf should be after iat")
+                }
             }
-        }
-
-        val notificationId = if (notificationsEnabled) generateNotificationId() else null
-
-        val issuedCredentials = holderPubKeys.parMap(Dispatchers.Default, 4) { holderPubKey ->
-            val statusListToken = generateStatusListToken.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
-                it(supportedCredential.type.value, expiresAt)
-                    .getOrElse { error ->
-                        raise(Unexpected("Unable to generate Status List Token", error))
-                    }
+            if (null != pidMetaData.issuanceDate && null != notBefore) {
+                val issuanceDateAtStartOfDay = with(clock) { pidMetaData.issuanceDate.atStartOfDay() }
+                ensure(issuanceDateAtStartOfDay <= notBefore) {
+                    Unexpected("date_of_issuance must not be after nbf")
+                }
             }
-            val encodedCredential = encodePidInSdJwt(
-                pid,
-                pidMetaData,
-                holderPubKey,
-                issuedAt = issuedAt,
-                expiresAt = expiresAt,
-                notBefore = notBefore,
-                statusListToken,
-            ).bind()
 
-            storeIssuedCredential(
-                IssuedCredential(
-                    format = SD_JWT_VC_FORMAT,
-                    type = supportedCredential.type.value,
-                    issuedAt = issuedAt,
-                    expiresAt = expiresAt,
-                    notificationId = notificationId,
-                    status = statusListToken,
-                    clientStatus = authorizationContext.clientStatus.status.statusList,
-                    keyStorageStatus = validatedProof.keyStorageStatus.status.statusList,
-                ),
-            )
+            val notificationId = if (notificationsEnabled) generateNotificationId() else null
 
-            encodedCredential
-        }.toNonEmptyListOrNull()
+            val issuedCredentials =
+                holderPubKeys
+                    .parMap(Dispatchers.Default, 4) { holderPubKey ->
+                        val statusListToken =
+                            generateStatusListToken.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
+                                it(supportedCredential.type.value, expiresAt)
+                                    .getOrElse { error ->
+                                        raise(Unexpected("Unable to generate Status List Token", error))
+                                    }
+                            }
+                        val encodedCredential =
+                            encodePidInSdJwt(
+                                pid,
+                                pidMetaData,
+                                holderPubKey,
+                                issuedAt = issuedAt,
+                                expiresAt = expiresAt,
+                                notBefore = notBefore,
+                                statusListToken,
+                            ).bind()
 
-        ensureNotNull(issuedCredentials) {
-            Unexpected("Unable to issue PID")
-        }
+                        storeIssuedCredential(
+                            IssuedCredential(
+                                format = SD_JWT_VC_FORMAT,
+                                type = supportedCredential.type.value,
+                                issuedAt = issuedAt,
+                                expiresAt = expiresAt,
+                                notificationId = notificationId,
+                                status = statusListToken,
+                                clientStatus = authorizationContext.clientStatus.status.statusList,
+                                keyStorageStatus = validatedProof.keyStorageStatus.status.statusList,
+                            ),
+                        )
 
-        CredentialResponse.Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
-            .also {
-                log.info("Successfully issued PIDs")
-                log.debug("Issued PIDs data {}", it)
+                        encodedCredential
+                    }.toNonEmptyListOrNull()
+
+            ensureNotNull(issuedCredentials) {
+                Unexpected("Unable to issue PID")
             }
-    }
+
+            CredentialResponse
+                .Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
+                .also {
+                    log.info("Successfully issued PIDs")
+                    log.debug("Issued PIDs data {}", it)
+                }
+        }
 }
