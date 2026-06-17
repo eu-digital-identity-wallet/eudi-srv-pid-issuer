@@ -580,7 +580,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     }
 
     registerBean<GenerateStatusListToken> {
-        val serviceUrl = URL(env.getRequiredProperty("issuer.statusList.service.generate-uri"))
+        val serviceUrl = URI.create(env.getRequiredProperty("issuer.statusList.service.generate-uri")).toURL()
         GenerateStatusListTokenWithExternalService(
             webClient = bean(),
             serviceUrl = serviceUrl,
@@ -590,7 +590,7 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
     }
 
     registerBean<MarkStatusAsRevoked> {
-        val serviceUrl = URL(env.getRequiredProperty("issuer.statusList.service.revoke-uri"))
+        val serviceUrl = URI.create(env.getRequiredProperty("issuer.statusList.service.revoke-uri")).toURL()
         MarkStatusAsRevokedWithExternalService(
             webClient = bean(),
             serviceUrl = serviceUrl,
@@ -980,7 +980,9 @@ fun beans(clock: Clock) = BeanRegistrarDsl {
 
             val introspectionProperties = bean<OAuth2ResourceServerProperties>()
             val introspector = SpringReactiveOpaqueTokenIntrospector(
-                introspectionProperties.opaquetoken.introspectionUri,
+                requireNotNull(introspectionProperties.opaquetoken.introspectionUri) {
+                    "missing spring.security.oauth2.resourceserver.opaquetoken.introspection-uri configuration property"
+                },
                 webClient
                     .mutate()
                     .defaultHeaders {
