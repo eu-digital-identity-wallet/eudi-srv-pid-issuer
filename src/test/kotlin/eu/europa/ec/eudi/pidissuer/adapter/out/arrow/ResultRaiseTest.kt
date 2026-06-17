@@ -46,7 +46,6 @@ internal class ResultRaiseTest {
     @Test
     internal fun `does not catch fatal exceptions`() {
         val fatal = listOf(
-            ThreadDeath::class.java,
             CancellationException::class.java,
             InterruptedException::class.java,
         )

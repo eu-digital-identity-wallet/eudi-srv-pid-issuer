@@ -81,11 +81,17 @@ class DPoPTokenServerAuthenticationEntryPoint(
  */
 private fun AuthenticationException.details(): List<Pair<String, String>> =
     if (this is OAuth2AuthenticationException) {
-        listOf(
-            "error" to error.errorCode,
-            "error_description" to error.description,
-            "error_uri" to error.uri,
-        ).filter { !it.second.isNullOrBlank() }
+        fun MutableList<Pair<String, String>>.addIfNotBlank(key: String, value: String?) {
+            if (!value.isNullOrBlank()) {
+                add(key to value)
+            }
+        }
+
+        buildList {
+            addIfNotBlank("error", error.errorCode)
+            addIfNotBlank("error_description", error.description)
+            addIfNotBlank("error_uri", error.uri)
+        }
     } else {
         emptyList()
     }
