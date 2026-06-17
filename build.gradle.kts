@@ -1,17 +1,16 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
-import org.owasp.dependencycheck.gradle.extension.DependencyCheckExtension
 import org.springframework.boot.gradle.plugin.SpringBootPlugin
-import org.springframework.boot.gradle.tasks.bundling.BootBuildImage
 
 plugins {
-    base
-    alias(libs.plugins.spring.boot)
     alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.kotlin.plugin.spring)
     alias(libs.plugins.kotlin.plugin.serialization)
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.kotlin.plugin.spring)
     alias(libs.plugins.spotless)
-    alias(libs.plugins.dependency.check)
     alias(libs.plugins.kover)
+    alias(libs.plugins.dependency.check)
 }
 
 repositories {
@@ -111,57 +110,57 @@ dependencies {
     }
 }
 
-java {
-    sourceCompatibility = JavaVersion.toVersion(libs.versions.java.get())
-}
-
 kotlin {
     jvmToolchain {
         languageVersion = JavaLanguageVersion.of(libs.versions.java.get())
+        vendor = JvmVendorSpec.ADOPTIUM
+        implementation = JvmImplementation.VENDOR_SPECIFIC
     }
 
-    compilerOptions {
-        apiVersion = KotlinVersion.DEFAULT
-        freeCompilerArgs.addAll(
-            "-Xjsr305=strict",
-            "-Xconsistent-data-class-copy-visibility",
-            "-Xnested-type-aliases",
-        )
-        optIn = listOf(
-            "kotlinx.serialization.ExperimentalSerializationApi",
-            "kotlin.io.encoding.ExperimentalEncodingApi",
-            "kotlin.contracts.ExperimentalContracts",
-            "kotlin.time.ExperimentalTime",
-            "kotlin.uuid.ExperimentalUuidApi",
-        )
+    target {
+        compilerOptions {
+            javaParameters = true
+            jvmDefault = JvmDefaultMode.ENABLE
+            jvmTarget = JvmTarget.fromTarget(libs.versions.java.get())
+            apiVersion = KotlinVersion.DEFAULT
+            languageVersion = KotlinVersion.DEFAULT
+            optIn = listOf(
+                "kotlinx.serialization.ExperimentalSerializationApi",
+                "kotlin.io.encoding.ExperimentalEncodingApi",
+                "kotlin.contracts.ExperimentalContracts",
+                "kotlin.time.ExperimentalTime",
+                "kotlin.uuid.ExperimentalUuidApi",
+            )
+            freeCompilerArgs.addAll(
+                "-Xjsr305=strict",
+                "-Xconsistent-data-class-copy-visibility",
+            )
+        }
     }
 }
 
-testing {
-    suites {
-        val test by getting(JvmTestSuite::class) {
-            useJUnitJupiter()
-        }
-    }
+tasks.test {
+    useJUnitPlatform()
 }
 
 springBoot {
     buildInfo()
 }
 
-tasks.named<BootBuildImage>("bootBuildImage") {
-    imageName.set("$group/${project.name}")
-    publish.set(false)
-    environment.set(System.getenv())
-    val env = environment.get()
+tasks.bootBuildImage {
+    imageName = "$group/${project.name}"
+    publish = false
+    environment = System.getenv()
+
     docker {
+        val environment = environment.get()
         publishRegistry {
-            env["REGISTRY_URL"]?.let { url = it }
-            env["REGISTRY_USERNAME"]?.let { username = it }
-            env["REGISTRY_PASSWORD"]?.let { password = it }
+            environment["REGISTRY_URL"]?.let { url = it }
+            environment["REGISTRY_USERNAME"]?.let { username = it }
+            environment["REGISTRY_PASSWORD"]?.let { password = it }
         }
-        env["DOCKER_METADATA_OUTPUT_TAGS"]?.let { tagStr ->
-            tags = tagStr.split(delimiters = arrayOf("\n", " ")).onEach { println("Tag: $it") }
+        environment["DOCKER_METADATA_OUTPUT_TAGS"]?.let {
+            tags = it.split(delimiters = arrayOf("\n", " ")).onEach { tag -> println("Tag: $tag") }
         }
     }
 }
@@ -177,9 +176,12 @@ spotless {
     }
 }
 
-val nvdApiKey: String? = System.getenv("NVD_API_KEY") ?: properties["nvdApiKey"]?.toString()
-val dependencyCheckExtension = extensions.findByType(DependencyCheckExtension::class.java)
-dependencyCheckExtension?.apply {
+dependencyCheck {
     formats = mutableListOf("XML", "HTML")
-    nvd.apiKey = nvdApiKey ?: ""
+
+    nvd {
+        apiKey = System.getenv("NVD_API_KEY") ?: properties["nvdApiKey"]?.toString() ?: ""
+        delay = 10000
+        maxRetryCount = 2
+    }
 }

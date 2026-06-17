@@ -39,13 +39,13 @@ value class HttpsUrl private constructor(val value: URL) {
         fun of(url: URL): HttpsUrl? = url.takeIf { it.protocol == "https" }?.run { HttpsUrl(this) }
         fun of(url: String): HttpsUrl? =
             try {
-                of(URL(url))
+                of(URI.create(url).toURL())
             } catch (_: MalformedURLException) {
                 null
             }
 
         fun unsafe(url: String): HttpsUrl =
-            URL(url).run {
+            URI.create(url).toURL().run {
                 logHttpsUrl.warn("Using unsafe URL $url")
                 HttpsUrl(this)
             }
