@@ -54,16 +54,18 @@ internal class MsoMdocSigner<in Credential>(
         statusListToken: StatusListToken?,
     ): String {
         require(expiresAt >= issuedAt) { "expiresAt must greater or equal to issuedAt" }
-        val validityInfo = ValidityInfo(
-            signed = issuedAt.dropFractionOfSeconds().toDeprecatedInstant(),
-            validFrom = issuedAt.dropFractionOfSeconds().toDeprecatedInstant(),
-            validUntil = expiresAt.dropFractionOfSeconds().toDeprecatedInstant(),
-            expectedUpdate = null,
-        )
+        val validityInfo =
+            ValidityInfo(
+                signed = issuedAt.dropFractionOfSeconds().toDeprecatedInstant(),
+                validFrom = issuedAt.dropFractionOfSeconds().toDeprecatedInstant(),
+                validUntil = expiresAt.dropFractionOfSeconds().toDeprecatedInstant(),
+                expectedUpdate = null,
+            )
         val deviceKeyInfo = deviceKeyInfo(deviceKey)
-        val mdoc = MDocBuilder(docType)
-            .apply { usage(credential) }
-            .sign(validityInfo, deviceKeyInfo, statusListToken, issuerCryptoProvider, issuerSigningKey.key.keyID)
+        val mdoc =
+            MDocBuilder(docType)
+                .apply { usage(credential) }
+                .sign(validityInfo, deviceKeyInfo, statusListToken, issuerCryptoProvider, issuerSigningKey.key.keyID)
         return base64UrlSafeNoPadding.encode(mdoc.issuerSigned.toMapElement().toCBOR())
     }
 }
@@ -90,12 +92,18 @@ private fun MDocBuilder.sign(
     keyID: String? = null,
 ): MDoc {
     val mso = MSO.createFor(nameSpacesMap, deviceKeyInfo, docType, validityInfo)
-    val payload = if (null != statusListToken) {
-        buildMap {
-            mso.toMapElement().value.entries.forEach { put(it.key, it.value) }
-            put(MapKey(TokenStatusListSpec.STATUS), statusListToken.toMsoStatus())
-        }.toDataElement()
-    } else mso.toMapElement()
+    val payload =
+        if (null != statusListToken) {
+            buildMap {
+                mso
+                    .toMapElement()
+                    .value.entries
+                    .forEach { put(it.key, it.value) }
+                put(MapKey(TokenStatusListSpec.STATUS), statusListToken.toMsoStatus())
+            }.toDataElement()
+        } else {
+            mso.toMapElement()
+        }
     val issuerAuth = cryptoProvider.sign1(payload.toEncodedCBORElement().toCBOR(), null, null, keyID)
     return build(issuerAuth)
 }

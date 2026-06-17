@@ -27,16 +27,19 @@ sealed class DPoPTokenError(
     description: String,
     val status: HttpStatus,
 ) : OAuth2Error(errorCode, description, null) {
-
     /**
      * Indicates an invalid request.
      */
-    class InvalidRequest(description: String) : DPoPTokenError(OAuth2ErrorCodes.INVALID_REQUEST, description, HttpStatus.BAD_REQUEST)
+    class InvalidRequest(
+        description: String,
+    ) : DPoPTokenError(OAuth2ErrorCodes.INVALID_REQUEST, description, HttpStatus.BAD_REQUEST)
 
     /**
      * Indicates an invalid access token.
      */
-    class InvalidToken(description: String) : DPoPTokenError(OAuth2ErrorCodes.INVALID_TOKEN, description, HttpStatus.UNAUTHORIZED)
+    class InvalidToken(
+        description: String,
+    ) : DPoPTokenError(OAuth2ErrorCodes.INVALID_TOKEN, description, HttpStatus.UNAUTHORIZED)
 
     /**
      * Indicates an internal server error.
@@ -49,10 +52,11 @@ sealed class DPoPTokenError(
     /**
      * Indicates DPoP Nonce must be used.
      */
-    class UseDPoPNonce(description: String) : DPoPTokenError("use_dpop_nonce", description, HttpStatus.UNAUTHORIZED)
+    class UseDPoPNonce(
+        description: String,
+    ) : DPoPTokenError("use_dpop_nonce", description, HttpStatus.UNAUTHORIZED)
 
     companion object {
-
         /**
          * Creates a new 'invalid request' error.
          */
@@ -66,7 +70,10 @@ sealed class DPoPTokenError(
         /**
          * Creates a new 'server error' error.
          */
-        fun serverError(description: String, error: Throwable): ServerError = ServerError(description, error)
+        fun serverError(
+            description: String,
+            error: Throwable,
+        ): ServerError = ServerError(description, error)
 
         /**
          * Creates a new 'use dpop nonce' error.

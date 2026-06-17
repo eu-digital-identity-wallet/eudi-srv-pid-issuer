@@ -27,16 +27,19 @@ import id.walt.mdoc.dataelement.toDataElement
 import id.walt.mdoc.doc.MDocBuilder
 import kotlin.time.Instant
 
-internal class DefaultEncodePidInCbor(issuerSigningKey: IssuerSigningKey) : EncodePidInCbor {
+internal class DefaultEncodePidInCbor(
+    issuerSigningKey: IssuerSigningKey,
+) : EncodePidInCbor {
     override val signingAlgorithm = issuerSigningKey.coseAlgorithm
 
-    private val signer = MsoMdocSigner<Pair<Pid, PidMetaData>>(
-        issuerSigningKey = issuerSigningKey,
-        docType = PidMsoMdocV1DocType,
-    ) { (pid, pidMetaData) ->
-        addItemsToSign(pid)
-        addItemsToSign(pidMetaData)
-    }
+    private val signer =
+        MsoMdocSigner<Pair<Pid, PidMetaData>>(
+            issuerSigningKey = issuerSigningKey,
+            docType = PidMsoMdocV1DocType,
+        ) { (pid, pidMetaData) ->
+            addItemsToSign(pid)
+            addItemsToSign(pidMetaData)
+        }
 
     override suspend fun invoke(
         pid: Pid,
@@ -53,13 +56,14 @@ private fun MDocBuilder.addItemsToSign(pid: Pid) {
     addItemToSign(MsoMdocPidClaims.GivenName, pid.givenName.value.toDataElement())
     addItemToSign(MsoMdocPidClaims.BirthDate, pid.birthDate.toDataElement())
 
-    val placeOfBirth = with(pid.placeOfBirth) {
-        buildMap {
-            country?.let { put(MapKey("country"), it.value.toDataElement()) }
-            region?.let { put(MapKey("region"), it.value.toDataElement()) }
-            locality?.let { put(MapKey("locality"), it.value.toDataElement()) }
-        }.toDataElement()
-    }
+    val placeOfBirth =
+        with(pid.placeOfBirth) {
+            buildMap {
+                country?.let { put(MapKey("country"), it.value.toDataElement()) }
+                region?.let { put(MapKey("region"), it.value.toDataElement()) }
+                locality?.let { put(MapKey("locality"), it.value.toDataElement()) }
+            }.toDataElement()
+        }
     addItemToSign(MsoMdocPidClaims.PlaceOfBirth, placeOfBirth)
 
     addItemToSign(MsoMdocPidClaims.Nationality, pid.nationalities.map { it.value.toDataElement() }.toDataElement())
@@ -71,10 +75,11 @@ private fun MDocBuilder.addItemsToSign(pid: Pid) {
     pid.residentStreet?.let { addItemToSign(MsoMdocPidClaims.ResidenceStreet, it.value.toDataElement()) }
     pid.residentHouseNumber?.let { addItemToSign(MsoMdocPidClaims.ResidenceHouseNumber, it.toDataElement()) }
     pid.portrait?.let {
-        val value = when (it) {
-            is PortraitImage.JPEG -> it.value
-            is PortraitImage.JPEG2000 -> it.value
-        }
+        val value =
+            when (it) {
+                is PortraitImage.JPEG -> it.value
+                is PortraitImage.JPEG2000 -> it.value
+            }
         addItemToSign(MsoMdocPidClaims.Portrait, value.toDataElement())
     }
     pid.familyNameBirth?.let { addItemToSign(MsoMdocPidClaims.FamilyNameBirth, it.value.toDataElement()) }
@@ -88,10 +93,13 @@ private fun MDocBuilder.addItemsToSign(pid: Pid) {
 private fun MDocBuilder.addItemsToSign(metaData: PidMetaData) {
     addItemToSign(MsoMdocPidClaims.ExpiryDate, metaData.expiryDate.toDataElement())
     when (val issuingAuthority = metaData.issuingAuthority) {
-        is IssuingAuthority.MemberState ->
+        is IssuingAuthority.MemberState -> {
             addItemToSign(MsoMdocPidClaims.IssuingAuthority, issuingAuthority.code.value.toDataElement())
-        is IssuingAuthority.AdministrativeAuthority ->
+        }
+
+        is IssuingAuthority.AdministrativeAuthority -> {
             addItemToSign(MsoMdocPidClaims.IssuingAuthority, issuingAuthority.value.toDataElement())
+        }
     }
     addItemToSign(MsoMdocPidClaims.IssuingCountry, metaData.issuingCountry.value.toDataElement())
     metaData.documentNumber?.let { addItemToSign(MsoMdocPidClaims.DocumentNumber, it.value.toDataElement()) }
@@ -100,6 +108,9 @@ private fun MDocBuilder.addItemsToSign(metaData: PidMetaData) {
     metaData.attestationLegalCategory?.let { addItemToSign(MsoMdocPidClaims.AttestationLegalCategory, it.toDataElement()) }
 }
 
-private fun MDocBuilder.addItemToSign(claim: ClaimDefinition, value: DataElement) {
+private fun MDocBuilder.addItemToSign(
+    claim: ClaimDefinition,
+    value: DataElement,
+) {
     addItemToSign(PidMsoMdocNamespace, claim.name, value)
 }

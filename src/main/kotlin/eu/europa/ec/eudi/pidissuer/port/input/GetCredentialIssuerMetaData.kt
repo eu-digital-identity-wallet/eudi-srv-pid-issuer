@@ -64,7 +64,6 @@ data class CredentialIssuerMetaDataTO(
     @Required @SerialName(TS3.PREFERRED_CLIENT_STATUS_PERIOD)
     val preferredClientStatusPeriod: Long,
 ) {
-
     @Serializable
     data class CredentialRequestEncryptionTO(
         @Required @SerialName("jwks")
@@ -113,49 +112,69 @@ data class DisplayTO(
     )
 }
 
-private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDataTO = CredentialIssuerMetaDataTO(
-    credentialIssuer = id.externalForm,
-    authorizationServers = authorizationServers.map { it.externalForm },
-    credentialEndpoint = credentialEndPoint.externalForm,
-    deferredCredentialEndpoint = deferredCredentialEndpoint?.externalForm,
-    notificationEndpoint = notificationEndpoint?.externalForm,
-    nonceEndpoint = nonceEndpoint?.externalForm,
-    credentialRequestEncryption = credentialRequestEncryption.toTransferObject().getOrNull(),
-    credentialResponseEncryption = credentialResponseEncryption.toTransferObject().getOrNull(),
-    batchCredentialIssuance = when (batchCredentialIssuance) {
-        BatchCredentialIssuance.NotSupported -> null
-        is BatchCredentialIssuance.Supported -> CredentialIssuerMetaDataTO.BatchCredentialIssuanceTO(batchCredentialIssuance.batchSize)
-    },
-    display = display.map { it.toTransferObject() }.takeIf { it.isNotEmpty() },
-    credentialConfigurationsSupported = JsonObject(
-        credentialConfigurationsSupported.associate { it.id.value to credentialMetaDataJson(it) },
-    ),
-    openid4VciVersion = OpenId4VciSpec.VERSION,
-    preferredClientStatusPeriod = preferredClientStatusPeriod.value.inWholeSeconds,
-)
+private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDataTO =
+    CredentialIssuerMetaDataTO(
+        credentialIssuer = id.externalForm,
+        authorizationServers = authorizationServers.map { it.externalForm },
+        credentialEndpoint = credentialEndPoint.externalForm,
+        deferredCredentialEndpoint = deferredCredentialEndpoint?.externalForm,
+        notificationEndpoint = notificationEndpoint?.externalForm,
+        nonceEndpoint = nonceEndpoint?.externalForm,
+        credentialRequestEncryption = credentialRequestEncryption.toTransferObject().getOrNull(),
+        credentialResponseEncryption = credentialResponseEncryption.toTransferObject().getOrNull(),
+        batchCredentialIssuance =
+            when (batchCredentialIssuance) {
+                BatchCredentialIssuance.NotSupported -> {
+                    null
+                }
+
+                is BatchCredentialIssuance.Supported -> {
+                    CredentialIssuerMetaDataTO.BatchCredentialIssuanceTO(batchCredentialIssuance.batchSize)
+                }
+            },
+        display = display.map { it.toTransferObject() }.takeIf { it.isNotEmpty() },
+        credentialConfigurationsSupported =
+            JsonObject(
+                credentialConfigurationsSupported.associate { it.id.value to credentialMetaDataJson(it) },
+            ),
+        openid4VciVersion = OpenId4VciSpec.VERSION,
+        preferredClientStatusPeriod = preferredClientStatusPeriod.value.inWholeSeconds,
+    )
 
 private fun CredentialRequestEncryption.toTransferObject(): Option<CredentialIssuerMetaDataTO.CredentialRequestEncryptionTO> =
     fold(
         ifNotSupported = none(),
         ifOptional = { optional ->
-            CredentialIssuerMetaDataTO.CredentialRequestEncryptionTO(
-                jwks = Json.decodeFromString(
-                    JSONObjectUtils.toJSONString(optional.parameters.encryptionKeys.toPublicJWKSet().toJSONObject()),
-                ),
-                encryptionMethods = optional.parameters.methodsSupported.map { it.name },
-                zipValuesSupported = optional.parameters.zipAlgorithmsSupported?.map { it.name },
-                required = false,
-            ).some()
+            CredentialIssuerMetaDataTO
+                .CredentialRequestEncryptionTO(
+                    jwks =
+                        Json.decodeFromString(
+                            JSONObjectUtils.toJSONString(
+                                optional.parameters.encryptionKeys
+                                    .toPublicJWKSet()
+                                    .toJSONObject(),
+                            ),
+                        ),
+                    encryptionMethods = optional.parameters.methodsSupported.map { it.name },
+                    zipValuesSupported = optional.parameters.zipAlgorithmsSupported?.map { it.name },
+                    required = false,
+                ).some()
         },
         ifRequired = { required ->
-            CredentialIssuerMetaDataTO.CredentialRequestEncryptionTO(
-                jwks = Json.decodeFromString(
-                    JSONObjectUtils.toJSONString(required.parameters.encryptionKeys.toPublicJWKSet().toJSONObject()),
-                ),
-                encryptionMethods = required.parameters.methodsSupported.map { it.name },
-                zipValuesSupported = required.parameters.zipAlgorithmsSupported?.map { it.name },
-                required = true,
-            ).some()
+            CredentialIssuerMetaDataTO
+                .CredentialRequestEncryptionTO(
+                    jwks =
+                        Json.decodeFromString(
+                            JSONObjectUtils.toJSONString(
+                                required.parameters.encryptionKeys
+                                    .toPublicJWKSet()
+                                    .toJSONObject(),
+                            ),
+                        ),
+                    encryptionMethods = required.parameters.methodsSupported.map { it.name },
+                    zipValuesSupported = required.parameters.zipAlgorithmsSupported?.map { it.name },
+                    required = true,
+                ).some()
         },
     )
 
@@ -163,20 +182,22 @@ private fun CredentialResponseEncryption.toTransferObject(): Option<CredentialIs
     fold(
         ifNotSupported = none(),
         ifOptional = { optional ->
-            CredentialIssuerMetaDataTO.CredentialResponseEncryptionTO(
-                encryptionAlgorithms = optional.parameters.algorithmsSupported.map { it.name },
-                encryptionMethods = optional.parameters.methodsSupported.map { it.name },
-                zipValuesSupported = optional.parameters.zipAlgorithmsSupported?.map { it.name },
-                required = false,
-            ).some()
+            CredentialIssuerMetaDataTO
+                .CredentialResponseEncryptionTO(
+                    encryptionAlgorithms = optional.parameters.algorithmsSupported.map { it.name },
+                    encryptionMethods = optional.parameters.methodsSupported.map { it.name },
+                    zipValuesSupported = optional.parameters.zipAlgorithmsSupported?.map { it.name },
+                    required = false,
+                ).some()
         },
         ifRequired = { required ->
-            CredentialIssuerMetaDataTO.CredentialResponseEncryptionTO(
-                encryptionAlgorithms = required.parameters.algorithmsSupported.map { it.name },
-                encryptionMethods = required.parameters.methodsSupported.map { it.name },
-                zipValuesSupported = required.parameters.zipAlgorithmsSupported?.map { it.name },
-                required = true,
-            ).some()
+            CredentialIssuerMetaDataTO
+                .CredentialResponseEncryptionTO(
+                    encryptionAlgorithms = required.parameters.algorithmsSupported.map { it.name },
+                    encryptionMethods = required.parameters.methodsSupported.map { it.name },
+                    zipValuesSupported = required.parameters.zipAlgorithmsSupported?.map { it.name },
+                    required = true,
+                ).some()
         },
     )
 
@@ -193,35 +214,39 @@ private fun ImageUri.toTransferObject(): DisplayTO.LogoTO =
         alternativeText = alternativeText,
     )
 
-private fun CredentialConfiguration.format(): Format = when (this) {
-    is JwtVcJsonCredentialConfiguration -> JWT_VS_JSON_FORMAT
-    is MsoMdocCredentialConfiguration -> MSO_MDOC_FORMAT
-    is SdJwtVcCredentialConfiguration -> SD_JWT_VC_FORMAT
-}
+private fun CredentialConfiguration.format(): Format =
+    when (this) {
+        is JwtVcJsonCredentialConfiguration -> JWT_VS_JSON_FORMAT
+        is MsoMdocCredentialConfiguration -> MSO_MDOC_FORMAT
+        is SdJwtVcCredentialConfiguration -> SD_JWT_VC_FORMAT
+    }
 
-private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject = buildJsonObject {
-    put("format", d.format().value)
-    put("scope", d.scope.value)
-    d.cryptographicBindingMethodsSupported.takeIf { it.isNotEmpty() }
-        ?.let { cryptographicBindingMethodsSupported ->
-            putJsonArray("cryptographic_binding_methods_supported") {
-                addAll(cryptographicBindingMethodsSupported.map { it.methodName() })
-            }
-        }
-    d.proofTypesSupported.takeIf { it != ProofTypesSupported.Empty }
-        ?.let { proofTypesSupported ->
-            putJsonObject("proof_types_supported") {
-                proofTypesSupported.values.forEach {
-                    put(it.proofTypeName(), it.toJsonObject())
+private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject =
+    buildJsonObject {
+        put("format", d.format().value)
+        put("scope", d.scope.value)
+        d.cryptographicBindingMethodsSupported
+            .takeIf { it.isNotEmpty() }
+            ?.let { cryptographicBindingMethodsSupported ->
+                putJsonArray("cryptographic_binding_methods_supported") {
+                    addAll(cryptographicBindingMethodsSupported.map { it.methodName() })
                 }
             }
+        d.proofTypesSupported
+            .takeIf { it != ProofTypesSupported.Empty }
+            ?.let { proofTypesSupported ->
+                putJsonObject("proof_types_supported") {
+                    proofTypesSupported.values.forEach {
+                        put(it.proofTypeName(), it.toJsonObject())
+                    }
+                }
+            }
+        when (d) {
+            is JwtVcJsonCredentialConfiguration -> TODO()
+            is MsoMdocCredentialConfiguration -> d.toTransferObject()(this)
+            is SdJwtVcCredentialConfiguration -> d.toTransferObject()(this)
         }
-    when (d) {
-        is JwtVcJsonCredentialConfiguration -> TODO()
-        is MsoMdocCredentialConfiguration -> d.toTransferObject()(this)
-        is SdJwtVcCredentialConfiguration -> d.toTransferObject()(this)
     }
-}
 
 private fun CryptographicBindingMethod.methodName(): String =
     when (this) {
@@ -239,10 +264,11 @@ private fun ProofType.proofTypeName(): String =
 
 private fun ProofType.toJsonObject(): JsonObject =
     buildJsonObject {
-        val (signingAlgorithmsSupported, keyAttestationRequirement) = when (this@toJsonObject) {
-            is ProofType.Jwt -> signingAlgorithmsSupported to keyAttestationRequirement
-            is ProofType.Attestation -> signingAlgorithmsSupported to keyAttestationRequirement
-        }
+        val (signingAlgorithmsSupported, keyAttestationRequirement) =
+            when (this@toJsonObject) {
+                is ProofType.Jwt -> signingAlgorithmsSupported to keyAttestationRequirement
+                is ProofType.Attestation -> signingAlgorithmsSupported to keyAttestationRequirement
+            }
         putJsonArray("proof_signing_alg_values_supported") {
             addAll(signingAlgorithmsSupported.map { it.name })
         }
@@ -261,27 +287,29 @@ private fun ProofType.toJsonObject(): JsonObject =
         }
     }
 
-internal fun MsoMdocCredentialConfiguration.toTransferObject(): JsonObjectBuilder.() -> Unit = {
-    credentialSigningAlgorithmsSupported
-        ?.let { credentialSigningAlgorithmsSupported ->
-            putJsonArray("credential_signing_alg_values_supported") {
-                addAll(credentialSigningAlgorithmsSupported.map { it.value })
+internal fun MsoMdocCredentialConfiguration.toTransferObject(): JsonObjectBuilder.() -> Unit =
+    {
+        credentialSigningAlgorithmsSupported
+            ?.let { credentialSigningAlgorithmsSupported ->
+                putJsonArray("credential_signing_alg_values_supported") {
+                    addAll(credentialSigningAlgorithmsSupported.map { it.value })
+                }
             }
-        }
-    put("doctype", docType)
-    putCredentialMetadata(display, claims, credentialReusePolicy)
-}
+        put("doctype", docType)
+        putCredentialMetadata(display, claims, credentialReusePolicy)
+    }
 
-internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilder.() -> Unit = {
-    credentialSigningAlgorithmsSupported
-        ?.let { credentialSigningAlgorithmsSupported ->
-            putJsonArray("credential_signing_alg_values_supported") {
-                addAll(credentialSigningAlgorithmsSupported.map { it.name })
+internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilder.() -> Unit =
+    {
+        credentialSigningAlgorithmsSupported
+            ?.let { credentialSigningAlgorithmsSupported ->
+                putJsonArray("credential_signing_alg_values_supported") {
+                    addAll(credentialSigningAlgorithmsSupported.map { it.name })
+                }
             }
-        }
-    put("vct", type.value)
-    putCredentialMetadata(display, claims, credentialReusePolicy)
-}
+        put("vct", type.value)
+        putCredentialMetadata(display, claims, credentialReusePolicy)
+    }
 
 private fun JsonObjectBuilder.putCredentialMetadata(
     display: List<CredentialDisplay>,
@@ -307,7 +335,7 @@ private fun JsonObjectBuilder.putCredentialMetadata(
 
 private fun JsonObjectBuilder.putCredentialReusePolicy(policy: CredentialReusePolicy) =
     when (policy) {
-        is CredentialReusePolicy.EUDI ->
+        is CredentialReusePolicy.EUDI -> {
             putJsonObject("credential_reuse_policy") {
                 put("id", policy.id)
                 putJsonArray("options") {
@@ -318,11 +346,21 @@ private fun JsonObjectBuilder.putCredentialReusePolicy(policy: CredentialReusePo
                                     add(
                                         JsonPrimitive(
                                             when (option) {
-                                                is EudiReusePolicy.OnceOnly -> EudiReusePolicyType.OnceOnly.value
-                                                is EudiReusePolicy.LimitedTime -> EudiReusePolicyType.LimitedTime.value
-                                                is EudiReusePolicy.RotatingBatch -> EudiReusePolicyType.RotatingBatch.value
-                                                is EudiReusePolicy.PerRelyingParty ->
+                                                is EudiReusePolicy.OnceOnly -> {
+                                                    EudiReusePolicyType.OnceOnly.value
+                                                }
+
+                                                is EudiReusePolicy.LimitedTime -> {
+                                                    EudiReusePolicyType.LimitedTime.value
+                                                }
+
+                                                is EudiReusePolicy.RotatingBatch -> {
+                                                    EudiReusePolicyType.RotatingBatch.value
+                                                }
+
+                                                is EudiReusePolicy.PerRelyingParty -> {
                                                     EudiReusePolicyType.PerRelyingParty.value
+                                                }
                                             },
                                         ),
                                     )
@@ -335,39 +373,46 @@ private fun JsonObjectBuilder.putCredentialReusePolicy(policy: CredentialReusePo
                     }
                 }
             }
+        }
+
         is CredentialReusePolicy.None -> {}
     }
 
-internal fun CredentialDisplay.toTransferObject(): JsonObject = buildJsonObject {
-    put("name", name.name)
-    put("locale", name.locale.toString())
-    logo?.let { logo ->
-        putJsonObject("logo") {
-            put("uri", logo.uri.toString())
-            logo.alternativeText?.let { put("alt_text", it) }
+internal fun CredentialDisplay.toTransferObject(): JsonObject =
+    buildJsonObject {
+        put("name", name.name)
+        put("locale", name.locale.toString())
+        logo?.let { logo ->
+            putJsonObject("logo") {
+                put("uri", logo.uri.toString())
+                logo.alternativeText?.let { put("alt_text", it) }
+            }
         }
-    }
-    description?.let { put("description", it) }
-    backgroundColor?.let { put("background_color", it) }
-    backgroundImage?.let { backgroundImage ->
-        putJsonObject("background_image") {
-            put("uri", backgroundImage.uri.toString())
+        description?.let { put("description", it) }
+        backgroundColor?.let { put("background_color", it) }
+        backgroundImage?.let { backgroundImage ->
+            putJsonObject("background_image") {
+                put("uri", backgroundImage.uri.toString())
+            }
         }
+        textColor?.let { put("text_color", it) }
     }
-    textColor?.let { put("text_color", it) }
-}
 
 private fun ClaimDefinition.toJsonObjects(): List<JsonObject> {
-    fun ClaimDefinition.toJsonObject(): JsonObject = buildJsonObject {
-        put("path", Json.encodeToJsonElement(path))
-        mandatory?.let { put("mandatory", it) }
-        if (display.isNotEmpty()) {
-            put("display", display.toTransferObject())
+    fun ClaimDefinition.toJsonObject(): JsonObject =
+        buildJsonObject {
+            put("path", Json.encodeToJsonElement(path))
+            mandatory?.let { put("mandatory", it) }
+            if (display.isNotEmpty()) {
+                put("display", display.toTransferObject())
+            }
         }
-    }
 
     fun ClaimDefinition.flatten(): List<ClaimDefinition> {
-        tailrec fun flatten(accumulator: List<ClaimDefinition>, remainder: List<ClaimDefinition>): List<ClaimDefinition> =
+        tailrec fun flatten(
+            accumulator: List<ClaimDefinition>,
+            remainder: List<ClaimDefinition>,
+        ): List<ClaimDefinition> =
             if (remainder.isEmpty()) {
                 accumulator
             } else {

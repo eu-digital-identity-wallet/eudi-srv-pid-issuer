@@ -40,7 +40,6 @@ import java.net.URI
  * Errors that might be returned by [CreateCredentialsOffer].
  */
 sealed interface CreateCredentialsOfferError {
-
     /**
      * No Credentials Unique Ids have been provided.
      */
@@ -49,7 +48,9 @@ sealed interface CreateCredentialsOfferError {
     /**
      * The provided Credential Unique Ids are not valid.
      */
-    data class InvalidCredentialConfigurationId(val id: CredentialConfigurationId) : CreateCredentialsOfferError
+    data class InvalidCredentialConfigurationId(
+        val id: CredentialConfigurationId,
+    ) : CreateCredentialsOfferError
 
     /**
      * Selected credential configuration ids contain mixing attestation categories.
@@ -59,7 +60,9 @@ sealed interface CreateCredentialsOfferError {
     /**
      * Indicates the Credentials Offer URI cannot be generated.
      */
-    data class InvalidCredentialsOfferUri(val cause: Throwable) : CreateCredentialsOfferError
+    data class InvalidCredentialsOfferUri(
+        val cause: Throwable,
+    ) : CreateCredentialsOfferError
 }
 
 @Serializable
@@ -125,25 +128,28 @@ class CreateCredentialsOffer(
     private val metadata: CredentialIssuerMetaData,
     private val credentialsOfferUri: String,
 ) {
-
     operator fun invoke(
         unvalidatedCredentialConfigurationIds: Set<CredentialConfigurationId>,
         customCredentialsOfferUri: String? = null,
-    ): Either<CreateCredentialsOfferError, URI> = either {
-        val offer = run {
-            val credentialConfigurationIds =
-                validate(metadata, unvalidatedCredentialConfigurationIds)
-            authorizationCodeGrantOffer(metadata, credentialConfigurationIds)
-        }
+    ): Either<CreateCredentialsOfferError, URI> =
+        either {
+            val offer =
+                run {
+                    val credentialConfigurationIds =
+                        validate(metadata, unvalidatedCredentialConfigurationIds)
+                    authorizationCodeGrantOffer(metadata, credentialConfigurationIds)
+                }
 
-        Either.catch {
-            Uri.parse(customCredentialsOfferUri ?: credentialsOfferUri)
-                .buildUpon()
-                .appendQueryParameter("credential_offer", Json.encodeToString(offer))
-                .build()
-                .toURI()
-        }.getOrElse { raise(CreateCredentialsOfferError.InvalidCredentialsOfferUri(it)) }
-    }
+            Either
+                .catch {
+                    Uri
+                        .parse(customCredentialsOfferUri ?: credentialsOfferUri)
+                        .buildUpon()
+                        .appendQueryParameter("credential_offer", Json.encodeToString(offer))
+                        .build()
+                        .toURI()
+                }.getOrElse { raise(CreateCredentialsOfferError.InvalidCredentialsOfferUri(it)) }
+        }
 }
 
 private fun Raise<CreateCredentialsOfferError>.validate(
@@ -158,8 +164,10 @@ private fun Raise<CreateCredentialsOfferError>.validate(
     }
 
     val supported = metadata.credentialConfigurationsSupported
-    val selectedCategories = nonEmptyIds
-        .map { id -> supported.first { it.id == id }.attestationCategory }.toSet()
+    val selectedCategories =
+        nonEmptyIds
+            .map { id -> supported.first { it.id == id }.attestationCategory }
+            .toSet()
 
     ensure(selectedCategories.size == 1) { CreateCredentialsOfferError.MultipleAttestationCategories }
 
@@ -179,9 +187,10 @@ private fun authorizationCodeGrantOffer(
     metadata: CredentialIssuerMetaData,
     credentialConfigurationIds: NonEmptySet<CredentialConfigurationId>,
 ): CredentialsOfferTO {
-    val authorizationCode = AuthorizationCodeTO(
-        authorizationServer = metadata.authorizationServers.firstOrNull()?.externalForm,
-    )
+    val authorizationCode =
+        AuthorizationCodeTO(
+            authorizationServer = metadata.authorizationServers.firstOrNull()?.externalForm,
+        )
     return CredentialsOfferTO(
         metadata.id.externalForm,
         credentialConfigurationIds.map(CredentialConfigurationId::value).toSet(),

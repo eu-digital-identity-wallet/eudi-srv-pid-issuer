@@ -43,7 +43,6 @@ class RevokeCredentialsWithRevokedStatus(
     private val markStatusAsRevoked: MarkStatusAsRevoked,
     private val deleteIssuedCredential: DeleteIssuedCredential,
 ) {
-
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend operator fun invoke() {
         log.info("Deleting expired issued credentials")
@@ -57,43 +56,46 @@ class RevokeCredentialsWithRevokedStatus(
                 flow {
                     emit(processCredential(credential))
                 }
-            }
-            .collect { }
+            }.collect { }
     }
 
-    private suspend fun processCredential(credential: IssuedCredential) = runCatching {
-        val mustRevoke = isStatusRevoked(
-            "client status",
-            credential.clientStatus,
-        ) || (
-            credential.keyStorageStatus != null && isStatusRevoked(
-                "key storage status",
-                credential.keyStorageStatus,
+    private suspend fun processCredential(credential: IssuedCredential) =
+        runCatching {
+            val mustRevoke =
+                isStatusRevoked(
+                    "client status",
+                    credential.clientStatus,
+                ) || (
+                    credential.keyStorageStatus != null &&
+                        isStatusRevoked(
+                            "key storage status",
+                            credential.keyStorageStatus,
+                        )
+                )
+            if (mustRevoke) {
+                revokeCredential(credential)
+            }
+        }.onFailure { e ->
+            log.error(
+                "Unexpected error processing credential: {}",
+                e.message,
+                e,
             )
-            )
-        if (mustRevoke) {
-            revokeCredential(credential)
         }
-    }.onFailure { e ->
-        log.error(
-            "Unexpected error processing credential: {}",
-            e.message,
-            e,
-        )
-    }
 
     private suspend fun revokeCredential(credential: IssuedCredential) {
         if (credential.status != null) {
-            markStatusAsRevoked(credential.status).onRight {
-                deleteIssuedCredential(credential)
-            }.onLeft { e ->
-                log.warn(
-                    "Failed to revoke credential with status list '{}' due to error: {}",
-                    credential.status.statusList,
-                    e.message,
-                    e,
-                )
-            }
+            markStatusAsRevoked(credential.status)
+                .onRight {
+                    deleteIssuedCredential(credential)
+                }.onLeft { e ->
+                    log.warn(
+                        "Failed to revoke credential with status list '{}' due to error: {}",
+                        credential.status.statusList,
+                        e.message,
+                        e,
+                    )
+                }
         } else {
             deleteIssuedCredential(credential)
         }

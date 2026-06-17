@@ -80,14 +80,16 @@ private fun <T> CredentialRequestEncryptionSupportedParameters.decrypt(
 
         catch({
             val encryptedJwt = EncryptedJWT.parse(jwt).also { ensureSupported(it) }
-            val processor = DefaultJWTProcessor<SecurityContext>()
-                .apply {
-                    jweKeySelector = JWEDecryptionKeySelector(
-                        encryptedJwt.header.algorithm,
-                        encryptedJwt.header.encryptionMethod,
-                        ImmutableJWKSet(encryptionKeys),
-                    )
-                }
+            val processor =
+                DefaultJWTProcessor<SecurityContext>()
+                    .apply {
+                        jweKeySelector =
+                            JWEDecryptionKeySelector(
+                                encryptedJwt.header.algorithm,
+                                encryptedJwt.header.encryptionMethod,
+                                ImmutableJWKSet(encryptionKeys),
+                            )
+                    }
 
             val claims = processor.process(encryptedJwt, null)
             jsonSupport.decodeFromString(deserializer, JSONObjectUtils.toJSONString(claims.toJSONObject()))

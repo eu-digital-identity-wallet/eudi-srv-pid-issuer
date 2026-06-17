@@ -34,15 +34,18 @@ import java.time.ZoneOffset
 import kotlin.time.Instant
 import kotlin.time.toKotlinInstant
 
-class DefaultEncodeMobileDrivingLicenceInCbor(issuerSigningKey: IssuerSigningKey) : EncodeMobileDrivingLicenceInCbor {
+class DefaultEncodeMobileDrivingLicenceInCbor(
+    issuerSigningKey: IssuerSigningKey,
+) : EncodeMobileDrivingLicenceInCbor {
     override val signingAlgorithm = issuerSigningKey.coseAlgorithm
 
-    private val signer = MsoMdocSigner<MobileDrivingLicence>(
-        issuerSigningKey = issuerSigningKey,
-        docType = MobileDrivingLicenceV1DocType,
-    ) { licence ->
-        addItemsToSign(licence)
-    }
+    private val signer =
+        MsoMdocSigner<MobileDrivingLicence>(
+            issuerSigningKey = issuerSigningKey,
+            docType = MobileDrivingLicenceV1DocType,
+        ) { licence ->
+            addItemsToSign(licence)
+        }
 
     override suspend fun invoke(
         licence: MobileDrivingLicence,
@@ -51,9 +54,10 @@ class DefaultEncodeMobileDrivingLicenceInCbor(issuerSigningKey: IssuerSigningKey
         expiresAt: Instant,
         statusListToken: StatusListToken?,
     ): Either<Unexpected, String> =
-        Either.catch {
-            signer.sign(licence, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
-        }.mapLeft { Unexpected("Failed to encode mDL", it) }
+        Either
+            .catch {
+                signer.sign(licence, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
+            }.mapLeft { Unexpected("Failed to encode mDL", it) }
 }
 
 private fun MDocBuilder.addItemsToSign(licence: MobileDrivingLicence) {
@@ -66,10 +70,22 @@ private fun MDocBuilder.addItemsToSign(licence: MobileDrivingLicence) {
 }
 
 private fun MDocBuilder.addItemsToSign(driver: Driver) {
-    addItemToSign(MsoMdocMdlV1Claims.FamilyName, driver.familyName.latin.value.toDataElement())
-    addItemToSign(MsoMdocMdlV1Claims.GivenName, driver.givenName.latin.value.toDataElement())
+    addItemToSign(
+        MsoMdocMdlV1Claims.FamilyName,
+        driver.familyName.latin.value
+            .toDataElement(),
+    )
+    addItemToSign(
+        MsoMdocMdlV1Claims.GivenName,
+        driver.givenName.latin.value
+            .toDataElement(),
+    )
     addItemToSign(MsoMdocMdlV1Claims.BirthDate, driver.birthDate.toKotlinLocalDate().toDataElement())
-    addItemToSign(MsoMdocMdlV1Claims.Portrait, driver.portrait.image.content.toDataElement())
+    addItemToSign(
+        MsoMdocMdlV1Claims.Portrait,
+        driver.portrait.image.content
+            .toDataElement(),
+    )
     driver.portrait.capturedAt?.let {
         addItemToSign(
             MsoMdocMdlV1Claims.PortraitCaptureDate,
@@ -107,13 +123,24 @@ private fun MDocBuilder.addItemsToSign(issueAndExpiry: IssueAndExpiry) {
 }
 
 private fun MDocBuilder.addItemsToSign(issuer: Issuer) {
-    addItemToSign(MsoMdocMdlV1Claims.IssuingCountry, issuer.country.countryCode.code.toDataElement())
+    addItemToSign(
+        MsoMdocMdlV1Claims.IssuingCountry,
+        issuer.country.countryCode.code
+            .toDataElement(),
+    )
     addItemToSign(MsoMdocMdlV1Claims.IssuingAuthority, issuer.authority.value.toDataElement())
-    addItemToSign(MsoMdocMdlV1Claims.IssuingCountryDistinguishingSign, issuer.country.distinguishingSign.code.toDataElement())
+    addItemToSign(
+        MsoMdocMdlV1Claims.IssuingCountryDistinguishingSign,
+        issuer.country.distinguishingSign.code
+            .toDataElement(),
+    )
     issuer.jurisdiction?.let { addItemToSign(MsoMdocMdlV1Claims.IssuingJurisdiction, it.value.toDataElement()) }
 }
 
-private fun MDocBuilder.addItemToSign(claim: ClaimDefinition, value: DataElement) {
+private fun MDocBuilder.addItemToSign(
+    claim: ClaimDefinition,
+    value: DataElement,
+) {
     addItemToSign(MobileDrivingLicenceV1Namespace, claim.name, value)
 }
 
@@ -133,30 +160,41 @@ private fun DrivingPrivilege.Restriction.toDE() =
     buildMap {
         val (code, sign, value) =
             when (this@toDE) {
-                is GenericRestriction -> Triple(code, null, null)
-                is ParameterizedRestriction.VehiclePower -> Triple(
-                    code,
-                    value.code,
-                    value.value.value,
-                )
+                is GenericRestriction -> {
+                    Triple(code, null, null)
+                }
 
-                is ParameterizedRestriction.VehicleAuthorizedMass -> Triple(
-                    code,
-                    value.code,
-                    value.value.value,
-                )
+                is ParameterizedRestriction.VehiclePower -> {
+                    Triple(
+                        code,
+                        value.code,
+                        value.value.value,
+                    )
+                }
 
-                is ParameterizedRestriction.VehicleCylinderCapacity -> Triple(
-                    code,
-                    value.code,
-                    value.value.value,
-                )
+                is ParameterizedRestriction.VehicleAuthorizedMass -> {
+                    Triple(
+                        code,
+                        value.code,
+                        value.value.value,
+                    )
+                }
 
-                is ParameterizedRestriction.VehicleAuthorizedPassengerSeats -> Triple(
-                    code,
-                    value.code,
-                    value.value.value,
-                )
+                is ParameterizedRestriction.VehicleCylinderCapacity -> {
+                    Triple(
+                        code,
+                        value.code,
+                        value.value.value,
+                    )
+                }
+
+                is ParameterizedRestriction.VehicleAuthorizedPassengerSeats -> {
+                    Triple(
+                        code,
+                        value.code,
+                        value.value.value,
+                    )
+                }
             }
 
         put("code", code.toDataElement())

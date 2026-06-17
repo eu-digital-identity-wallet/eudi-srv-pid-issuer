@@ -21,6 +21,5 @@ import kotlin.time.Instant
  * Deletes all issued credentials that have expired (i.e. whose expiry is before now).
  */
 fun interface DeleteExpiredIssuedCredentials {
-
     suspend operator fun invoke(now: Instant)
 }

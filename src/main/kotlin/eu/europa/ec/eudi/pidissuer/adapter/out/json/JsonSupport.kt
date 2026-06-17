@@ -23,10 +23,11 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.serializer
 
-internal val jsonSupport = Json {
-    prettyPrint = false
-    ignoreUnknownKeys = true
-}
+internal val jsonSupport =
+    Json {
+        prettyPrint = false
+        ignoreUnknownKeys = true
+    }
 
 internal inline fun <reified T> JsonElement.decodeAs(deserializer: DeserializationStrategy<T> = serializer()): Either<Throwable, T> =
     Either.catch {

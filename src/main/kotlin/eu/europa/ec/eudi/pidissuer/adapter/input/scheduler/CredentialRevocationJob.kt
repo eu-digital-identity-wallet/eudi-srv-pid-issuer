@@ -30,7 +30,6 @@ private val log = LoggerFactory.getLogger(CredentialRevocationJob::class.java)
 class CredentialRevocationJob(
     private val revokeCredentialsWithRevokedStatus: RevokeCredentialsWithRevokedStatus,
 ) {
-
     suspend fun run() {
         log.info("Starting credential revocation job")
 
