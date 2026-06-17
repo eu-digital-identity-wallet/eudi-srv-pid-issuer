@@ -29,17 +29,20 @@ import com.nimbusds.jose.jwk.JWK
  * Proof of possession.
  */
 sealed interface UnvalidatedProof {
-
     /**
      * Proof of possession using a JWT.
      */
-    data class Jwt(val jwt: String) : UnvalidatedProof
+    data class Jwt(
+        val jwt: String,
+    ) : UnvalidatedProof
 
     /**
      * A JWT representing a key attestation without using a proof of possession of
      * the cryptographic key material that is being attested.
      */
-    data class Attestation(val jwt: String) : UnvalidatedProof
+    data class Attestation(
+        val jwt: String,
+    ) : UnvalidatedProof
 }
 
 data class ValidatedProof(
@@ -54,8 +57,9 @@ data class ValidatedProof(
  * inside the issued credential
  */
 @JvmInline
-value class CredentialKeys(val value: NonEmptyList<JWK>) {
-
+value class CredentialKeys(
+    val value: NonEmptyList<JWK>,
+) {
     init {
         value.forEach { it.ensureIsPublicAsymmetricKey() }
         require(value.size == value.distinct().size) { "Duplicate keys provided in credential request" }
@@ -74,7 +78,6 @@ value class CredentialKeys(val value: NonEmptyList<JWK>) {
 }
 
 sealed interface RequestedResponseEncryption {
-
     /**
      * Credential response encryption is not required.
      */
@@ -137,7 +140,10 @@ sealed interface CredentialRequest {
     val credentialResponseEncryption: RequestedResponseEncryption
 }
 
-fun Raise<String>.assertIsSupported(credentialRequest: CredentialRequest, meta: CredentialConfiguration) {
+fun Raise<String>.assertIsSupported(
+    credentialRequest: CredentialRequest,
+    meta: CredentialConfiguration,
+) {
     when (credentialRequest) {
         is MsoMdocCredentialRequest -> {
             ensure(meta is MsoMdocCredentialConfiguration) { "Was expecting a ${MSO_MDOC_FORMAT.value}" }

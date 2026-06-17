@@ -40,10 +40,11 @@ data class KeyAttestationJWT private constructor(
                 ensureSignedWithSupportedAlgorithm()
                 ensureCorrectHeaderType()
             }
-            val deserializedClaims = runCatching {
-                val serializedClaims = JSONObjectUtils.toJSONString(jwt.jwtClaimsSet.toJSONObject())
-                jsonSupport.decodeFromString<KeyAttestationClaims>(serializedClaims)
-            }.getOrElse { throw IllegalArgumentException("Invalid Key Attestation JWT", it) }
+            val deserializedClaims =
+                runCatching {
+                    val serializedClaims = JSONObjectUtils.toJSONString(jwt.jwtClaimsSet.toJSONObject())
+                    jsonSupport.decodeFromString<KeyAttestationClaims>(serializedClaims)
+                }.getOrElse { throw IllegalArgumentException("Invalid Key Attestation JWT", it) }
 
             return KeyAttestationJWT(jwt, deserializedClaims)
         }

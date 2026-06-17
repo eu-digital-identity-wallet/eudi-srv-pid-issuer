@@ -23,11 +23,15 @@ import kotlinx.serialization.Serializable
  * The unique identifier of an offered Credential.
  */
 @JvmInline
-value class CredentialConfigurationId(val value: String)
+value class CredentialConfigurationId(
+    val value: String,
+)
 
 @JvmInline
 @Serializable
-value class AttackPotentialResistance(val value: String) {
+value class AttackPotentialResistance(
+    val value: String,
+) {
     init {
         require(value.isNotEmpty())
     }
@@ -49,16 +53,16 @@ data class KeyAttestationRequirement(
     val preferredKeyStorageStatusPeriod: PreferredKeyStorageStatusPeriod,
 ) {
     companion object {
-        fun ts3(preferredKeyStorageStatusPeriod: PreferredKeyStorageStatusPeriod): KeyAttestationRequirement = KeyAttestationRequirement(
-            keyStorage = NonEmptySet.of(AttackPotentialResistance.Iso18045High),
-            userAuthentication = NonEmptySet.of(AttackPotentialResistance.Iso18045High),
-            preferredKeyStorageStatusPeriod = preferredKeyStorageStatusPeriod,
-        )
+        fun ts3(preferredKeyStorageStatusPeriod: PreferredKeyStorageStatusPeriod): KeyAttestationRequirement =
+            KeyAttestationRequirement(
+                keyStorage = NonEmptySet.of(AttackPotentialResistance.Iso18045High),
+                userAuthentication = NonEmptySet.of(AttackPotentialResistance.Iso18045High),
+                preferredKeyStorageStatusPeriod = preferredKeyStorageStatusPeriod,
+            )
     }
 }
 
 sealed interface ProofType {
-
     /**
      * A JWT is used as proof of possession.
      */
@@ -94,22 +98,26 @@ sealed interface ProofType {
     }
 }
 
-fun ProofType.type(): ProofTypeEnum = when (this) {
-    is ProofType.Jwt -> ProofTypeEnum.JWT
-    is ProofType.Attestation -> ProofTypeEnum.ATTESTATION
-}
+fun ProofType.type(): ProofTypeEnum =
+    when (this) {
+        is ProofType.Jwt -> ProofTypeEnum.JWT
+        is ProofType.Attestation -> ProofTypeEnum.ATTESTATION
+    }
 
 enum class ProofTypeEnum {
-    JWT, ATTESTATION
+    JWT,
+    ATTESTATION,
 }
 
 @JvmInline
-value class ProofTypesSupported private constructor(val values: Set<ProofType>) {
-
+value class ProofTypesSupported private constructor(
+    val values: Set<ProofType>,
+) {
     operator fun get(type: ProofTypeEnum): ProofType? = values.firstOrNull { it.type() == type }
 
     companion object {
         val Empty: ProofTypesSupported = ProofTypesSupported(emptySet())
+
         operator fun invoke(values: Set<ProofType>): ProofTypesSupported {
             require(values.groupBy(ProofType::type).all { (_, instances) -> instances.size == 1 }) {
                 "Multiple instance of the same proof type are not allowed"

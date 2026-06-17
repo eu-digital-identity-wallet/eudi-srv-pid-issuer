@@ -124,16 +124,18 @@ kotlin {
             jvmTarget = JvmTarget.fromTarget(libs.versions.java.get())
             apiVersion = KotlinVersion.DEFAULT
             languageVersion = KotlinVersion.DEFAULT
-            optIn = listOf(
-                "kotlinx.serialization.ExperimentalSerializationApi",
-                "kotlin.io.encoding.ExperimentalEncodingApi",
-                "kotlin.contracts.ExperimentalContracts",
-                "kotlin.time.ExperimentalTime",
-                "kotlin.uuid.ExperimentalUuidApi",
-            )
+            optIn =
+                listOf(
+                    "kotlinx.serialization.ExperimentalSerializationApi",
+                    "kotlin.io.encoding.ExperimentalEncodingApi",
+                    "kotlin.contracts.ExperimentalContracts",
+                    "kotlin.time.ExperimentalTime",
+                    "kotlin.uuid.ExperimentalUuidApi",
+                )
             freeCompilerArgs.addAll(
                 "-Xjsr305=strict",
                 "-Xconsistent-data-class-copy-visibility",
+                "-Xcontext-parameters",
             )
         }
     }

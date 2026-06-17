@@ -17,7 +17,9 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import kotlin.time.Duration
 
-enum class EudiReusePolicyType(val value: String) {
+enum class EudiReusePolicyType(
+    val value: String,
+) {
     OnceOnly("once_only"),
     LimitedTime("limited_time"),
     RotatingBatch("rotating-batch"),
@@ -33,7 +35,10 @@ private fun validateBatchSize(batchSize: Int) {
     require(batchSize >= 2) { "'batch_size' must be equal or greater than 2" }
 }
 
-private fun validateReissueTriggerUnused(reissueTriggerUnused: Int, batchSize: Int) {
+private fun validateReissueTriggerUnused(
+    reissueTriggerUnused: Int,
+    batchSize: Int,
+) {
     require(reissueTriggerUnused >= 0) { "'reissue_trigger_unused' must be non-negative" }
     require(reissueTriggerUnused < batchSize) { "'reissue_trigger_unused' must be lower than 'batch_size'" }
 }
@@ -46,7 +51,6 @@ private fun validateReissueTriggerLifetimeLeft(reissueTriggerLifetimeLeft: Durat
  * A single ARF Annex II option in the reuse policy.
  */
 sealed interface EudiReusePolicy {
-
     val batchSize: Int?
     val reissueTriggerUnused: Int?
     val reissueTriggerLifetimeLeft: Duration?
@@ -55,7 +59,6 @@ sealed interface EudiReusePolicy {
         override val batchSize: Int,
         override val reissueTriggerUnused: Int,
     ) : EudiReusePolicy {
-
         init {
             validateBatchSize(batchSize)
             validateReissueTriggerUnused(reissueTriggerUnused, batchSize)
@@ -67,7 +70,6 @@ sealed interface EudiReusePolicy {
     data class LimitedTime(
         override val reissueTriggerLifetimeLeft: Duration,
     ) : EudiReusePolicy {
-
         init {
             validateReissueTriggerLifetimeLeft(reissueTriggerLifetimeLeft)
         }
@@ -80,7 +82,6 @@ sealed interface EudiReusePolicy {
         override val batchSize: Int,
         override val reissueTriggerLifetimeLeft: Duration,
     ) : EudiReusePolicy {
-
         init {
             validateBatchSize(batchSize)
             validateReissueTriggerLifetimeLeft(reissueTriggerLifetimeLeft)
@@ -94,7 +95,6 @@ sealed interface EudiReusePolicy {
         override val reissueTriggerLifetimeLeft: Duration,
         override val reissueTriggerUnused: Int,
     ) : EudiReusePolicy {
-
         init {
             validateBatchSize(batchSize)
             validateReissueTriggerLifetimeLeft(reissueTriggerLifetimeLeft)
@@ -108,7 +108,6 @@ sealed interface EudiReusePolicy {
  * following the ARF Annex II reuse policies.
  */
 sealed interface CredentialReusePolicy {
-
     val effectiveBatchSize: Int?
         get() = null
 
@@ -167,7 +166,8 @@ sealed interface CredentialReusePolicy {
 }
 
 val CredentialReusePolicy.shouldIncludeStatusList: Boolean
-    get() = when (this) {
-        CredentialReusePolicy.None -> true
-        is CredentialReusePolicy.EUDI -> options.none { it is EudiReusePolicy.LimitedTime }
-    }
+    get() =
+        when (this) {
+            CredentialReusePolicy.None -> true
+            is CredentialReusePolicy.EUDI -> options.none { it is EudiReusePolicy.LimitedTime }
+        }

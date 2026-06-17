@@ -30,12 +30,12 @@ internal class MarkStatusAsRevokedWithExternalService(
     private val apiKey: String,
 ) : MarkStatusAsRevoked {
     override suspend fun invoke(status: StatusListToken) =
-        webClient.post()
+        webClient
+            .post()
             .uri(serviceUrl.toExternalForm())
             .headers {
                 it.set(API_KEY_HEADER, apiKey)
-            }
-            .body(
+            }.body(
                 BodyInserters.fromFormData(
                     LinkedMultiValueMap<String, String>().apply {
                         add(IDX_PARAM, status.index.toString())
@@ -43,8 +43,7 @@ internal class MarkStatusAsRevokedWithExternalService(
                         add(STATUS_PARAM, STATUS_REVOKED)
                     },
                 ),
-            )
-            .awaitExchange { response ->
+            ).awaitExchange { response ->
                 Either.catch {
                     check(response.statusCode().is2xxSuccessful) {
                         "Revocation service responded with ${response.statusCode()}"

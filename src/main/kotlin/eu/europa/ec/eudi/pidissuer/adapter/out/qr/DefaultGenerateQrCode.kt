@@ -32,20 +32,24 @@ import java.net.URI
  * [GenerateQqCode] implementation using QRGen.
  */
 class DefaultGenerateQrCode : GenerateQqCode {
-
-    override fun invoke(content: URI, format: Format, dimensions: Dimensions): Either<Throwable, ByteArray> =
+    override fun invoke(
+        content: URI,
+        format: Format,
+        dimensions: Dimensions,
+    ): Either<Throwable, ByteArray> =
         Either.catch {
             val writer = QRCodeWriter()
-            val matrix = writer.encode(
-                content.toString(),
-                BarcodeFormat.QR_CODE,
-                dimensions.width.value.toInt(),
-                dimensions.height.value.toInt(),
-                mapOf(
-                    EncodeHintType.CHARACTER_SET to Charsets.UTF_8.name(),
-                    EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.H,
-                ),
-            )
+            val matrix =
+                writer.encode(
+                    content.toString(),
+                    BarcodeFormat.QR_CODE,
+                    dimensions.width.value.toInt(),
+                    dimensions.height.value.toInt(),
+                    mapOf(
+                        EncodeHintType.CHARACTER_SET to Charsets.UTF_8.name(),
+                        EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.H,
+                    ),
+                )
             ByteArrayOutputStream().use {
                 MatrixToImageWriter.writeToStream(matrix, format.name, it, MatrixToImageConfig())
                 it.toByteArray()

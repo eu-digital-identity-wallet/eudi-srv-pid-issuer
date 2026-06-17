@@ -36,11 +36,11 @@ data class DeferredState(
 )
 
 private val log = LoggerFactory.getLogger(InMemoryDeferredCredentialRepository::class.java)
+
 class InMemoryDeferredCredentialRepository(
     private val data: MutableMap<TransactionId, DeferredState> = mutableMapOf(),
     private val clock: Clock,
 ) {
-
     private val mutex = Mutex()
 
     val loadDeferredCredentialByTransactionId: LoadDeferredCredentialByTransactionId =
@@ -49,14 +49,22 @@ class InMemoryDeferredCredentialRepository(
                 val deferredPersist = data[transactionId]
                 val now = clock.now()
                 when {
-                    deferredPersist == null -> LoadDeferredCredentialResult.InvalidTransactionId
-                    now > deferredPersist.notIssuedBefore -> LoadDeferredCredentialResult.Found(deferredPersist.issued)
-                    else -> LoadDeferredCredentialResult.IssuancePending(
-                        CredentialResponse.Deferred(
-                            transactionId,
-                            deferredPersist.notIssuedBefore - now,
-                        ),
-                    )
+                    deferredPersist == null -> {
+                        LoadDeferredCredentialResult.InvalidTransactionId
+                    }
+
+                    now > deferredPersist.notIssuedBefore -> {
+                        LoadDeferredCredentialResult.Found(deferredPersist.issued)
+                    }
+
+                    else -> {
+                        LoadDeferredCredentialResult.IssuancePending(
+                            CredentialResponse.Deferred(
+                                transactionId,
+                                deferredPersist.notIssuedBefore - now,
+                            ),
+                        )
+                    }
                 }
             }
         }

@@ -20,7 +20,6 @@ import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import kotlin.time.Instant
 
 fun interface GenerateStatusListToken {
-
     /**
      * Generates a new [StatusListToken].
      *
@@ -28,5 +27,8 @@ fun interface GenerateStatusListToken {
      * e.g. 'urn:eu.europa.ec.eudi:pid:', or 'eu.europa.ec.eudi.pid.1', or 'org.iso.18013.5.1.mDL'
      * @param expiration expiration date of the issued VC
      */
-    suspend operator fun invoke(type: String, expiration: Instant): Either<Throwable, StatusListToken>
+    suspend operator fun invoke(
+        type: String,
+        expiration: Instant,
+    ): Either<Throwable, StatusListToken>
 }

@@ -40,36 +40,39 @@ class MetaDataApi(
     private val typeMetadata: Map<Vct, Resource>,
     private val getProtectedResourceMetadata: GetProtectedResourceMetadata,
 ) {
-
-    val route = coRouter {
-        GET(
-            WELL_KNOWN_OPENID_CREDENTIAL_ISSUER,
-            headers { headers ->
-                val accept = headers.accept()
-                accept.isEmpty() || accept.any { it == MediaType.ALL || it == MEDIA_TYPE_APPLICATION_JWT }
-            },
-        ) {
-            handleGetSignedCredentialIssuerMetaData()
+    val route =
+        coRouter {
+            GET(
+                WELL_KNOWN_OPENID_CREDENTIAL_ISSUER,
+                headers { headers ->
+                    val accept = headers.accept()
+                    accept.isEmpty() || accept.any { it == MediaType.ALL || it == MEDIA_TYPE_APPLICATION_JWT }
+                },
+            ) {
+                handleGetSignedCredentialIssuerMetaData()
+            }
+            GET(WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, accept(MediaType.APPLICATION_JSON)) { _ ->
+                handleGetUnsignedCredentialIssuerMetaData()
+            }
+            GET(WELL_KNOWN_JWT_VC_ISSUER, accept(MediaType.APPLICATION_JSON)) {
+                handleGetJwtVcIssuerMetadata()
+            }
+            GET(PUBLIC_KEYS, accept(MediaType.APPLICATION_JSON)) {
+                handleGetJwtVcIssuerJwks()
+            }
+            GET(TYPE_METADATA, accept(MediaType.APPLICATION_JSON), ::handleGetSdJwtVcTypeMetadata)
+            GET(WELL_KNOWN_PROTECTED_RESOURCE_METADATA, accept(MediaType.APPLICATION_JSON)) {
+                handleGetProtectedResourceMetadata()
+            }
         }
-        GET(WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, accept(MediaType.APPLICATION_JSON)) { _ ->
-            handleGetUnsignedCredentialIssuerMetaData()
-        }
-        GET(WELL_KNOWN_JWT_VC_ISSUER, accept(MediaType.APPLICATION_JSON)) {
-            handleGetJwtVcIssuerMetadata()
-        }
-        GET(PUBLIC_KEYS, accept(MediaType.APPLICATION_JSON)) {
-            handleGetJwtVcIssuerJwks()
-        }
-        GET(TYPE_METADATA, accept(MediaType.APPLICATION_JSON), ::handleGetSdJwtVcTypeMetadata)
-        GET(WELL_KNOWN_PROTECTED_RESOURCE_METADATA, accept(MediaType.APPLICATION_JSON)) {
-            handleGetProtectedResourceMetadata()
-        }
-    }
 
     private suspend fun handleGetUnsignedCredentialIssuerMetaData(): ServerResponse =
         getCredentialIssuerMetaData.unsigned().let { metaData ->
-            ServerResponse.ok()
-                .contentType(MediaType.APPLICATION_JSON).json().bodyValueAndAwait(metaData)
+            ServerResponse
+                .ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .json()
+                .bodyValueAndAwait(metaData)
         }
 
     private suspend fun handleGetSignedCredentialIssuerMetaData(): ServerResponse =
@@ -78,7 +81,8 @@ class MetaDataApi(
         } ?: handleGetUnsignedCredentialIssuerMetaData()
 
     private suspend fun handleGetJwtVcIssuerMetadata(): ServerResponse =
-        ServerResponse.ok()
+        ServerResponse
+            .ok()
             .json()
             .bodyValueAndAwait(
                 buildJsonObject {
@@ -88,7 +92,8 @@ class MetaDataApi(
             )
 
     private suspend fun handleGetJwtVcIssuerJwks(): ServerResponse =
-        ServerResponse.ok()
+        ServerResponse
+            .ok()
             .json()
             .bodyValueAndAwait(credentialIssuerMetaData.jwtVcIssuerJwks.toString(true))
 

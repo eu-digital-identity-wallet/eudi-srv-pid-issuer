@@ -33,13 +33,14 @@ object InstantEpochSecondsSerializer : KSerializer<Instant> {
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("InstantEpochSeconds", PrimitiveKind.LONG)
 
-    override fun serialize(encoder: Encoder, value: Instant) {
+    override fun serialize(
+        encoder: Encoder,
+        value: Instant,
+    ) {
         encoder.encodeLong(value.epochSeconds)
     }
 
-    override fun deserialize(decoder: Decoder): Instant {
-        return Instant.fromEpochSeconds(decoder.decodeLong())
-    }
+    override fun deserialize(decoder: Decoder): Instant = Instant.fromEpochSeconds(decoder.decodeLong())
 }
 
 object UriStringSerializer : KSerializer<URI> {
@@ -75,7 +76,10 @@ object JWKJsonObjectSerializer : KSerializer<JWK> {
 
     override val descriptor: SerialDescriptor = SerialDescriptor("JWKJsonObjectSerializer", serializer.descriptor)
 
-    override fun serialize(encoder: Encoder, value: JWK) {
+    override fun serialize(
+        encoder: Encoder,
+        value: JWK,
+    ) {
         val serialized = jsonSupport.decodeFromString<JsonObject>(value.toJSONString())
         encoder.encodeSerializableValue(serializer, serialized)
     }

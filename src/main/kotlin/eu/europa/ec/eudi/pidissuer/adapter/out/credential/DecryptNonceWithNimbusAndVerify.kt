@@ -40,29 +40,37 @@ internal class DecryptNonceWithNimbusAndVerify(
     private val issuer: CredentialIssuerId,
     private val decryptionKey: NonceEncryptionKey,
 ) : VerifyNonce {
-    private val processor = DefaultJWTProcessor<SecurityContext>()
-        .apply {
-            jweTypeVerifier = DefaultJOSEObjectTypeVerifier(JOSEObjectType("nonce+jwt"))
-            jweKeySelector = JWEDecryptionKeySelector(
-                decryptionKey.algorithm,
-                decryptionKey.method,
-                ImmutableJWKSet(JWKSet(decryptionKey.encryptionKey)),
-            )
-            jweDecrypterFactory = DefaultJWEDecrypterFactory()
-                .apply {
-                    jcaContext.provider = BouncyCastleProvider()
-                }
-            jwtClaimsSetVerifier = DefaultJWTClaimsVerifier(
-                issuer.externalForm,
-                JWTClaimsSet.Builder()
-                    .issuer(issuer.externalForm)
-                    .audience(issuer.externalForm)
-                    .build(),
-                setOf("iss", "aud", "nonce", "iat", "exp"),
-            )
-        }
+    private val processor =
+        DefaultJWTProcessor<SecurityContext>()
+            .apply {
+                jweTypeVerifier = DefaultJOSEObjectTypeVerifier(JOSEObjectType("nonce+jwt"))
+                jweKeySelector =
+                    JWEDecryptionKeySelector(
+                        decryptionKey.algorithm,
+                        decryptionKey.method,
+                        ImmutableJWKSet(JWKSet(decryptionKey.encryptionKey)),
+                    )
+                jweDecrypterFactory =
+                    DefaultJWEDecrypterFactory()
+                        .apply {
+                            jcaContext.provider = BouncyCastleProvider()
+                        }
+                jwtClaimsSetVerifier =
+                    DefaultJWTClaimsVerifier(
+                        issuer.externalForm,
+                        JWTClaimsSet
+                            .Builder()
+                            .issuer(issuer.externalForm)
+                            .audience(issuer.externalForm)
+                            .build(),
+                        setOf("iss", "aud", "nonce", "iat", "exp"),
+                    )
+            }
 
-    override suspend fun invoke(value: String, at: Instant): Boolean =
+    override suspend fun invoke(
+        value: String,
+        at: Instant,
+    ): Boolean =
         result {
             val jwt = EncryptedJWT.parse(value)
             val claimSet = processor.process(jwt, null)

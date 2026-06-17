@@ -35,40 +35,49 @@ internal class DefaultValidateProof(
     private val validateAttestationProof: ValidateAttestationProof,
     private val verifyNonce: VerifyNonce,
 ) : ValidateProof {
-
     override suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
-    ): Either<IssueCredentialError, ValidatedProof> = coroutineScope {
-        either {
-            val validatedProof =
-                when (unvalidatedProof) {
-                    is UnvalidatedProof.Jwt ->
-                        validateJwtProof(unvalidatedProof, credentialConfiguration, at).bind()
-                    is UnvalidatedProof.Attestation ->
-                        validateAttestationProof(unvalidatedProof, credentialConfiguration, at).bind()
+    ): Either<IssueCredentialError, ValidatedProof> =
+        coroutineScope {
+            either {
+                val validatedProof =
+                    when (unvalidatedProof) {
+                        is UnvalidatedProof.Jwt -> {
+                            validateJwtProof(unvalidatedProof, credentialConfiguration, at).bind()
+                        }
+
+                        is UnvalidatedProof.Attestation -> {
+                            validateAttestationProof(unvalidatedProof, credentialConfiguration, at).bind()
+                        }
+                    }
+
+                ensure(verifyNonce(validatedProof.cNonce, at)) {
+                    InvalidNonce("CNonce is not valid")
                 }
 
-            ensure(verifyNonce(validatedProof.cNonce, at)) {
-                InvalidNonce("CNonce is not valid")
+                val limitedCredentialKeys =
+                    validatedProof.credentialKeys
+                        .limitTo(credentialConfiguration.credentialReusePolicy)
+
+                validatedProof.copy(credentialKeys = limitedCredentialKeys)
+            }
+        }
+
+    private fun CredentialKeys.limitTo(policy: CredentialReusePolicy): CredentialKeys =
+        when (policy) {
+            CredentialReusePolicy.None -> {
+                this
             }
 
-            val limitedCredentialKeys = validatedProof.credentialKeys
-                .limitTo(credentialConfiguration.credentialReusePolicy)
-
-            validatedProof.copy(credentialKeys = limitedCredentialKeys)
-        }
-    }
-
-    private fun CredentialKeys.limitTo(policy: CredentialReusePolicy): CredentialKeys = when (policy) {
-        CredentialReusePolicy.None -> this
-        is CredentialReusePolicy.EUDI -> {
-            val limit = when {
-                policy.options.any { it is EudiReusePolicy.LimitedTime } -> 1
-                else -> policy.effectiveBatchSize
+            is CredentialReusePolicy.EUDI -> {
+                val limit =
+                    when {
+                        policy.options.any { it is EudiReusePolicy.LimitedTime } -> 1
+                        else -> policy.effectiveBatchSize
+                    }
+                if (limit == null) this else CredentialKeys(value.take(limit).toNonEmptyListOrThrow())
             }
-            if (limit == null) this else CredentialKeys(value.take(limit).toNonEmptyListOrThrow())
         }
-    }
 }

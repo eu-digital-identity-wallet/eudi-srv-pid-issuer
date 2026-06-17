@@ -17,8 +17,12 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 sealed interface AttestationCategory {
     data object Pid : AttestationCategory
+
     data object EuQeaa : AttestationCategory
+
     data object EuPubEaa : AttestationCategory
+
     data object EuEaa : AttestationCategory
+
     data object Eaa : AttestationCategory
 }

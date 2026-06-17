@@ -18,7 +18,6 @@ package eu.europa.ec.eudi.pidissuer.port.out.persistence
 import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
 
 fun interface StoreIssuedCredential {
-
     /**
      * Stores an issued credential
      */

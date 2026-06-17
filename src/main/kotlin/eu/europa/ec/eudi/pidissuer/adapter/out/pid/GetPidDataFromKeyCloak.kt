@@ -41,14 +41,19 @@ import kotlin.time.Duration.Companion.days
 
 private val log = LoggerFactory.getLogger(GetPidDataFromKeyCloak::class.java)
 
-data class Credentials(val username: String, val password: String?) {
+data class Credentials(
+    val username: String,
+    val password: String?,
+) {
     init {
         require(username.isNotBlank()) { "username cannot be blank" }
     }
 }
 
 @JvmInline
-value class Realm(val value: String) {
+value class Realm(
+    val value: String,
+) {
     init {
         require(value.isNotBlank()) { "realm cannot be blank" }
     }
@@ -79,9 +84,10 @@ class GetPidDataFromKeyCloak(
 
     override suspend fun invoke(username: Username): Pair<Pid, PidMetaData>? {
         log.info("Trying to get PID Data from Keycloak ...")
-        val userInfo = userInfo(username).also {
-            if (log.isInfoEnabled) log.info(it.toString())
-        }
+        val userInfo =
+            userInfo(username).also {
+                if (log.isInfoEnabled) log.info(it.toString())
+            }
         return userInfo?.let { pid(it) }
     }
 
@@ -126,7 +132,9 @@ class GetPidDataFromKeyCloak(
                     region = birthState,
                     country = birthCountry,
                 )
-            } else null
+            } else {
+                null
+            }
         }
 
         return getUserByUsername(username)
@@ -157,23 +165,24 @@ class GetPidDataFromKeyCloak(
      */
     private suspend fun getUserByUsername(username: String): UserRepresentation? {
         val accessToken = getAdminAccessToken()
-        val url = URLBuilder()
-            .takeFrom(keyCloak)
-            .appendPathSegments("admin", "realms", users.value, "users")
-            .apply {
-                parameters.append("username", username)
-                parameters.append("exact", "true")
-            }
-            .build()
+        val url =
+            URLBuilder()
+                .takeFrom(keyCloak)
+                .appendPathSegments("admin", "realms", users.value, "users")
+                .apply {
+                    parameters.append("username", username)
+                    parameters.append("exact", "true")
+                }.build()
 
-        val users = webClient.get()
-            .uri(url.toURI())
-            .accept(MediaType.APPLICATION_JSON)
-            .headers {
-                it[HttpHeaders.AUTHORIZATION] = accessToken.toAuthorizationHeader()
-            }
-            .retrieve()
-            .awaitBody<List<UserRepresentation>>()
+        val users =
+            webClient
+                .get()
+                .uri(url.toURI())
+                .accept(MediaType.APPLICATION_JSON)
+                .headers {
+                    it[HttpHeaders.AUTHORIZATION] = accessToken.toAuthorizationHeader()
+                }.retrieve()
+                .awaitBody<List<UserRepresentation>>()
 
         return if (users.size != 1) {
             null
@@ -186,28 +195,30 @@ class GetPidDataFromKeyCloak(
      * Gets an Access Token for the Admin user, using OAuth2.0 Password Grant.
      */
     private suspend fun getAdminAccessToken(): AccessToken {
-        val tokenEndpoint = URLBuilder()
-            .takeFrom(keyCloak)
-            .appendPathSegments("realms", administrationClient.realm.value, "protocol", "openid-connect", "token")
-            .build()
-        val response = webClient.post()
-            .uri(tokenEndpoint.toURI())
-            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-            .accept(MediaType.APPLICATION_JSON)
-            .body(
-                BodyInserters.fromFormData(
-                    LinkedMultiValueMap<String, String>()
-                        .apply {
-                            add("grant_type", "password")
-                            add("client_id", administrationClient.client.username)
-                            administrationClient.client.password?.let { add("client_secret", it) }
-                            add("username", administrationClient.admin.username)
-                            administrationClient.admin.password?.let { add("password", it) }
-                        },
-                ),
-            )
-            .retrieve()
-            .awaitBody<String>()
+        val tokenEndpoint =
+            URLBuilder()
+                .takeFrom(keyCloak)
+                .appendPathSegments("realms", administrationClient.realm.value, "protocol", "openid-connect", "token")
+                .build()
+        val response =
+            webClient
+                .post()
+                .uri(tokenEndpoint.toURI())
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .accept(MediaType.APPLICATION_JSON)
+                .body(
+                    BodyInserters.fromFormData(
+                        LinkedMultiValueMap<String, String>()
+                            .apply {
+                                add("grant_type", "password")
+                                add("client_id", administrationClient.client.username)
+                                administrationClient.client.password?.let { add("client_secret", it) }
+                                add("username", administrationClient.admin.username)
+                                administrationClient.admin.password?.let { add("password", it) }
+                            },
+                    ),
+                ).retrieve()
+                .awaitBody<String>()
 
         return withContext(Dispatchers.Default) {
             AccessToken.parse(JSONObjectUtils.parse(response))
@@ -215,10 +226,11 @@ class GetPidDataFromKeyCloak(
     }
 
     private fun genPidMetaData(): PidMetaData {
-        val (issuanceDate, expiryDate) = with(clock) {
-            val now = now()
-            now.toLocalDate() to (now + 100.days).toLocalDate()
-        }
+        val (issuanceDate, expiryDate) =
+            with(clock) {
+                val now = now()
+                now.toLocalDate() to (now + 100.days).toLocalDate()
+            }
 
         return PidMetaData(
             expiryDate = expiryDate,
@@ -233,47 +245,54 @@ class GetPidDataFromKeyCloak(
     }
 
     private suspend fun pid(userInfo: UserInfo): Pair<Pid, PidMetaData> {
-        val birthDate = requireNotNull(userInfo.birthDate) {
-            "missing required attribute 'birthDate'"
-        }.let { LocalDate.parse(it) }
+        val birthDate =
+            requireNotNull(userInfo.birthDate) {
+                "missing required attribute 'birthDate'"
+            }.let { LocalDate.parse(it) }
 
-        val birthPlace = userInfo.placeOfBirth?.let { placeOfBirth ->
-            if (null != placeOfBirth.country || null != placeOfBirth.region || null != placeOfBirth.locality) {
-                PlaceOfBirth(
-                    country = placeOfBirth.country?.let { IsoCountry(it) },
-                    region = placeOfBirth.region?.let { State(it) },
-                    locality = placeOfBirth.locality?.let { City(it) },
-                )
-            } else null
-        } ?: PlaceOfBirth.NotKnown
+        val birthPlace =
+            userInfo.placeOfBirth?.let { placeOfBirth ->
+                if (null != placeOfBirth.country || null != placeOfBirth.region || null != placeOfBirth.locality) {
+                    PlaceOfBirth(
+                        country = placeOfBirth.country?.let { IsoCountry(it) },
+                        region = placeOfBirth.region?.let { State(it) },
+                        locality = placeOfBirth.locality?.let { City(it) },
+                    )
+                } else {
+                    null
+                }
+            } ?: PlaceOfBirth.NotKnown
 
         val nationality = userInfo.nationality?.let { IsoCountry(it) } ?: issuerCountry
-        val portrait = loadResource("/eu/europa/ec/eudi/pidissuer/adapter/out/pid/Portrait.jpg") { message, cause ->
-            throw IllegalStateException(message, cause)
-        }
-        val pid = Pid(
-            familyName = FamilyName(userInfo.familyName),
-            givenName = GivenName(userInfo.givenName),
-            birthDate = birthDate,
-            placeOfBirth = birthPlace,
-            nationalities = nonEmptyListOf(nationality),
-            residentAddress = userInfo.address?.formatted,
-            residentCountry = userInfo.address?.country?.let { IsoCountry(it) },
-            residentState = userInfo.address?.region?.let { State(it) },
-            residentCity = userInfo.address?.locality?.let { City(it) },
-            residentPostalCode = userInfo.address?.postalCode?.let { PostalCode(it) },
-            residentStreet = userInfo.address?.streetAddress?.let { Street(it) },
-            residentHouseNumber = userInfo.address?.houseNumber,
-            portrait = PortraitImage.JPEG(portrait),
-            familyNameBirth = userInfo.birthFamilyName?.let { FamilyName(it) },
-            givenNameBirth = userInfo.birthGivenName?.let { GivenName(it) },
-            sex = userInfo.gender?.let { IsoGender(it) },
-            emailAddress = userInfo.email,
-            mobilePhoneNumber = null,
-            personalAdministrativeNumber = userInfo.personalAdministrativeNumber?.let {
-                AdministrativeNumber(it)
-            },
-        )
+        val portrait =
+            loadResource("/eu/europa/ec/eudi/pidissuer/adapter/out/pid/Portrait.jpg") { message, cause ->
+                throw IllegalStateException(message, cause)
+            }
+        val pid =
+            Pid(
+                familyName = FamilyName(userInfo.familyName),
+                givenName = GivenName(userInfo.givenName),
+                birthDate = birthDate,
+                placeOfBirth = birthPlace,
+                nationalities = nonEmptyListOf(nationality),
+                residentAddress = userInfo.address?.formatted,
+                residentCountry = userInfo.address?.country?.let { IsoCountry(it) },
+                residentState = userInfo.address?.region?.let { State(it) },
+                residentCity = userInfo.address?.locality?.let { City(it) },
+                residentPostalCode = userInfo.address?.postalCode?.let { PostalCode(it) },
+                residentStreet = userInfo.address?.streetAddress?.let { Street(it) },
+                residentHouseNumber = userInfo.address?.houseNumber,
+                portrait = PortraitImage.JPEG(portrait),
+                familyNameBirth = userInfo.birthFamilyName?.let { FamilyName(it) },
+                givenNameBirth = userInfo.birthGivenName?.let { GivenName(it) },
+                sex = userInfo.gender?.let { IsoGender(it) },
+                emailAddress = userInfo.email,
+                mobilePhoneNumber = null,
+                personalAdministrativeNumber =
+                    userInfo.personalAdministrativeNumber?.let {
+                        AdministrativeNumber(it)
+                    },
+            )
 
         val pidMetaData = genPidMetaData()
 

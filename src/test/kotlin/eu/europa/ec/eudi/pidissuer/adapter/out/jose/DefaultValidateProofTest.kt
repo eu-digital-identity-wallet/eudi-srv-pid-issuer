@@ -31,55 +31,62 @@ import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
 class DefaultValidateProofTest {
-
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.System
     private val verifyKeyAttestation = VerifyKeyAttestation(isTrustedKeyAttestationIssuer = IsTrustedKeyAttestationIssuer.Ignored)
 
     @Test
-    internal fun `keys are not truncated when reuse policy is None`() = runTest {
-        // 1 signing key + 1 extra key in attestation = 2 attested keys
-        val proof = generateJwtProofWithAttestation(extraKeysNo = 1)
-        val result = runValidateProofs(
-            proof = proof,
-            policy = CredentialReusePolicy.None,
-        )
+    internal fun `keys are not truncated when reuse policy is None`() =
+        runTest {
+            // 1 signing key + 1 extra key in attestation = 2 attested keys
+            val proof = generateJwtProofWithAttestation(extraKeysNo = 1)
+            val result =
+                runValidateProofs(
+                    proof = proof,
+                    policy = CredentialReusePolicy.None,
+                )
 
-        // 2 attested keys, all distinct, none truncated
-        assertEquals(2, result.credentialKeys.value.size)
-    }
-
-    @Test
-    internal fun `keys are truncated to 1 when reuse policy contains LimitedTime`() = runTest {
-        // 1 signing key + 1 extra key in attestation = 2 attested keys
-        val proof = generateJwtProofWithAttestation(extraKeysNo = 1)
-        val policy = CredentialReusePolicy.EUDI(
-            id = "test",
-            options = listOf(EudiReusePolicy.LimitedTime(reissueTriggerLifetimeLeft = 5.minutes)),
-        )
-        val result = runValidateProofs(
-            proof = proof,
-            policy = policy,
-        )
-
-        assertEquals(1, result.credentialKeys.value.size)
-    }
+            // 2 attested keys, all distinct, none truncated
+            assertEquals(2, result.credentialKeys.value.size)
+        }
 
     @Test
-    internal fun `keys are truncated to effective batch size`() = runTest {
-        // Single proof carrying 5 keys (1 signing + 4 extra)
-        val proof = generateJwtProofWithAttestation(extraKeysNo = 4)
-        val policy = CredentialReusePolicy.EUDI(
-            id = "test",
-            options = listOf(EudiReusePolicy.OnceOnly(batchSize = 3, reissueTriggerUnused = 1)),
-        )
-        val result = runValidateProofs(
-            proof = proof,
-            policy = policy,
-        )
+    internal fun `keys are truncated to 1 when reuse policy contains LimitedTime`() =
+        runTest {
+            // 1 signing key + 1 extra key in attestation = 2 attested keys
+            val proof = generateJwtProofWithAttestation(extraKeysNo = 1)
+            val policy =
+                CredentialReusePolicy.EUDI(
+                    id = "test",
+                    options = listOf(EudiReusePolicy.LimitedTime(reissueTriggerLifetimeLeft = 5.minutes)),
+                )
+            val result =
+                runValidateProofs(
+                    proof = proof,
+                    policy = policy,
+                )
 
-        assertEquals(3, result.credentialKeys.value.size)
-    }
+            assertEquals(1, result.credentialKeys.value.size)
+        }
+
+    @Test
+    internal fun `keys are truncated to effective batch size`() =
+        runTest {
+            // Single proof carrying 5 keys (1 signing + 4 extra)
+            val proof = generateJwtProofWithAttestation(extraKeysNo = 4)
+            val policy =
+                CredentialReusePolicy.EUDI(
+                    id = "test",
+                    options = listOf(EudiReusePolicy.OnceOnly(batchSize = 3, reissueTriggerUnused = 1)),
+                )
+            val result =
+                runValidateProofs(
+                    proof = proof,
+                    policy = policy,
+                )
+
+            assertEquals(3, result.credentialKeys.value.size)
+        }
 
     private suspend fun runValidateProofs(
         proof: Pair<UnvalidatedProof.Jwt, *>,
@@ -87,48 +94,53 @@ class DefaultValidateProofTest {
     ): ValidatedProof {
         val (unvalidatedProof, _) = proof
 
-        val validator = DefaultValidateProof(
-            validateJwtProof = ValidateJwtProof(issuer, verifyKeyAttestation),
-            validateAttestationProof = ValidateAttestationProof(verifyKeyAttestation),
-            verifyNonce = { _, _ -> true },
-        )
+        val validator =
+            DefaultValidateProof(
+                validateJwtProof = ValidateJwtProof(issuer, verifyKeyAttestation),
+                validateAttestationProof = ValidateAttestationProof(verifyKeyAttestation),
+                verifyNonce = { _, _ -> true },
+            )
 
-        val configuration = pidMsoMdocV1(
-            CoseAlgorithm(-7),
-            nonEmptySetOf(JWSAlgorithm.ES256),
-            KeyAttestationRequirement(
-                keyStorage = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
-                userAuthentication = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
-                preferredKeyStorageStatusPeriod = PreferredKeyStorageStatusPeriod(31.days),
-            ),
-            credentialReusePolicy = policy,
-        )
+        val configuration =
+            pidMsoMdocV1(
+                CoseAlgorithm(-7),
+                nonEmptySetOf(JWSAlgorithm.ES256),
+                KeyAttestationRequirement(
+                    keyStorage = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
+                    userAuthentication = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
+                    preferredKeyStorageStatusPeriod = PreferredKeyStorageStatusPeriod(31.days),
+                ),
+                credentialReusePolicy = policy,
+            )
 
-        val result = validator(
-            unvalidatedProof,
-            configuration,
-            clock.now(),
-        )
+        val result =
+            validator(
+                unvalidatedProof,
+                configuration,
+                clock.now(),
+            )
         return result.fold({ fail("Expected success but got $it") }, { it })
     }
 
     private suspend fun generateJwtProofWithAttestation(extraKeysNo: Int = 0): Pair<UnvalidatedProof.Jwt, ECKey> {
         val clock = Clock.System
         val jwtProofSigningKey = ECKeyGenerator(Curve.P_256).generate()
-        val keyAttestationJwt = keyAttestationJWT(
-            proofSigningKey = jwtProofSigningKey,
-            keyStorageConstraints = listOf("iso_18045_enhanced-basic"),
-            userAuthorizationConstraints = listOf("iso_18045_enhanced-basic"),
-            clock = clock,
-        ) {
-            (0..<extraKeysNo).map {
-                ECKeyGenerator(Curve.P_256).generate()
+        val keyAttestationJwt =
+            keyAttestationJWT(
+                proofSigningKey = jwtProofSigningKey,
+                keyStorageConstraints = listOf("iso_18045_enhanced-basic"),
+                userAuthorizationConstraints = listOf("iso_18045_enhanced-basic"),
+                clock = clock,
+            ) {
+                (0..<extraKeysNo).map {
+                    ECKeyGenerator(Curve.P_256).generate()
+                }
             }
-        }
 
-        val signed = jwtProof(issuer, clock, "nonce", jwtProofSigningKey) {
-            customParam("key_attestation", keyAttestationJwt.serialize())
-        }
+        val signed =
+            jwtProof(issuer, clock, "nonce", jwtProofSigningKey) {
+                customParam("key_attestation", keyAttestationJwt.serialize())
+            }
         return UnvalidatedProof.Jwt(signed.serialize()) to jwtProofSigningKey
     }
 }

@@ -22,5 +22,8 @@ import kotlin.time.Instant
  * Generates a new Nonce that expires after a specific [Duration].
  */
 fun interface GenerateNonce {
-    suspend operator fun invoke(generatedAt: Instant, expiresIn: Duration): String
+    suspend operator fun invoke(
+        generatedAt: Instant,
+        expiresIn: Duration,
+    ): String
 }

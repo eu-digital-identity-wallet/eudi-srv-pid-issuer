@@ -21,29 +21,43 @@ import java.net.URI
 import java.util.regex.Pattern
 
 @JvmInline
-value class FamilyName(val value: String)
+value class FamilyName(
+    val value: String,
+)
 
 @JvmInline
-value class GivenName(val value: String)
+value class GivenName(
+    val value: String,
+)
 
 /**
  * An Alpha-2 country
  * code as specified in ISO 3166-1.
  */
 @JvmInline
-value class IsoCountry(val value: String)
+value class IsoCountry(
+    val value: String,
+)
 
 @JvmInline
-value class Street(val value: String)
+value class Street(
+    val value: String,
+)
 
 @JvmInline
-value class State(val value: String)
+value class State(
+    val value: String,
+)
 
 @JvmInline
-value class City(val value: String)
+value class City(
+    val value: String,
+)
 
 @JvmInline
-value class PostalCode(val value: String)
+value class PostalCode(
+    val value: String,
+)
 
 typealias Address = String
 
@@ -51,14 +65,18 @@ typealias Address = String
  * Gender, using a value as defined in ISO/IEC 5218.
  */
 @JvmInline
-value class IsoGender(val value: UInt)
+value class IsoGender(
+    val value: UInt,
+)
 
 typealias Nationality = IsoCountry
 
 typealias EmailAddress = String
 
 @JvmInline
-value class PhoneNumber(val value: String) {
+value class PhoneNumber(
+    val value: String,
+) {
     init {
         require(value.matches(PATTERN.toRegex())) { "not a valid phone number" }
     }
@@ -148,29 +166,42 @@ data class Pid(
  */
 sealed interface IssuingAuthority {
     @JvmInline
-    value class MemberState(val code: IsoCountry) : IssuingAuthority
+    value class MemberState(
+        val code: IsoCountry,
+    ) : IssuingAuthority
 
     @JvmInline
-    value class AdministrativeAuthority(val value: String) : IssuingAuthority
+    value class AdministrativeAuthority(
+        val value: String,
+    ) : IssuingAuthority
 
-    fun valueAsString(): String = when (this) {
-        is AdministrativeAuthority -> value
-        is MemberState -> code.value
-    }
+    fun valueAsString(): String =
+        when (this) {
+            is AdministrativeAuthority -> value
+            is MemberState -> code.value
+        }
 }
 
 @JvmInline
-value class DocumentNumber(val value: String)
+value class DocumentNumber(
+    val value: String,
+)
 
 @JvmInline
-value class AdministrativeNumber(val value: String)
+value class AdministrativeNumber(
+    val value: String,
+)
 
 sealed interface PortraitImage {
     @JvmInline
-    value class JPEG(val value: ByteArray) : PortraitImage
+    value class JPEG(
+        val value: ByteArray,
+    ) : PortraitImage
 
     @JvmInline
-    value class JPEG2000(val value: ByteArray) : PortraitImage
+    value class JPEG2000(
+        val value: ByteArray,
+    ) : PortraitImage
 }
 
 /**

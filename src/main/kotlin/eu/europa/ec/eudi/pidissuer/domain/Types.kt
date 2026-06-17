@@ -31,12 +31,15 @@ import kotlin.time.Instant
 private val logHttpsUrl = LoggerFactory.getLogger(HttpsUrl::class.java)
 
 @JvmInline
-value class HttpsUrl private constructor(val value: URL) {
+value class HttpsUrl private constructor(
+    val value: URL,
+) {
     val externalForm: String
         get() = value.toExternalForm()!!
 
     companion object {
         fun of(url: URL): HttpsUrl? = url.takeIf { it.protocol == "https" }?.run { HttpsUrl(this) }
+
         fun of(url: String): HttpsUrl? =
             try {
                 of(URI.create(url).toURL())
@@ -53,19 +56,31 @@ value class HttpsUrl private constructor(val value: URL) {
 }
 
 @JvmInline
-value class Scope(val value: String)
+value class Scope(
+    val value: String,
+)
 
 @JvmInline
-value class Format(val value: String)
+value class Format(
+    val value: String,
+)
 
 typealias CredentialIssuerId = HttpsUrl
 
-data class ImageUri(val uri: URI, val alternativeText: String? = null)
+data class ImageUri(
+    val uri: URI,
+    val alternativeText: String? = null,
+)
 
 @JvmInline
-value class BackgroundImage(val uri: URI)
+value class BackgroundImage(
+    val uri: URI,
+)
 
-data class DisplayName(val name: String, val locale: Locale)
+data class DisplayName(
+    val name: String,
+    val locale: Locale,
+)
 typealias Color = String
 
 data class CredentialDisplay(
@@ -103,7 +118,6 @@ data class ClaimDefinition(
  * of the End-User who possesses the Credential
  */
 sealed interface CryptographicBindingMethod {
-
     /**
      * Support for keys in JWK format RFC7517
      */
@@ -117,7 +131,9 @@ sealed interface CryptographicBindingMethod {
     /**
      * Support for a specific DID method
      */
-    data class DidMethod(val didMethod: String) : CryptographicBindingMethod
+    data class DidMethod(
+        val didMethod: String,
+    ) : CryptographicBindingMethod
 
     /**
      * Support for any DID method
@@ -129,7 +145,9 @@ sealed interface CryptographicBindingMethod {
  * The unique identifier of an [IssuedCredential].
  */
 @JvmInline
-value class IssuedCredentialId(val value: UUID)
+value class IssuedCredentialId(
+    val value: UUID,
+)
 
 /**
  * Credential that have issued by a specific issuing service.
@@ -150,7 +168,9 @@ data class IssuedCredential(
  * The unique identifier of a Credential.
  */
 @JvmInline
-value class CredentialIdentifier(val value: String)
+value class CredentialIdentifier(
+    val value: String,
+)
 
 /**
  * A Status List Token per Token Status List.
@@ -166,18 +186,24 @@ data class StatusListToken(
     val index: UInt,
 )
 
-enum class IntegrityHashAlgorithm(val id: String) {
+enum class IntegrityHashAlgorithm(
+    val id: String,
+) {
     SHA_256("sha256"),
     SHA_384("sha384"),
     SHA_512("sha512"),
 }
 
 @JvmInline
-value class CoseAlgorithm(val value: Int)
+value class CoseAlgorithm(
+    val value: Int,
+)
 
 @JvmInline
 @Serializable
-value class NonBlankString(val value: String) {
+value class NonBlankString(
+    val value: String,
+) {
     init {
         require(value.isNotBlank())
     }

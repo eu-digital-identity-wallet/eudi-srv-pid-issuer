@@ -42,8 +42,9 @@ import kotlin.contracts.contract
  */
 @Serializable(with = ClaimPathSerializer::class)
 @JvmInline
-value class ClaimPath(val value: List<ClaimPathElement>) : List<ClaimPathElement> by value {
-
+value class ClaimPath(
+    val value: List<ClaimPathElement>,
+) : List<ClaimPathElement> by value {
     init {
         require(value.isNotEmpty())
     }
@@ -54,10 +55,11 @@ value class ClaimPath(val value: List<ClaimPathElement>) : List<ClaimPathElement
 
     operator fun plus(other: ClaimPath): ClaimPath = ClaimPath(this.value + other.value)
 
-    operator fun contains(that: ClaimPath): Boolean = value.foldIndexed(this.value.size <= that.value.size) { index, acc, thisElement ->
-        fun comp() = that.value.getOrNull(index)?.let { thatElement -> thatElement in thisElement } == true
-        acc and comp()
-    }
+    operator fun contains(that: ClaimPath): Boolean =
+        value.foldIndexed(this.value.size <= that.value.size) { index, acc, thisElement ->
+            fun comp() = that.value.getOrNull(index)?.let { thatElement -> thatElement in thisElement } == true
+            acc and comp()
+        }
 
     /**
      * Appends a wild-card indicator [ClaimPathElement.AllArrayElements]
@@ -79,15 +81,20 @@ value class ClaimPath(val value: List<ClaimPathElement>) : List<ClaimPathElement
     /**
      * Gets the ClaimPath of the parent element. Returns `null` to indicate the root element.
      */
-    fun parent(): ClaimPath? = value.dropLast(1)
-        .takeIf { it.isNotEmpty() }
-        ?.let { ClaimPath(it) }
+    fun parent(): ClaimPath? =
+        value
+            .dropLast(1)
+            .takeIf { it.isNotEmpty() }
+            ?.let { ClaimPath(it) }
 
     fun head(): ClaimPathElement = value.first()
+
     fun tail(): ClaimPath? {
         val tailElements = value.drop(1)
-        return if (tailElements.isEmpty()) return null
-        else ClaimPath(tailElements)
+        return if (tailElements.isEmpty())
+            return null
+        else
+            ClaimPath(tailElements)
     }
 
     /**
@@ -112,7 +119,6 @@ value class ClaimPath(val value: List<ClaimPathElement>) : List<ClaimPathElement
  * - [ArrayElement] indicates that the respective [index][ArrayElement.index] in an array is to be selected
  */
 sealed interface ClaimPathElement {
-
     /**
      * Indicates that all elements of the currently selected array(s) are to be selected
      * It is serialized as a [JsonNull]
@@ -127,7 +133,9 @@ sealed interface ClaimPathElement {
      * @param index Non-negative index
      */
     @JvmInline
-    value class ArrayElement(val index: Int) : ClaimPathElement {
+    value class ArrayElement(
+        val index: Int,
+    ) : ClaimPathElement {
         init {
             require(index >= 0) { "Index should be non-negative" }
         }
@@ -141,7 +149,9 @@ sealed interface ClaimPathElement {
      * @param name the attribute name
      */
     @JvmInline
-    value class Claim(val name: String) : ClaimPathElement {
+    value class Claim(
+        val name: String,
+    ) : ClaimPathElement {
         override fun toString(): String = name
     }
 
@@ -152,16 +162,24 @@ sealed interface ClaimPathElement {
      * then true is being returned. Also, an [AllArrayElements] contains [ArrayElement].
      * In all other cases, a false is being returned.
      */
-    operator fun contains(that: ClaimPathElement): Boolean = when (this) {
-        AllArrayElements -> when (that) {
-            AllArrayElements -> true
-            is ArrayElement -> true
-            is Claim -> false
-        }
+    operator fun contains(that: ClaimPathElement): Boolean =
+        when (this) {
+            AllArrayElements -> {
+                when (that) {
+                    AllArrayElements -> true
+                    is ArrayElement -> true
+                    is Claim -> false
+                }
+            }
 
-        is ArrayElement -> this == that
-        is Claim -> this == that
-    }
+            is ArrayElement -> {
+                this == that
+            }
+
+            is Claim -> {
+                this == that
+            }
+        }
 }
 
 inline fun <T> ClaimPathElement.fold(
@@ -185,35 +203,40 @@ inline fun <T> ClaimPathElement.fold(
  * Serializer for [ClaimPath]
  */
 object ClaimPathSerializer : KSerializer<ClaimPath> {
-
-    private fun claimPathElement(it: JsonPrimitive): ClaimPathElement = when {
-        it is JsonNull -> ClaimPathElement.AllArrayElements
-        it.isString -> ClaimPathElement.Claim(it.content)
-        it.intOrNull != null -> ClaimPathElement.ArrayElement(it.int)
-        else -> throw IllegalArgumentException("Only string, null, int can be used")
-    }
+    private fun claimPathElement(it: JsonPrimitive): ClaimPathElement =
+        when {
+            it is JsonNull -> ClaimPathElement.AllArrayElements
+            it.isString -> ClaimPathElement.Claim(it.content)
+            it.intOrNull != null -> ClaimPathElement.ArrayElement(it.int)
+            else -> throw IllegalArgumentException("Only string, null, int can be used")
+        }
 
     private fun claimPath(array: JsonArray): ClaimPath {
-        val elements = array.map {
-            require(it is JsonPrimitive)
-            claimPathElement(it)
-        }
+        val elements =
+            array.map {
+                require(it is JsonPrimitive)
+                claimPathElement(it)
+            }
         return ClaimPath(elements)
     }
 
     private fun ClaimPath.toJson(): JsonArray = JsonArray(value.map { it.toJson() })
 
-    private fun ClaimPathElement.toJson(): JsonPrimitive = when (this) {
-        is ClaimPathElement.Claim -> JsonPrimitive(name)
-        is ClaimPathElement.ArrayElement -> JsonPrimitive(index)
-        ClaimPathElement.AllArrayElements -> JsonNull
-    }
+    private fun ClaimPathElement.toJson(): JsonPrimitive =
+        when (this) {
+            is ClaimPathElement.Claim -> JsonPrimitive(name)
+            is ClaimPathElement.ArrayElement -> JsonPrimitive(index)
+            ClaimPathElement.AllArrayElements -> JsonNull
+        }
 
     private val arraySerializer = serializer<JsonArray>()
 
     override val descriptor: SerialDescriptor = arraySerializer.descriptor
 
-    override fun serialize(encoder: Encoder, value: ClaimPath) {
+    override fun serialize(
+        encoder: Encoder,
+        value: ClaimPath,
+    ) {
         val array = value.toJson()
         arraySerializer.serialize(encoder, array)
     }

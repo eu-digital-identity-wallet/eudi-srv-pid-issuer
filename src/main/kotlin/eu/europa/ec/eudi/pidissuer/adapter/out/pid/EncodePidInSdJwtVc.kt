@@ -46,7 +46,6 @@ class EncodePidInSdJwtVc(
     private val issuerSigningKey: IssuerSigningKey,
     private val vct: SdJwtVcType,
 ) {
-
     /**
      * Creates a Nimbus-based SD-JWT issuer
      * according to the requirements of SD-JWT VC
@@ -66,29 +65,32 @@ class EncodePidInSdJwtVc(
         expiresAt: Instant,
         notBefore: Instant?,
         statusListToken: StatusListToken?,
-    ): Either<IssueCredentialError, String> = either {
-        val sdJwtSpec = selectivelyDisclosed(
-            pid = pid,
-            pidMetaData = pidMetaData,
-            vct = vct,
-            credentialIssuerId = credentialIssuerId,
-            holderPubKey = holderKey,
-            iat = issuedAt,
-            exp = expiresAt,
-            nbf = notBefore,
-            statusListToken = statusListToken,
-        )
-        val issuedSdJwt: SdJwt<SignedJWT> = issuer.issue(sdJwtSpec).getOrElse {
-            raise(Unexpected("Error while creating SD-JWT", it))
-        }
-        if (log.isInfoEnabled) {
-            log.info(with(Printer) { issuedSdJwt.prettyPrint() })
-        }
+    ): Either<IssueCredentialError, String> =
+        either {
+            val sdJwtSpec =
+                selectivelyDisclosed(
+                    pid = pid,
+                    pidMetaData = pidMetaData,
+                    vct = vct,
+                    credentialIssuerId = credentialIssuerId,
+                    holderPubKey = holderKey,
+                    iat = issuedAt,
+                    exp = expiresAt,
+                    nbf = notBefore,
+                    statusListToken = statusListToken,
+                )
+            val issuedSdJwt: SdJwt<SignedJWT> =
+                issuer.issue(sdJwtSpec).getOrElse {
+                    raise(Unexpected("Error while creating SD-JWT", it))
+                }
+            if (log.isInfoEnabled) {
+                log.info(with(Printer) { issuedSdJwt.prettyPrint() })
+            }
 
-        with(NimbusSdJwtOps) {
-            issuedSdJwt.serialize()
+            with(NimbusSdJwtOps) {
+                issuedSdJwt.serialize()
+            }
         }
-    }
 }
 
 private fun selectivelyDisclosed(
@@ -150,10 +152,11 @@ private fun selectivelyDisclosed(
         }
         pid.personalAdministrativeNumber?.let { sdClaim(SdJwtVcPidClaims.PersonalAdministrativeNumber.name, it.value) }
         pid.portrait?.let {
-            val encodedBytes = when (it) {
-                is PortraitImage.JPEG -> Base64.encode(it.value)
-                is PortraitImage.JPEG2000 -> Base64.encode(it.value)
-            }
+            val encodedBytes =
+                when (it) {
+                    is PortraitImage.JPEG -> Base64.encode(it.value)
+                    is PortraitImage.JPEG2000 -> Base64.encode(it.value)
+                }
             val url = "data:image/jpeg;base64,$encodedBytes"
             sdClaim(SdJwtVcPidClaims.Picture.name, url)
         }
@@ -187,24 +190,30 @@ private fun Pid.oidcAddressClaim(): OidcAddressClaim? =
             streetAddress = residentStreet?.value,
             houseNumber = residentHouseNumber,
         )
-    } else null
+    } else {
+        null
+    }
 
 private object Printer {
     val json = Json { prettyPrint = true }
+
     private fun JsonElement.pretty(): String = json.encodeToString(this)
+
     fun SdJwt<SignedJWT>.prettyPrint(): String {
         var str = "\nSD-JWT with ${disclosures.size} disclosures\n"
         disclosures.forEach { d ->
-            val kind = when (d) {
-                is Disclosure.ArrayElement -> "\t - ArrayEntry ${d.claim().value().pretty()}"
-                is Disclosure.ObjectProperty -> "\t - ObjectProperty ${d.claim().first} = ${d.claim().second}"
-            }
+            val kind =
+                when (d) {
+                    is Disclosure.ArrayElement -> "\t - ArrayEntry ${d.claim().value().pretty()}"
+                    is Disclosure.ObjectProperty -> "\t - ObjectProperty ${d.claim().first} = ${d.claim().second}"
+                }
             str += kind + "\n"
         }
         str += "SD-JWT payload\n"
-        str += json.parseToJsonElement(jwt.jwtClaimsSet.toString()).run {
-            json.encodeToString(this)
-        }
+        str +=
+            json.parseToJsonElement(jwt.jwtClaimsSet.toString()).run {
+                json.encodeToString(this)
+            }
         return str
     }
 }

@@ -39,27 +39,32 @@ import java.security.cert.X509Certificate
 fun IsTrustedKeyAttestationIssuer.Companion.usingTrustValidatorService(
     webClient: WebClient,
     service: URI,
-): IsTrustedKeyAttestationIssuer = IsTrustedKeyAttestationIssuer { x5c ->
-    val body = TrustQueryRequest(x5c, "WalletUnitAttestation")
-    val configClient = webClient.post().apply {
-        uri(service)
-        bodyValue(body)
-        contentType(MediaType.APPLICATION_JSON)
-        accept(MediaType.APPLICATION_JSON)
+): IsTrustedKeyAttestationIssuer =
+    IsTrustedKeyAttestationIssuer { x5c ->
+        val body = TrustQueryRequest(x5c, "WalletUnitAttestation")
+        val configClient =
+            webClient.post().apply {
+                uri(service)
+                bodyValue(body)
+                contentType(MediaType.APPLICATION_JSON)
+                accept(MediaType.APPLICATION_JSON)
+            }
+        val trustResponse =
+            configClient
+                .retrieve()
+                .awaitBody<TrustResponse>()
+        val isTrusted = trustResponse.trusted
+        if (isTrusted) {
+            TrustResult.IsTrusted(TrustAnchor(trustResponse.trustAnchor, null))
+        } else {
+            TrustResult.IsUntrusted
+        }
     }
-    val trustResponse = configClient.retrieve()
-        .awaitBody<TrustResponse>()
-    val isTrusted = trustResponse.trusted
-    if (isTrusted) {
-        TrustResult.IsTrusted(TrustAnchor(trustResponse.trustAnchor, null))
-    } else {
-        TrustResult.IsUntrusted
-    }
-}
 
-val IsTrustedKeyAttestationIssuer.Companion.Ignored: IsTrustedKeyAttestationIssuer get() = IsTrustedKeyAttestationIssuer { chain ->
-    TrustResult.IsTrusted(TrustAnchor(chain.last(), null))
-}
+val IsTrustedKeyAttestationIssuer.Companion.Ignored: IsTrustedKeyAttestationIssuer get() =
+    IsTrustedKeyAttestationIssuer { chain ->
+        TrustResult.IsTrusted(TrustAnchor(chain.last(), null))
+    }
 
 @Serializable
 private data class TrustQueryRequest(
@@ -69,23 +74,32 @@ private data class TrustQueryRequest(
 )
 
 private object X509CertificateSerializer : KSerializer<X509Certificate> {
-
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("X509Certificate", PrimitiveKind.STRING)
 
-    override fun serialize(encoder: Encoder, value: X509Certificate) {
-        val encoded = kotlin.io.encoding.Base64.withPadding(kotlin.io.encoding.Base64.PaddingOption.ABSENT_OPTIONAL).encode(value.encoded)
+    override fun serialize(
+        encoder: Encoder,
+        value: X509Certificate,
+    ) {
+        val encoded =
+            kotlin.io.encoding.Base64
+                .withPadding(kotlin.io.encoding.Base64.PaddingOption.ABSENT_OPTIONAL)
+                .encode(value.encoded)
         encoder.encodeString(encoded)
     }
 
     override fun deserialize(decoder: Decoder): X509Certificate {
         val cert = decoder.decodeString()
-        val decoded = kotlin.io.encoding.Base64.withPadding(kotlin.io.encoding.Base64.PaddingOption.ABSENT_OPTIONAL).decode(cert)
+        val decoded =
+            kotlin.io.encoding.Base64
+                .withPadding(kotlin.io.encoding.Base64.PaddingOption.ABSENT_OPTIONAL)
+                .decode(cert)
         val cf = CertificateFactory.getInstance("X.509")
         return ByteArrayInputStream(decoded).use { inputStream ->
             cf.generateCertificate(inputStream) as X509Certificate
         }
     }
 }
+
 object X509CertificateChainSerializer : KSerializer<NonEmptyList<X509Certificate>> by NonEmptyListSerializer(
     X509CertificateSerializer,
 )

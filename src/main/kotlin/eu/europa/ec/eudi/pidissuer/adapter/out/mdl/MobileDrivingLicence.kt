@@ -40,14 +40,15 @@ fun mdlNamespace(version: UInt): MsoNameSpace = "org.iso.18013.5.$version"
  * and [Latin 1 Supplement](https://en.wikipedia.org/wiki/Latin-1_Supplement) Unicode blocks.
  */
 @JvmInline
-value class Latin150(val value: String) {
+value class Latin150(
+    val value: String,
+) {
     init {
         require(value.length in 1..150) { "value must be at least 1 and at most 150 characters long" }
         require(value.matches(REGEX)) { "value contains non ISO/IEC 8859-1 characters" }
     }
 
     companion object {
-
         /**
          * Regular expression used to verify a string contains only ISO/IEC 8859-1 characters.
          *
@@ -76,13 +77,14 @@ data class IssueAndExpiry(
  * An ISO 3166-1 alpha-2 country code.
  */
 @JvmInline
-value class IsoAlpha2CountryCode(val code: String) {
+value class IsoAlpha2CountryCode(
+    val code: String,
+) {
     init {
         require(code.matches(REGEX)) { "Not a valid ISO 3166-1 alpha-2 country code" }
     }
 
     companion object {
-
         /**
          * Regular expression for matching [ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)
          * country codes.
@@ -98,13 +100,14 @@ value class IsoAlpha2CountryCode(val code: String) {
  * Distinguishing sign of Vehicles of a country according to ISO/IEC 18013-1:2018, Annex F.
  */
 @JvmInline
-value class DistinguishingSign(val code: String) {
+value class DistinguishingSign(
+    val code: String,
+) {
     init {
         require(code.matches(REGEX)) { "Not a valid Distinguishing Sign of Vehicle as per ISO/IEC 18013-1:2018" }
     }
 
     companion object {
-
         /**
          * Regular expression for matching [Distinguishing Sings of Vehicles](https://unece.org/DAM/trans/conventn/Distsigns.pdf).
          *
@@ -143,7 +146,6 @@ data class Issuer(
  * An image.
  */
 sealed interface Image {
-
     /**
      * The binary content of the image.
      */
@@ -153,7 +155,9 @@ sealed interface Image {
      * An image compressed using the JPEG standard.
      */
     @JvmInline
-    value class Jpeg(override val content: ByteArray) : Image {
+    value class Jpeg(
+        override val content: ByteArray,
+    ) : Image {
         init {
             require(content.isNotEmpty()) { "content cannot be empty" }
         }
@@ -163,7 +167,9 @@ sealed interface Image {
      * An image compressed using the JPEG2000 standard.
      */
     @JvmInline
-    value class Jpeg2000(override val content: ByteArray) : Image {
+    value class Jpeg2000(
+        override val content: ByteArray,
+    ) : Image {
         init {
             require(content.isNotEmpty()) { "content cannot be empty" }
         }
@@ -182,7 +188,9 @@ data class Portrait(
  * The category of a vehicle as defined in ISO/IEC 18013-1.
  * [Reference](https://unece.org/DAM/trans/doc/2011/wp1/Informal_document_ISOe-UN-EU._comparison.pdf)
  */
-enum class VehicleCategory(val code: String) {
+enum class VehicleCategory(
+    val code: String,
+) {
     MOTORCYCLE("A"),
     LIGHT_MOTORCYCLE("A1"),
     MEDIUM_MOTORCYCLE("A2"),
@@ -203,7 +211,9 @@ enum class VehicleCategory(val code: String) {
 /**
  * Sex as defined in ISO/IEC 5218.
  */
-enum class Sex(val code: UInt) {
+enum class Sex(
+    val code: UInt,
+) {
     NOT_KNOWN(0u),
     MALE(1u),
     FEMALE(2u),
@@ -214,7 +224,9 @@ enum class Sex(val code: UInt) {
  * A [UInt] that represents centimeters.
  */
 @JvmInline
-value class Cm(val value: UInt)
+value class Cm(
+    val value: UInt,
+)
 
 /**
  * Wraps [this] to a [Cm] instance.
@@ -228,7 +240,9 @@ fun UInt.cm(): Cm = Cm(this)
  * A [UInt] that represents kilograms.
  */
 @JvmInline
-value class Kg(val value: UInt)
+value class Kg(
+    val value: UInt,
+)
 
 /**
  * Wraps [this] to a [Kg] instance.
@@ -242,7 +256,9 @@ fun UInt.kg(): Kg = Kg(this)
  * A [UInt] that represents a natural number.
  */
 @JvmInline
-value class Natural(val value: UInt) {
+value class Natural(
+    val value: UInt,
+) {
     init {
         require(value > 0u) { "value is not a natural number" }
     }
@@ -260,7 +276,9 @@ fun UInt.natural(): Natural = Natural(this)
  * A [UInt] that represents cubic centimeters.
  */
 @JvmInline
-value class Cm3(val value: UInt)
+value class Cm3(
+    val value: UInt,
+)
 
 /**
  * Wraps [this] to a [Cm3] instance.
@@ -274,7 +292,9 @@ fun UInt.cm3(): Cm3 = Cm3(this)
  * A [UInt] that represents kilowatts.
  */
 @JvmInline
-value class KWatt(val value: UInt)
+value class KWatt(
+    val value: UInt,
+)
 
 /**
  * Wraps [this] to a [KWatt] instance.
@@ -287,7 +307,9 @@ fun UInt.kwatt(): KWatt = KWatt(this)
 /**
  * Eye colour as defined in ISO/IEC 18013-5.
  */
-enum class EyeColour(val code: String) {
+enum class EyeColour(
+    val code: String,
+) {
     BLACK("black"),
     BLUE("blue"),
     BROWN("brown"),
@@ -303,7 +325,9 @@ enum class EyeColour(val code: String) {
 /**
  * Hair colour as defined in ISO/IEC 18013-5.
  */
-enum class HairColour(val code: String) {
+enum class HairColour(
+    val code: String,
+) {
     BALD("bald"),
     BLACK("black"),
     BLOND("blond"),
@@ -320,27 +344,36 @@ enum class HairColour(val code: String) {
  * Represents a comparison with a value as per ISO/IEC 18013-2 Annex A.
  */
 sealed interface Sign<V> {
-
     val value: V
     val code: String
 
-    data class LessThan<V>(override val value: V) : Sign<V> {
+    data class LessThan<V>(
+        override val value: V,
+    ) : Sign<V> {
         override val code: String = "<"
     }
 
-    data class LessThanOrEqualTo<V>(override val value: V) : Sign<V> {
+    data class LessThanOrEqualTo<V>(
+        override val value: V,
+    ) : Sign<V> {
         override val code: String = "<="
     }
 
-    data class EqualTo<V>(override val value: V) : Sign<V> {
+    data class EqualTo<V>(
+        override val value: V,
+    ) : Sign<V> {
         override val code: String = "="
     }
 
-    data class MoreThan<V>(override val value: V) : Sign<V> {
+    data class MoreThan<V>(
+        override val value: V,
+    ) : Sign<V> {
         override val code: String = ">"
     }
 
-    data class MoreThanOrEqualTo<V>(override val value: V) : Sign<V> {
+    data class MoreThanOrEqualTo<V>(
+        override val value: V,
+    ) : Sign<V> {
         override val code: String = ">="
     }
 }
@@ -353,19 +386,19 @@ data class DrivingPrivilege(
     val issueAndExpiry: IssueAndExpiry? = null,
     val restrictions: NonEmptySet<Restriction>? = null,
 ) {
-
     /**
      * Restrictions for a [DrivingPrivilege] as defined in ISO/IEC 18013-2 Annex A.
      */
     sealed interface Restriction {
-
         val code: String
 
         /**
          * Generic restrictions for the driver or the vehicle.
          */
         @Suppress("unused")
-        enum class GenericRestriction(override val code: String) : Restriction {
+        enum class GenericRestriction(
+            override val code: String,
+        ) : Restriction {
             EYESIGHT_CORRECTION_OR_PROTECTION("01"),
             PROSTHETIC_DEVICE_FOR_LIMBS("03"),
             VEHICLE_WITH_AUTOMATIC_TRANSMISSION("78"),
@@ -376,23 +409,29 @@ data class DrivingPrivilege(
          * Parameterized restrictions for the vehicle.
          */
         sealed interface ParameterizedRestriction<V> : Restriction {
-
             val value: Sign<V>
 
-            data class VehicleAuthorizedMass(override val value: Sign<Kg>) : ParameterizedRestriction<Kg> {
+            data class VehicleAuthorizedMass(
+                override val value: Sign<Kg>,
+            ) : ParameterizedRestriction<Kg> {
                 override val code: String = "S01"
             }
 
-            data class VehicleAuthorizedPassengerSeats(override val value: Sign<Natural>) :
-                ParameterizedRestriction<Natural> {
-                    override val code: String = "S02"
-                }
+            data class VehicleAuthorizedPassengerSeats(
+                override val value: Sign<Natural>,
+            ) : ParameterizedRestriction<Natural> {
+                override val code: String = "S02"
+            }
 
-            data class VehicleCylinderCapacity(override val value: Sign<Cm3>) : ParameterizedRestriction<Cm3> {
+            data class VehicleCylinderCapacity(
+                override val value: Sign<Cm3>,
+            ) : ParameterizedRestriction<Cm3> {
                 override val code: String = "S03"
             }
 
-            data class VehiclePower(override val value: Sign<KWatt>) : ParameterizedRestriction<KWatt> {
+            data class VehiclePower(
+                override val value: Sign<KWatt>,
+            ) : ParameterizedRestriction<KWatt> {
                 override val code: String = "S04"
             }
         }

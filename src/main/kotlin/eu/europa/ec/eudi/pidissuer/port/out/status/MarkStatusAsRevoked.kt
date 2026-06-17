@@ -19,6 +19,5 @@ import arrow.core.Either
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 
 fun interface MarkStatusAsRevoked {
-
     suspend operator fun invoke(status: StatusListToken): Either<Throwable, Unit>
 }

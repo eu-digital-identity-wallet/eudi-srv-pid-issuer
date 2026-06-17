@@ -35,28 +35,32 @@ internal class GetStatusListTokenWithStatium(
     private val httpClient: HttpClient,
     private val clock: Clock,
 ) : GetStatusListTokenStatus {
-
-    override suspend fun invoke(uri: URI, index: UInt): Either<Throwable, StatusListTokenStatus> =
+    override suspend fun invoke(
+        uri: URI,
+        index: UInt,
+    ): Either<Throwable, StatusListTokenStatus> =
         Either.catch {
-            val getStatusListToken = GetStatusListToken.usingJwt(
-                clock = object : kotlin.time.Clock {
-                    override fun now(): Instant {
-                        return clock.now()
-                    }
-                },
-                httpClient = httpClient,
-                verifyStatusListTokenSignature = { _, _ ->
-                    Result.success(Unit) // TODO
-                },
-            )
+            val getStatusListToken =
+                GetStatusListToken.usingJwt(
+                    clock =
+                        object : kotlin.time.Clock {
+                            override fun now(): Instant = clock.now()
+                        },
+                    httpClient = httpClient,
+                    verifyStatusListTokenSignature = { _, _ ->
+                        Result.success(Unit) // TODO
+                    },
+                )
             val getStatus = GetStatus(getStatusListToken)
-            val statusReference = StatusReference(
-                index = StatusIndex(index.toInt()),
-                uri = uri.toString(),
-            )
-            val status = with(getStatus) {
-                statusReference.status(at = null).getOrThrow()
-            }
+            val statusReference =
+                StatusReference(
+                    index = StatusIndex(index.toInt()),
+                    uri = uri.toString(),
+                )
+            val status =
+                with(getStatus) {
+                    statusReference.status(at = null).getOrThrow()
+                }
             if (status == Status.Valid) StatusListTokenStatus.VALID else StatusListTokenStatus.INVALID
         }
 }

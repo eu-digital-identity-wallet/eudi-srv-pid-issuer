@@ -42,123 +42,150 @@ import kotlin.time.Duration
 private val EuropeanHealthInsuranceCardScope: Scope = Scope("urn:eudi:ehic:1:dc+sd-jwt")
 
 internal object IssuingAuthorityClaim : IsAttribute {
-    val Id: ClaimDefinition = ClaimDefinition(
-        path = ClaimPath.claim("issuing_authority").claim("id"),
-        mandatory = true,
-        display = mapOf(
-            Locale.ENGLISH to "Issuing authority id",
-        ),
-    )
+    val Id: ClaimDefinition =
+        ClaimDefinition(
+            path = ClaimPath.claim("issuing_authority").claim("id"),
+            mandatory = true,
+            display =
+                mapOf(
+                    Locale.ENGLISH to "Issuing authority id",
+                ),
+        )
 
-    val Name: ClaimDefinition = ClaimDefinition(
-        path = ClaimPath.claim("issuing_authority").claim("name"),
-        mandatory = true,
-        display = mapOf(
-            Locale.ENGLISH to "Issuing authority name",
-        ),
-    )
+    val Name: ClaimDefinition =
+        ClaimDefinition(
+            path = ClaimPath.claim("issuing_authority").claim("name"),
+            mandatory = true,
+            display =
+                mapOf(
+                    Locale.ENGLISH to "Issuing authority name",
+                ),
+        )
 
-    override val attribute: ClaimDefinition = ClaimDefinition(
-        path = ClaimPath.claim("issuing_authority"),
-        mandatory = true,
-        display = mapOf(
-            Locale.ENGLISH to "Issuing authority",
-        ),
-        nested = listOf(Id, Name),
-    )
+    override val attribute: ClaimDefinition =
+        ClaimDefinition(
+            path = ClaimPath.claim("issuing_authority"),
+            mandatory = true,
+            display =
+                mapOf(
+                    Locale.ENGLISH to "Issuing authority",
+                ),
+            nested = listOf(Id, Name),
+        )
 }
 
 internal object AuthenticSourceClaim : IsAttribute {
-    val Id: ClaimDefinition = ClaimDefinition(
-        path = ClaimPath.claim("authentic_source").claim("id"),
-        mandatory = true,
-        display = mapOf(
-            Locale.ENGLISH to "Competent institution id",
-        ),
-    )
+    val Id: ClaimDefinition =
+        ClaimDefinition(
+            path = ClaimPath.claim("authentic_source").claim("id"),
+            mandatory = true,
+            display =
+                mapOf(
+                    Locale.ENGLISH to "Competent institution id",
+                ),
+        )
 
-    val Name: ClaimDefinition = ClaimDefinition(
-        path = ClaimPath.claim("authentic_source").claim("name"),
-        mandatory = true,
-        display = mapOf(
-            Locale.ENGLISH to "Competent institution name",
-        ),
-    )
+    val Name: ClaimDefinition =
+        ClaimDefinition(
+            path = ClaimPath.claim("authentic_source").claim("name"),
+            mandatory = true,
+            display =
+                mapOf(
+                    Locale.ENGLISH to "Competent institution name",
+                ),
+        )
 
-    override val attribute: ClaimDefinition = ClaimDefinition(
-        path = ClaimPath.claim("authentic_source"),
-        mandatory = true,
-        display = mapOf(
-            Locale.ENGLISH to "Competent institution",
-        ),
-        nested = listOf(Id, Name),
-    )
+    override val attribute: ClaimDefinition =
+        ClaimDefinition(
+            path = ClaimPath.claim("authentic_source"),
+            mandatory = true,
+            display =
+                mapOf(
+                    Locale.ENGLISH to "Competent institution",
+                ),
+            nested = listOf(Id, Name),
+        )
 }
 
 internal object EuropeanHealthInsuranceCardClaims {
-    val PersonalAdministrativeNumber = ClaimDefinition(
-        path = ClaimPath.claim("personal_administrative_number"),
-        mandatory = true,
-        display = mapOf(
-            Locale.ENGLISH to "Social Security PIN",
-        ),
-    )
-    val IssuingCountry = ClaimDefinition(
-        path = ClaimPath.claim("issuing_country"),
-        mandatory = true,
-        display = mapOf(
-            Locale.ENGLISH to "Issuing country",
-        ),
-    )
+    val PersonalAdministrativeNumber =
+        ClaimDefinition(
+            path = ClaimPath.claim("personal_administrative_number"),
+            mandatory = true,
+            display =
+                mapOf(
+                    Locale.ENGLISH to "Social Security PIN",
+                ),
+        )
+    val IssuingCountry =
+        ClaimDefinition(
+            path = ClaimPath.claim("issuing_country"),
+            mandatory = true,
+            display =
+                mapOf(
+                    Locale.ENGLISH to "Issuing country",
+                ),
+        )
     val IssuingAuthority = IssuingAuthorityClaim
-    val DateOfExpiry = ClaimDefinition(
-        path = ClaimPath.claim("date_of_expiry"),
-        mandatory = true,
-        display = mapOf(
-            Locale.ENGLISH to "Expiry date",
-        ),
-    )
-    val DateOfIssuance = ClaimDefinition(
-        path = ClaimPath.claim("date_of_issuance"),
-        mandatory = true,
-        display = mapOf(
-            Locale.ENGLISH to "Issue date",
-        ),
-    )
+    val DateOfExpiry =
+        ClaimDefinition(
+            path = ClaimPath.claim("date_of_expiry"),
+            mandatory = true,
+            display =
+                mapOf(
+                    Locale.ENGLISH to "Expiry date",
+                ),
+        )
+    val DateOfIssuance =
+        ClaimDefinition(
+            path = ClaimPath.claim("date_of_issuance"),
+            mandatory = true,
+            display =
+                mapOf(
+                    Locale.ENGLISH to "Issue date",
+                ),
+        )
     val AuthenticSource = AuthenticSourceClaim
-    val EndingDate = ClaimDefinition(
-        path = ClaimPath.claim("ending_date"),
-        mandatory = false,
-        display = mapOf(
-            Locale.ENGLISH to "Ending date",
-        ),
-    )
-    val StartingDate = ClaimDefinition(
-        path = ClaimPath.claim("starting_date"),
-        mandatory = false,
-        display = mapOf(
-            Locale.ENGLISH to "Starting date",
-        ),
-    )
-    val DocumentNumber = ClaimDefinition(
-        path = ClaimPath.claim("document_number"),
-        mandatory = true,
-        display = mapOf(
-            Locale.ENGLISH to "Document number",
-        ),
-    )
+    val EndingDate =
+        ClaimDefinition(
+            path = ClaimPath.claim("ending_date"),
+            mandatory = false,
+            display =
+                mapOf(
+                    Locale.ENGLISH to "Ending date",
+                ),
+        )
+    val StartingDate =
+        ClaimDefinition(
+            path = ClaimPath.claim("starting_date"),
+            mandatory = false,
+            display =
+                mapOf(
+                    Locale.ENGLISH to "Starting date",
+                ),
+        )
+    val DocumentNumber =
+        ClaimDefinition(
+            path = ClaimPath.claim("document_number"),
+            mandatory = true,
+            display =
+                mapOf(
+                    Locale.ENGLISH to "Document number",
+                ),
+        )
 
-    fun all(): List<ClaimDefinition> = listOf(
-        PersonalAdministrativeNumber,
-        IssuingCountry,
-        IssuingAuthority.attribute,
-        DateOfExpiry,
-        DateOfIssuance,
-        AuthenticSource.attribute,
-        EndingDate,
-        StartingDate,
-        DocumentNumber,
-    )
+    fun all(): List<ClaimDefinition> =
+        listOf(
+            PersonalAdministrativeNumber,
+            IssuingCountry,
+            IssuingAuthority.attribute,
+            DateOfExpiry,
+            DateOfIssuance,
+            AuthenticSource.attribute,
+            EndingDate,
+            StartingDate,
+            DocumentNumber,
+        )
 }
 
 private val EuropeanHealthInsuranceCardVct: SdJwtVcType = SdJwtVcType("urn:eudi:ehic:1")
@@ -180,9 +207,10 @@ private fun europeanHealthInsuranceCardCredentialConfiguration(
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
         display = listOf(credentialDisplay),
         claims = EuropeanHealthInsuranceCardClaims.all(),
-        proofTypesSupported = ProofTypesSupported(
-            ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
-        ),
+        proofTypesSupported =
+            ProofTypesSupported(
+                ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
+            ),
         attestationCategory = AttestationCategory.EuPubEaa,
         credentialReusePolicy = credentialReusePolicy,
     )
@@ -210,52 +238,57 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
         validatedProof: ValidatedProof,
-    ): Either<IssueCredentialError, CredentialResponse> = either {
-        log.info("Issuing DC4EU EHIC")
+    ): Either<IssueCredentialError, CredentialResponse> =
+        either {
+            log.info("Issuing DC4EU EHIC")
 
-        val now = clock.now()
-        val holderPublicKeys = validatedProof.credentialKeys.value
-        val ehic = getEuropeanHealthInsuranceCardData()
-        val dateOfIssuance = now
-        val dateOfExpiry = dateOfIssuance + validity
+            val now = clock.now()
+            val holderPublicKeys = validatedProof.credentialKeys.value
+            val ehic = getEuropeanHealthInsuranceCardData()
+            val dateOfIssuance = now
+            val dateOfExpiry = dateOfIssuance + validity
 
-        val notificationId = if (notificationsEnabled) generateNotificationId() else null
+            val notificationId = if (notificationsEnabled) generateNotificationId() else null
 
-        val issuedCredentials = holderPublicKeys.parMap(Dispatchers.Default, 4) {
-            val encodedCredential = encode(
-                ehic,
-                authorizationContext.username,
-                it,
-                dateOfIssuance = dateOfIssuance,
-                dateOfExpiry = dateOfExpiry,
-            ).bind()
+            val issuedCredentials =
+                holderPublicKeys
+                    .parMap(Dispatchers.Default, 4) {
+                        val encodedCredential =
+                            encode(
+                                ehic,
+                                authorizationContext.username,
+                                it,
+                                dateOfIssuance = dateOfIssuance,
+                                dateOfExpiry = dateOfExpiry,
+                            ).bind()
 
-            storeIssuedCredential(
-                IssuedCredential(
-                    SD_JWT_VC_FORMAT,
-                    EuropeanHealthInsuranceCardVct.value,
-                    clock.now(),
-                    dateOfExpiry,
-                    notificationId,
-                    status = null,
-                    clientStatus = authorizationContext.clientStatus.status.statusList,
-                    keyStorageStatus = validatedProof.keyStorageStatus.status.statusList,
-                ),
-            )
+                        storeIssuedCredential(
+                            IssuedCredential(
+                                SD_JWT_VC_FORMAT,
+                                EuropeanHealthInsuranceCardVct.value,
+                                clock.now(),
+                                dateOfExpiry,
+                                notificationId,
+                                status = null,
+                                clientStatus = authorizationContext.clientStatus.status.statusList,
+                                keyStorageStatus = validatedProof.keyStorageStatus.status.statusList,
+                            ),
+                        )
 
-            encodedCredential
-        }.toNonEmptyListOrNull()
+                        encodedCredential
+                    }.toNonEmptyListOrNull()
 
-        ensureNotNull(issuedCredentials) {
-            IssueCredentialError.Unexpected("Unable to issue DC4EU EHIC")
-        }
-
-        CredentialResponse.Issued(issuedCredentials, notificationId)
-            .also {
-                log.info("Successfully issued DC4EU EHIC")
-                log.debug("Issued DC4EU EHIC data {}", it)
+            ensureNotNull(issuedCredentials) {
+                IssueCredentialError.Unexpected("Unable to issue DC4EU EHIC")
             }
-    }
+
+            CredentialResponse
+                .Issued(issuedCredentials, notificationId)
+                .also {
+                    log.info("Successfully issued DC4EU EHIC")
+                    log.debug("Issued DC4EU EHIC data {}", it)
+                }
+        }
 
     companion object {
         fun jwsJsonFlattened(

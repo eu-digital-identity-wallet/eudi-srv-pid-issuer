@@ -23,7 +23,6 @@ class GetEuropeanHealthInsuranceCardDataMock(
     private val clock: Clock,
     private val issuingCountry: IssuingCountry,
 ) : GetEuropeanHealthInsuranceCardData {
-
     override suspend fun invoke(): EuropeanHealthInsuranceCard {
         val now = clock.now()
         val endingDate = now + 365.days
@@ -31,15 +30,17 @@ class GetEuropeanHealthInsuranceCardDataMock(
 
         return EuropeanHealthInsuranceCard(
             personalAdministrativeNumber = PersonalAdministrativeNumber(UUID.randomUUID().toString()),
-            issuingAuthority = IssuingAuthority(
-                id = IssuingAuthority.Id("Uber-GR"),
-                name = Name("Uber Health Insurance"),
-            ),
+            issuingAuthority =
+                IssuingAuthority(
+                    id = IssuingAuthority.Id("Uber-GR"),
+                    name = Name("Uber Health Insurance"),
+                ),
             issuingCountry = issuingCountry,
-            authenticSource = AuthenticSource(
-                id = AuthenticSource.Id("Uber-GR"),
-                name = Name("Uber Health Insurance"),
-            ),
+            authenticSource =
+                AuthenticSource(
+                    id = AuthenticSource.Id("Uber-GR"),
+                    name = Name("Uber Health Insurance"),
+                ),
             endingDate = with(clock) { endingDate.toZonedDateTime() },
             startingDate = with(clock) { startingDate.toZonedDateTime() },
             documentNumber = DocumentNumber(UUID.randomUUID().toString()),

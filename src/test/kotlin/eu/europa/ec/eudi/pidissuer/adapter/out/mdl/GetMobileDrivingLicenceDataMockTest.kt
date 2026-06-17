@@ -30,29 +30,32 @@ import kotlin.test.Test
 import kotlin.time.Duration.Companion.days
 
 internal class GetMobileDrivingLicenceDataMockTest {
-
     @Test
-    internal fun `get mDL success`() = runTest {
-        val getMobileDrivingLicenceData = GetMobileDrivingLicenceDataMock()
+    internal fun `get mDL success`() =
+        runTest {
+            val getMobileDrivingLicenceData = GetMobileDrivingLicenceDataMock()
 
-        val expiresAt = (Clock.System.now() + 32.days)
-        val clientStatus = ClientStatus(
-            status = StatusClaim(
-                statusList = StatusListToken(
-                    statusList = URI.create("https://revocation_url/wia-statuslists/42"),
-                    index = 1337u,
+            val expiresAt = (Clock.System.now() + 32.days)
+            val clientStatus =
+                ClientStatus(
+                    status =
+                        StatusClaim(
+                            statusList =
+                                StatusListToken(
+                                    statusList = URI.create("https://revocation_url/wia-statuslists/42"),
+                                    index = 1337u,
+                                ),
+                        ),
+                    expiresAt = expiresAt,
+                )
+
+            getMobileDrivingLicenceData(
+                AuthorizationContext(
+                    "username",
+                    BearerAccessToken.parse("Bearer token"),
+                    nonEmptySetOf(Scope("test")),
+                    clientStatus = clientStatus,
                 ),
-            ),
-            expiresAt = expiresAt,
-        )
-
-        getMobileDrivingLicenceData(
-            AuthorizationContext(
-                "username",
-                BearerAccessToken.parse("Bearer token"),
-                nonEmptySetOf(Scope("test")),
-                clientStatus = clientStatus,
-            ),
-        ).getOrElse { throw RuntimeException(it.msg, it.cause) }
-    }
+            ).getOrElse { throw RuntimeException(it.msg, it.cause) }
+        }
 }

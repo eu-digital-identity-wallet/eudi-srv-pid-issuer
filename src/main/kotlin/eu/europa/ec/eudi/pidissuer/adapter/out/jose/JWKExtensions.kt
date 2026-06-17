@@ -30,5 +30,4 @@ internal interface JWKExtensions<in Error> : Raise<Error> {
         }
 }
 
-internal fun <Error> Raise<Error>.jwkExtensions(): JWKExtensions<Error> =
-    object : JWKExtensions<Error>, Raise<Error> by this {}
+internal fun <Error> Raise<Error>.jwkExtensions(): JWKExtensions<Error> = object : JWKExtensions<Error>, Raise<Error> by this {}

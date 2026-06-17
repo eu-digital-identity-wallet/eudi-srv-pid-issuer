@@ -38,7 +38,6 @@ private val log = LoggerFactory.getLogger(R2dbcIssuedCredentialRepository::class
 interface IssuedCredentialR2dbcRepository :
     CoroutineCrudRepository<IssuedCredentialEntity, Long>,
     CoroutineSortingRepository<IssuedCredentialEntity, Long> {
-
     suspend fun findAllByNotificationId(notificationId: String): Flow<IssuedCredentialEntity>
 
     @Query(
@@ -68,14 +67,16 @@ class R2dbcIssuedCredentialRepository(
 
     val loadIssuedCredentialsByNotificationId: LoadIssuedCredentialsByNotificationId =
         LoadIssuedCredentialsByNotificationId { notificationId ->
-            r2dbc.findAllByNotificationId(notificationId.value)
+            r2dbc
+                .findAllByNotificationId(notificationId.value)
                 .map { it.toDomain() }
                 .toList()
         }
 
     val getNonExpiredIssuedCredentials: GetNonExpiredIssuedCredentials =
         GetNonExpiredIssuedCredentials { now ->
-            r2dbc.findAllActive(now.toOffsetDateTime())
+            r2dbc
+                .findAllActive(now.toOffsetDateTime())
                 .map { it.toDomain() }
         }
 

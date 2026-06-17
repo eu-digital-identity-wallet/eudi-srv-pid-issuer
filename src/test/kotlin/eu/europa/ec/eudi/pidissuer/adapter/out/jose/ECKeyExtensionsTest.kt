@@ -21,7 +21,6 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import kotlin.test.Test
 
 internal class ECKeyExtensionsTest {
-
     private val key: ECKey by lazy {
         ECKeyGenerator(Curve.P_256).generate()
     }

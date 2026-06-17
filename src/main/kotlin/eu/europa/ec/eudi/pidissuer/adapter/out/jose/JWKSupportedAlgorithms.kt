@@ -36,8 +36,9 @@ val RSAKey.supportedEncryptionMethods: Set<EncryptionMethod>
     get() = RSAEncrypter.SUPPORTED_ENCRYPTION_METHODS
 
 val JWK.supportedEncryptionMethods: Set<EncryptionMethod>
-    get() = when (this) {
-        is ECKey -> supportedEncryptionMethods
-        is RSAKey -> supportedEncryptionMethods
-        else -> emptySet()
-    }
+    get() =
+        when (this) {
+            is ECKey -> supportedEncryptionMethods
+            is RSAKey -> supportedEncryptionMethods
+            else -> emptySet()
+        }

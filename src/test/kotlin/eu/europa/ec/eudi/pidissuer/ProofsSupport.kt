@@ -47,16 +47,20 @@ internal fun jwtProof(
     key: ECKey,
     headerCustomizer: JWSHeader.Builder.() -> Unit = { },
 ): SignedJWT {
-    val header = JWSHeader.Builder(JWSAlgorithm.ES256)
-        .type(JOSEObjectType("openid4vci-proof+jwt"))
-        .keyID("0")
-        .apply(headerCustomizer)
-        .build()
-    val claims = JWTClaimsSet.Builder()
-        .audience(audience.externalForm)
-        .issueTime(clock.now().toJavaDate())
-        .claim("nonce", nonce)
-        .build()
+    val header =
+        JWSHeader
+            .Builder(JWSAlgorithm.ES256)
+            .type(JOSEObjectType("openid4vci-proof+jwt"))
+            .keyID("0")
+            .apply(headerCustomizer)
+            .build()
+    val claims =
+        JWTClaimsSet
+            .Builder()
+            .audience(audience.externalForm)
+            .issueTime(clock.now().toJavaDate())
+            .claim("nonce", nonce)
+            .build()
     val jwt = SignedJWT(header, claims)
     jwt.sign(ECDSASigner(key))
 
@@ -70,15 +74,16 @@ internal suspend fun jwtProofWithKeyAttestation(
     extraKeysNo: Int = 3,
 ): SignedJWT {
     val jwtProofSigningKey = ECKeyGenerator(Curve.P_256).generate()
-    val keyAttestationJwt = keyAttestationJWT(
-        proofSigningKey = jwtProofSigningKey,
-        keyStorageConstraints = listOf("iso_18045_high"),
-        userAuthorizationConstraints = listOf("iso_18045_high"),
-    ) {
-        (0..<extraKeysNo).map {
-            ECKeyGenerator(Curve.P_256).generate()
+    val keyAttestationJwt =
+        keyAttestationJWT(
+            proofSigningKey = jwtProofSigningKey,
+            keyStorageConstraints = listOf("iso_18045_high"),
+            userAuthorizationConstraints = listOf("iso_18045_high"),
+        ) {
+            (0..<extraKeysNo).map {
+                ECKeyGenerator(Curve.P_256).generate()
+            }
         }
-    }
 
     return jwtProof(audience, clock, nonce, jwtProofSigningKey) {
         customParam("key_attestation", keyAttestationJwt.serialize())
@@ -109,44 +114,52 @@ internal suspend fun keyAttestationJWT(
 
     val attestedKeys = listOf(proofSigningKey) + extraKeys()
 
-    val attestedKeysJsonArray = attestedKeys.map { key ->
-        JSONUtils.parseJSON(key.toPublicJWK().toJSONString())
-    }
+    val attestedKeysJsonArray =
+        attestedKeys.map { key ->
+            JSONUtils.parseJSON(key.toPublicJWK().toJSONString())
+        }
 
     val chain = loadChain("key-attestation-chain.pem")
-    val encodedChain = chain.map {
-        com.nimbusds.jose.util.Base64.encode(it.encoded)
-    }
+    val encodedChain =
+        chain.map {
+            com.nimbusds.jose.util.Base64
+                .encode(it.encoded)
+        }
 
     val builder = JWTClaimsSet.Builder()
     if (includeExpiresAt) {
         builder.expirationTime(expiresAt.toJavaDate())
     }
 
-    val status = mapOf(
-        "status_list" to mapOf(
-            "idx" to 7656,
-            "uri" to "https://issuer.eudiw.dev/token_status_list/FC/key-attestation+jwt/6923e00d-2d4c-4177-b956-690152f54647",
-        ),
-    )
-    val keyStorageStatus = mapOf(
-        "status" to status,
-        "exp" to expiresAt.epochSeconds,
-    )
+    val status =
+        mapOf(
+            "status_list" to
+                mapOf(
+                    "idx" to 7656,
+                    "uri" to "https://issuer.eudiw.dev/token_status_list/FC/key-attestation+jwt/6923e00d-2d4c-4177-b956-690152f54647",
+                ),
+        )
+    val keyStorageStatus =
+        mapOf(
+            "status" to status,
+            "exp" to expiresAt.epochSeconds,
+        )
 
-    val claimsSet = builder
-        .issueTime(Date())
-        .claim("status", status)
-        .claim("certification", "https://issuer.eudiw.dev/certification")
-        .claim("attested_keys", attestedKeysJsonArray)
-        .claim("key_storage", keyStorageConstraints)
-        .claim("user_authentication", userAuthorizationConstraints)
-        .claim("key_storage_status", keyStorageStatus)
-        .claim("nonce", cNonce)
-        .build()
+    val claimsSet =
+        builder
+            .issueTime(Date())
+            .claim("status", status)
+            .claim("certification", "https://issuer.eudiw.dev/certification")
+            .claim("attested_keys", attestedKeysJsonArray)
+            .claim("key_storage", keyStorageConstraints)
+            .claim("user_authentication", userAuthorizationConstraints)
+            .claim("key_storage_status", keyStorageStatus)
+            .claim("nonce", cNonce)
+            .build()
 
     return SignedJWT(
-        JWSHeader.Builder(JWSAlgorithm.ES256)
+        JWSHeader
+            .Builder(JWSAlgorithm.ES256)
             .type(JOSEObjectType(OpenId4VciSpec.KEY_ATTESTATION_JWT_TYPE))
             .x509CertChain(encodedChain)
             .build(),
@@ -160,8 +173,7 @@ private suspend fun loadChain(filename: String): NonEmptyList<X509Certificate> =
             .readText()
             .let {
                 X509CertChainUtils.parse(it)
-            }
-            .let {
+            }.let {
                 assertNotNull(it.toNonEmptyListOrNull())
             }
     }

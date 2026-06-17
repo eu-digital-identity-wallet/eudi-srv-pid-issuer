@@ -20,6 +20,5 @@ import kotlinx.coroutines.flow.Flow
 import kotlin.time.Instant
 
 fun interface GetNonExpiredIssuedCredentials {
-
     suspend operator fun invoke(now: Instant): Flow<IssuedCredential>
 }

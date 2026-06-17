@@ -19,7 +19,6 @@ import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
 import eu.europa.ec.eudi.pidissuer.domain.NotificationId
 
 fun interface LoadIssuedCredentialsByNotificationId {
-
     /**
      * Loads an issued credential by its notification id.
      */

@@ -27,7 +27,6 @@ typealias CredentialRequestFactory =
 class DefaultResolveCredentialRequestByCredentialIdentifier(
     private val factories: Map<CredentialIdentifier, CredentialRequestFactory>,
 ) : ResolveCredentialRequestByCredentialIdentifier {
-
     override suspend fun invoke(
         identifier: CredentialIdentifier,
         unvalidatedProof: UnvalidatedProof,

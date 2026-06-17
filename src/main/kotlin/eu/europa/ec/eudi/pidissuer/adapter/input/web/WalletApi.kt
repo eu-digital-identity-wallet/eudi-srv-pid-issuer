@@ -51,117 +51,142 @@ internal class WalletApi(
     private val handleNotificationRequest: HandleNotificationRequest,
     private val handleNonceRequest: HandleNonceRequest,
 ) {
-
-    val route = coRouter {
-        POST(
-            CREDENTIAL_ENDPOINT,
-            contentType(MediaType.APPLICATION_JSON, APPLICATION_JWT) and accept(MediaType.APPLICATION_JSON, APPLICATION_JWT),
-            this@WalletApi::handleIssueCredential,
-        )
-        GET(
-            CREDENTIAL_ENDPOINT,
-            contentType(MediaType.APPLICATION_JSON) and accept(MediaType.APPLICATION_JSON),
-            this@WalletApi::handleHelloHolder,
-        )
-        POST(
-            DEFERRED_ENDPOINT,
-            contentType(MediaType.APPLICATION_JSON, APPLICATION_JWT) and accept(MediaType.APPLICATION_JSON, APPLICATION_JWT),
-            this@WalletApi::handleGetDeferredCredential,
-        )
-        POST(
-            NOTIFICATION_ENDPOINT,
-            contentType(MediaType.APPLICATION_JSON) and accept(MediaType.ALL),
-            this@WalletApi::handleNotificationRequest,
-        )
-        POST(
-            NONCE_ENDPOINT,
-            contentType(MediaType.ALL) and accept(MediaType.APPLICATION_JSON),
-        ) { handleNonceRequest() }
-    }
+    val route =
+        coRouter {
+            POST(
+                CREDENTIAL_ENDPOINT,
+                contentType(MediaType.APPLICATION_JSON, APPLICATION_JWT) and accept(MediaType.APPLICATION_JSON, APPLICATION_JWT),
+                this@WalletApi::handleIssueCredential,
+            )
+            GET(
+                CREDENTIAL_ENDPOINT,
+                contentType(MediaType.APPLICATION_JSON) and accept(MediaType.APPLICATION_JSON),
+                this@WalletApi::handleHelloHolder,
+            )
+            POST(
+                DEFERRED_ENDPOINT,
+                contentType(MediaType.APPLICATION_JSON, APPLICATION_JWT) and accept(MediaType.APPLICATION_JSON, APPLICATION_JWT),
+                this@WalletApi::handleGetDeferredCredential,
+            )
+            POST(
+                NOTIFICATION_ENDPOINT,
+                contentType(MediaType.APPLICATION_JSON) and accept(MediaType.ALL),
+                this@WalletApi::handleNotificationRequest,
+            )
+            POST(
+                NONCE_ENDPOINT,
+                contentType(MediaType.ALL) and accept(MediaType.APPLICATION_JSON),
+            ) { handleNonceRequest() }
+        }
 
     private suspend fun handleIssueCredential(req: ServerRequest): ServerResponse {
         val context = req.authorizationContext().getOrThrow()
-        val response = try {
-            when (req.headers().contentType().getOrNull()) {
-                MediaType.APPLICATION_JSON -> {
-                    val request = req.awaitBody<CredentialRequestTO>()
-                    issueCredential.fromPlainRequest(context, request)
-                }
-                APPLICATION_JWT -> {
-                    val jwt = req.awaitBody<String>()
-                    issueCredential.fromEncryptedRequest(context, jwt)
-                }
-                else -> error("Unexpected content-type")
-            }
-        } catch (error: ServerWebInputException) {
-            IssueCredentialResponse.FailedTO(
-                type = CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST,
-                errorDescription = buildString {
-                    append("Request body could not be parsed")
-                    if (!error.message.isNullOrBlank()) {
-                        append(": ${error.message}")
+        val response =
+            try {
+                when (req.headers().contentType().getOrNull()) {
+                    MediaType.APPLICATION_JSON -> {
+                        val request = req.awaitBody<CredentialRequestTO>()
+                        issueCredential.fromPlainRequest(context, request)
                     }
-                },
-            )
-        }
+
+                    APPLICATION_JWT -> {
+                        val jwt = req.awaitBody<String>()
+                        issueCredential.fromEncryptedRequest(context, jwt)
+                    }
+
+                    else -> {
+                        error("Unexpected content-type")
+                    }
+                }
+            } catch (error: ServerWebInputException) {
+                IssueCredentialResponse.FailedTO(
+                    type = CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST,
+                    errorDescription =
+                        buildString {
+                            append("Request body could not be parsed")
+                            if (!error.message.isNullOrBlank()) {
+                                append(": ${error.message}")
+                            }
+                        },
+                )
+            }
         return response.toServerResponse()
     }
 
-    private suspend fun handleGetDeferredCredential(req: ServerRequest): ServerResponse = coroutineScope {
-        val response = try {
-            when (req.headers().contentType().getOrNull()) {
-                MediaType.APPLICATION_JSON -> {
-                    val request = req.awaitBody<DeferredCredentialRequestTO>()
-                    getDeferredCredential.fromPlainRequest(request)
-                }
-                APPLICATION_JWT -> {
-                    val jwt = req.awaitBody<String>()
-                    getDeferredCredential.fromEncryptedRequest(jwt)
-                }
-                else -> error("Unexpected content-type")
-            }
-        } catch (error: ServerWebInputException) {
-            DeferredCredentialResponse.Failed(
-                FailedTO(
-                    type = GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST,
-                    errorDescription = buildString {
-                        append("Request body could not be parsed")
-                        if (!error.message.isNullOrBlank()) {
-                            append(": ${error.message}")
+    private suspend fun handleGetDeferredCredential(req: ServerRequest): ServerResponse =
+        coroutineScope {
+            val response =
+                try {
+                    when (req.headers().contentType().getOrNull()) {
+                        MediaType.APPLICATION_JSON -> {
+                            val request = req.awaitBody<DeferredCredentialRequestTO>()
+                            getDeferredCredential.fromPlainRequest(request)
                         }
-                    },
-                ),
-            )
-        }
-        response.toServerResponse()
-    }
 
-    private suspend fun handleHelloHolder(req: ServerRequest): ServerResponse = coroutineScope {
-        val context = async { req.authorizationContext().getOrThrow() }
-        val pid = getPidData(context.await().username)
-        if (null != pid) ServerResponse.ok()
-            .cacheControl(CacheControl.noStore())
-            .json()
-            .bodyValueAndAwait(pid)
-        else ServerResponse.notFound()
-            .cacheControl(CacheControl.noStore())
-            .buildAndAwait()
-    }
+                        APPLICATION_JWT -> {
+                            val jwt = req.awaitBody<String>()
+                            getDeferredCredential.fromEncryptedRequest(jwt)
+                        }
+
+                        else -> {
+                            error("Unexpected content-type")
+                        }
+                    }
+                } catch (error: ServerWebInputException) {
+                    DeferredCredentialResponse.Failed(
+                        FailedTO(
+                            type = GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST,
+                            errorDescription =
+                                buildString {
+                                    append("Request body could not be parsed")
+                                    if (!error.message.isNullOrBlank()) {
+                                        append(": ${error.message}")
+                                    }
+                                },
+                        ),
+                    )
+                }
+            response.toServerResponse()
+        }
+
+    private suspend fun handleHelloHolder(req: ServerRequest): ServerResponse =
+        coroutineScope {
+            val context = async { req.authorizationContext().getOrThrow() }
+            val pid = getPidData(context.await().username)
+            if (null != pid)
+                ServerResponse
+                    .ok()
+                    .cacheControl(CacheControl.noStore())
+                    .json()
+                    .bodyValueAndAwait(pid)
+            else
+                ServerResponse
+                    .notFound()
+                    .cacheControl(CacheControl.noStore())
+                    .buildAndAwait()
+        }
 
     private suspend fun handleNotificationRequest(request: ServerRequest): ServerResponse =
         when (val response = handleNotificationRequest(request.awaitBody<JsonElement>())) {
-            is NotificationResponse.Success -> ServerResponse.noContent()
-                .cacheControl(CacheControl.noStore())
-                .buildAndAwait()
-            is NotificationResponse.NotificationErrorResponseTO ->
-                ServerResponse.badRequest()
+            is NotificationResponse.Success -> {
+                ServerResponse
+                    .noContent()
+                    .cacheControl(CacheControl.noStore())
+                    .buildAndAwait()
+            }
+
+            is NotificationResponse.NotificationErrorResponseTO -> {
+                ServerResponse
+                    .badRequest()
                     .cacheControl(CacheControl.noStore())
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValueAndAwait(response)
+            }
         }
 
     private suspend fun handleNonceRequest(): ServerResponse =
-        ServerResponse.ok()
+        ServerResponse
+            .ok()
             .contentType(MediaType.APPLICATION_JSON)
             .cacheControl(CacheControl.noStore())
             .bodyValueAndAwait(handleNonceRequest.invoke())
@@ -200,28 +225,32 @@ private suspend fun ServerRequest.authorizationContext(): Either<Throwable, Auth
             val clientStatus: Any?,
         )
 
-        val (scopes, clientId, username, accessToken, clientStatus) = when (authentication) {
-            is DPoPTokenAuthentication -> {
-                AuthenticationDetails(
-                    authentication.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull(),
-                    authentication.principal?.attributes?.get(OAuth2TokenIntrospectionClaimNames.CLIENT_ID),
-                    authentication.name,
-                    authentication.accessToken,
-                    authentication.principal?.attributes?.get(TS3.CLIENT_STATUS),
-                )
+        val (scopes, clientId, username, accessToken, clientStatus) =
+            when (authentication) {
+                is DPoPTokenAuthentication -> {
+                    AuthenticationDetails(
+                        authentication.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull(),
+                        authentication.principal?.attributes?.get(OAuth2TokenIntrospectionClaimNames.CLIENT_ID),
+                        authentication.name,
+                        authentication.accessToken,
+                        authentication.principal?.attributes?.get(TS3.CLIENT_STATUS),
+                    )
+                }
+
+                is BearerTokenAuthentication -> {
+                    AuthenticationDetails(
+                        authentication.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull(),
+                        authentication.tokenAttributes[OAuth2TokenIntrospectionClaimNames.CLIENT_ID],
+                        authentication.tokenAttributes[OAuth2TokenIntrospectionClaimNames.USERNAME],
+                        BearerAccessToken.parse("${authentication.token.tokenType.value} ${authentication.token.tokenValue}"),
+                        authentication.tokenAttributes[TS3.CLIENT_STATUS],
+                    )
+                }
+
+                else -> {
+                    error("Unexpected Authentication type '${authentication::class.java}'")
+                }
             }
-
-            is BearerTokenAuthentication ->
-                AuthenticationDetails(
-                    authentication.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull(),
-                    authentication.tokenAttributes[OAuth2TokenIntrospectionClaimNames.CLIENT_ID],
-                    authentication.tokenAttributes[OAuth2TokenIntrospectionClaimNames.USERNAME],
-                    BearerAccessToken.parse("${authentication.token.tokenType.value} ${authentication.token.tokenValue}"),
-                    authentication.tokenAttributes[TS3.CLIENT_STATUS],
-                )
-
-            else -> error("Unexpected Authentication type '${authentication::class.java}'")
-        }
 
         requireNotNull(scopes) { "OAuth2 scopes are expected" }
         require(clientId is String) { "Unexpected client_id claim type '${clientId?.let { it::class.java }}'" }
@@ -233,66 +262,76 @@ private suspend fun ServerRequest.authorizationContext(): Either<Throwable, Auth
 
 private suspend fun IssueCredentialResponse.toServerResponse(): ServerResponse =
     when (this) {
-        is IssueCredentialResponse.PlainTO ->
+        is IssueCredentialResponse.PlainTO -> {
             ServerResponse
                 .status(transactionId?.let { HttpStatus.ACCEPTED } ?: HttpStatus.OK)
                 .cacheControl(CacheControl.noStore())
                 .json()
                 .bodyValueAndAwait(this)
+        }
 
-        is IssueCredentialResponse.EncryptedJwtIssued ->
+        is IssueCredentialResponse.EncryptedJwtIssued -> {
             ServerResponse
                 .ok()
                 .cacheControl(CacheControl.noStore())
                 .contentType(APPLICATION_JWT)
                 .bodyValueAndAwait(jwt)
+        }
 
-        is IssueCredentialResponse.FailedTO ->
+        is IssueCredentialResponse.FailedTO -> {
             ServerResponse
                 .badRequest()
                 .cacheControl(CacheControl.noStore())
                 .json()
                 .bodyValueAndAwait(this)
+        }
     }
 
 private suspend fun DeferredCredentialResponse.toServerResponse(): ServerResponse =
     when (this) {
-        is DeferredCredentialResponse.Issued -> content.fold(
-            ifLeft = { json ->
-                ServerResponse
-                    .ok()
-                    .cacheControl(CacheControl.noStore())
-                    .json()
-                    .bodyValueAndAwait(json)
-            },
-            ifRight = { jwt ->
-                ServerResponse
-                    .ok()
-                    .cacheControl(CacheControl.noStore())
-                    .contentType(APPLICATION_JWT)
-                    .bodyValueAndAwait(jwt.serialize())
-            },
-        )
-        is DeferredCredentialResponse.IssuancePending -> content.fold(
-            ifLeft = { json ->
-                ServerResponse
-                    .status(HttpStatus.ACCEPTED)
-                    .cacheControl(CacheControl.noStore())
-                    .json()
-                    .bodyValueAndAwait(json)
-            },
-            ifRight = { jwt ->
-                ServerResponse
-                    .status(HttpStatus.ACCEPTED)
-                    .cacheControl(CacheControl.noStore())
-                    .contentType(APPLICATION_JWT)
-                    .bodyValueAndAwait(jwt.serialize())
-            },
-        )
-        is DeferredCredentialResponse.Failed ->
+        is DeferredCredentialResponse.Issued -> {
+            content.fold(
+                ifLeft = { json ->
+                    ServerResponse
+                        .ok()
+                        .cacheControl(CacheControl.noStore())
+                        .json()
+                        .bodyValueAndAwait(json)
+                },
+                ifRight = { jwt ->
+                    ServerResponse
+                        .ok()
+                        .cacheControl(CacheControl.noStore())
+                        .contentType(APPLICATION_JWT)
+                        .bodyValueAndAwait(jwt.serialize())
+                },
+            )
+        }
+
+        is DeferredCredentialResponse.IssuancePending -> {
+            content.fold(
+                ifLeft = { json ->
+                    ServerResponse
+                        .status(HttpStatus.ACCEPTED)
+                        .cacheControl(CacheControl.noStore())
+                        .json()
+                        .bodyValueAndAwait(json)
+                },
+                ifRight = { jwt ->
+                    ServerResponse
+                        .status(HttpStatus.ACCEPTED)
+                        .cacheControl(CacheControl.noStore())
+                        .contentType(APPLICATION_JWT)
+                        .bodyValueAndAwait(jwt.serialize())
+                },
+            )
+        }
+
+        is DeferredCredentialResponse.Failed -> {
             ServerResponse
                 .badRequest()
                 .cacheControl(CacheControl.noStore())
                 .json()
                 .bodyValueAndAwait(this.content)
+        }
     }

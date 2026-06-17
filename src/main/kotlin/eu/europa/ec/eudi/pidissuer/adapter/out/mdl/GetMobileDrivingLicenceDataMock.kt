@@ -31,66 +31,71 @@ import java.time.Month
  * Mock implementation for [GetMobileDrivingLicenceData].
  */
 class GetMobileDrivingLicenceDataMock : GetMobileDrivingLicenceData {
+    override suspend fun invoke(context: AuthorizationContext): Either<IssueCredentialError.Unexpected, MobileDrivingLicence> =
+        either {
+            log.info("Getting mock data for Mobile Driving Licence")
 
-    override suspend fun invoke(context: AuthorizationContext): Either<IssueCredentialError.Unexpected, MobileDrivingLicence> = either {
-        log.info("Getting mock data for Mobile Driving Licence")
+            val portrait =
+                loadResource("/eu/europa/ec/eudi/pidissuer/adapter/out/mdl/Portrait.jpg") { message, cause ->
+                    raise(IssueCredentialError.Unexpected(message, cause))
+                }
+            val signature =
+                loadResource("/eu/europa/ec/eudi/pidissuer/adapter/out/mdl/Signature.jpg") { message, cause ->
+                    raise(IssueCredentialError.Unexpected(message, cause))
+                }
 
-        val portrait = loadResource("/eu/europa/ec/eudi/pidissuer/adapter/out/mdl/Portrait.jpg") { message, cause ->
-            raise(IssueCredentialError.Unexpected(message, cause))
-        }
-        val signature = loadResource("/eu/europa/ec/eudi/pidissuer/adapter/out/mdl/Signature.jpg") { message, cause ->
-            raise(IssueCredentialError.Unexpected(message, cause))
-        }
+            val driver =
+                Driver(
+                    Latin150AndUtf8(Latin150("Georgiou"), "Γεωργίου"),
+                    Latin150AndUtf8(Latin150("Georgios"), "Γεώργιος"),
+                    LocalDate.of(1948, Month.MAY, 30),
+                    Portrait(Image.Jpeg(portrait)),
+                    Sex.MALE,
+                    175u.cm(),
+                    80u.kg(),
+                    EyeColour.BROWN,
+                    HairColour.GREY,
+                    null,
+                    Age(79u.natural(), 1948u.natural()),
+                    IsoAlpha2CountryCode("GR"),
+                    Residence(IsoAlpha2CountryCode("GR")),
+                    Image.Jpeg(signature),
+                )
 
-        val driver = Driver(
-            Latin150AndUtf8(Latin150("Georgiou"), "Γεωργίου"),
-            Latin150AndUtf8(Latin150("Georgios"), "Γεώργιος"),
-            LocalDate.of(1948, Month.MAY, 30),
-            Portrait(Image.Jpeg(portrait)),
-            Sex.MALE,
-            175u.cm(),
-            80u.kg(),
-            EyeColour.BROWN,
-            HairColour.GREY,
-            null,
-            Age(79u.natural(), 1948u.natural()),
-            IsoAlpha2CountryCode("GR"),
-            Residence(IsoAlpha2CountryCode("GR")),
-            Image.Jpeg(signature),
-        )
+            val issuer =
+                Issuer(
+                    IssuingCountry(IsoAlpha2CountryCode("GR"), DistinguishingSign("GR")),
+                    Latin150("Ministry of Infrastructure and Transportation"),
+                )
 
-        val issuer = Issuer(
-            IssuingCountry(IsoAlpha2CountryCode("GR"), DistinguishingSign("GR")),
-            Latin150("Ministry of Infrastructure and Transportation"),
-        )
+            val privileges =
+                setOf(
+                    DrivingPrivilege(
+                        VehicleCategory.LIGHT_VEHICLE,
+                        IssueAndExpiry(LocalDate.of(2000, Month.JANUARY, 1), LocalDate.of(2040, Month.DECEMBER, 31)),
+                        nonEmptySetOf(
+                            GenericRestriction.VEHICLE_WITH_AUTOMATIC_TRANSMISSION,
+                            ParameterizedRestriction.VehicleAuthorizedPassengerSeats(Sign.LessThanOrEqualTo(5u.natural())),
+                        ),
+                    ),
+                    DrivingPrivilege(
+                        VehicleCategory.MOTORCYCLE,
+                        IssueAndExpiry(LocalDate.of(2000, Month.JANUARY, 1), LocalDate.of(2040, Month.DECEMBER, 31)),
+                        nonEmptySetOf(
+                            ParameterizedRestriction.VehicleCylinderCapacity(Sign.LessThanOrEqualTo(125u.cm3())),
+                        ),
+                    ),
+                )
 
-        val privileges = setOf(
-            DrivingPrivilege(
-                VehicleCategory.LIGHT_VEHICLE,
+            MobileDrivingLicence(
+                driver,
                 IssueAndExpiry(LocalDate.of(2000, Month.JANUARY, 1), LocalDate.of(2040, Month.DECEMBER, 31)),
-                nonEmptySetOf(
-                    GenericRestriction.VEHICLE_WITH_AUTOMATIC_TRANSMISSION,
-                    ParameterizedRestriction.VehicleAuthorizedPassengerSeats(Sign.LessThanOrEqualTo(5u.natural())),
-                ),
-            ),
-            DrivingPrivilege(
-                VehicleCategory.MOTORCYCLE,
-                IssueAndExpiry(LocalDate.of(2000, Month.JANUARY, 1), LocalDate.of(2040, Month.DECEMBER, 31)),
-                nonEmptySetOf(
-                    ParameterizedRestriction.VehicleCylinderCapacity(Sign.LessThanOrEqualTo(125u.cm3())),
-                ),
-            ),
-        )
-
-        MobileDrivingLicence(
-            driver,
-            IssueAndExpiry(LocalDate.of(2000, Month.JANUARY, 1), LocalDate.of(2040, Month.DECEMBER, 31)),
-            issuer,
-            Latin150("A123-4567-8900"),
-            privileges,
-            Latin150("12345678900"),
-        )
-    }
+                issuer,
+                Latin150("A123-4567-8900"),
+                privileges,
+                Latin150("12345678900"),
+            )
+        }
 
     companion object {
         private val log = LoggerFactory.getLogger(GetMobileDrivingLicenceDataMock::class.java)

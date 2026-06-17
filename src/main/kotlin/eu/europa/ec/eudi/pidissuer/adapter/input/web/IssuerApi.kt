@@ -28,25 +28,30 @@ import java.net.URI
 class IssuerApi(
     private val createCredentialsOffer: CreateCredentialsOffer,
 ) {
-    val router: RouterFunction<ServerResponse> = coRouter {
-        POST(
-            CREATE_CREDENTIALS_OFFER,
-            contentType(MediaType.APPLICATION_JSON) and accept(MediaType.APPLICATION_JSON),
-            ::handleCreateCredentialsOffer,
-        )
-    }
+    val router: RouterFunction<ServerResponse> =
+        coRouter {
+            POST(
+                CREATE_CREDENTIALS_OFFER,
+                contentType(MediaType.APPLICATION_JSON) and accept(MediaType.APPLICATION_JSON),
+                ::handleCreateCredentialsOffer,
+            )
+        }
 
     private suspend fun handleCreateCredentialsOffer(request: ServerRequest): ServerResponse {
         log.info("Generating Credentials Offer")
-        val credentialIds = request.awaitBodyOrNull<CreateCredentialsOfferRequestTO>()
-            ?.credentialIds
-            .orEmpty()
-            .map(::CredentialConfigurationId)
-            .toSet()
+        val credentialIds =
+            request
+                .awaitBodyOrNull<CreateCredentialsOfferRequestTO>()
+                ?.credentialIds
+                .orEmpty()
+                .map(::CredentialConfigurationId)
+                .toSet()
 
         return createCredentialsOffer(credentialIds).fold(
             ifRight = { credentialsOffer ->
-                ServerResponse.ok().json()
+                ServerResponse
+                    .ok()
+                    .json()
                     .bodyValueAndAwait(CreateCredentialsOfferResponseTO.success(credentialsOffer))
                     .also { log.info("Successfully generated Credentials Offer. URI: '{}'", credentialsOffer) }
             },
@@ -73,10 +78,8 @@ private data class CreateCredentialsOfferResponseTO(
     @SerialName("error") val error: String? = null,
 ) {
     companion object {
-        fun success(credentialsOffer: URI) =
-            CreateCredentialsOfferResponseTO(credentialsOffer = credentialsOffer.toString())
+        fun success(credentialsOffer: URI) = CreateCredentialsOfferResponseTO(credentialsOffer = credentialsOffer.toString())
 
-        fun error(error: CreateCredentialsOfferError) =
-            CreateCredentialsOfferResponseTO(error = error::class.java.simpleName)
+        fun error(error: CreateCredentialsOfferError) = CreateCredentialsOfferResponseTO(error = error::class.java.simpleName)
     }
 }

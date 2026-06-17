@@ -44,33 +44,36 @@ import org.bouncycastle.asn1.pkcs.RSAPublicKey as ANS1RSAPublicKey
  *
  * methods are supported.
  */
-fun resolveDidUrl(uri: URI): Either<Throwable, JWK> = Either.catch {
-    val (scheme, methodName, _) = uri.toString().split(":")
-    require("did" == scheme) { "Unexpected scheme $scheme" }
-    when (methodName) {
-        "key" -> resolveDidKey(uri)
-        "jwk" -> resolveDidJwk(uri)
-        else -> error("Unsupported DID method '$methodName'")
+fun resolveDidUrl(uri: URI): Either<Throwable, JWK> =
+    Either.catch {
+        val (scheme, methodName, _) = uri.toString().split(":")
+        require("did" == scheme) { "Unexpected scheme $scheme" }
+        when (methodName) {
+            "key" -> resolveDidKey(uri)
+            "jwk" -> resolveDidJwk(uri)
+            else -> error("Unsupported DID method '$methodName'")
+        }
     }
-}
 
-private val supportedDidKeyTypes = setOf(
-    Multicodec.SECP256K1_PUB,
-    Multicodec.X25519_PUB,
-    Multicodec.ED25519_PUB,
-    Multicodec.P256_PUB,
-    Multicodec.P384_PUB,
-    Multicodec.P521_PUB,
-    Multicodec.RSA_PUB,
-)
+private val supportedDidKeyTypes =
+    setOf(
+        Multicodec.SECP256K1_PUB,
+        Multicodec.X25519_PUB,
+        Multicodec.ED25519_PUB,
+        Multicodec.P256_PUB,
+        Multicodec.P384_PUB,
+        Multicodec.P521_PUB,
+        Multicodec.RSA_PUB,
+    )
 
-private val expectedDidKeySizes = mapOf(
-    Multicodec.SECP256K1_PUB to 33,
-    Multicodec.X25519_PUB to 32,
-    Multicodec.ED25519_PUB to 32,
-    Multicodec.P256_PUB to 33,
-    Multicodec.P384_PUB to 49,
-)
+private val expectedDidKeySizes =
+    mapOf(
+        Multicodec.SECP256K1_PUB to 33,
+        Multicodec.X25519_PUB to 32,
+        Multicodec.ED25519_PUB to 32,
+        Multicodec.P256_PUB to 33,
+        Multicodec.P384_PUB to 49,
+    )
 
 private fun resolveDidKey(uri: URI): JWK {
     val (_, _, methodSpecificId) = uri.toString().split(":")
@@ -83,9 +86,11 @@ private fun resolveDidKey(uri: URI): JWK {
 
     val (type, key) =
         ByteArrayInputStream(Multibase.decode(methodSpecificId).getOrThrow()).use { inputStream ->
-            val type = inputStream.readUnsignedVarInt()
-                .flatMap { Multicodec.codeToType(it.toInt()) }
-                .getOrThrow()
+            val type =
+                inputStream
+                    .readUnsignedVarInt()
+                    .flatMap { Multicodec.codeToType(it.toInt()) }
+                    .getOrThrow()
 
             val key = inputStream.readAllBytes()
             type to key
@@ -106,10 +111,15 @@ private fun resolveDidKey(uri: URI): JWK {
         }
     }
 
-    fun decodeOctetPublicKey(curve: Curve, publicKey: ByteArray): OctetKeyPair =
-        OctetKeyPair.Builder(curve, Base64URL.encode(publicKey)).build()
+    fun decodeOctetPublicKey(
+        curve: Curve,
+        publicKey: ByteArray,
+    ): OctetKeyPair = OctetKeyPair.Builder(curve, Base64URL.encode(publicKey)).build()
 
-    fun decodeEcPublicKey(curve: Curve, publicKey: ByteArray): ECKey {
+    fun decodeEcPublicKey(
+        curve: Curve,
+        publicKey: ByteArray,
+    ): ECKey {
         val spec = ECNamedCurveTable.getParameterSpec(curve.stdName)
         val point = spec.curve.decodePoint(publicKey)
         val keySpec = ECPublicKeySpec(point, spec)
@@ -127,21 +137,44 @@ private fun resolveDidKey(uri: URI): JWK {
     }
 
     return when (type) {
-        Multicodec.SECP256K1_PUB -> decodeEcPublicKey(Curve.SECP256K1, key)
-        Multicodec.X25519_PUB -> decodeOctetPublicKey(Curve.X25519, key)
-        Multicodec.ED25519_PUB -> decodeOctetPublicKey(Curve.Ed25519, key)
-        Multicodec.P256_PUB -> decodeEcPublicKey(Curve.P_256, key)
-        Multicodec.P384_PUB -> decodeEcPublicKey(Curve.P_384, key)
-        Multicodec.P521_PUB -> decodeEcPublicKey(Curve.P_521, key)
-        Multicodec.RSA_PUB -> decodeRsaPublicKey(key)
-        else -> error(
-            "Unsupported type '${type.typeName}'. Expected on of '${
-                supportedDidKeyTypes.joinToString(
-                    separator = ", ",
-                    transform = { it.typeName },
-                )
-            }'.",
-        )
+        Multicodec.SECP256K1_PUB -> {
+            decodeEcPublicKey(Curve.SECP256K1, key)
+        }
+
+        Multicodec.X25519_PUB -> {
+            decodeOctetPublicKey(Curve.X25519, key)
+        }
+
+        Multicodec.ED25519_PUB -> {
+            decodeOctetPublicKey(Curve.Ed25519, key)
+        }
+
+        Multicodec.P256_PUB -> {
+            decodeEcPublicKey(Curve.P_256, key)
+        }
+
+        Multicodec.P384_PUB -> {
+            decodeEcPublicKey(Curve.P_384, key)
+        }
+
+        Multicodec.P521_PUB -> {
+            decodeEcPublicKey(Curve.P_521, key)
+        }
+
+        Multicodec.RSA_PUB -> {
+            decodeRsaPublicKey(key)
+        }
+
+        else -> {
+            error(
+                "Unsupported type '${type.typeName}'. Expected on of '${
+                    supportedDidKeyTypes.joinToString(
+                        separator = ", ",
+                        transform = { it.typeName },
+                    )
+                }'.",
+            )
+        }
     }
 }
 
@@ -150,7 +183,8 @@ private fun resolveDidJwk(uri: URI): JWK {
         "Invalid fragment. Expected '0' but got '${uri.fragment}' instead."
     }
     val (_, _, methodSpecificId) = uri.toString().split(":")
-    return JWK.parse(Base64URL.from(methodSpecificId).decodeToString())
+    return JWK
+        .parse(Base64URL.from(methodSpecificId).decodeToString())
         .also {
             require(!it.isPrivate) { "jwk cannot contain a private key" }
         }

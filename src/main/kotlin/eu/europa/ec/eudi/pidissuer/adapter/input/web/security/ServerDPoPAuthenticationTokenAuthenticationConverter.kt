@@ -34,7 +34,6 @@ import java.net.URI
  * [ServerAuthenticationConverter] for [DPoPTokenAuthentication].
  */
 class ServerDPoPAuthenticationTokenAuthenticationConverter : ServerAuthenticationConverter {
-
     override fun convert(exchange: ServerWebExchange): Mono<Authentication> =
         mono {
             try {
@@ -59,7 +58,8 @@ class ServerDPoPAuthenticationTokenAuthenticationConverter : ServerAuthenticatio
                         ),
                         exception,
                     )
-                else throw exception
+                else
+                    throw exception
             }
         }
 }
@@ -80,7 +80,8 @@ private fun HttpHeaders.singleValueHeader(header: String): String? {
  * Gets the DPoP header value, if any, and parses it as a [SignedJWT].
  */
 private fun ServerHttpRequest.dPoP(): SignedJWT? =
-    headers.singleValueHeader(AccessTokenType.DPOP.value)
+    headers
+        .singleValueHeader(AccessTokenType.DPOP.value)
         ?.takeIf { it.isNotBlank() }
         ?.let {
             try {
@@ -90,7 +91,8 @@ private fun ServerHttpRequest.dPoP(): SignedJWT? =
                     throw OAuth2AuthenticationException(
                         DPoPTokenError.invalidRequest("'${AccessTokenType.DPOP.value}' header is not a valid signed JWT"),
                     )
-                else throw error
+                else
+                    throw error
             }
         }
 
@@ -98,7 +100,8 @@ private fun ServerHttpRequest.dPoP(): SignedJWT? =
  * Gets the Authorization header value, if any.
  */
 private fun ServerHttpRequest.authorization(): DPoPAccessToken? =
-    headers.singleValueHeader(HttpHeaders.AUTHORIZATION)
+    headers
+        .singleValueHeader(HttpHeaders.AUTHORIZATION)
         ?.takeIf { it.isNotBlank() && it.startsWith(AccessTokenType.DPOP.value) }
         ?.let {
             try {
@@ -108,11 +111,19 @@ private fun ServerHttpRequest.authorization(): DPoPAccessToken? =
                     throw OAuth2AuthenticationException(
                         DPoPTokenError.invalidRequest("'${HttpHeaders.AUTHORIZATION}' header is not a valid DPoP access token"),
                     )
-                else throw error
+                else
+                    throw error
             }
         }
 
 /**
  * Gets the uri of the current [ServerHttpRequest]. The uri does not contain query parameters or fragments.
  */
-private fun ServerHttpRequest.uri(): URI = URI.create(UriComponentsBuilder.fromUri(uri).replaceQuery(null).fragment(null).toUriString())
+private fun ServerHttpRequest.uri(): URI =
+    URI.create(
+        UriComponentsBuilder
+            .fromUri(uri)
+            .replaceQuery(null)
+            .fragment(null)
+            .toUriString(),
+    )

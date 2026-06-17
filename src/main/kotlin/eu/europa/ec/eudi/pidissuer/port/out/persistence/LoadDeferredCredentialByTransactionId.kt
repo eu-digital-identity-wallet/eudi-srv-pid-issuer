@@ -22,7 +22,9 @@ sealed interface LoadDeferredCredentialResult {
     data class Found(
         val credential: CredentialResponse.Issued,
     ) : LoadDeferredCredentialResult
+
     data object InvalidTransactionId : LoadDeferredCredentialResult
+
     data class IssuancePending(
         val deferred: CredentialResponse.Deferred,
     ) : LoadDeferredCredentialResult
