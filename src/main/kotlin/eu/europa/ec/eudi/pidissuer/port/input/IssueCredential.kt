@@ -16,15 +16,11 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.*
-import arrow.core.raise.Raise
-import arrow.core.raise.catch
+import arrow.core.raise.*
 import arrow.core.raise.context.ensure
 import arrow.core.raise.context.ensureNotNull
 import arrow.core.raise.context.raise
 import arrow.core.raise.context.withError
-import arrow.core.raise.effect
-import arrow.core.raise.either
-import arrow.core.raise.getOrElse
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
@@ -316,6 +312,9 @@ sealed interface IssueCredentialResponse {
     ) : IssueCredentialResponse
 }
 
+private typealias IssRequest = Either<CredentialRequestTO, String>
+private typealias IssError = Either<RequestEncryptionError, IssueCredentialError>
+
 private val log = LoggerFactory.getLogger(IssueCredential::class.java)
 
 /**
@@ -334,63 +333,42 @@ class IssueCredential(
     suspend fun fromEncryptedRequest(
         authorizationContext: AuthorizationContext,
         credentialRequestJwt: String,
-    ): IssueCredentialResponse =
-        effect {
-            val request =
-                withError(transform = { Either.Left(it) }) {
-                    credentialRequestJwt.decrypt()
-                }
-            withError(transform = { Either.Right(it) }) {
-                issueCredential(authorizationContext, request)
-            }
-        }.getOrElse { error ->
-            error.fold(::onEncryptionError, ::onIssuanceError)
-        }
-
-    context(_: Raise<RequestEncryptionError>)
-    private fun String.decrypt(): CredentialRequestTO =
-        context(credentialIssuerMetadata) {
-            decryptCredentialRequest(this)
-        }
+    ): IssueCredentialResponse = issueCredential(authorizationContext, credentialRequestJwt.right())
 
     suspend fun fromPlainRequest(
         authorizationContext: AuthorizationContext,
         credentialRequestTO: CredentialRequestTO,
+    ): IssueCredentialResponse = issueCredential(authorizationContext, credentialRequestTO.left())
+
+    private suspend fun issueCredential(
+        authorizationContext: AuthorizationContext,
+        plainOrEncrypted: IssRequest,
     ): IssueCredentialResponse =
         effect {
-            withError(transform = { Either.Left(it) }) {
-                verifyPlainRequestAgainstEncryptionRequirements(credentialRequestTO)
-            }
-            withError(transform = { Either.Right(it) }) {
-                issueCredential(authorizationContext, credentialRequestTO)
-            }
+            val request =
+                context(credentialIssuerMetadata) {
+                    plainOrEncrypted.decryptIfNeeded()
+                }
+            issueCredential(authorizationContext, request)
         }.getOrElse { error ->
-            error.fold(::onEncryptionError, ::onIssuanceError)
+            log.warn("Failed to issue credential $error")
+            error.response()
         }
 
-    context(_: Raise<RequestEncryptionError>)
-    private fun verifyPlainRequestAgainstEncryptionRequirements(credentialRequestTO: CredentialRequestTO) {
-        ensure(credentialRequestTO.credentialResponseEncryption == null) {
-            ResponseEncryptionRequiresEncryptedRequest
-        }
-        ensure(credentialIssuerMetadata.credentialRequestEncryption !is CredentialRequestEncryption.Required) {
-            RequestEncryptionIsRequired
-        }
-    }
-
-    context(_: Raise<IssueCredentialError>)
+    context(_: Raise<IssError>)
     private suspend fun issueCredential(
         authorizationContext: AuthorizationContext,
         credentialRequestTO: CredentialRequestTO,
-    ): IssueCredentialResponse {
-        val credentialConfigurationIdOrCredentialIdentifier =
-            credentialRequestTO.credentialConfigurationId
-                ?: credentialRequestTO.credentialIdentifier
-        log.info("Handling issuance request for $credentialConfigurationIdOrCredentialIdentifier..")
-        val (request, issued) =
-            services.issueCredential(authorizationContext, credentialRequestTO)
-        return successResponse(request, issued)
-    }
+    ): IssueCredentialResponse =
+        withError(transform = { Either.Right(it) }) {
+            val credentialConfigurationIdOrCredentialIdentifier =
+                credentialRequestTO.credentialConfigurationId
+                    ?: credentialRequestTO.credentialIdentifier
+            log.info("Handling issuance request for $credentialConfigurationIdOrCredentialIdentifier..")
+            val (request, issued) =
+                services.issueCredential(authorizationContext, credentialRequestTO)
+            successResponse(request, issued)
+        }
 
     private fun successResponse(
         request: CredentialRequest,
@@ -402,17 +380,31 @@ class IssueCredential(
             is RequestedResponseEncryption.Required -> encryptCredentialResponse(plain, encryption).getOrThrow()
         }
     }
-
-    private fun onIssuanceError(error: IssueCredentialError): IssueCredentialResponse {
-        log.warn("Issuance failed: $error")
-        return error.toTO()
-    }
-
-    private fun onEncryptionError(error: RequestEncryptionError): IssueCredentialResponse {
-        log.warn("Encryption failed: $error")
-        return error.toTO()
-    }
 }
+
+//
+// Pre-Processing
+//
+
+context(_: Raise<IssError>, credentialIssuerMetadata: CredentialIssuerMetaData)
+private fun IssRequest.decryptIfNeeded(): CredentialRequestTO =
+    withError(transform = { it.left() }) {
+        fun CredentialRequestTO.verifyPlainRequestAgainstEncryptionRequirements() {
+            ensure(credentialResponseEncryption == null) {
+                ResponseEncryptionRequiresEncryptedRequest
+            }
+            ensure(credentialIssuerMetadata.credentialRequestEncryption !is CredentialRequestEncryption.Required) {
+                RequestEncryptionIsRequired
+            }
+        }
+
+        fun String.decrypt(): CredentialRequestTO = decryptCredentialRequest(this)
+
+        return fold(
+            ifLeft = { plain -> plain.apply { verifyPlainRequestAgainstEncryptionRequirements() } },
+            ifRight = { encrypted -> encrypted.decrypt() },
+        )
+    }
 
 private class Services(
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
@@ -738,6 +730,12 @@ fun CredentialResponse.toTO(): IssueCredentialResponse.PlainTO =
             IssueCredentialResponse.PlainTO.deferred(transactionId = transactionId.value, interval.inWholeSeconds)
         }
     }
+
+private fun IssError.response(): IssueCredentialResponse.FailedTO =
+    fold(
+        ifLeft = { encryptionError -> encryptionError.toTO() },
+        ifRight = { credentialError -> credentialError.toTO() },
+    )
 
 /**
  * Creates a new [IssueCredentialResponse.FailedTO] from the provided [error].
