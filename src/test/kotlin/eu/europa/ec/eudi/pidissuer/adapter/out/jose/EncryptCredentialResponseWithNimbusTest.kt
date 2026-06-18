@@ -17,8 +17,10 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.Either
 import arrow.core.getOrElse
+import arrow.core.raise.either
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.JWK
@@ -61,7 +63,13 @@ internal class EncryptCredentialResponseWithNimbusTest {
                     .keyID("rsa-jwt")
                     .generate()
             val jwk = key.toPublicJWK()
-            val parameters = RequestedResponseEncryption.Required(jwk)
+            val parameters =
+                either {
+                    RequestedResponseEncryption.Required.invoke(
+                        jwk,
+                        EncryptionMethod.A256GCM.name,
+                    )
+                }.getOrElse { fail(it) }
             val unencrypted =
                 IssueCredentialResponse.PlainTO(
                     credentials = listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("credential"))),
@@ -82,7 +90,10 @@ internal class EncryptCredentialResponseWithNimbusTest {
                     .keyID("ec-jwt")
                     .generate()
             val jwk = key.toPublicJWK()
-            val parameters = RequestedResponseEncryption.Required(jwk)
+            val parameters =
+                either {
+                    RequestedResponseEncryption.Required(jwk, EncryptionMethod.A256GCM.name)
+                }.getOrElse { fail(it) }
             val unencrypted =
                 IssueCredentialResponse.PlainTO(
                     credentials = listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("credential"))),

@@ -19,28 +19,23 @@ import arrow.core.Either
 import arrow.core.getOrElse
 import arrow.core.left
 import arrow.core.raise.Raise
+import arrow.core.raise.catch
+import arrow.core.raise.context.raise
+import arrow.core.raise.context.withError
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.right
+import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.EncryptedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.decryptCredentialRequest
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
-import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
-import eu.europa.ec.eudi.pidissuer.domain.CredentialRequestEncryption
-import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
-import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
-import eu.europa.ec.eudi.pidissuer.domain.TransactionId
-import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.RequestCompressionNotSupported
-import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.RequestEncryptionIsRequired
-import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.RequestEncryptionNotSupported
-import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.ResponseEncryptionRequiresEncryptedRequest
-import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.UnparseableEncryptedRequest
-import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.UnsupportedEncryptionAlgorithm
-import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.UnsupportedEncryptionMethod
-import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.UnsupportedRequestCompressionMethod
+import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.*
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptDeferredResponse
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadDeferredCredentialByTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadDeferredCredentialResult
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -158,7 +153,8 @@ sealed interface GetDeferredCredentialError {
     data object InvalidTransactionId : GetDeferredCredentialError
 
     data class InvalidEncryptionParameters(
-        val error: Throwable,
+        val msg: String,
+        val error: Throwable? = null,
     ) : GetDeferredCredentialError
 }
 
@@ -221,13 +217,23 @@ class GetDeferredCredential(
             error.toTO()
         }
 
-    fun Raise<GetDeferredCredentialError>.toDomain(requestTO: CredentialResponseEncryptionTO) =
-        RequestedResponseEncryption
-            .Required(
-                Json.encodeToString(requestTO.key),
-                requestTO.method,
-                requestTO.zipAlgorithm,
-            ).getOrElse { raise(GetDeferredCredentialError.InvalidEncryptionParameters(it)) }
+    context(_: Raise<GetDeferredCredentialError>)
+    suspend fun toDomain(requestTO: CredentialResponseEncryptionTO) =
+        withContext(Dispatchers.Default) {
+            val encryptionKey =
+                catch({ JWK.parse(Json.encodeToString(requestTO.key)) }) {
+                    raise(GetDeferredCredentialError.InvalidEncryptionParameters("Failed to parse JWK", it))
+                }
+
+            withError({ GetDeferredCredentialError.InvalidEncryptionParameters(it) }) {
+                RequestedResponseEncryption
+                    .Required(
+                        encryptionKey,
+                        requestTO.method,
+                        requestTO.zipAlgorithm,
+                    )
+            }
+        }
 
     private fun Raise<GetDeferredCredentialError>.toTo(
         loadDeferredCredentialResult: LoadDeferredCredentialResult,

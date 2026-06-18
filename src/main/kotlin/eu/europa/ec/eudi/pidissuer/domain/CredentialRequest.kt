@@ -15,9 +15,10 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
-import arrow.core.Either
 import arrow.core.NonEmptyList
 import arrow.core.raise.Raise
+import arrow.core.raise.context.ensure
+import arrow.core.raise.context.ensureNotNull
 import arrow.core.raise.ensure
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
@@ -94,9 +95,9 @@ sealed interface RequestedResponseEncryption {
      * If credential_response_encryption_alg is specified, the default for this value is A256GCM.
      *
      */
-    data class Required(
+    data class Required private constructor(
         val encryptionJwk: JWK,
-        val encryptionMethod: EncryptionMethod = EncryptionMethod.A256GCM,
+        val encryptionMethod: EncryptionMethod,
         val compressionAlgorithm: CompressionAlgorithm? = null,
     ) : RequestedResponseEncryption {
         init {
@@ -113,20 +114,23 @@ sealed interface RequestedResponseEncryption {
             get() = JWEAlgorithm(encryptionJwk.algorithm.name)
 
         companion object {
+            context(_: Raise<String>)
             operator fun invoke(
-                encryptionKey: String,
+                encryptionKey: JWK,
                 encryptionMethod: String,
                 compressionAlgorithm: String? = null,
-            ): Either<Throwable, Required> =
-                Either.catch {
-                    val key = JWK.parse(encryptionKey)
-                    requireNotNull(key.algorithm) {
-                        "encryptionJwk must have an 'alg' parameter present"
-                    }
-                    val method = EncryptionMethod.parse(encryptionMethod)
-                    val zipMethod = compressionAlgorithm?.let { CompressionAlgorithm(it) }
-                    Required(key, method, zipMethod)
+            ): Required {
+                ensure(!encryptionKey.isPrivate) { "encryptionJwk must not contain a private key" }
+                ensureNotNull(encryptionKey.algorithm) {
+                    "encryptionJwk must have an 'alg' parameter present"
                 }
+                ensure(encryptionKey.algorithm in JWEAlgorithm.Family.ASYMMETRIC) {
+                    "encryptionAlgorithm is not an asymmetric encryption algorithm"
+                }
+                val method = EncryptionMethod.parse(encryptionMethod)
+                val zipMethod = compressionAlgorithm?.let { CompressionAlgorithm(it) }
+                return Required(encryptionKey, method, zipMethod)
+            }
         }
     }
 }
