@@ -15,9 +15,13 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
-import arrow.core.*
+import arrow.core.Either
+import arrow.core.NonEmptySet
+import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
+import arrow.core.raise.withError
+import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
@@ -31,6 +35,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
+import eu.europa.ec.eudi.pidissuer.port.out.status.asIssueCredentialError
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
@@ -415,11 +420,10 @@ internal class IssueMobileDrivingLicence(
                         val statusListToken =
                             generateStatusListToken
                                 .takeIf { credentialReusePolicy.shouldIncludeStatusList }
-                                ?.let {
-                                    it(supportedCredential.docType, expiresAt)
-                                        .getOrElse { error ->
-                                            raise(Unexpected("Unable to generate Status List Token", error))
-                                        }
+                                ?.let { srv ->
+                                    withError({ allocationError -> allocationError.asIssueCredentialError() }) {
+                                        srv.invoke(supportedCredential.docType, expiresAt)
+                                    }
                                 }
 
                         val encodedCredential =

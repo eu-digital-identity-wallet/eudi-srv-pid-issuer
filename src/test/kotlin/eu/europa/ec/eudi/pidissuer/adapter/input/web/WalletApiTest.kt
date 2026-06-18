@@ -143,7 +143,7 @@ internal class BaseWalletApiTest {
                 StatusListToken(
                     statusList = URI.create("https://example.com/status-list"),
                     index = 0u,
-                ).right()
+                )
             }
 
         @Bean

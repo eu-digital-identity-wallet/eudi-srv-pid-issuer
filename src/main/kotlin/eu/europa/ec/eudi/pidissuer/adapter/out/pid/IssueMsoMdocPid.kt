@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 import arrow.core.*
 import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
+import arrow.core.raise.withError
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
@@ -31,6 +32,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
+import eu.europa.ec.eudi.pidissuer.port.out.status.asIssueCredentialError
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
@@ -374,12 +376,13 @@ internal class IssueMsoMdocPid(
                 holderPubKeys
                     .parMap(Dispatchers.Default, 4) { holderKey ->
                         val statusListToken =
-                            generateStatusListToken.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
-                                it(supportedCredential.docType, expiresAt)
-                                    .getOrElse { error ->
-                                        raise(Unexpected("Unable to generate Status List Token", error))
+                            generateStatusListToken
+                                .takeIf { credentialReusePolicy.shouldIncludeStatusList }
+                                ?.let { srv ->
+                                    withError({ allocationError -> allocationError.asIssueCredentialError() }) {
+                                        srv.invoke(supportedCredential.docType, expiresAt)
                                     }
-                            }
+                                }
                         val encodedCredential =
                             encodePidInCbor(pid, pidMetaData, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
                                 .also {

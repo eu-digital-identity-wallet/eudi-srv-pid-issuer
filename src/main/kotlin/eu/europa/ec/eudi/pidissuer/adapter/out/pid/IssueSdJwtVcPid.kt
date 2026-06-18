@@ -19,6 +19,7 @@ import arrow.core.*
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
+import arrow.core.raise.withError
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
@@ -33,6 +34,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
+import eu.europa.ec.eudi.pidissuer.port.out.status.asIssueCredentialError
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
@@ -275,12 +277,13 @@ internal class IssueSdJwtVcPid(
                 holderPubKeys
                     .parMap(Dispatchers.Default, 4) { holderPubKey ->
                         val statusListToken =
-                            generateStatusListToken.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
-                                it(supportedCredential.type.value, expiresAt)
-                                    .getOrElse { error ->
-                                        raise(Unexpected("Unable to generate Status List Token", error))
+                            generateStatusListToken
+                                .takeIf { credentialReusePolicy.shouldIncludeStatusList }
+                                ?.let { srv ->
+                                    withError({ allocationError -> allocationError.asIssueCredentialError() }) {
+                                        srv.invoke(supportedCredential.type.value, expiresAt)
                                     }
-                            }
+                                }
                         val encodedCredential =
                             encodePidInSdJwt(
                                 pid,
