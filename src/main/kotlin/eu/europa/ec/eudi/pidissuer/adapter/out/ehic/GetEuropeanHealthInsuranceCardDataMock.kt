@@ -15,12 +15,15 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.ehic
 
-import eu.europa.ec.eudi.pidissuer.domain.Clock
+import eu.europa.ec.eudi.pidissuer.domain.toZonedDateTime
+import kotlinx.datetime.TimeZone
 import java.util.*
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 
 class GetEuropeanHealthInsuranceCardDataMock(
     private val clock: Clock,
+    private val timeZone: TimeZone,
     private val issuingCountry: IssuingCountry,
 ) : GetEuropeanHealthInsuranceCardData {
     override suspend fun invoke(): EuropeanHealthInsuranceCard {
@@ -41,8 +44,8 @@ class GetEuropeanHealthInsuranceCardDataMock(
                     id = AuthenticSource.Id("Uber-GR"),
                     name = Name("Uber Health Insurance"),
                 ),
-            endingDate = with(clock) { endingDate.toZonedDateTime() },
-            startingDate = with(clock) { startingDate.toZonedDateTime() },
+            endingDate = endingDate.toZonedDateTime(timeZone),
+            startingDate = startingDate.toZonedDateTime(timeZone),
             documentNumber = DocumentNumber(UUID.randomUUID().toString()),
         )
     }

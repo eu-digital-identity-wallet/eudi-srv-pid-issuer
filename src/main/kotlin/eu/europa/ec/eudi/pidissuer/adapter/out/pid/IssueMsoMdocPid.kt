@@ -15,10 +15,13 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
-import arrow.core.*
+import arrow.core.Either
+import arrow.core.NonEmptySet
+import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
 import arrow.core.raise.ensureNotNull
 import arrow.core.raise.withError
+import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
@@ -37,6 +40,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.util.Locale.ENGLISH
+import kotlin.time.Clock
 import kotlin.time.Duration
 
 val PidMsoMdocScope: Scope = Scope("eu.europa.ec.eudi.pid_mso_mdoc")
@@ -386,10 +390,16 @@ internal class IssueMsoMdocPid(
                                     }
                                 }
                         val encodedCredential =
-                            encodePidInCbor(pid, pidMetaData, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
-                                .also {
-                                    log.info("Issued $it")
-                                }
+                            encodePidInCbor(
+                                pid,
+                                pidMetaData,
+                                holderKey,
+                                issuedAt = issuedAt,
+                                expiresAt = expiresAt,
+                                statusListToken,
+                            ).also {
+                                log.info("Issued $it")
+                            }
 
                         storeIssuedCredential(
                             IssuedCredential(

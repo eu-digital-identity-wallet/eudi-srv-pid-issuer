@@ -42,6 +42,8 @@ import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Month
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import org.springframework.beans.factory.annotation.Autowired
@@ -65,6 +67,7 @@ import org.springframework.test.web.reactive.server.expectBody
 import java.net.URI
 import java.util.*
 import kotlin.test.*
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
@@ -80,6 +83,9 @@ internal class BaseWalletApiTest {
 
     @Autowired
     protected lateinit var clock: Clock
+
+    @Autowired
+    protected lateinit var timeZone: TimeZone
 
     @Autowired
     protected lateinit var generateNonce: GenerateNonce
@@ -106,7 +112,10 @@ internal class BaseWalletApiTest {
     class WalletApiTestConfig {
         @Bean
         @Primary
-        fun getPidData(clock: Clock): GetPidData =
+        fun getPidData(
+            clock: Clock,
+            timeZone: TimeZone,
+        ): GetPidData =
             GetPidData {
                 val pid =
                     Pid(
@@ -125,7 +134,7 @@ internal class BaseWalletApiTest {
                 val issuingCountry = IsoCountry("GR")
                 val pidMetaData =
                     PidMetaData(
-                        issuanceDate = with(clock) { now().toLocalDate() },
+                        issuanceDate = clock.now().toLocalDateTime(timeZone).date,
                         expiryDate = LocalDate(2030, 11, 10),
                         documentNumber = null,
                         issuingAuthority = IssuingAuthority.MemberState(issuingCountry),

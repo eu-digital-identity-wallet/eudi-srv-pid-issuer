@@ -19,7 +19,6 @@ import arrow.core.getOrElse
 import arrow.core.nonEmptySetOf
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
 import eu.europa.ec.eudi.pidissuer.domain.ClientStatus
-import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.domain.StatusClaim
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
@@ -27,6 +26,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import kotlinx.coroutines.test.runTest
 import java.net.URI
 import kotlin.test.Test
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 
 internal class GetMobileDrivingLicenceDataMockTest {

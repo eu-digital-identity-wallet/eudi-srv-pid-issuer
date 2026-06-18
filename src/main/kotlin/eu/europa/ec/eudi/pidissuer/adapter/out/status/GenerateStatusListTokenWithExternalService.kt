@@ -18,9 +18,10 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.status
 import arrow.core.raise.catch
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
-import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
+import eu.europa.ec.eudi.pidissuer.domain.toZonedDateTime
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
+import kotlinx.datetime.TimeZone
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -39,7 +40,7 @@ class GenerateStatusListTokenWithExternalService(
     private val webClient: WebClient,
     private val serviceUrl: URL,
     private val apiKey: String,
-    private val clock: Clock,
+    private val timeZone: TimeZone,
 ) : AllocateStatus {
     context(_: Raise<AllocateStatus.Error>)
     override suspend fun invoke(
@@ -68,9 +69,7 @@ class GenerateStatusListTokenWithExternalService(
                             add("doctype", type)
                             add(
                                 "expiry_date",
-                                with(clock) {
-                                    expiration.toZonedDateTime().format(DateTimeFormatter.ISO_LOCAL_DATE)
-                                },
+                                expiration.toZonedDateTime(timeZone).format(DateTimeFormatter.ISO_LOCAL_DATE),
                             )
                         },
                     ),

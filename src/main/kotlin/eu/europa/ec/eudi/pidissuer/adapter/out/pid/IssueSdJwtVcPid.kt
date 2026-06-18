@@ -37,9 +37,12 @@ import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.asIssueCredentialError
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.coroutines.Dispatchers
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.util.*
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Instant
 
@@ -165,6 +168,7 @@ internal object SdJwtVcPidClaims {
         )
 }
 
+@Suppress("SameParameterValue")
 private fun pidDocType(version: Int): String = "urn:eudi:pid:$version"
 
 internal val SdJwtVcPidVct: SdJwtVcType = SdJwtVcType(pidDocType(1))
@@ -210,6 +214,7 @@ internal class IssueSdJwtVcPid(
     override val validity: Duration,
     credentialIssuerId: CredentialIssuerId,
     private val clock: Clock,
+    private val timeZone: TimeZone,
     hashAlgorithm: HashAlgorithm,
     private val issuerSigningKey: IssuerSigningKey,
     private val getPidData: GetPidData,
@@ -265,7 +270,7 @@ internal class IssueSdJwtVcPid(
                 }
             }
             if (null != pidMetaData.issuanceDate && null != notBefore) {
-                val issuanceDateAtStartOfDay = with(clock) { pidMetaData.issuanceDate.atStartOfDay() }
+                val issuanceDateAtStartOfDay = pidMetaData.issuanceDate.atStartOfDayIn(timeZone)
                 ensure(issuanceDateAtStartOfDay <= notBefore) {
                     Unexpected("date_of_issuance must not be after nbf")
                 }

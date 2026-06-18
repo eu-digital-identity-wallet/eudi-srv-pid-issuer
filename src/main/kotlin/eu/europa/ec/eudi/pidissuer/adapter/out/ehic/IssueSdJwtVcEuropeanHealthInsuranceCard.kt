@@ -37,6 +37,7 @@ import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.coroutines.Dispatchers
 import org.slf4j.LoggerFactory
 import java.util.*
+import kotlin.time.Clock
 import kotlin.time.Duration
 
 private val EuropeanHealthInsuranceCardScope: Scope = Scope("urn:eudi:ehic:1:dc+sd-jwt")

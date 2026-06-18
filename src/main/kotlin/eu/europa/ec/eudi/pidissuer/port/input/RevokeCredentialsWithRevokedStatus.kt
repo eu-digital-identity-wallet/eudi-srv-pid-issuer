@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.raise.either
-import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.DeleteExpiredIssuedCredentials
@@ -29,6 +28,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import org.slf4j.LoggerFactory
+import kotlin.time.Clock
 
 private val log = LoggerFactory.getLogger(RevokeCredentialsWithRevokedStatus::class.java)
 

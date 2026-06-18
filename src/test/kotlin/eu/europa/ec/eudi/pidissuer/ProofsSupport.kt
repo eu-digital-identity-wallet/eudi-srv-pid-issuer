@@ -28,7 +28,6 @@ import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.oauth2.sdk.util.JSONUtils
-import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
 import eu.europa.ec.eudi.pidissuer.domain.toJavaDate
@@ -37,6 +36,7 @@ import kotlinx.coroutines.withContext
 import java.security.cert.X509Certificate
 import java.util.*
 import kotlin.test.assertNotNull
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 

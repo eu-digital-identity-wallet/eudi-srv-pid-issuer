@@ -38,6 +38,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.slf4j.LoggerFactory
+import kotlin.time.Clock
 
 @Serializable
 data class ProofsTO(
@@ -561,7 +562,8 @@ private interface Validations : Raise<IssueCredentialError> {
                 }
             }
 
-        val credentialResponseEncryption = credentialResponseEncryption?.toDomain() ?: RequestedResponseEncryption.NotRequired
+        val credentialResponseEncryption =
+            credentialResponseEncryption?.toDomain() ?: RequestedResponseEncryption.NotRequired
         credentialResponseEncryption.ensureIsSupported(supportedEncryption)
 
         fun credentialRequestByCredentialConfigurationId(
@@ -584,7 +586,10 @@ private interface Validations : Raise<IssueCredentialError> {
                                 raise(UnsupportedCredentialType(format = JWT_VS_JSON_FORMAT))
                             }
                         }
-                    UnresolvedCredentialRequest.ByCredentialConfigurationId(credentialConfigurationId, credentialRequest)
+                    UnresolvedCredentialRequest.ByCredentialConfigurationId(
+                        credentialConfigurationId,
+                        credentialRequest,
+                    )
                 } ?: raise(UnsupportedCredentialConfigurationId(credentialConfigurationId))
 
         fun credentialRequestByCredentialIdentifier(credentialIdentifier: String): UnresolvedCredentialRequest.ByCredentialIdentifier =
@@ -724,7 +729,11 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
             }
 
             is InvalidEncryptionParameters -> {
-                val description = errorDescriptionWithErrorCauseDescription("Invalid Credential Response Encryption Parameters", error)
+                val description =
+                    errorDescriptionWithErrorCauseDescription(
+                        "Invalid Credential Response Encryption Parameters",
+                        error,
+                    )
                 CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS to description
             }
 
@@ -758,7 +767,8 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
             }
 
             is InvalidClaims -> {
-                val description = errorDescriptionWithErrorCauseDescription("'claims' does not have the expected structure", error)
+                val description =
+                    errorDescriptionWithErrorCauseDescription("'claims' does not have the expected structure", error)
                 CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
             }
         }
@@ -780,7 +790,8 @@ private fun RequestEncryptionError.toTO(): IssueCredentialResponse.FailedTO {
     val (type, description) =
         when (this) {
             is UnparseableEncryptedRequest -> {
-                val description = errorDescriptionWithErrorCauseDescription("Encrypted request cannot be parsed as a JWT", cause)
+                val description =
+                    errorDescriptionWithErrorCauseDescription("Encrypted request cannot be parsed as a JWT", cause)
                 CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
             }
 
@@ -798,12 +809,14 @@ private fun RequestEncryptionError.toTO(): IssueCredentialResponse.FailedTO {
             }
 
             is UnsupportedEncryptionAlgorithm -> {
-                val description = "Unsupported encryption method $encryptionAlgorithm, supported methods: $algorithmsSupported"
+                val description =
+                    "Unsupported encryption method $encryptionAlgorithm, supported methods: $algorithmsSupported"
                 CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
             }
 
             is UnsupportedEncryptionMethod -> {
-                val description = "Unsupported encryption method $encryptionMethod, supported methods: $methodsSupported"
+                val description =
+                    "Unsupported encryption method $encryptionMethod, supported methods: $methodsSupported"
                 CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
             }
 

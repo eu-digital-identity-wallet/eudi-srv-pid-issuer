@@ -20,12 +20,13 @@ import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.util.JSONObjectUtils
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAssurancePlaceOfBirth
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.loadResource
-import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.port.input.Username
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonIgnoreUnknownKeys
@@ -37,7 +38,9 @@ import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
 import java.util.*
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Instant
 
 private val log = LoggerFactory.getLogger(GetPidDataFromKeyCloak::class.java)
 
@@ -69,6 +72,7 @@ class GetPidDataFromKeyCloak(
     private val issuerCountry: IsoCountry,
     private val issuingJurisdiction: IsoCountrySubdivision?,
     private val clock: Clock,
+    private val timeZone: TimeZone,
     private val webClient: WebClient,
     private val keyCloak: Url,
     private val administrationClient: AdministrationClient,
@@ -226,19 +230,16 @@ class GetPidDataFromKeyCloak(
     }
 
     private fun genPidMetaData(): PidMetaData {
-        val (issuanceDate, expiryDate) =
-            with(clock) {
-                val now = now()
-                now.toLocalDate() to (now + 100.days).toLocalDate()
-            }
-
+        fun Instant.toLocalDate(): LocalDate = toLocalDateTime(timeZone).date
+        val issuanceDate = clock.now()
+        val expiryDate = issuanceDate + 100.days
         return PidMetaData(
-            expiryDate = expiryDate,
+            expiryDate = expiryDate.toLocalDate(),
             issuingAuthority = IssuingAuthority.AdministrativeAuthority("${issuerCountry.value} Administrative authority"),
             issuingCountry = issuerCountry,
             documentNumber = DocumentNumber(UUID.randomUUID().toString()),
             issuingJurisdiction = issuingJurisdiction,
-            issuanceDate = issuanceDate,
+            issuanceDate = issuanceDate.toLocalDate(),
             trustAnchor = null,
             attestationLegalCategory = null,
         )

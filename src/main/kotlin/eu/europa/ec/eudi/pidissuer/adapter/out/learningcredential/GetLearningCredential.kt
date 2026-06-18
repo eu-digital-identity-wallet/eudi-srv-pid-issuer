@@ -18,10 +18,10 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential
 import arrow.core.nonEmptyListOf
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.IsoAlpha2CountryCode
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
-import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import kotlin.random.Random
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 

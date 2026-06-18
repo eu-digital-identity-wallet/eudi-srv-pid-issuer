@@ -18,14 +18,14 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.status
 import arrow.core.raise.Raise
 import arrow.core.raise.catch
 import arrow.core.raise.context.raise
-import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
 import eu.europa.ec.eudi.statium.*
 import io.ktor.client.*
 import org.slf4j.LoggerFactory
 import java.net.URI
-import kotlin.time.Instant
+import kotlin.time.Clock
+import kotlin.time.Duration
 
 private val logger = LoggerFactory.getLogger(GetStatusListTokenWithStatium::class.java)
 
@@ -50,17 +50,11 @@ class GetStatusListTokenWithStatium(
         operator fun invoke(
             httpClient: HttpClient,
             clock: Clock,
-            verifyStatusListTokenJwtSignature: VerifyStatusListTokenJwtSignature = NotValidating,
+            verifyStatusListTokenSignature: VerifyStatusListTokenJwtSignature = NotValidating,
+            allowedClockSkew: Duration,
         ): GetStatusListTokenWithStatium {
             val getStatusListToken: GetStatusListToken =
-                GetStatusListToken.usingJwt(
-                    clock =
-                        object : kotlin.time.Clock {
-                            override fun now(): Instant = clock.now()
-                        },
-                    httpClient = httpClient,
-                    verifyStatusListTokenSignature = verifyStatusListTokenJwtSignature,
-                )
+                GetStatusListToken.usingJwt(clock, httpClient, verifyStatusListTokenSignature)
             val getStatus = GetStatus(getStatusListToken)
             return GetStatusListTokenWithStatium(getStatus)
         }

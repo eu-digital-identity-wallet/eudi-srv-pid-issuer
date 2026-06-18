@@ -40,6 +40,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.util.*
+import kotlin.time.Clock
 import kotlin.time.Duration
 
 val MobileDrivingLicenceV1Scope: Scope = Scope(mdlDocType(1u))

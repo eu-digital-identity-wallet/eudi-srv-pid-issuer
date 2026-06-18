@@ -17,19 +17,18 @@ package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.raise.context.raise
 import arrow.core.right
-import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.Format
 import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
-import eu.europa.ec.eudi.statium.GetStatusListToken
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import java.net.URI
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
 
 internal class RevokeCredentialsWithRevokedStatusTest {

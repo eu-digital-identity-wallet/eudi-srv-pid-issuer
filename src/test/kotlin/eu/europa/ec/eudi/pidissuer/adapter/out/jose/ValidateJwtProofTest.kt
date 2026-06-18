@@ -33,7 +33,6 @@ import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.mobileDrivingLicenceV1
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.loadResource
 import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
 import kotlinx.coroutines.Dispatchers
@@ -41,6 +40,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import java.security.cert.X509Certificate
 import kotlin.test.*
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 
 internal class ValidateJwtProofTest {

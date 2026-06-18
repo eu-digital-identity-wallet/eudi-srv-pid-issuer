@@ -23,13 +23,12 @@ import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.JSONObjectUtils
 import eu.europa.ec.eudi.pidissuer.adapter.out.x509.dropRootCA
-import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
 import eu.europa.ec.eudi.pidissuer.port.out.jose.GenerateSignedMetadata
 import kotlinx.serialization.json.*
-import kotlin.jvm.javaClass
+import kotlin.time.Clock
 
 /**
  * Key used to sign metadata.
