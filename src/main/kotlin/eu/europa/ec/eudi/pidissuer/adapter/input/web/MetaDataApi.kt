@@ -30,7 +30,6 @@ import kotlinx.serialization.json.decodeFromStream
 import org.springframework.core.io.Resource
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.server.*
-import kotlin.collections.any
 
 val MEDIA_TYPE_APPLICATION_JWT = MediaType("application", "jwt")
 
@@ -76,9 +75,15 @@ class MetaDataApi(
         }
 
     private suspend fun handleGetSignedCredentialIssuerMetaData(): ServerResponse =
-        getCredentialIssuerMetaData.signed()?.let { metaData ->
-            ServerResponse.ok().contentType(MEDIA_TYPE_APPLICATION_JWT).bodyValueAndAwait(metaData)
-        } ?: handleGetUnsignedCredentialIssuerMetaData()
+        getCredentialIssuerMetaData
+            .signed()
+            ?.let { metaData ->
+                ServerResponse
+                    .ok()
+                    .contentType(MEDIA_TYPE_APPLICATION_JWT)
+                    .bodyValueAndAwait(metaData)
+            }
+            ?: handleGetUnsignedCredentialIssuerMetaData()
 
     private suspend fun handleGetJwtVcIssuerMetadata(): ServerResponse =
         ServerResponse

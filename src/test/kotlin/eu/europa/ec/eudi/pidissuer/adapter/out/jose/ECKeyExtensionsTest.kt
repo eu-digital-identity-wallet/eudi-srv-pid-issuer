@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 
 internal class ECKeyExtensionsTest {
@@ -26,12 +27,14 @@ internal class ECKeyExtensionsTest {
     }
 
     @Test
-    internal fun `toPem() must not fail`() {
-        key.toPem().also { println(it) }
-    }
+    internal fun `toPem() must not fail`() =
+        runTest {
+            key.toPem().also { println(it) }
+        }
 
     @Test
-    internal fun `toBase64UrlSafeEncodedPem() must not fail`() {
-        key.toBase64UrlSafeEncodedPem().also { println(it) }
-    }
+    internal fun `toBase64UrlSafeEncodedPem() must not fail`() =
+        runTest {
+            key.toBase64UrlSafeEncodedPem().also { println(it) }
+        }
 }

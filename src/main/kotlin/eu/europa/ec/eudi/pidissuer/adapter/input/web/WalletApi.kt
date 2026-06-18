@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
-import arrow.core.Either
 import arrow.core.NonEmptySet
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.util.JSONObjectUtils
@@ -24,7 +23,6 @@ import com.nimbusds.oauth2.sdk.token.BearerAccessToken
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
 import eu.europa.ec.eudi.pidissuer.adapter.out.json.jsonSupport
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
-import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.ClientStatus
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.domain.TS3
@@ -55,7 +53,11 @@ internal class WalletApi(
         coRouter {
             POST(
                 CREDENTIAL_ENDPOINT,
-                contentType(MediaType.APPLICATION_JSON, APPLICATION_JWT) and accept(MediaType.APPLICATION_JSON, APPLICATION_JWT),
+                contentType(MediaType.APPLICATION_JSON, APPLICATION_JWT) and
+                    accept(
+                        MediaType.APPLICATION_JSON,
+                        APPLICATION_JWT,
+                    ),
                 this@WalletApi::handleIssueCredential,
             )
             GET(
@@ -65,7 +67,11 @@ internal class WalletApi(
             )
             POST(
                 DEFERRED_ENDPOINT,
-                contentType(MediaType.APPLICATION_JSON, APPLICATION_JWT) and accept(MediaType.APPLICATION_JSON, APPLICATION_JWT),
+                contentType(MediaType.APPLICATION_JSON, APPLICATION_JWT) and
+                    accept(
+                        MediaType.APPLICATION_JSON,
+                        APPLICATION_JWT,
+                    ),
                 this@WalletApi::handleGetDeferredCredential,
             )
             POST(
@@ -80,7 +86,7 @@ internal class WalletApi(
         }
 
     private suspend fun handleIssueCredential(req: ServerRequest): ServerResponse {
-        val context = req.authorizationContext().getOrThrow()
+        val context = req.authorizationContext()
         val response =
             try {
                 when (req.headers().contentType().getOrNull()) {
@@ -104,7 +110,7 @@ internal class WalletApi(
                     errorDescription =
                         buildString {
                             append("Request body could not be parsed")
-                            if (!error.message.isNullOrBlank()) {
+                            if (error.message.isNotBlank()) {
                                 append(": ${error.message}")
                             }
                         },
@@ -139,7 +145,7 @@ internal class WalletApi(
                             errorDescription =
                                 buildString {
                                     append("Request body could not be parsed")
-                                    if (!error.message.isNullOrBlank()) {
+                                    if (error.message.isNotBlank()) {
                                         append(": ${error.message}")
                                     }
                                 },
@@ -151,7 +157,7 @@ internal class WalletApi(
 
     private suspend fun handleHelloHolder(req: ServerRequest): ServerResponse =
         coroutineScope {
-            val context = async { req.authorizationContext().getOrThrow() }
+            val context = async { req.authorizationContext() }
             val pid = getPidData(context.await().username)
             if (null != pid)
                 ServerResponse
@@ -199,66 +205,65 @@ internal class WalletApi(
     }
 }
 
-private suspend fun ServerRequest.authorizationContext(): Either<Throwable, AuthorizationContext> =
-    Either.catch {
-        @Suppress("UNCHECKED_CAST")
-        fun Map<*, *>.toClientStatus(): ClientStatus {
-            val serialized = JSONObjectUtils.toJSONString(this as Map<String, Any?>)
-            return jsonSupport.decodeFromString(serialized)
-        }
+private suspend fun ServerRequest.authorizationContext(): AuthorizationContext {
+    @Suppress("UNCHECKED_CAST")
+    fun Map<*, *>.toClientStatus(): ClientStatus {
+        val serialized = JSONObjectUtils.toJSONString(this as Map<String, Any?>)
+        return jsonSupport.decodeFromString(serialized)
+    }
 
-        val authentication = awaitPrincipal()
+    val authentication = awaitPrincipal()
 
-        requireNotNull(authentication) { "Authentication is expected" }
+    requireNotNull(authentication) { "Authentication is expected" }
 
-        fun fromSpring(authority: GrantedAuthority): Scope? =
-            authority.authority
-                ?.takeIf { it.startsWith("SCOPE_") }
-                ?.replaceFirst("SCOPE_", "")
-                ?.let { Scope(it) }
+    fun fromSpring(authority: GrantedAuthority): Scope? =
+        authority.authority
+            ?.takeIf { it.startsWith("SCOPE_") }
+            ?.replaceFirst("SCOPE_", "")
+            ?.let { Scope(it) }
 
-        data class AuthenticationDetails(
-            val scopes: NonEmptySet<Scope>? = null,
-            val clientId: Any? = null,
-            val username: Any? = null,
-            val accessToken: AccessToken,
-            val clientStatus: Any?,
-        )
+    data class AuthenticationDetails(
+        val scopes: NonEmptySet<Scope>? = null,
+        val clientId: Any? = null,
+        val username: Any? = null,
+        val accessToken: AccessToken,
+        val clientStatus: Any?,
+    )
 
-        val (scopes, clientId, username, accessToken, clientStatus) =
-            when (authentication) {
-                is DPoPTokenAuthentication -> {
-                    AuthenticationDetails(
-                        authentication.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull(),
-                        authentication.principal?.attributes?.get(OAuth2TokenIntrospectionClaimNames.CLIENT_ID),
-                        authentication.name,
-                        authentication.accessToken,
-                        authentication.principal?.attributes?.get(TS3.CLIENT_STATUS),
-                    )
-                }
-
-                is BearerTokenAuthentication -> {
-                    AuthenticationDetails(
-                        authentication.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull(),
-                        authentication.tokenAttributes[OAuth2TokenIntrospectionClaimNames.CLIENT_ID],
-                        authentication.tokenAttributes[OAuth2TokenIntrospectionClaimNames.USERNAME],
-                        BearerAccessToken.parse("${authentication.token.tokenType.value} ${authentication.token.tokenValue}"),
-                        authentication.tokenAttributes[TS3.CLIENT_STATUS],
-                    )
-                }
-
-                else -> {
-                    error("Unexpected Authentication type '${authentication::class.java}'")
-                }
+    val (scopes, clientId, username, accessToken, clientStatus) =
+        when (authentication) {
+            is DPoPTokenAuthentication -> {
+                AuthenticationDetails(
+                    authentication.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull(),
+                    authentication.principal?.attributes?.get(OAuth2TokenIntrospectionClaimNames.CLIENT_ID),
+                    authentication.name,
+                    authentication.accessToken,
+                    authentication.principal?.attributes?.get(TS3.CLIENT_STATUS),
+                )
             }
 
-        requireNotNull(scopes) { "OAuth2 scopes are expected" }
-        require(clientId is String) { "Unexpected client_id claim type '${clientId?.let { it::class.java }}'" }
-        require(username is String) { "Unexpected username claim type '${username?.let { it::class.java }}'" }
-        require(clientStatus is Map<*, *>) { "Unexpected client_status claim type '${clientStatus?.let { it::class.java }}'" }
+            is BearerTokenAuthentication -> {
+                AuthenticationDetails(
+                    authentication.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull(),
+                    authentication.tokenAttributes[OAuth2TokenIntrospectionClaimNames.CLIENT_ID],
+                    authentication.tokenAttributes[OAuth2TokenIntrospectionClaimNames.USERNAME],
+                    BearerAccessToken.parse("${authentication.token.tokenType.value} ${authentication.token.tokenValue}"),
+                    authentication.tokenAttributes[TS3.CLIENT_STATUS],
+                )
+            }
 
-        AuthorizationContext(username, accessToken, scopes, clientId, clientStatus.toClientStatus())
-    }
+            else -> {
+                error("Unexpected Authentication type '${authentication::class.java}'")
+            }
+        }
+
+    requireNotNull(scopes) { "OAuth2 scopes are expected" }
+    require(clientId is String) { "Unexpected client_id claim type '${clientId?.let { it::class.java }}'" }
+    require(username is String) { "Unexpected username claim type '${username?.let { it::class.java }}'" }
+    require(clientStatus is Map<*, *>) { "Unexpected client_status claim type '${clientStatus?.let { it::class.java }}'" }
+
+    return AuthorizationContext(username, accessToken, scopes, clientId, clientStatus.toClientStatus())
+}
 
 private suspend fun IssueCredentialResponse.toServerResponse(): ServerResponse =
     when (this) {

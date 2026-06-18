@@ -21,5 +21,5 @@ import kotlinx.serialization.json.JsonObject
  * Generates signed metadata for this Credential Issuer.
  */
 fun interface GenerateSignedMetadata {
-    operator fun invoke(metadata: JsonObject): String
+    suspend operator fun invoke(metadata: JsonObject): String
 }

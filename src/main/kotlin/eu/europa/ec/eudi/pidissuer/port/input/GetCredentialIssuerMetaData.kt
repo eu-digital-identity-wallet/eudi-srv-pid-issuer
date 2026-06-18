@@ -32,7 +32,7 @@ class GetCredentialIssuerMetaData(
 ) {
     fun unsigned() = credentialIssuerMetaData.toTransferObject()
 
-    fun signed(): String? = generateSignedMetadata?.invoke(Json.encodeToJsonElement(unsigned()).jsonObject)
+    suspend fun signed(): String? = generateSignedMetadata?.invoke(Json.encodeToJsonElement(unsigned()).jsonObject)
 }
 
 @Serializable

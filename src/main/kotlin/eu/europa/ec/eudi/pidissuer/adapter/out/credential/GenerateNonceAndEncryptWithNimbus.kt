@@ -24,6 +24,8 @@ import com.nimbusds.openid.connect.sdk.Nonce
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.toJavaDate
 import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import kotlin.time.Duration
 import kotlin.time.Instant
@@ -45,25 +47,28 @@ internal class GenerateNonceAndEncryptWithNimbus(
     override suspend fun invoke(
         generatedAt: Instant,
         expiresIn: Duration,
-    ): String {
-        val expiresAt = generatedAt + expiresIn
+    ): String =
+        withContext(Dispatchers.Default) {
+            val expiresAt = generatedAt + expiresIn
 
-        return EncryptedJWT(
-            JWEHeader
-                .Builder(encryptionKey.algorithm, encryptionKey.method)
-                .type(JOSEObjectType("nonce+jwt"))
-                .build(),
-            JWTClaimsSet
-                .Builder()
-                .apply {
-                    issuer(issuer.externalForm)
-                    audience(issuer.externalForm)
-                    claim("nonce", generator())
-                    issueTime(generatedAt.toJavaDate())
-                    expirationTime(expiresAt.toJavaDate())
-                }.build(),
-        ).apply {
-            encrypt(encrypter)
-        }.serialize()
-    }
+            val header =
+                JWEHeader
+                    .Builder(encryptionKey.algorithm, encryptionKey.method)
+                    .type(JOSEObjectType("nonce+jwt"))
+                    .build()
+            val claimSet =
+                JWTClaimsSet
+                    .Builder()
+                    .apply {
+                        issuer(issuer.externalForm)
+                        audience(issuer.externalForm)
+                        claim("nonce", generator())
+                        issueTime(generatedAt.toJavaDate())
+                        expirationTime(expiresAt.toJavaDate())
+                    }.build()
+
+            EncryptedJWT(header, claimSet)
+                .apply { encrypt(encrypter) }
+                .serialize()
+        }
 }

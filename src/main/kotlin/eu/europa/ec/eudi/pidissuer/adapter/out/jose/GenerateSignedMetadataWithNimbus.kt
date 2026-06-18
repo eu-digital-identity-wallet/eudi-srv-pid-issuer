@@ -27,6 +27,8 @@ import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
 import eu.europa.ec.eudi.pidissuer.port.out.jose.GenerateSignedMetadata
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 import kotlin.time.Clock
 
@@ -52,21 +54,22 @@ internal class GenerateSignedMetadataWithNimbus(
     private val credentialIssuerId: CredentialIssuerId,
     private val accessCertificate: AccessCertificate,
 ) : GenerateSignedMetadata {
-    override fun invoke(metadata: JsonObject): String {
-        val payload =
-            (metadata - "signed_metadata")
-                .buildUpon {
-                    put("iat", clock.now().epochSeconds)
-                    put("iss", signedMetadataIssuer.externalForm)
-                    put("sub", credentialIssuerId.externalForm)
-                }.toPayload()
+    override suspend fun invoke(metadata: JsonObject): String =
+        withContext(Dispatchers.Default) {
+            val payload =
+                (metadata - "signed_metadata")
+                    .buildUpon {
+                        put("iat", clock.now().epochSeconds)
+                        put("iss", signedMetadataIssuer.externalForm)
+                        put("sub", credentialIssuerId.externalForm)
+                    }.toPayload()
 
-        val signedMetadata =
-            JWSObject(accessCertificate.jwsHeader(), payload)
-                .apply { sign(accessCertificate.jwsSigner()) }
+            val signedMetadata =
+                JWSObject(accessCertificate.jwsHeader(), payload)
+                    .apply { sign(accessCertificate.jwsSigner()) }
 
-        return signedMetadata.serialize()
-    }
+            signedMetadata.serialize()
+        }
 }
 
 private fun Map<String, JsonElement>.buildUpon(builder: JsonObjectBuilder.() -> Unit): JsonObject =
