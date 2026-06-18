@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.persistence
 
+import arrow.core.toNonEmptyListOrNull
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.DeleteExpiredIssuedCredentials
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.DeleteIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GetNonExpiredIssuedCredentials
@@ -71,6 +72,7 @@ class R2dbcIssuedCredentialRepository(
                 .findAllByNotificationId(notificationId.value)
                 .map { it.toDomain() }
                 .toList()
+                .toNonEmptyListOrNull()
         }
 
     val getNonExpiredIssuedCredentials: GetNonExpiredIssuedCredentials =
@@ -78,6 +80,7 @@ class R2dbcIssuedCredentialRepository(
             r2dbc
                 .findAllActive(now.toOffsetDateTime())
                 .map { it.toDomain() }
+                .toList()
         }
 
     val deleteExpiredIssuedCredentials: DeleteExpiredIssuedCredentials =

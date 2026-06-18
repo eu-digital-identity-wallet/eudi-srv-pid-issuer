@@ -15,7 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.status
 
-import arrow.core.Either
+import arrow.core.raise.Raise
+import arrow.core.raise.context.ensure
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.out.status.MarkStatusAsRevoked
 import org.springframework.util.LinkedMultiValueMap
@@ -29,13 +30,13 @@ internal class MarkStatusAsRevokedWithExternalService(
     private val serviceUrl: URL,
     private val apiKey: String,
 ) : MarkStatusAsRevoked {
-    override suspend fun invoke(status: StatusListToken) =
+    context(_: Raise<MarkStatusAsRevoked.Error>)
+    override suspend fun invoke(status: StatusListToken) {
         webClient
             .post()
             .uri(serviceUrl.toExternalForm())
-            .headers {
-                it.set(API_KEY_HEADER, apiKey)
-            }.body(
+            .headers { it.set(API_KEY_HEADER, apiKey) }
+            .body(
                 BodyInserters.fromFormData(
                     LinkedMultiValueMap<String, String>().apply {
                         add(IDX_PARAM, status.index.toString())
@@ -44,12 +45,11 @@ internal class MarkStatusAsRevokedWithExternalService(
                     },
                 ),
             ).awaitExchange { response ->
-                Either.catch {
-                    check(response.statusCode().is2xxSuccessful) {
-                        "Revocation service responded with ${response.statusCode()}"
-                    }
+                ensure(response.statusCode().is2xxSuccessful) {
+                    MarkStatusAsRevoked.Error("Revocation service responded with ${response.statusCode()}")
                 }
             }
+    }
 
     companion object {
         private const val API_KEY_HEADER = "X-API-Key"

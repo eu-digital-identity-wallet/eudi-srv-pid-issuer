@@ -22,7 +22,6 @@ import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import java.net.URI
 import kotlin.test.Test
@@ -69,7 +68,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
                 RevokeCredentialsWithRevokedStatus(
                     clock = clock,
                     deleteExpiredIssuedCredentials = { _ -> },
-                    getNonExpiredIssuedCredentials = { _ -> flowOf() },
+                    getNonExpiredIssuedCredentials = { _ -> emptyList() },
                     getStatusListTokenStatus = { _, _ -> StatusListTokenStatus.VALID },
                     markStatusAsRevoked = { _ -> Unit.right() },
                     deleteIssuedCredential = { revoked.add(it) },
@@ -89,9 +88,9 @@ internal class RevokeCredentialsWithRevokedStatusTest {
                 RevokeCredentialsWithRevokedStatus(
                     clock = clock,
                     deleteExpiredIssuedCredentials = { _ -> },
-                    getNonExpiredIssuedCredentials = { _ -> flowOf(credential) },
+                    getNonExpiredIssuedCredentials = { _ -> listOf(credential) },
                     getStatusListTokenStatus = { _, _ -> StatusListTokenStatus.VALID },
-                    markStatusAsRevoked = { _ -> Unit.right() },
+                    markStatusAsRevoked = { _ -> },
                     deleteIssuedCredential = { revoked.add(it) },
                 )
 
@@ -110,14 +109,14 @@ internal class RevokeCredentialsWithRevokedStatusTest {
                 RevokeCredentialsWithRevokedStatus(
                     clock = clock,
                     deleteExpiredIssuedCredentials = { _ -> },
-                    getNonExpiredIssuedCredentials = { _ -> flowOf(credential) },
+                    getNonExpiredIssuedCredentials = { _ -> listOf(credential) },
                     getStatusListTokenStatus = { uri, _ ->
                         if (uri == clientStatusUri)
                             StatusListTokenStatus.INVALID
                         else
                             StatusListTokenStatus.VALID
                     },
-                    markStatusAsRevoked = { _ -> Unit.right() },
+                    markStatusAsRevoked = { _ -> },
                     deleteIssuedCredential = { revoked.add(it) },
                 )
 
@@ -136,14 +135,14 @@ internal class RevokeCredentialsWithRevokedStatusTest {
                 RevokeCredentialsWithRevokedStatus(
                     clock = clock,
                     deleteExpiredIssuedCredentials = { _ -> },
-                    getNonExpiredIssuedCredentials = { _ -> flowOf(credential) },
+                    getNonExpiredIssuedCredentials = { _ -> listOf(credential) },
                     getStatusListTokenStatus = { uri, _ ->
                         if (uri == keyStorageUri)
                             StatusListTokenStatus.INVALID
                         else
                             StatusListTokenStatus.VALID
                     },
-                    markStatusAsRevoked = { _ -> Unit.right() },
+                    markStatusAsRevoked = { _ -> },
                     deleteIssuedCredential = { revoked.add(it) },
                 )
 
@@ -162,9 +161,9 @@ internal class RevokeCredentialsWithRevokedStatusTest {
                 RevokeCredentialsWithRevokedStatus(
                     clock = clock,
                     deleteExpiredIssuedCredentials = { _ -> },
-                    getNonExpiredIssuedCredentials = { _ -> flowOf(credential1, credential2) },
+                    getNonExpiredIssuedCredentials = { _ -> listOf(credential1, credential2) },
                     getStatusListTokenStatus = { _, _ -> StatusListTokenStatus.INVALID },
-                    markStatusAsRevoked = { _ -> Unit.right() },
+                    markStatusAsRevoked = { _ -> },
                     deleteIssuedCredential = { credential ->
                         if (credential == credential1) throw RuntimeException("Persistence error")
                         revoked.add(credential)
@@ -185,9 +184,9 @@ internal class RevokeCredentialsWithRevokedStatusTest {
                 RevokeCredentialsWithRevokedStatus(
                     clock = clock,
                     deleteExpiredIssuedCredentials = { _ -> },
-                    getNonExpiredIssuedCredentials = { _ -> flowOf(credential) },
+                    getNonExpiredIssuedCredentials = { _ -> listOf(credential) },
                     getStatusListTokenStatus = { _, _ -> raise(GetStatusListTokenStatus.Error(RuntimeException("Network error"))) },
-                    markStatusAsRevoked = { _ -> Unit.right() },
+                    markStatusAsRevoked = { _ -> },
                     deleteIssuedCredential = { revoked.add(it) },
                 )
 
@@ -222,9 +221,9 @@ internal class RevokeCredentialsWithRevokedStatusTest {
                 RevokeCredentialsWithRevokedStatus(
                     clock = clock,
                     deleteExpiredIssuedCredentials = { _ -> deleted.add(expiredCredential) },
-                    getNonExpiredIssuedCredentials = { _ -> flowOf() },
+                    getNonExpiredIssuedCredentials = { _ -> emptyList() },
                     getStatusListTokenStatus = { _, _ -> StatusListTokenStatus.VALID },
-                    markStatusAsRevoked = { _ -> Unit.right() },
+                    markStatusAsRevoked = { _ -> },
                     deleteIssuedCredential = { },
                 )
 

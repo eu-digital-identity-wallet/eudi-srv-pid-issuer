@@ -16,8 +16,15 @@
 package eu.europa.ec.eudi.pidissuer.port.out.status
 
 import arrow.core.Either
+import arrow.core.raise.Raise
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 
 fun interface MarkStatusAsRevoked {
-    suspend operator fun invoke(status: StatusListToken): Either<Throwable, Unit>
+    context(_: Raise<Error>)
+    suspend operator fun invoke(status: StatusListToken)
+
+    @JvmInline
+    value class Error(
+        val value: String,
+    )
 }
