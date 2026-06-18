@@ -29,7 +29,6 @@ import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.EncryptedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.decryptCredentialRequest
-import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.*
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptDeferredResponse
@@ -223,7 +222,7 @@ class GetDeferredCredential(
 //
 
 context(_: Raise<Error>, credentialIssuerMetadata: CredentialIssuerMetaData)
-private fun Request.decryptIfNeeded(): DeferredCredentialRequestTO =
+private suspend fun Request.decryptIfNeeded(): DeferredCredentialRequestTO =
     withError(transform = { it.left() }) {
         fun DeferredCredentialRequestTO.verifyEncryptionForPlainRequest() {
             ensure(credentialResponseEncryption == null) {
@@ -234,7 +233,7 @@ private fun Request.decryptIfNeeded(): DeferredCredentialRequestTO =
             }
         }
 
-        fun String.decrypt(): DeferredCredentialRequestTO = decryptCredentialRequest(this)
+        suspend fun String.decrypt(): DeferredCredentialRequestTO = decryptCredentialRequest(this)
 
         return fold(
             { plain -> plain.apply { verifyEncryptionForPlainRequest() } },
@@ -272,7 +271,7 @@ private suspend fun toDomain(requestTO: CredentialResponseEncryptionTO): Request
 // Respons
 //
 context(encryptCredentialResponse: EncryptDeferredResponse)
-private fun LoadDeferredCredentialResult.IssuancePending.response(
+private suspend fun LoadDeferredCredentialResult.IssuancePending.response(
     credentialResponseEncryption: RequestedResponseEncryption,
 ): DeferredCredentialResponse.IssuancePending {
     val plain =
@@ -291,14 +290,14 @@ private fun LoadDeferredCredentialResult.IssuancePending.response(
                 encryptCredentialResponse(
                     plain,
                     credentialResponseEncryption,
-                ).getOrThrow()
+                )
             DeferredCredentialResponse.IssuancePending(jwt.right())
         }
     }
 }
 
 context(encryptCredentialResponse: EncryptDeferredResponse)
-private fun LoadDeferredCredentialResult.Found.response(
+private suspend fun LoadDeferredCredentialResult.Found.response(
     credentialResponseEncryption: RequestedResponseEncryption,
 ): DeferredCredentialResponse.Issued {
     val plain =
@@ -317,7 +316,7 @@ private fun LoadDeferredCredentialResult.Found.response(
                 encryptCredentialResponse(
                     plain,
                     credentialResponseEncryption,
-                ).getOrThrow()
+                )
             DeferredCredentialResponse.Issued(jwt.right())
         }
     }

@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptyList
 import arrow.core.NonEmptySet
+import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
@@ -68,6 +69,13 @@ data class CredentialRequestEncryptionSupportedParameters(
         require(zipAlgorithmsSupported?.all { it.name in ZIP_ALGORITHMS } ?: true) {
             "zipAlgorithmsSupported must be one of ${ZIP_ALGORITHMS.joinToString(", ") { it }}"
         }
+    }
+
+    val algorithmsSupported: NonEmptySet<JWEAlgorithm> by lazy {
+        encryptionKeys.keys
+            .map { JWEAlgorithm(it.algorithm.name) }
+            .toNonEmptySetOrNull()
+            ?: error("Cannot happen")
     }
 }
 

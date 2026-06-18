@@ -26,7 +26,6 @@ import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.decryptCredentialRequest
-import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
 import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.*
@@ -322,7 +321,7 @@ private val log = LoggerFactory.getLogger(IssueCredential::class.java)
  */
 class IssueCredential(
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
-    private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
+    resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
     private val encryptCredentialResponse: EncryptCredentialResponse,
     validateProof: ValidateProof,
     clock: Clock,
@@ -361,23 +360,16 @@ class IssueCredential(
         credentialRequestTO: CredentialRequestTO,
     ): IssueCredentialResponse =
         withError(transform = { Either.Right(it) }) {
-            val credentialConfigurationIdOrCredentialIdentifier =
-                credentialRequestTO.credentialConfigurationId
-                    ?: credentialRequestTO.credentialIdentifier
-            log.info("Handling issuance request for $credentialConfigurationIdOrCredentialIdentifier..")
             val (request, issued) =
                 services.issueCredential(authorizationContext, credentialRequestTO)
-            successResponse(request, issued)
+            issued.successResponse(request.credentialResponseEncryption)
         }
 
-    private fun successResponse(
-        request: CredentialRequest,
-        credential: CredentialResponse,
-    ): IssueCredentialResponse {
-        val plain = credential.toTO()
-        return when (val encryption = request.credentialResponseEncryption) {
+    private suspend fun CredentialResponse.successResponse(encryption: RequestedResponseEncryption): IssueCredentialResponse {
+        val plain = toTO()
+        return when (encryption) {
             RequestedResponseEncryption.NotRequired -> plain
-            is RequestedResponseEncryption.Required -> encryptCredentialResponse(plain, encryption).getOrThrow()
+            is RequestedResponseEncryption.Required -> encryptCredentialResponse(plain, encryption)
         }
     }
 }
@@ -387,7 +379,7 @@ class IssueCredential(
 //
 
 context(_: Raise<IssError>, credentialIssuerMetadata: CredentialIssuerMetaData)
-private fun IssRequest.decryptIfNeeded(): CredentialRequestTO =
+private suspend fun IssRequest.decryptIfNeeded(): CredentialRequestTO =
     withError(transform = { it.left() }) {
         fun CredentialRequestTO.verifyPlainRequestAgainstEncryptionRequirements() {
             ensure(credentialResponseEncryption == null) {
@@ -398,7 +390,7 @@ private fun IssRequest.decryptIfNeeded(): CredentialRequestTO =
             }
         }
 
-        fun String.decrypt(): CredentialRequestTO = decryptCredentialRequest(this)
+        suspend fun String.decrypt(): CredentialRequestTO = decryptCredentialRequest(this)
 
         return fold(
             ifLeft = { plain -> plain.apply { verifyPlainRequestAgainstEncryptionRequirements() } },
@@ -417,6 +409,7 @@ private class Services(
         authorizationContext: AuthorizationContext,
         credentialRequestTO: CredentialRequestTO,
     ): Pair<CredentialRequest, CredentialResponse> {
+        logRequest(credentialRequestTO)
         val unresolvedRequest =
             credentialRequestTO.toDomain(
                 credentialIssuerMetadata.credentialResponseEncryption,
@@ -445,6 +438,13 @@ private class Services(
             }
         val issued = issue(authorizationContext, request)
         return request.credentialRequest to issued
+    }
+
+    private fun logRequest(credentialRequestTO: CredentialRequestTO) {
+        val credentialConfigurationIdOrCredentialIdentifier =
+            credentialRequestTO.credentialConfigurationId
+                ?: credentialRequestTO.credentialIdentifier
+        log.info("Handling issuance request for $credentialConfigurationIdOrCredentialIdentifier..")
     }
 
     context(_: Raise<InvalidCredentialIdentifier>)

@@ -99,13 +99,12 @@ internal class EncryptCredentialResponseWithNimbusTest {
             encryptAndVerify(unencrypted, parameters, key)
         }
 
-    private fun encryptAndVerify(
+    private suspend fun encryptAndVerify(
         unencrypted: IssueCredentialResponse.PlainTO,
         parameters: RequestedResponseEncryption.Required,
         decryptionKey: JWK,
     ) {
-        val encrypted = encrypter(unencrypted, parameters).getOrElse { fail(it.message, it) }
-
+        val encrypted = encrypter(unencrypted, parameters)
         val processor =
             DefaultJWTProcessor<SecurityContext>().apply {
                 jweTypeVerifier = DefaultJOSEObjectTypeVerifier.JWT
