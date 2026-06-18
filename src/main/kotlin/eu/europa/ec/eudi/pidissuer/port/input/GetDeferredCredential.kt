@@ -25,6 +25,7 @@ import arrow.core.raise.context.withError
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.right
+import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.EncryptedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.decryptCredentialRequest
@@ -224,12 +225,15 @@ class GetDeferredCredential(
                 catch({ JWK.parse(Json.encodeToString(requestTO.key)) }) {
                     raise(GetDeferredCredentialError.InvalidEncryptionParameters("Failed to parse JWK", it))
                 }
-
+            val encryptionMethod =
+                catch({ EncryptionMethod.parse(requestTO.method) }) {
+                    raise(GetDeferredCredentialError.InvalidEncryptionParameters("Failed to parse encryption method", it))
+                }
             withError({ GetDeferredCredentialError.InvalidEncryptionParameters(it) }) {
                 RequestedResponseEncryption
                     .Required(
                         encryptionKey,
-                        requestTO.method,
+                        encryptionMethod,
                         requestTO.zipAlgorithm,
                     )
             }

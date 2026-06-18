@@ -117,7 +117,7 @@ sealed interface RequestedResponseEncryption {
             context(_: Raise<String>)
             operator fun invoke(
                 encryptionKey: JWK,
-                encryptionMethod: String,
+                encryptionMethod: EncryptionMethod,
                 compressionAlgorithm: String? = null,
             ): Required {
                 ensure(!encryptionKey.isPrivate) { "encryptionJwk must not contain a private key" }
@@ -127,9 +127,8 @@ sealed interface RequestedResponseEncryption {
                 ensure(encryptionKey.algorithm in JWEAlgorithm.Family.ASYMMETRIC) {
                     "encryptionAlgorithm is not an asymmetric encryption algorithm"
                 }
-                val method = EncryptionMethod.parse(encryptionMethod)
                 val zipMethod = compressionAlgorithm?.let { CompressionAlgorithm(it) }
-                return Required(encryptionKey, method, zipMethod)
+                return Required(encryptionKey, encryptionMethod, zipMethod)
             }
         }
     }

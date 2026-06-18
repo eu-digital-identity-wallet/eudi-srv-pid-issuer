@@ -64,12 +64,8 @@ internal class EncryptCredentialResponseWithNimbusTest {
                     .generate()
             val jwk = key.toPublicJWK()
             val parameters =
-                either {
-                    RequestedResponseEncryption.Required.invoke(
-                        jwk,
-                        EncryptionMethod.A256GCM.name,
-                    )
-                }.getOrElse { fail(it) }
+                either { RequestedResponseEncryption.Required(jwk, EncryptionMethod.A256GCM) }
+                    .getOrElse { fail(it) }
             val unencrypted =
                 IssueCredentialResponse.PlainTO(
                     credentials = listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("credential"))),
@@ -91,9 +87,8 @@ internal class EncryptCredentialResponseWithNimbusTest {
                     .generate()
             val jwk = key.toPublicJWK()
             val parameters =
-                either {
-                    RequestedResponseEncryption.Required(jwk, EncryptionMethod.A256GCM.name)
-                }.getOrElse { fail(it) }
+                either { RequestedResponseEncryption.Required(jwk, EncryptionMethod.A256GCM) }
+                    .getOrElse { fail(it) }
             val unencrypted =
                 IssueCredentialResponse.PlainTO(
                     credentials = listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("credential"))),

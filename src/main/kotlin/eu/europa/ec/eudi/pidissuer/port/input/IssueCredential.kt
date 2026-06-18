@@ -652,11 +652,15 @@ private interface Validations {
                 catch({ JWK.parse(Json.encodeToString(key)) }) {
                     raise(InvalidEncryptionParameters("Failed to parse JWK", it))
                 }
+            val encryptionMethod =
+                catch({ EncryptionMethod.parse(method) }) {
+                    raise(InvalidEncryptionParameters("Failed to parse encryption method", it))
+                }
             withError({ InvalidEncryptionParameters(it, null) }) {
                 RequestedResponseEncryption
                     .Required(
                         encryptionKey,
-                        method,
+                        encryptionMethod,
                         zipAlgorithm,
                     )
             }
