@@ -336,7 +336,7 @@ class IssueCredential(
         credentialRequestJwt: String,
     ): IssueCredentialResponse =
         effect {
-            val request: CredentialRequestTO =
+            val request =
                 withError(transform = { Either.Left(it) }) {
                     decryptCredentialRequest(credentialRequestJwt, credentialIssuerMetadata)
                 }
@@ -344,7 +344,7 @@ class IssueCredential(
                 invoke(authorizationContext, request)
             }
         }.getOrElse { error ->
-            error.fold({ it.toTO() }, { it.toTO() })
+            error.fold(::onEncryptionError, ::onIssuanceError)
         }
 
     suspend fun fromPlainRequest(
@@ -353,19 +353,24 @@ class IssueCredential(
     ): IssueCredentialResponse =
         effect {
             withError(transform = { Either.Left(it) }) {
-                ensure(credentialRequestTO.credentialResponseEncryption == null) {
-                    ResponseEncryptionRequiresEncryptedRequest
-                }
-                ensure(credentialIssuerMetadata.credentialRequestEncryption !is CredentialRequestEncryption.Required) {
-                    RequestEncryptionIsRequired
-                }
+                verifyPlainRequestAgainstEncryptionRequirements(credentialRequestTO)
             }
             withError(transform = { Either.Right(it) }) {
                 invoke(authorizationContext, credentialRequestTO)
             }
         }.getOrElse { error ->
-            error.fold({ it.toTO() }, { it.toTO() })
+            error.fold(::onEncryptionError, ::onIssuanceError)
         }
+
+    context(_: Raise<RequestEncryptionError>)
+    private fun verifyPlainRequestAgainstEncryptionRequirements(credentialRequestTO: CredentialRequestTO) {
+        ensure(credentialRequestTO.credentialResponseEncryption == null) {
+            ResponseEncryptionRequiresEncryptedRequest
+        }
+        ensure(credentialIssuerMetadata.credentialRequestEncryption !is CredentialRequestEncryption.Required) {
+            RequestEncryptionIsRequired
+        }
+    }
 
     context(_: Raise<IssueCredentialError>)
     private suspend operator fun invoke(
@@ -392,8 +397,13 @@ class IssueCredential(
         }
     }
 
-    private fun errorResponse(error: IssueCredentialError): IssueCredentialResponse {
+    private fun onIssuanceError(error: IssueCredentialError): IssueCredentialResponse {
         log.warn("Issuance failed: $error")
+        return error.toTO()
+    }
+
+    private fun onEncryptionError(error: RequestEncryptionError): IssueCredentialResponse {
+        log.warn("Encryption failed: $error")
         return error.toTO()
     }
 }
