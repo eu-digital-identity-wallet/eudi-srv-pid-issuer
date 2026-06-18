@@ -16,14 +16,14 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.Either
-import arrow.core.getOrElse
 import arrow.core.left
 import arrow.core.raise.Raise
 import arrow.core.raise.catch
+import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
 import arrow.core.raise.context.withError
-import arrow.core.raise.either
-import arrow.core.raise.ensure
+import arrow.core.raise.effect
+import arrow.core.raise.getOrElse
 import arrow.core.right
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.jwk.JWK
@@ -159,20 +159,10 @@ sealed interface GetDeferredCredentialError {
     ) : GetDeferredCredentialError
 }
 
-private fun GetDeferredCredentialError.toTO(): DeferredCredentialResponse.Failed {
-    val (type, description) =
-        when (this) {
-            is GetDeferredCredentialError.InvalidTransactionId -> {
-                GetDeferredCredentialErrorTypeTo.INVALID_TRANSACTION_ID to null
-            }
+private typealias Request = Either<DeferredCredentialRequestTO, String>
+private typealias Error = Either<RequestEncryptionError, GetDeferredCredentialError>
 
-            is GetDeferredCredentialError.InvalidEncryptionParameters -> {
-                GetDeferredCredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS to
-                    errorDescriptionWithErrorCauseDescription("Invalid encryption parameters", error)
-            }
-        }
-    return DeferredCredentialResponse.Failed(FailedTO(type, description))
-}
+private val log = LoggerFactory.getLogger(GetDeferredCredential::class.java)
 
 /**
  * Usecase for retrieving/polling a deferred credential
@@ -182,119 +172,166 @@ class GetDeferredCredential(
     val encryptCredentialResponse: EncryptDeferredResponse,
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
 ) {
-    private val log = LoggerFactory.getLogger(GetDeferredCredential::class.java)
-
-    suspend fun fromEncryptedRequest(requestJwt: String): DeferredCredentialResponse =
-        either {
-            val requestTO: DeferredCredentialRequestTO = decryptCredentialRequest(requestJwt, credentialIssuerMetadata)
-            invoke(requestTO)
-        }.getOrElse { error ->
-            error.toTO()
-        }
+    suspend fun fromEncryptedRequest(requestJwt: String): DeferredCredentialResponse = getDeferredCredential(requestJwt.right())
 
     suspend fun fromPlainRequest(requestTO: DeferredCredentialRequestTO): DeferredCredentialResponse =
-        either {
-            ensure(requestTO.credentialResponseEncryption == null) {
-                ResponseEncryptionRequiresEncryptedRequest
-            }
-            ensure(credentialIssuerMetadata.credentialRequestEncryption !is CredentialRequestEncryption.Required) {
-                RequestEncryptionIsRequired
-            }
-            invoke(requestTO)
+        getDeferredCredential(requestTO.left())
+
+    private suspend fun getDeferredCredential(encryptedOrPlain: Request): DeferredCredentialResponse =
+        effect {
+            val request =
+                context(credentialIssuerMetadata) {
+                    encryptedOrPlain.decryptIfNeeded()
+                }
+            getDeferredCredential(request)
         }.getOrElse { error ->
-            error.toTO()
+            error.response()
         }
 
-    private suspend operator fun invoke(requestTO: DeferredCredentialRequestTO): DeferredCredentialResponse =
-        either {
-            val transactionId = TransactionId(requestTO.transactionId)
-            log.info("GetDeferredCredential for $transactionId ...")
-            val loadDeferredCredentialResult = loadDeferredCredentialByTransactionId(transactionId)
+    context(_: Raise<Error>)
+    private suspend fun getDeferredCredential(request: DeferredCredentialRequestTO): DeferredCredentialResponse =
+        withError(transform = { it.right() }) {
+            val transactionId = TransactionId(request.transactionId)
             val credentialResponseEncryption =
-                requestTO.credentialResponseEncryption?.let { toDomain(it) }
+                request.credentialResponseEncryption
+                    ?.let { toDomain(it) }
                     ?: RequestedResponseEncryption.NotRequired
-            toTo(loadDeferredCredentialResult, credentialResponseEncryption)
-        }.getOrElse { error ->
-            error.toTO()
-        }
+            log.info("GetDeferredCredential for $transactionId ...")
 
-    context(_: Raise<GetDeferredCredentialError>)
-    suspend fun toDomain(requestTO: CredentialResponseEncryptionTO) =
-        withContext(Dispatchers.Default) {
-            val encryptionKey =
-                catch({ JWK.parse(Json.encodeToString(requestTO.key)) }) {
-                    raise(GetDeferredCredentialError.InvalidEncryptionParameters("Failed to parse JWK", it))
+            return when (val result = loadDeferredCredentialByTransactionId(transactionId)) {
+                LoadDeferredCredentialResult.InvalidTransactionId -> {
+                    raise(GetDeferredCredentialError.InvalidTransactionId)
                 }
-            val encryptionMethod =
-                catch({ EncryptionMethod.parse(requestTO.method) }) {
-                    raise(GetDeferredCredentialError.InvalidEncryptionParameters("Failed to parse encryption method", it))
-                }
-            withError({ GetDeferredCredentialError.InvalidEncryptionParameters(it) }) {
-                RequestedResponseEncryption
-                    .Required(
-                        encryptionKey,
-                        encryptionMethod,
-                        requestTO.zipAlgorithm,
-                    )
-            }
-        }
 
-    private fun Raise<GetDeferredCredentialError>.toTo(
-        loadDeferredCredentialResult: LoadDeferredCredentialResult,
-        credentialResponseEncryption: RequestedResponseEncryption,
-    ): DeferredCredentialResponse =
-        when (loadDeferredCredentialResult) {
-            is LoadDeferredCredentialResult.InvalidTransactionId -> {
-                raise(GetDeferredCredentialError.InvalidTransactionId)
-            }
-
-            is LoadDeferredCredentialResult.IssuancePending -> {
-                val plain =
-                    IssuancePendingTO(
-                        loadDeferredCredentialResult.deferred.transactionId.value,
-                        loadDeferredCredentialResult.deferred.interval.inWholeSeconds,
-                    )
-
-                when (credentialResponseEncryption) {
-                    RequestedResponseEncryption.NotRequired -> {
-                        DeferredCredentialResponse.IssuancePending(plain.left())
-                    }
-
-                    is RequestedResponseEncryption.Required -> {
-                        val jwt =
-                            encryptCredentialResponse(
-                                plain,
-                                credentialResponseEncryption,
-                            ).getOrThrow()
-                        DeferredCredentialResponse.IssuancePending(jwt.right())
+                is LoadDeferredCredentialResult.IssuancePending -> {
+                    context(encryptCredentialResponse) {
+                        result.response(credentialResponseEncryption)
                     }
                 }
-            }
 
-            is LoadDeferredCredentialResult.Found -> {
-                val plain =
-                    IssuedTO(
-                        JsonArray(loadDeferredCredentialResult.credential.credentials),
-                        loadDeferredCredentialResult.credential.notificationId?.value,
-                    )
-
-                when (credentialResponseEncryption) {
-                    RequestedResponseEncryption.NotRequired -> {
-                        DeferredCredentialResponse.Issued(plain.left())
-                    }
-
-                    is RequestedResponseEncryption.Required -> {
-                        val jwt =
-                            encryptCredentialResponse(
-                                plain,
-                                credentialResponseEncryption,
-                            ).getOrThrow()
-                        DeferredCredentialResponse.Issued(jwt.right())
+                is LoadDeferredCredentialResult.Found -> {
+                    context(encryptCredentialResponse) {
+                        result.response(credentialResponseEncryption)
                     }
                 }
             }
         }
 }
+
+//
+// Request pre-processing
+//
+
+context(_: Raise<Error>, credentialIssuerMetadata: CredentialIssuerMetaData)
+private fun Request.decryptIfNeeded(): DeferredCredentialRequestTO =
+    withError(transform = { it.left() }) {
+        fun DeferredCredentialRequestTO.verifyEncryptionForPlainRequest() {
+            ensure(credentialResponseEncryption == null) {
+                ResponseEncryptionRequiresEncryptedRequest
+            }
+            ensure(credentialIssuerMetadata.credentialRequestEncryption !is CredentialRequestEncryption.Required) {
+                RequestEncryptionIsRequired
+            }
+        }
+
+        fun String.decrypt(): DeferredCredentialRequestTO = decryptCredentialRequest(this)
+
+        return fold(
+            { plain -> plain.apply { verifyEncryptionForPlainRequest() } },
+            { jwt -> jwt.decrypt() },
+        )
+    }
+
+context(_: Raise<GetDeferredCredentialError>)
+private suspend fun toDomain(requestTO: CredentialResponseEncryptionTO): RequestedResponseEncryption.Required =
+    withContext(Dispatchers.Default) {
+        val encryptionKey =
+            catch({ JWK.parse(Json.encodeToString(requestTO.key)) }) {
+                raise(GetDeferredCredentialError.InvalidEncryptionParameters("Failed to parse JWK", it))
+            }
+        val encryptionMethod =
+            catch({ EncryptionMethod.parse(requestTO.method) }) {
+                raise(
+                    GetDeferredCredentialError.InvalidEncryptionParameters(
+                        "Failed to parse encryption method",
+                        it,
+                    ),
+                )
+            }
+        withError({ GetDeferredCredentialError.InvalidEncryptionParameters(it) }) {
+            RequestedResponseEncryption
+                .Required(
+                    encryptionKey,
+                    encryptionMethod,
+                    requestTO.zipAlgorithm,
+                )
+        }
+    }
+
+//
+// Respons
+//
+context(encryptCredentialResponse: EncryptDeferredResponse)
+private fun LoadDeferredCredentialResult.IssuancePending.response(
+    credentialResponseEncryption: RequestedResponseEncryption,
+): DeferredCredentialResponse.IssuancePending {
+    val plain =
+        IssuancePendingTO(
+            transactionId = deferred.transactionId.value,
+            interval = deferred.interval.inWholeSeconds,
+        )
+
+    return when (credentialResponseEncryption) {
+        RequestedResponseEncryption.NotRequired -> {
+            DeferredCredentialResponse.IssuancePending(plain.left())
+        }
+
+        is RequestedResponseEncryption.Required -> {
+            val jwt =
+                encryptCredentialResponse(
+                    plain,
+                    credentialResponseEncryption,
+                ).getOrThrow()
+            DeferredCredentialResponse.IssuancePending(jwt.right())
+        }
+    }
+}
+
+context(encryptCredentialResponse: EncryptDeferredResponse)
+private fun LoadDeferredCredentialResult.Found.response(
+    credentialResponseEncryption: RequestedResponseEncryption,
+): DeferredCredentialResponse.Issued {
+    val plain =
+        IssuedTO(
+            credentials = JsonArray(credential.credentials),
+            notificationId = credential.notificationId?.value,
+        )
+
+    return when (credentialResponseEncryption) {
+        RequestedResponseEncryption.NotRequired -> {
+            DeferredCredentialResponse.Issued(plain.left())
+        }
+
+        is RequestedResponseEncryption.Required -> {
+            val jwt =
+                encryptCredentialResponse(
+                    plain,
+                    credentialResponseEncryption,
+                ).getOrThrow()
+            DeferredCredentialResponse.Issued(jwt.right())
+        }
+    }
+}
+
+//
+// Error Response
+//
+
+private fun Error.response(): DeferredCredentialResponse =
+    fold(
+        ifLeft = { encryptionError -> encryptionError.toTO() },
+        ifRight = { issuanceError -> issuanceError.toTO() },
+    )
 
 private fun RequestEncryptionError.toTO(): DeferredCredentialResponse.Failed {
     val (type, description) =
@@ -335,6 +372,21 @@ private fun RequestEncryptionError.toTO(): DeferredCredentialResponse.Failed {
                 GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
                     "Unsupported credential request compression method $compressionAlgorithm, " +
                     "supported methods: $compressionMethodsSupported"
+            }
+        }
+    return DeferredCredentialResponse.Failed(FailedTO(type, description))
+}
+
+private fun GetDeferredCredentialError.toTO(): DeferredCredentialResponse.Failed {
+    val (type, description) =
+        when (this) {
+            is GetDeferredCredentialError.InvalidTransactionId -> {
+                GetDeferredCredentialErrorTypeTo.INVALID_TRANSACTION_ID to null
+            }
+
+            is GetDeferredCredentialError.InvalidEncryptionParameters -> {
+                GetDeferredCredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS to
+                    errorDescriptionWithErrorCauseDescription("Invalid encryption parameters", error)
             }
         }
     return DeferredCredentialResponse.Failed(FailedTO(type, description))

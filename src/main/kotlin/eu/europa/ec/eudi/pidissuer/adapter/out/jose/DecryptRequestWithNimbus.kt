@@ -37,11 +37,11 @@ import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.*
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.serializer
 
-context(_: Raise<RequestEncryptionError>)
-internal inline fun <reified T> decryptCredentialRequest(
-    jwt: String,
+context(
+    _: Raise<RequestEncryptionError>,
     credentialIssuerMetadata: CredentialIssuerMetaData,
-): T {
+)
+internal inline fun <reified T> decryptCredentialRequest(jwt: String): T {
     val encryptionParameters =
         when (val requestEncryption = credentialIssuerMetadata.credentialRequestEncryption) {
             is CredentialRequestEncryption.Optional -> requestEncryption.parameters

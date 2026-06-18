@@ -325,8 +325,8 @@ class IssueCredential(
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
     private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
     private val encryptCredentialResponse: EncryptCredentialResponse,
-    private val validateProof: ValidateProof,
-    private val clock: Clock,
+    validateProof: ValidateProof,
+    clock: Clock,
 ) {
     private val services: Services =
         Services(credentialIssuerMetadata, resolveCredentialRequestByCredentialIdentifier, validateProof, clock)
@@ -338,13 +338,19 @@ class IssueCredential(
         effect {
             val request =
                 withError(transform = { Either.Left(it) }) {
-                    decryptCredentialRequest(credentialRequestJwt, credentialIssuerMetadata)
+                    credentialRequestJwt.decrypt()
                 }
             withError(transform = { Either.Right(it) }) {
-                invoke(authorizationContext, request)
+                issueCredential(authorizationContext, request)
             }
         }.getOrElse { error ->
             error.fold(::onEncryptionError, ::onIssuanceError)
+        }
+
+    context(_: Raise<RequestEncryptionError>)
+    private fun String.decrypt(): CredentialRequestTO =
+        context(credentialIssuerMetadata) {
+            decryptCredentialRequest(this)
         }
 
     suspend fun fromPlainRequest(
@@ -356,7 +362,7 @@ class IssueCredential(
                 verifyPlainRequestAgainstEncryptionRequirements(credentialRequestTO)
             }
             withError(transform = { Either.Right(it) }) {
-                invoke(authorizationContext, credentialRequestTO)
+                issueCredential(authorizationContext, credentialRequestTO)
             }
         }.getOrElse { error ->
             error.fold(::onEncryptionError, ::onIssuanceError)
@@ -373,7 +379,7 @@ class IssueCredential(
     }
 
     context(_: Raise<IssueCredentialError>)
-    private suspend operator fun invoke(
+    private suspend fun issueCredential(
         authorizationContext: AuthorizationContext,
         credentialRequestTO: CredentialRequestTO,
     ): IssueCredentialResponse {
