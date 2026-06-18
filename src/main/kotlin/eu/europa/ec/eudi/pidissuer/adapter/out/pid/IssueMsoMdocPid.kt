@@ -31,7 +31,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
-import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
+import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.asIssueCredentialError
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
@@ -280,8 +280,10 @@ private fun pidDocType(v: Int?): String =
     else
         "$PID_DOCTYPE.$v"
 
+@Suppress("SameParameterValue")
 private fun pidNameSpace(v: Int?): MsoNameSpace = pidDocType(v)
 
+@Suppress("UNUSED")
 private fun pidDomesticNameSpace(
     v: Int?,
     countryCode: String,
@@ -335,7 +337,7 @@ internal class IssueMsoMdocPid(
     private val storeIssuedCredential: StoreIssuedCredential,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     override val keyAttestationRequirement: KeyAttestationRequirement,
-    private val generateStatusListToken: GenerateStatusListToken,
+    private val generateStatusListToken: AllocateStatus,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : IssueSpecificCredential {
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)

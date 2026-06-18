@@ -34,7 +34,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
-import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
+import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.asIssueCredentialError
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
@@ -377,7 +377,7 @@ internal class IssueMobileDrivingLicence(
     private val storeIssuedCredential: StoreIssuedCredential,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     override val keyAttestationRequirement: KeyAttestationRequirement,
-    private val generateStatusListToken: GenerateStatusListToken,
+    private val generateStatusListToken: AllocateStatus,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : IssueSpecificCredential {
     override val supportedCredential: MsoMdocCredentialConfiguration =

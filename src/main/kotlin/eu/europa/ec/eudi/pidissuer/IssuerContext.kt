@@ -56,7 +56,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
 import eu.europa.ec.eudi.pidissuer.port.out.jose.GenerateSignedMetadata
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
-import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
+import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.MarkStatusAsRevoked
 import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
@@ -608,7 +608,7 @@ fun beans(clock: Clock) =
             }
         }
 
-        registerBean<GenerateStatusListToken> {
+        registerBean<AllocateStatus> {
             val serviceUrl = URI.create(env.getRequiredProperty("issuer.statusList.service.generate-uri")).toURL()
             GenerateStatusListTokenWithExternalService(
                 webClient = bean(),

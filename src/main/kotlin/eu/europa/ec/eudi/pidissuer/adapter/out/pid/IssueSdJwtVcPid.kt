@@ -33,7 +33,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
-import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
+import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.asIssueCredentialError
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.coroutines.Dispatchers
@@ -217,7 +217,7 @@ internal class IssueSdJwtVcPid(
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredential: StoreIssuedCredential,
-    private val generateStatusListToken: GenerateStatusListToken,
+    private val generateStatusListToken: AllocateStatus,
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     override val keyAttestationRequirement: KeyAttestationRequirement,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,

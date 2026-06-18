@@ -20,7 +20,7 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
-import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
+import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -35,17 +35,17 @@ import java.net.URL
 import java.time.format.DateTimeFormatter
 import kotlin.time.Instant
 
-internal class GenerateStatusListTokenWithExternalService(
+class GenerateStatusListTokenWithExternalService(
     private val webClient: WebClient,
     private val serviceUrl: URL,
     private val apiKey: String,
     private val clock: Clock,
-) : GenerateStatusListToken {
-    context(_: Raise<GenerateStatusListToken.StatusAllocationError>)
+) : AllocateStatus {
+    context(_: Raise<AllocateStatus.Error>)
     override suspend fun invoke(
         type: String,
         expiration: Instant,
-    ): StatusListToken = catch({ allocateStatus(type, expiration) }) { raise(GenerateStatusListToken.StatusAllocationError(type, it)) }
+    ): StatusListToken = catch({ allocateStatus(type, expiration) }) { raise(AllocateStatus.Error(type, it)) }
 
     private suspend fun allocateStatus(
         type: String,

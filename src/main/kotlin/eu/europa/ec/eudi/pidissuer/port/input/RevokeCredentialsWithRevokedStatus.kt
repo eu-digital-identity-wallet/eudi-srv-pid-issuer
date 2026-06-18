@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
+import arrow.core.raise.either
 import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
@@ -106,13 +107,13 @@ class RevokeCredentialsWithRevokedStatus(
         statusListToken: StatusListToken,
     ): Boolean {
         val (uri, index) = statusListToken
-        return getStatusListTokenStatus(uri, index).fold(
+        return either { getStatusListTokenStatus(uri, index) }.fold(
             ifLeft = { error ->
                 log.warn(
                     "Failed to check {} for credential with status list '{}': {}",
                     statusName,
                     statusListToken.statusList,
-                    error.message,
+                    error.value.message,
                 )
                 false
             },
