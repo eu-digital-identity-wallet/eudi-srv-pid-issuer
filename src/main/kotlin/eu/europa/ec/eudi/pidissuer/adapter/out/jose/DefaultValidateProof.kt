@@ -15,16 +15,14 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.Either
-import arrow.core.raise.either
-import arrow.core.raise.ensure
+import arrow.core.raise.Raise
+import arrow.core.raise.context.ensure
 import arrow.core.toNonEmptyListOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidNonce
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
-import kotlinx.coroutines.coroutineScope
 import kotlin.time.Instant
 
 /**
@@ -35,35 +33,33 @@ internal class DefaultValidateProof(
     private val validateAttestationProof: ValidateAttestationProof,
     private val verifyNonce: VerifyNonce,
 ) : ValidateProof {
+    context(_: Raise<IssueCredentialError>)
     override suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
-    ): Either<IssueCredentialError, ValidatedProof> =
-        coroutineScope {
-            either {
-                val validatedProof =
-                    when (unvalidatedProof) {
-                        is UnvalidatedProof.Jwt -> {
-                            validateJwtProof(unvalidatedProof, credentialConfiguration, at).bind()
-                        }
-
-                        is UnvalidatedProof.Attestation -> {
-                            validateAttestationProof(unvalidatedProof, credentialConfiguration, at).bind()
-                        }
-                    }
-
-                ensure(verifyNonce(validatedProof.cNonce, at)) {
-                    InvalidNonce("CNonce is not valid")
+    ): ValidatedProof {
+        val validatedProof =
+            when (unvalidatedProof) {
+                is UnvalidatedProof.Jwt -> {
+                    validateJwtProof(unvalidatedProof, credentialConfiguration, at)
                 }
 
-                val limitedCredentialKeys =
-                    validatedProof.credentialKeys
-                        .limitTo(credentialConfiguration.credentialReusePolicy)
-
-                validatedProof.copy(credentialKeys = limitedCredentialKeys)
+                is UnvalidatedProof.Attestation -> {
+                    validateAttestationProof(unvalidatedProof, credentialConfiguration, at)
+                }
             }
+
+        ensure(verifyNonce(validatedProof.cNonce, at)) {
+            InvalidNonce("CNonce is not valid")
         }
+
+        val limitedCredentialKeys =
+            validatedProof.credentialKeys
+                .limitTo(credentialConfiguration.credentialReusePolicy)
+
+        return validatedProof.copy(credentialKeys = limitedCredentialKeys)
+    }
 
     private fun CredentialKeys.limitTo(policy: CredentialReusePolicy): CredentialKeys =
         when (policy) {

@@ -16,17 +16,21 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.nonEmptySetOf
+import arrow.core.raise.either
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
-import eu.europa.ec.eudi.pidissuer.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
 import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.jwtProof
+import eu.europa.ec.eudi.pidissuer.keyAttestationJWT
 import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
 import kotlinx.coroutines.test.runTest
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.fail
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
@@ -34,7 +38,8 @@ import kotlin.time.Duration.Companion.minutes
 class DefaultValidateProofTest {
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.System
-    private val verifyKeyAttestation = VerifyKeyAttestation(isTrustedKeyAttestationIssuer = IsTrustedKeyAttestationIssuer.Ignored)
+    private val verifyKeyAttestation =
+        VerifyKeyAttestation(isTrustedKeyAttestationIssuer = IsTrustedKeyAttestationIssuer.Ignored)
 
     @Test
     internal fun `keys are not truncated when reuse policy is None`() =
@@ -115,11 +120,13 @@ class DefaultValidateProofTest {
             )
 
         val result =
-            validator(
-                unvalidatedProof,
-                configuration,
-                clock.now(),
-            )
+            either {
+                validator(
+                    unvalidatedProof,
+                    configuration,
+                    clock.now(),
+                )
+            }
         return result.fold({ fail("Expected success but got $it") }, { it })
     }
 

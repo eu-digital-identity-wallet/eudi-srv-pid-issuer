@@ -447,7 +447,7 @@ private class Services(
                 resolvedCredentialRequest.credentialRequest.unvalidatedProof,
                 issueSpecificCredential.supportedCredential,
                 clock.now(),
-            ).bind()
+            )
         return issueSpecificCredential(
             authorizationContext,
             resolvedCredentialRequest.credentialRequest,

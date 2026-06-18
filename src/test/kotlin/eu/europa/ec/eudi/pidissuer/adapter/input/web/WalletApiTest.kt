@@ -612,7 +612,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
 
             assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
             assertEquals(
-                "Invalid proof JWT: The provided key storage's attack resistance does not match the expected one.",
+                "The provided key storage's attack resistance does not match the expected one.",
                 response.errorDescription,
             )
         }
@@ -699,7 +699,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                     .let { assertNotNull(it.responseBody) }
 
             assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
-            assertEquals("Invalid proof JWT: Invalid Key Attestation JWT", response.errorDescription)
+            assertEquals("Invalid Key Attestation JWT", response.errorDescription)
 
             // ///////////////////////////
             // key attestation expired //
@@ -853,7 +853,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
 
             assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
             assertEquals(
-                "Invalid proof JWT: Key Attestation 'nonce' does not match JWT Proof 'nonce'",
+                "Key Attestation 'nonce' does not match JWT Proof 'nonce'",
                 response.errorDescription,
             )
         }
@@ -961,7 +961,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
 
             assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
             assertEquals(
-                "Invalid proof Attestation: Key attestation does not contain a c_nonce.",
+                "Key attestation does not contain a c_nonce.",
                 response.errorDescription,
             )
         }
@@ -1051,7 +1051,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
 
             assertEquals(CredentialErrorTypeTo.INVALID_PROOF, response.type)
             assertEquals(
-                "Invalid proof JWT: Key Storage Status expiration date does not meet the preferred key storage status period",
+                "Key Storage Status expiration date does not meet the preferred key storage status period",
                 response.errorDescription,
             )
         }
