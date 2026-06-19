@@ -152,6 +152,27 @@ internal class RevokeCredentialsWithRevokedStatusTest {
         }
 
     @Test
+    fun `credential with INVALID client and key storage status is revoked only once`() =
+        runTest {
+            val credential = credential()
+            val revoked = mutableListOf<IssuedCredential>()
+            val useCase =
+                RevokeCredentialsWithRevokedStatus(
+                    clock = clock,
+                    deleteExpiredIssuedCredentials = { _ -> },
+                    getNonExpiredIssuedCredentials = { _ -> listOf(credential) },
+                    getStatusListTokenStatus = { _, _ -> StatusListTokenStatus.INVALID },
+                    markStatusAsRevoked = { _ -> },
+                    deleteIssuedCredential = { revoked.add(it) },
+                )
+
+            useCase()
+
+            assertEquals(1, revoked.size)
+            assertEquals(credential, revoked.single())
+        }
+
+    @Test
     fun `error revoking one credential does not prevent processing of remaining credentials`() =
         runTest {
             val credential1 = credential(clientStatusUri = URI.create("https://example.com/status/1"))
