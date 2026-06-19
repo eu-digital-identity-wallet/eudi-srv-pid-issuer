@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential
 
 import arrow.core.NonEmptySet
 import arrow.core.raise.Raise
-import arrow.core.raise.context.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
@@ -28,7 +27,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
@@ -50,7 +49,7 @@ internal class IssueLearningCredential(
     private val encodeLearningCredential: EncodeLearningCredential,
     private val generateNotificationId: GenerateNotificationId?,
     private val storeIssuedCredential: StoreIssuedCredential,
-) : IssueSpecificCredential {
+) : AttestationIssuer {
     init {
         require(!publicKey.isPrivate)
         require(validity.isPositive())
@@ -61,11 +60,11 @@ internal class IssueLearningCredential(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-        validatedProof: ValidatedProof,
+        proof: ValidatedProof,
     ): CredentialResponse {
         log.info("Issuing Learning Credential")
 
-        val holderKeys = validatedProof.credentialKeys.value
+        val holderKeys = proof.credentialKeys.value
         val learningCredential = getLearningCredential(authorizationContext)
         val issuedAt = clock.now()
         val expiresAt =
@@ -99,7 +98,7 @@ internal class IssueLearningCredential(
                             notificationId,
                             status = null,
                             clientStatus = authorizationContext.clientStatus.status.statusList,
-                            keyStorageStatus = validatedProof.keyStorageStatus.status.statusList,
+                            keyStorageStatus = proof.keyStorageStatus.status.statusList,
                         ),
                     )
 

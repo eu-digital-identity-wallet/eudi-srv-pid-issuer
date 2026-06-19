@@ -27,7 +27,7 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
-interface IssueSpecificCredential {
+interface AttestationIssuer {
     val supportedCredential: CredentialConfiguration
     val publicKey: JWK?
     val keyAttestationRequirement: KeyAttestationRequirement
@@ -38,24 +38,24 @@ interface IssueSpecificCredential {
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-        validatedProof: ValidatedProof,
+        proof: ValidatedProof,
     ): CredentialResponse
 }
 
-fun IssueSpecificCredential.asDeferred(
+fun AttestationIssuer.asDeferred(
     generateTransactionId: GenerateTransactionId,
     storeDeferredCredential: StoreDeferredCredential,
     clock: Clock,
     interval: Duration = 1.minutes,
-): IssueSpecificCredential = DeferredIssuer(this, generateTransactionId, storeDeferredCredential, clock, interval)
+): AttestationIssuer = DeferredIssuer(this, generateTransactionId, storeDeferredCredential, clock, interval)
 
 private class DeferredIssuer(
-    val issuer: IssueSpecificCredential,
+    val issuer: AttestationIssuer,
     val generateTransactionId: GenerateTransactionId,
     val storeDeferredCredential: StoreDeferredCredential,
     val clock: Clock,
     val interval: Duration,
-) : IssueSpecificCredential by issuer {
+) : AttestationIssuer by issuer {
     override val supportedCredential: CredentialConfiguration
         get() =
             when (val cfg = issuer.supportedCredential) {
@@ -88,9 +88,9 @@ private class DeferredIssuer(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-        validatedProof: ValidatedProof,
+        proof: ValidatedProof,
     ): CredentialResponse {
-        val credentialResponse = issuer.invoke(authorizationContext, request, credentialIdentifier, validatedProof)
+        val credentialResponse = issuer.invoke(authorizationContext, request, credentialIdentifier, proof)
 
         // That's a runtime exception because it would be a bug in the issuer
         check(credentialResponse is CredentialResponse.Issued) {

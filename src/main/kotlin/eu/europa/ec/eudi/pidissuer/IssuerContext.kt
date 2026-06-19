@@ -700,7 +700,7 @@ fun beans(
     registerBean { ValidateAttestationProof(bean()) }
     registerBean { DefaultValidateProof(bean(), bean(), bean()) }
     registerBean {
-        val specificCredentialIssuers =
+        val attestationIssuers =
             buildList {
                 if (enableMsoMdocPid) {
                     val duration = env.duration("issuer.pid.mso_mdoc.encoder.duration") ?: 31.days
@@ -916,7 +916,7 @@ fun beans(
                 }
             }.toNonEmptyListOrNull()
 
-        requireNotNull(specificCredentialIssuers) { "At least one credential issuer must be configured" }
+        checkNotNull(attestationIssuers) { "At least one credential issuer must be configured" }
 
         val preferredClientStatusPeriod =
             bean<IssuerMetadataProperties>().preferredClientStatusPeriod.toKotlinDuration()
@@ -930,7 +930,7 @@ fun beans(
             authorizationServers = listOf(env.readRequiredUrl("issuer.authorizationServer.publicUrl")),
             credentialRequestEncryption = credentialRequestEncryption(),
             credentialResponseEncryption = env.credentialResponseEncryption(),
-            specificCredentialIssuers = specificCredentialIssuers,
+            attestationIssuers = attestationIssuers,
             batchCredentialIssuance =
                 run {
                     val enabled =
@@ -1038,14 +1038,14 @@ fun beans(
     //
 
     registerBean {
-            /*
-             * This is a Spring naming convention
-             * A prefix of SCOPE_xyz will grant a SimpleAuthority(xyz)
-             * if there is a scope xyz
-             *
-             * Note that on the OAUTH2 server we set xyz as the scope
-             * and not SCOPE_xyz
-             */
+        /*
+         * This is a Spring naming convention
+         * A prefix of SCOPE_xyz will grant a SimpleAuthority(xyz)
+         * if there is a scope xyz
+         *
+         * Note that on the OAUTH2 server we set xyz as the scope
+         * and not SCOPE_xyz
+         */
         fun Scope.springConvention() = "SCOPE_$value"
         val metaData = bean<CredentialIssuerMetaData>()
         val scopes =
@@ -1560,9 +1560,6 @@ private suspend fun WebClient.authorizationServerSupportedDPoPJWSAlgorithms(auth
 
 private fun Environment.getPropertyOrEnvVariable(property: String): String? =
     getProperty(property) ?: getProperty(toEnvironmentVariable(property))
-
-private inline fun <reified T : Any> Environment.getPropertyOrEnvVariable(property: String): T? =
-    getProperty<T>(property) ?: getProperty<T>(toEnvironmentVariable(property))
 
 private inline fun <reified T : Any> Environment.getRequiredPropertyOrEnvVariable(property: String): T =
     getProperty<T>(property) ?: getProperty<T>(toEnvironmentVariable(property))

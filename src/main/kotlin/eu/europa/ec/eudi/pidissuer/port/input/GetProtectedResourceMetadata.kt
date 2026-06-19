@@ -65,7 +65,7 @@ class GetProtectedResourceMetadata(
             resource = credentialIssuerMetadata.id.externalForm,
             authorizationServers = credentialIssuerMetadata.authorizationServers.map { it.externalForm }.toNonEmptyListOrNull(),
             scopesSupported =
-                credentialIssuerMetadata.specificCredentialIssuers
+                credentialIssuerMetadata.attestationIssuers
                     .map {
                         it.supportedCredential.scope.value
                     }.distinct()

@@ -131,7 +131,7 @@ class MetaDataApi(
 }
 
 private val CredentialIssuerMetaData.jwtVcIssuerJwks: JWKSet
-    get() = JWKSet(specificCredentialIssuers.mapNotNull { it.publicKey })
+    get() = JWKSet(attestationIssuers.mapNotNull { it.publicKey })
 
 private val ServerRequest.vct: Vct
     get() = Vct(pathVariable("vct"))

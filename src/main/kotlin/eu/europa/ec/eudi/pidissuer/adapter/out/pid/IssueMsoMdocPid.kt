@@ -27,7 +27,7 @@ import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
-import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
@@ -339,7 +339,7 @@ internal class IssueMsoMdocPid(
     override val keyAttestationRequirement: KeyAttestationRequirement,
     private val generateStatusListToken: AllocateStatus,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
-) : IssueSpecificCredential {
+) : AttestationIssuer {
     private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
 
     override val supportedCredential: MsoMdocCredentialConfiguration =
@@ -357,11 +357,11 @@ internal class IssueMsoMdocPid(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-        validatedProof: ValidatedProof,
+        proof: ValidatedProof,
     ): CredentialResponse {
         log.info("Handling issuance request ...")
         val holderPubKeys =
-            validatedProof.credentialKeys.value
+            proof.credentialKeys.value
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
 
         val (pid, pidMetaData) = getPidData(authorizationContext)
@@ -399,7 +399,7 @@ internal class IssueMsoMdocPid(
                             notificationId = notificationId,
                             status = statusListToken,
                             clientStatus = authorizationContext.clientStatus.status.statusList,
-                            keyStorageStatus = validatedProof.keyStorageStatus.status.statusList,
+                            keyStorageStatus = proof.keyStorageStatus.status.statusList,
                         ),
                     )
 

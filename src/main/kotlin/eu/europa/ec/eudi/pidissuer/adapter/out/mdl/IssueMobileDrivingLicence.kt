@@ -18,7 +18,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 import arrow.core.NonEmptySet
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
-import arrow.core.raise.context.withError
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
@@ -28,7 +27,7 @@ import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
-import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
@@ -379,7 +378,7 @@ internal class IssueMobileDrivingLicence(
     override val keyAttestationRequirement: KeyAttestationRequirement,
     private val generateStatusListToken: AllocateStatus,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
-) : IssueSpecificCredential {
+) : AttestationIssuer {
     override val supportedCredential: MsoMdocCredentialConfiguration =
         mobileDrivingLicenceV1(
             encodeMobileDrivingLicenceInCbor.signingAlgorithm,
@@ -396,11 +395,11 @@ internal class IssueMobileDrivingLicence(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-        validatedProof: ValidatedProof,
+        proof: ValidatedProof,
     ): CredentialResponse {
         log.info("Issuing mDL")
         val holderKeys =
-            validatedProof.credentialKeys.value
+            proof.credentialKeys.value
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
         val licence = getMobileDrivingLicenceData(authorizationContext)
 
@@ -435,7 +434,7 @@ internal class IssueMobileDrivingLicence(
                             notificationId = notificationId,
                             status = statusListToken,
                             clientStatus = authorizationContext.clientStatus.status.statusList,
-                            keyStorageStatus = validatedProof.keyStorageStatus.status.statusList,
+                            keyStorageStatus = proof.keyStorageStatus.status.statusList,
                         ),
                     )
 

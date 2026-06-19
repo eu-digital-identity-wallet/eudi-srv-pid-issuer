@@ -26,7 +26,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
@@ -222,7 +222,7 @@ internal class IssueSdJwtVcPid(
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     override val keyAttestationRequirement: KeyAttestationRequirement,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
-) : IssueSpecificCredential {
+) : AttestationIssuer {
     override val supportedCredential: SdJwtVcCredentialConfiguration =
         pidSdJwtVcV1(
             issuerSigningKey.signingAlgorithm,
@@ -247,11 +247,11 @@ internal class IssueSdJwtVcPid(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-        validatedProof: ValidatedProof,
+        proof: ValidatedProof,
     ): CredentialResponse {
         log.info("Handling issuance request ...")
 
-        val holderPubKeys = validatedProof.credentialKeys.value
+        val holderPubKeys = proof.credentialKeys.value
         val (pid, pidMetaData) = getPidData(authorizationContext)
         val issuedAt = clock.now()
         val expiresAt = issuedAt + validity
@@ -304,7 +304,7 @@ internal class IssueSdJwtVcPid(
                             notificationId = notificationId,
                             status = statusListToken,
                             clientStatus = authorizationContext.clientStatus.status.statusList,
-                            keyStorageStatus = validatedProof.keyStorageStatus.status.statusList,
+                            keyStorageStatus = proof.keyStorageStatus.status.statusList,
                         ),
                     )
 

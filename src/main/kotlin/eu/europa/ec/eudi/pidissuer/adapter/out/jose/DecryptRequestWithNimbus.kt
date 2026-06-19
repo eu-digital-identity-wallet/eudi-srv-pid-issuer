@@ -25,6 +25,7 @@ import com.nimbusds.jose.proc.JWEDecryptionKeySelector
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.EncryptedJWT
+import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import eu.europa.ec.eudi.pidissuer.adapter.out.json.jsonSupport
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
@@ -39,63 +40,58 @@ import kotlinx.serialization.serializer
 
 context(
     _: Raise<RequestEncryptionError>,
-    credentialIssuerMetadata: CredentialIssuerMetaData,
+    _: CredentialRequestEncryptionSupportedParameters,
+    _: DeserializationStrategy<T>,
 )
-internal suspend inline fun <reified T> decryptCredentialRequest(jwt: String): T {
-    val encryptionParameters =
-        when (val requestEncryption = credentialIssuerMetadata.credentialRequestEncryption) {
-            is CredentialRequestEncryption.Optional -> requestEncryption.parameters
-            is CredentialRequestEncryption.Required -> requestEncryption.parameters
-            is CredentialRequestEncryption.NotSupported -> raise(RequestEncryptionNotSupported)
+suspend fun <T> decryptWithNimbus(jwt: String): T =
+    withContext(Dispatchers.Default) {
+        catch({
+            EncryptedJWT
+                .parse(jwt)
+                .ensureSupported()
+                .decrypt()
+                .deserialize()
+        }) {
+            raise(UnparseableEncryptedRequest(it))
         }
-    return context(encryptionParameters, serializer<T>()) {
-        decrypt(jwt)
     }
-}
 
-context(
-    _: Raise<RequestEncryptionError>,
-    parameters: CredentialRequestEncryptionSupportedParameters,
-    deserializer: DeserializationStrategy<T>,
-)
-private suspend fun <T> decrypt(jwt: String): T =
-    catch({
-        withContext(Dispatchers.Default) {
-            val encryptedJwt = EncryptedJWT.parse(jwt).apply { ensureSupported() }
-            val processor =
-                DefaultJWTProcessor<SecurityContext>().apply {
-                    jweKeySelector =
-                        JWEDecryptionKeySelector(
-                            encryptedJwt.header.algorithm,
-                            encryptedJwt.header.encryptionMethod,
-                            ImmutableJWKSet(parameters.encryptionKeys),
-                        )
-                }
-
-            val claims = processor.process(encryptedJwt, null)
-            jsonSupport.decodeFromString(deserializer, JSONObjectUtils.toJSONString(claims.toJSONObject()))
-        }
-    }) {
-        raise(UnparseableEncryptedRequest(it))
-    }
+context(parameters: CredentialRequestEncryptionSupportedParameters)
+private fun EncryptedJWT.decrypt(): JWTClaimsSet =
+    DefaultJWTProcessor<SecurityContext>()
+        .apply {
+            jweKeySelector =
+                JWEDecryptionKeySelector(
+                    header.algorithm,
+                    header.encryptionMethod,
+                    ImmutableJWKSet(parameters.encryptionKeys),
+                )
+        }.process(this, null)
 
 context(
     _: Raise<RequestEncryptionError>,
     parameters: CredentialRequestEncryptionSupportedParameters
 )
-private fun EncryptedJWT.ensureSupported() {
-    val (_, methodsSupported, compressionMethodsSupported) = parameters
-    ensure(header.algorithm in parameters.algorithmsSupported) {
-        UnsupportedEncryptionAlgorithm(header.algorithm, parameters.algorithmsSupported)
-    }
+private fun EncryptedJWT.ensureSupported(): EncryptedJWT =
+    apply {
+        val (_, methodsSupported, compressionMethodsSupported) = parameters
+        ensure(header.algorithm in parameters.algorithmsSupported) {
+            UnsupportedEncryptionAlgorithm(header.algorithm, parameters.algorithmsSupported)
+        }
 
-    ensure(header.encryptionMethod in methodsSupported) {
-        UnsupportedEncryptionMethod(header.encryptionMethod, methodsSupported)
-    }
-    header.compressionAlgorithm?.let { compressionAlgorithm ->
-        ensureNotNull(compressionMethodsSupported) { RequestCompressionNotSupported }
-        ensure(compressionAlgorithm in compressionMethodsSupported) {
-            UnsupportedRequestCompressionMethod(compressionAlgorithm, compressionMethodsSupported)
+        ensure(header.encryptionMethod in methodsSupported) {
+            UnsupportedEncryptionMethod(header.encryptionMethod, methodsSupported)
+        }
+        header.compressionAlgorithm?.let { compressionAlgorithm ->
+            ensureNotNull(compressionMethodsSupported) { RequestCompressionNotSupported }
+            ensure(compressionAlgorithm in compressionMethodsSupported) {
+                UnsupportedRequestCompressionMethod(compressionAlgorithm, compressionMethodsSupported)
+            }
         }
     }
+
+context(deserializer: DeserializationStrategy<T>)
+private fun <T> JWTClaimsSet.deserialize(): T {
+    val json = JSONObjectUtils.toJSONString(toJSONObject())
+    return jsonSupport.decodeFromString(deserializer, json)
 }

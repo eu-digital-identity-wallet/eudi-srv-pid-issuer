@@ -24,15 +24,14 @@ import arrow.core.raise.context.raise
 import arrow.core.raise.context.withError
 import arrow.core.raise.effect
 import arrow.core.raise.fold
-import arrow.core.raise.getOrElse
 import arrow.core.right
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.EncryptedJWT
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.decryptCredentialRequest
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.*
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptDeferredResponse
+import eu.europa.ec.eudi.pidissuer.port.out.jose.decryptCredentialRequest
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadDeferredCredentialByTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadDeferredCredentialResult
 import kotlinx.coroutines.Dispatchers
@@ -242,11 +241,9 @@ private suspend fun Request.decryptIfNeeded(): DeferredCredentialRequestTO =
             }
         }
 
-        suspend fun String.decrypt(): DeferredCredentialRequestTO = decryptCredentialRequest(this)
-
         return fold(
             { plain -> plain.apply { verifyEncryptionForPlainRequest() } },
-            { jwt -> jwt.decrypt() },
+            { encrypted -> decryptCredentialRequest(encrypted) },
         )
     }
 

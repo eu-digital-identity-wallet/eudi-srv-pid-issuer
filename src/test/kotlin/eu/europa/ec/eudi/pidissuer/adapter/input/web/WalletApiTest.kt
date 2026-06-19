@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@file:Suppress("SpringBootApplicationProperties")
+
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.nonEmptyListOf
@@ -76,8 +78,9 @@ import kotlin.time.Instant
 /**
  * Base class for [WalletApi] tests.
  */
+@Suppress("SpringJavaInjectionPointsAutowiringInspection", "ProtectedInFinal")
 @PidIssuerApplicationTest(classes = [BaseWalletApiTest.WalletApiTestConfig::class])
-internal class BaseWalletApiTest {
+class BaseWalletApiTest {
     @Autowired
     protected lateinit var applicationContext: ApplicationContext
 
@@ -222,7 +225,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                     .bodyValue(
                         requestByCredentialConfigurationId(
                             credentialConfigurationId = "foo",
-                            proofs = ProofsTO(jwtProofs = listOf("proof")),
+                            proofs = CredentialRequestTO.ProofsTO(jwtProofs = listOf("proof")),
                         ),
                     ).accept(MediaType.APPLICATION_JSON)
                     .exchange()
@@ -253,7 +256,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                 .bodyValue(
                     requestByCredentialConfigurationId(
                         credentialConfigurationId = "foo",
-                        proofs = ProofsTO(jwtProofs = listOf("proof")),
+                        proofs = CredentialRequestTO.ProofsTO(jwtProofs = listOf("proof")),
                     ),
                 ).accept(MediaType.APPLICATION_JSON)
                 .exchange()
@@ -344,8 +347,17 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                     .post()
                     .uri(WalletApi.CREDENTIAL_ENDPOINT)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(requestByCredentialConfigurationId(proofs = ProofsTO(jwtProofs = listOf("proof"))))
-                    .accept(MediaType.APPLICATION_JSON)
+                    .bodyValue(
+                        requestByCredentialConfigurationId(
+                            proofs =
+                                CredentialRequestTO.ProofsTO(
+                                    jwtProofs =
+                                        listOf(
+                                            "proof",
+                                        ),
+                                ),
+                        ),
+                    ).accept(MediaType.APPLICATION_JSON)
                     .exchange()
                     .expectStatus()
                     .isEqualTo(HttpStatus.BAD_REQUEST)
@@ -363,7 +375,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
         runTest {
             val authentication = dPoPTokenAuthentication(clock = clock)
 
-            val proofs = ProofsTO(jwtProofs = listOf("jwt"), attestations = listOf("attestation"))
+            val proofs = CredentialRequestTO.ProofsTO(jwtProofs = listOf("jwt"), attestations = listOf("attestation"))
 
             val response =
                 client()
@@ -403,7 +415,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                     nonce,
                     3,
                 )
-            val proofs = ProofsTO(jwtProofs = listOf(proof1.serialize(), proof2.serialize()))
+            val proofs = CredentialRequestTO.ProofsTO(jwtProofs = listOf(proof1.serialize(), proof2.serialize()))
 
             val response =
                 client()
@@ -1099,6 +1111,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
 /**
  * Test cases for [WalletApi] when encryption is required.
  */
+@Suppress("SpringBootApplicationProperties")
 @TestPropertySource(
     properties = [
         "issuer.credentialResponseEncryption.required=true",
@@ -1468,7 +1481,7 @@ internal class WalletApiDeferredIssuanceResponseEncryptionOptionalTest : BaseWal
                     .let { assertNotNull(it.responseBody) }
 
             val transactionId = assertNotNull(response.transactionId)
-            val interval = assertNotNull(response.interval)
+            assertNotNull(response.interval)
 
             val getDeferredCredentialResponse =
                 client()
@@ -1486,7 +1499,7 @@ internal class WalletApiDeferredIssuanceResponseEncryptionOptionalTest : BaseWal
                     .let { assertNotNull(it.responseBody) }
 
             val defTransactionId = assertNotNull(getDeferredCredentialResponse.transactionId)
-            val defInterval = assertNotNull(getDeferredCredentialResponse.interval)
+            assertNotNull(getDeferredCredentialResponse.interval)
             assertEquals(transactionId, defTransactionId)
         }
 }
@@ -1544,7 +1557,7 @@ internal class WalletApiDeferredIssuanceResponseEncryptionRequiredTest : BaseWal
                 }
 
             val transactionId = assertNotNull(claims.getStringClaim("transaction_id"))
-            val interval = assertNotNull(claims.getLongClaim("interval"))
+            assertNotNull(claims.getLongClaim("interval"))
 
             val getDeferredCredentialResponse =
                 client()
@@ -1647,7 +1660,7 @@ private fun dPoPTokenAuthentication(
 
 private fun requestByCredentialConfigurationId(
     credentialConfigurationId: String = "eu.europa.ec.eudi.pid_mso_mdoc",
-    proofs: ProofsTO? = null,
+    proofs: CredentialRequestTO.ProofsTO? = null,
     credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
 ): CredentialRequestTO =
     CredentialRequestTO(
@@ -1657,7 +1670,7 @@ private fun requestByCredentialConfigurationId(
     )
 
 private fun requestByCredentialIdentifier(
-    proofs: ProofsTO? = null,
+    proofs: CredentialRequestTO.ProofsTO? = null,
     credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
 ): CredentialRequestTO =
     CredentialRequestTO(
@@ -1667,7 +1680,7 @@ private fun requestByCredentialIdentifier(
     )
 
 private fun requestDeferredByCredentialIdentifier(
-    proofs: ProofsTO? = null,
+    proofs: CredentialRequestTO.ProofsTO? = null,
     credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
 ): CredentialRequestTO =
     CredentialRequestTO(
@@ -1707,8 +1720,8 @@ private fun CredentialRequestTO.encrypt(encParams: CredentialRequestEncryptionSu
 private fun DeferredCredentialRequestTO.encrypt(encParams: CredentialRequestEncryptionSupportedParameters): String =
     encryptPayload(Json.encodeToString(this), encParams)
 
-private fun SignedJWT.toAttestationProofs(): ProofsTO = ProofsTO(attestations = listOf(serialize()))
+private fun SignedJWT.toAttestationProofs() = CredentialRequestTO.ProofsTO(attestations = listOf(serialize()))
 
-private fun SignedJWT.toJwtProofs(): ProofsTO = ProofsTO(jwtProofs = listOf(serialize()))
+private fun SignedJWT.toJwtProofs() = CredentialRequestTO.ProofsTO(jwtProofs = listOf(serialize()))
 
-private fun Iterable<SignedJWT>.toJwtProofs(): ProofsTO = ProofsTO(jwtProofs = map { it.serialize() })
+private fun Iterable<SignedJWT>.toJwtProofs() = CredentialRequestTO.ProofsTO(jwtProofs = map { it.serialize() })

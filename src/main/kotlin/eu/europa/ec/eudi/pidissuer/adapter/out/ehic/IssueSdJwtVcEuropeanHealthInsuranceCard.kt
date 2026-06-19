@@ -28,7 +28,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
@@ -227,7 +227,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredential: StoreIssuedCredential,
     override val keyAttestationRequirement: KeyAttestationRequirement,
-) : IssueSpecificCredential {
+) : AttestationIssuer {
     init {
         require(validity.isPositive())
     }
@@ -237,12 +237,12 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-        validatedProof: ValidatedProof,
+        proof: ValidatedProof,
     ): CredentialResponse {
         log.info("Issuing DC4EU EHIC")
 
         val now = clock.now()
-        val holderPublicKeys = validatedProof.credentialKeys.value
+        val holderPublicKeys = proof.credentialKeys.value
         val ehic = getEuropeanHealthInsuranceCardData()
         val dateOfIssuance = now
         val dateOfExpiry = dateOfIssuance + validity
@@ -270,7 +270,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                             notificationId,
                             status = null,
                             clientStatus = authorizationContext.clientStatus.status.statusList,
-                            keyStorageStatus = validatedProof.keyStorageStatus.status.statusList,
+                            keyStorageStatus = proof.keyStorageStatus.status.statusList,
                         ),
                     )
 
