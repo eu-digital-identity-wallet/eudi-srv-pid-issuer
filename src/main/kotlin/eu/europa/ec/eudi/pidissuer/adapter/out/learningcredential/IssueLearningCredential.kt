@@ -89,7 +89,7 @@ internal class IssueLearningCredential(
                                 it,
                                 issuedAt = issuedAt,
                                 expiresAt = expiresAt,
-                            ).bind()
+                            )
 
                         storeIssuedCredential(
                             IssuedCredential(

@@ -298,7 +298,7 @@ internal class IssueSdJwtVcPid(
                                 expiresAt = expiresAt,
                                 notBefore = notBefore,
                                 statusListToken,
-                            ).bind()
+                            )
 
                         storeIssuedCredential(
                             IssuedCredential(
