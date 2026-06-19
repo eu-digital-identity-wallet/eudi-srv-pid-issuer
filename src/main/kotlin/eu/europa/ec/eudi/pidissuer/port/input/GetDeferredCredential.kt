@@ -23,6 +23,7 @@ import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
 import arrow.core.raise.context.withError
 import arrow.core.raise.effect
+import arrow.core.raise.fold
 import arrow.core.raise.getOrElse
 import arrow.core.right
 import com.nimbusds.jose.EncryptionMethod
@@ -183,9 +184,18 @@ class GetDeferredCredential(
                     encryptedOrPlain.decryptIfNeeded()
                 }
             getDeferredCredential(request)
-        }.getOrElse { error ->
-            error.response()
-        }
+        }.fold(
+            transform = { it },
+            recover = { error ->
+                log.warn("Failed to get deferred credential $error")
+                error.response()
+            },
+            catch = { exception ->
+                log.error("Unexpected error while getting deferred credential", exception)
+                val description = "Unexpected runtime error ${exception.message}"
+                DeferredCredentialResponse.Failed(FailedTO(GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST, description))
+            },
+        )
 
     context(_: Raise<Error>)
     private suspend fun getDeferredCredential(request: DeferredCredentialRequestTO): DeferredCredentialResponse =

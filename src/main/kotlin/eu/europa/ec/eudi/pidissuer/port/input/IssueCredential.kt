@@ -148,11 +148,6 @@ sealed interface IssueCredentialError {
     ) : IssueCredentialError
 
     data object AttestationDatasetNotFound : IssueCredentialError
-
-    data class Unexpected(
-        val msg: String,
-        val cause: Throwable? = null,
-    ) : IssueCredentialError
 }
 
 sealed interface RequestEncryptionError {
@@ -362,7 +357,8 @@ class IssueCredential(
             },
             catch = { exception ->
                 log.error("Unexpected error while issuing credential", exception)
-                Unexpected("Unexpected runtime error", exception).toTO()
+                val description = "Unexpected runtime error ${exception.message}"
+                IssueCredentialResponse.FailedTO(CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST, description)
             },
         )
 
@@ -785,11 +781,6 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
             is InvalidClientStatus -> {
                 CredentialErrorTypeTo.CREDENTIAL_REQUEST_DENIED to
                     errorDescriptionWithErrorCauseDescription("Invalid Client Status: $msg", cause)
-            }
-
-            is Unexpected -> {
-                CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
-                    errorDescriptionWithErrorCauseDescription(msg, cause)
             }
 
             is MissingBothCredentialConfigurationIdAndCredentialIdentifier -> {

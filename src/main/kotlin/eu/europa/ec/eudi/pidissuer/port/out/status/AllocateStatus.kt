@@ -15,12 +15,12 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.status
 
+import arrow.core.getOrElse
 import arrow.core.raise.Raise
-import arrow.core.raise.context.withError
+import arrow.core.raise.either
 import eu.europa.ec.eudi.pidissuer.domain.CredentialReusePolicy
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.domain.shouldIncludeStatusList
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import kotlin.time.Instant
 
 fun interface AllocateStatus {
@@ -43,24 +43,21 @@ fun interface AllocateStatus {
     )
 }
 
-context(_: Raise<IssueCredentialError>, reusePolicy: CredentialReusePolicy)
+context(reusePolicy: CredentialReusePolicy)
 suspend fun AllocateStatus.withPolicy(
     type: String,
     expiration: Instant,
 ): StatusListToken? =
     when (reusePolicy) {
         is CredentialReusePolicy.EUDI if reusePolicy.shouldIncludeStatusList -> {
-            withError(transform = { allocationError -> allocationError.asIssueCredentialError() }) {
-                invoke(type, expiration)
-            }
+            either { invoke(type, expiration) }.getOrElse { throw it.value }
         }
 
-        CredentialReusePolicy.None,
-        is CredentialReusePolicy.EUDI,
-        -> {
+        CredentialReusePolicy.None -> {
+            null
+        }
+
+        is CredentialReusePolicy.EUDI -> {
             null
         }
     }
-
-private fun AllocateStatus.Error.asIssueCredentialError(): IssueCredentialError.Unexpected =
-    IssueCredentialError.Unexpected("Failed to allocate status list token for $type", this.value)
