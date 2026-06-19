@@ -26,6 +26,7 @@ import kotlinx.coroutines.test.runTest
 import java.net.URI
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
@@ -178,13 +179,14 @@ internal class RevokeCredentialsWithRevokedStatusTest {
             val credential1 = credential(clientStatusUri = URI.create("https://example.com/status/1"))
             val credential2 = credential(clientStatusUri = URI.create("https://example.com/status/2"))
             val revoked = mutableListOf<IssuedCredential>()
+            var markStatusAsRevokedCallCount = 0
             val useCase =
                 RevokeCredentialsWithRevokedStatus(
                     clock = clock,
                     deleteExpiredIssuedCredentials = { _ -> },
                     getNonExpiredIssuedCredentials = { _ -> listOf(credential1, credential2) },
                     getStatusListTokenStatus = { _, _ -> StatusListTokenStatus.INVALID },
-                    markStatusAsRevoked = { _ -> },
+                    markStatusAsRevoked = { markStatusAsRevokedCallCount++ },
                     deleteIssuedCredential = { credential ->
                         if (credential == credential1) throw RuntimeException("Persistence error")
                         revoked.add(credential)
@@ -193,7 +195,28 @@ internal class RevokeCredentialsWithRevokedStatusTest {
 
             useCase()
 
+            assertEquals(2, markStatusAsRevokedCallCount)
             assertEquals(listOf(credential2), revoked)
+        }
+
+    @Test
+    fun `when markStatusAsRevoked throws a runtime exception deleteIssuedCredential is not called`() =
+        runTest {
+            val credential = credential()
+            val revoked = mutableListOf<IssuedCredential>()
+            val useCase =
+                RevokeCredentialsWithRevokedStatus(
+                    clock = clock,
+                    deleteExpiredIssuedCredentials = { _ -> },
+                    getNonExpiredIssuedCredentials = { _ -> listOf(credential) },
+                    getStatusListTokenStatus = { _, _ -> StatusListTokenStatus.INVALID },
+                    markStatusAsRevoked = { throw RuntimeException("External service unavailable") },
+                    deleteIssuedCredential = { revoked.add(it) },
+                )
+
+            useCase()
+
+            assertTrue(revoked.isEmpty())
         }
 
     @Test
@@ -214,6 +237,59 @@ internal class RevokeCredentialsWithRevokedStatusTest {
             useCase()
 
             assertTrue(revoked.isEmpty())
+        }
+
+    @Test
+    fun `deleteExpiredIssuedCredentials failure propagates and prevents revocation processing`() =
+        runTest {
+            val useCase =
+                RevokeCredentialsWithRevokedStatus(
+                    clock = clock,
+                    deleteExpiredIssuedCredentials = { _ -> throw RuntimeException("DB error") },
+                    getNonExpiredIssuedCredentials = { _ -> emptyList() },
+                    getStatusListTokenStatus = { _, _ -> StatusListTokenStatus.VALID },
+                    markStatusAsRevoked = { _ -> },
+                    deleteIssuedCredential = { },
+                )
+
+            assertTrue(
+                runCatching { useCase() }.exceptionOrNull()?.message == "DB error",
+            )
+        }
+
+    @Test
+    fun `credential with null issuer status is revoked without calling markStatusAsRevoked`() =
+        runTest {
+            var markStatusAsRevokedCalled = false
+            val credential =
+                IssuedCredential(
+                    format = Format("vc+sd-jwt"),
+                    type = "eu.europa.ec.eudi.pid.1",
+                    issuedAt = clock.now(),
+                    expiresAt = clock.now() + 24.hours,
+                    status = null,
+                    clientStatus =
+                        StatusListToken(
+                            statusList = URI.create("https://example.com/status"),
+                            index = 0u,
+                        ),
+                    keyStorageStatus = null,
+                )
+            val revoked = mutableListOf<IssuedCredential>()
+            val useCase =
+                RevokeCredentialsWithRevokedStatus(
+                    clock = clock,
+                    deleteExpiredIssuedCredentials = { _ -> },
+                    getNonExpiredIssuedCredentials = { _ -> listOf(credential) },
+                    getStatusListTokenStatus = { _, _ -> StatusListTokenStatus.INVALID },
+                    markStatusAsRevoked = { markStatusAsRevokedCalled = true },
+                    deleteIssuedCredential = { revoked.add(it) },
+                )
+
+            useCase()
+
+            assertFalse(markStatusAsRevokedCalled)
+            assertEquals(listOf(credential), revoked)
         }
 
     @Test

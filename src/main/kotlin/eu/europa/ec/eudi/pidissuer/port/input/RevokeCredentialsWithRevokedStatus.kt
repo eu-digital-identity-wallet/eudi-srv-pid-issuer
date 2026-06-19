@@ -132,9 +132,10 @@ class RevokeCredentialsWithRevokedStatus(
         error: GetStatusListTokenStatus.Error,
     ) {
         log.warn(
-            "Failed to check {} for credential with status list '{}",
+            "Failed to check {} for credential with status list '{}' at index {}",
             statusName,
             statusListToken.statusList,
+            statusListToken.index,
             error.value,
         )
     }
