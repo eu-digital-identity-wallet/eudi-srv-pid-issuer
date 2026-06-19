@@ -17,7 +17,7 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptySet
 import arrow.core.raise.Raise
-import arrow.core.raise.ensure
+import arrow.core.raise.context.ensure
 
 //
 // Credential MetaData
@@ -92,7 +92,8 @@ data class MsoMdocCredentialRequest(
     override val format: Format = MSO_MDOC_FORMAT
 }
 
-internal fun Raise<String>.validate(
+context(_: Raise<String>)
+internal fun validate(
     msoMdocCredentialRequest: MsoMdocCredentialRequest,
     meta: MsoMdocCredentialConfiguration,
 ) {

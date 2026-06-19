@@ -473,19 +473,19 @@ private class Services(
         resolvedCredentialRequest: ResolvedCredentialRequest,
     ): CredentialResponse {
         val issueSpecificCredential = specificIssuerFor(authorizationContext, resolvedCredentialRequest)
-        val validatedProof =
+        val (_, credentialRequest, credentialIdentifier) = resolvedCredentialRequest
+        val validatedProof = issueSpecificCredential.validateProof(credentialRequest)
+        return issueSpecificCredential(authorizationContext, credentialRequest, credentialIdentifier, validatedProof)
+    }
+
+    context(_: Raise<IssueCredentialError>)
+    private suspend fun IssueSpecificCredential.validateProof(credentialRequest: CredentialRequest): ValidatedProof =
+        context(supportedCredential) {
             validateProof(
-                resolvedCredentialRequest.credentialRequest.unvalidatedProof,
-                issueSpecificCredential.supportedCredential,
+                credentialRequest.unvalidatedProof,
                 clock.now(),
             )
-        return issueSpecificCredential(
-            authorizationContext,
-            resolvedCredentialRequest.credentialRequest,
-            resolvedCredentialRequest.credentialIdentifier,
-            validatedProof,
-        )
-    }
+        }
 
     context(_: Raise<IssueCredentialError>)
     private fun specificIssuerFor(

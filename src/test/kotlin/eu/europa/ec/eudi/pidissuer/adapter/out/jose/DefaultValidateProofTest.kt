@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
+import arrow.core.getOrElse
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
 import com.nimbusds.jose.JWSAlgorithm
@@ -119,15 +120,9 @@ class DefaultValidateProofTest {
                 credentialReusePolicy = policy,
             )
 
-        val result =
-            either {
-                validator(
-                    unvalidatedProof,
-                    configuration,
-                    clock.now(),
-                )
-            }
-        return result.fold({ fail("Expected success but got $it") }, { it })
+        return context(configuration) {
+            either { validator(unvalidatedProof, clock.now()) } getOrElse { fail("Expected success but got $it") }
+        }
     }
 
     private suspend fun generateJwtProofWithAttestation(extraKeysNo: Int = 0): Pair<UnvalidatedProof.Jwt, ECKey> {

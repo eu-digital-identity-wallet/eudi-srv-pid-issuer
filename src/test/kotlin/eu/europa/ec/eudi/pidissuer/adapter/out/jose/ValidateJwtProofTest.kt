@@ -15,11 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.NonEmptyList
-import arrow.core.nonEmptySetOf
+import arrow.core.*
 import arrow.core.raise.either
-import arrow.core.toNonEmptyListOrNull
-import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -66,16 +63,11 @@ internal class ValidateJwtProofTest {
                     type(JOSEObjectType.JWT)
                     jwk(key.toPublicJWK())
                 }
-            val result =
-                either {
-                    validateJwtProof(
-                        UnvalidatedProof.Jwt(signedJwt.serialize()),
-                        credentialConfiguration,
-                        clock.now(),
-                    )
+            context(credentialConfiguration) {
+                either { validateJwtProof(UnvalidatedProof.Jwt(signedJwt.serialize()), clock.now()) }.swap().getOrElse {
+                    fail("Expected failure but got $it")
                 }
-
-            assert(result.isLeft())
+            }
         }
 
     @Test
@@ -83,17 +75,11 @@ internal class ValidateJwtProofTest {
         runTest {
             val key = loadKey()
             val signedJwt = generateSignedJwt(key, "nonce")
-
-            val result =
-                either {
-                    validateJwtProof(
-                        UnvalidatedProof.Jwt(signedJwt.serialize()),
-                        credentialConfiguration,
-                        clock.now(),
-                    )
+            context(credentialConfiguration) {
+                either { validateJwtProof(UnvalidatedProof.Jwt(signedJwt.serialize()), clock.now()) }.swap() getOrElse {
+                    fail("Expected failure but got $it")
                 }
-
-            assert(result.isLeft())
+            }
         }
 
     @Test
@@ -107,16 +93,11 @@ internal class ValidateJwtProofTest {
                     x509CertChain(chain.map { Base64.encode(it.encoded) })
                 }
 
-            val result =
-                either {
-                    validateJwtProof(
-                        UnvalidatedProof.Jwt(signedJwt.serialize()),
-                        credentialConfiguration,
-                        clock.now(),
-                    )
-                }
-
-            assertTrue { result.isLeft() }
+            context(credentialConfiguration) {
+                either { validateJwtProof(UnvalidatedProof.Jwt(signedJwt.serialize()), clock.now()) }
+                    .swap()
+                    .getOrElse { fail("Expected failure but got $it") }
+            }
         }
 
     @Test
@@ -129,16 +110,11 @@ internal class ValidateJwtProofTest {
                     jwk(incorrectKey.toPublicJWK())
                 }
 
-            val result =
-                either {
-                    validateJwtProof(
-                        UnvalidatedProof.Jwt(signedJwt.serialize()),
-                        credentialConfiguration,
-                        clock.now(),
-                    )
-                }
-
-            assertTrue { result.isLeft() }
+            context(credentialConfiguration) {
+                either { validateJwtProof(UnvalidatedProof.Jwt(signedJwt.serialize()), clock.now()) }
+                    .swap()
+                    .getOrElse { fail("Expected failure but got $it") }
+            }
         }
 
     @Test
@@ -151,16 +127,11 @@ internal class ValidateJwtProofTest {
                     x509CertChain(incorrectKey.toPublicJWK().x509CertChain)
                 }
 
-            val result =
-                either {
-                    validateJwtProof(
-                        UnvalidatedProof.Jwt(signedJwt.serialize()),
-                        credentialConfiguration,
-                        clock.now(),
-                    )
-                }
-
-            assertTrue { result.isLeft() }
+            context(credentialConfiguration) {
+                either { validateJwtProof(UnvalidatedProof.Jwt(signedJwt.serialize()), clock.now()) }
+                    .swap()
+                    .getOrElse { fail("Expected failure but got $it") }
+            }
         }
 
     @Test
@@ -172,16 +143,11 @@ internal class ValidateJwtProofTest {
                 generateSignedJwt(key, "nonce") {
                     keyID("did:jwk:${Base64URL.encode(incorrectKey.toPublicJWK().toJSONString())}#0")
                 }
-            val result =
-                either {
-                    validateJwtProof(
-                        UnvalidatedProof.Jwt(signedJwt.serialize()),
-                        credentialConfiguration,
-                        clock.now(),
-                    )
-                }
-
-            assertTrue { result.isLeft() }
+            context(credentialConfiguration) {
+                either { validateJwtProof(UnvalidatedProof.Jwt(signedJwt.serialize()), clock.now()) }
+                    .swap()
+                    .getOrElse { fail("Expected failure but got $it") }
+            }
         }
 
     @Test
@@ -192,20 +158,19 @@ internal class ValidateJwtProofTest {
                 generateSignedJwt(key, "nonce") {
                     jwk(key.toPublicJWK())
                 }
-            val result =
-                either {
-                    validateJwtProof(
-                        UnvalidatedProof.Jwt(signedJwt.serialize()),
-                        mobileDrivingLicenceV1(
-                            CoseAlgorithm(-7),
-                            nonEmptySetOf(JWSAlgorithm.ES512),
-                            KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(60.days)),
-                        ),
-                        clock.now(),
-                    )
-                }
 
-            assertTrue { result.isLeft() }
+            val credentialConfiguration =
+                mobileDrivingLicenceV1(
+                    CoseAlgorithm(-7),
+                    nonEmptySetOf(JWSAlgorithm.ES512),
+                    KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(60.days)),
+                )
+
+            context(credentialConfiguration) {
+                either { validateJwtProof(UnvalidatedProof.Jwt(signedJwt.serialize()), clock.now()) }
+                    .swap()
+                    .getOrElse { fail("Expected failure but got $it") }
+            }
         }
 
     private fun generateSignedJwt(

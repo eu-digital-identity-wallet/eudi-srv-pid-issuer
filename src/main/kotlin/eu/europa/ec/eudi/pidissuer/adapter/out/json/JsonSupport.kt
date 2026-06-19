@@ -28,13 +28,3 @@ internal val jsonSupport =
         prettyPrint = false
         ignoreUnknownKeys = true
     }
-
-internal inline fun <reified T> JsonElement.decodeAs(deserializer: DeserializationStrategy<T> = serializer()): Either<Throwable, T> =
-    Either.catch {
-        jsonSupport.decodeFromJsonElement(deserializer, this)
-    }
-
-internal fun Map<String, Any?>.toJsonObject(): JsonObject {
-    val jsonString = JSONObjectUtils.toJSONString(this)
-    return jsonSupport.decodeFromString(jsonString)
-}

@@ -17,7 +17,7 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptySet
 import arrow.core.raise.Raise
-import arrow.core.raise.ensure
+import arrow.core.raise.context.ensure
 import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 
@@ -70,7 +70,8 @@ data class SdJwtVcCredentialRequest(
     override val format: Format = SD_JWT_VC_FORMAT
 }
 
-internal fun Raise<String>.validate(
+context(_: Raise<String>)
+internal fun validate(
     sdJwtVcCredentialRequest: SdJwtVcCredentialRequest,
     meta: SdJwtVcCredentialConfiguration,
 ) {

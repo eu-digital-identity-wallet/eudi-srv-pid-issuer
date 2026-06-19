@@ -143,7 +143,8 @@ sealed interface CredentialRequest {
     val credentialResponseEncryption: RequestedResponseEncryption
 }
 
-fun Raise<String>.assertIsSupported(
+context(_: Raise<String>)
+fun assertIsSupported(
     credentialRequest: CredentialRequest,
     meta: CredentialConfiguration,
 ) {

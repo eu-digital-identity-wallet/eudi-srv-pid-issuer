@@ -49,10 +49,9 @@ internal class ValidateJwtProof(
     private val credentialIssuerId: CredentialIssuerId,
     private val verifyKeyAttestation: VerifyKeyAttestation,
 ) {
-    context(_: Raise<IssueCredentialError.InvalidProof>)
+    context(_: Raise<IssueCredentialError.InvalidProof>, credentialConfiguration: CredentialConfiguration,)
     suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof.Jwt,
-        credentialConfiguration: CredentialConfiguration,
         at: Instant,
     ): ValidatedProof =
         effect {
@@ -60,7 +59,10 @@ internal class ValidateJwtProof(
             ensureNotNull(proofType) {
                 "credential configuration '${credentialConfiguration.id.value}' doesn't support 'jwt' proofs"
             }
-            check(proofType is ProofType.Jwt)
+            check(proofType is ProofType.Jwt) {
+                // That's a runtime exception. Not an expected error
+                "Cannot happen"
+            }
             validatedProof(unvalidatedProof, proofType, at)
         }.fold(
             transform = { it },

@@ -28,10 +28,9 @@ import kotlin.time.Instant
 internal class ValidateAttestationProof(
     private val verifyKeyAttestation: VerifyKeyAttestation,
 ) {
-    context(_: Raise<IssueCredentialError.InvalidProof>)
+    context(_: Raise<IssueCredentialError.InvalidProof>, credentialConfiguration: CredentialConfiguration,)
     suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof.Attestation,
-        credentialConfiguration: CredentialConfiguration,
         at: Instant,
     ): ValidatedProof =
         effect {
