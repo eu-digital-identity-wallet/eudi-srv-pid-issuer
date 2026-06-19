@@ -354,10 +354,17 @@ class IssueCredential(
                     plainOrEncrypted.decryptIfNeeded()
                 }
             issueCredential(authorizationContext, request)
-        }.getOrElse { error ->
-            log.warn("Failed to issue credential $error")
-            error.response()
-        }
+        }.fold(
+            transform = { it },
+            recover = { error ->
+                log.warn("Failed to issue credential $error")
+                error.response()
+            },
+            catch = { exception ->
+                log.error("Unexpected error while issuing credential", exception)
+                Unexpected("Unexpected runtime error", exception).toTO()
+            },
+        )
 
     context(_: Raise<IssError>)
     private suspend fun issueCredential(
@@ -408,7 +415,7 @@ private class Services(
     private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
     private val validateProof: ValidateProof,
     private val clock: Clock,
-) : Validations {
+) {
     context(_: Raise<IssueCredentialError>)
     suspend fun issueCredential(
         authorizationContext: AuthorizationContext,
@@ -482,7 +489,7 @@ private class Services(
             resolvedCredentialRequest.credentialRequest,
             resolvedCredentialRequest.credentialIdentifier,
             validatedProof,
-        ).fold(ifLeft = { raise(it) }, ifRight = { it })
+        )
     }
 
     context(_: Raise<IssueCredentialError>)
@@ -547,165 +554,137 @@ private sealed interface UnresolvedCredentialRequest {
     ) : UnresolvedCredentialRequest
 }
 
-private val BatchCredentialIssuance.maxProofsSupported: Int
-    get() =
-        when (this) {
-            BatchCredentialIssuance.NotSupported -> 1
-            is BatchCredentialIssuance.Supported -> batchSize
+/**
+ * Tries to convert a [CredentialRequestTO] to a [CredentialRequest].
+ */
+context(_: Raise<IssueCredentialError>)
+private suspend fun CredentialRequestTO.toDomain(
+    supportedEncryption: CredentialResponseEncryption,
+    supportedBatchIssuance: BatchCredentialIssuance,
+    supportedCredentialConfigurations: List<CredentialConfiguration>,
+): UnresolvedCredentialRequest {
+    if (supportedBatchIssuance is BatchCredentialIssuance.NotSupported) {
+        ensure(proofs == null) {
+            InvalidProof("Credential Endpoint does not support Batch Issuance")
         }
-
-private interface Validations {
-    /**
-     * Tries to convert a [CredentialRequestTO] to a [CredentialRequest].
-     */
-    context(_: Raise<IssueCredentialError>)
-    suspend fun CredentialRequestTO.toDomain(
-        supportedEncryption: CredentialResponseEncryption,
-        supportedBatchIssuance: BatchCredentialIssuance,
-        supportedCredentialConfigurations: List<CredentialConfiguration>,
-    ): UnresolvedCredentialRequest {
-        if (supportedBatchIssuance is BatchCredentialIssuance.NotSupported) {
-            ensure(proofs == null) {
-                InvalidProof("Credential Endpoint does not support Batch Issuance")
-            }
-        }
-
-        val proof =
-            when {
-                proofs != null -> {
-                    val jwtProofs = proofs.jwtProofs?.map { UnvalidatedProof.Jwt(it) }
-                    val attestations = proofs.attestations?.map { UnvalidatedProof.Attestation(it) }
-                    // Proof object contains exactly one parameter named as the proof type
-                    ensure(1 == listOfNotNull(jwtProofs, attestations).size) {
-                        InvalidProof("Only a single proof type is allowed")
-                    }
-
-                    val proofs = (jwtProofs.orEmpty() + attestations.orEmpty()).toNonEmptyListOrNull()
-                    ensureNotNull(proofs) { MissingProof }
-                    ensure(proofs.size == 1) {
-                        InvalidProof("You can provide at most 1 proof")
-                    }
-                    proofs.first()
-                }
-
-                else -> {
-                    raise(MissingProof)
-                }
-            }
-
-        val credentialResponseEncryption =
-            credentialResponseEncryption?.toDomain() ?: RequestedResponseEncryption.NotRequired
-        credentialResponseEncryption.ensureIsSupported(supportedEncryption)
-
-        fun credentialRequestByCredentialConfigurationId(
-            credentialConfigurationId: CredentialConfigurationId,
-        ): UnresolvedCredentialRequest.ByCredentialConfigurationId =
-            supportedCredentialConfigurations
-                .firstOrNull { credentialConfigurationId == it.id }
-                ?.let { credentialConfiguration ->
-                    val credentialRequest =
-                        when (credentialConfiguration) {
-                            is MsoMdocCredentialConfiguration -> {
-                                credentialConfiguration.credentialRequest(proof, credentialResponseEncryption)
-                            }
-
-                            is SdJwtVcCredentialConfiguration -> {
-                                credentialConfiguration.credentialRequest(proof, credentialResponseEncryption)
-                            }
-
-                            is JwtVcJsonCredentialConfiguration -> {
-                                raise(UnsupportedCredentialType(format = JWT_VS_JSON_FORMAT))
-                            }
-                        }
-                    UnresolvedCredentialRequest.ByCredentialConfigurationId(
-                        credentialConfigurationId,
-                        credentialRequest,
-                    )
-                } ?: raise(UnsupportedCredentialConfigurationId(credentialConfigurationId))
-
-        fun credentialRequestByCredentialIdentifier(credentialIdentifier: String): UnresolvedCredentialRequest.ByCredentialIdentifier =
-            UnresolvedCredentialRequest.ByCredentialIdentifier(
-                CredentialIdentifier(credentialIdentifier),
-                proof,
-                credentialResponseEncryption,
-            )
-
-        val credentialConfigurationIdOrCredentialIdentifier =
-            Ior.fromNullables(
-                credentialConfigurationId,
-                credentialIdentifier,
-            ) ?: raise(MissingBothCredentialConfigurationIdAndCredentialIdentifier)
-        return credentialConfigurationIdOrCredentialIdentifier.fold(
-            {
-                val credentialConfigurationId = CredentialConfigurationId(it)
-                credentialRequestByCredentialConfigurationId(credentialConfigurationId)
-            },
-            { credentialIdentifier -> credentialRequestByCredentialIdentifier(credentialIdentifier) },
-            { _, _ -> raise(BothCredentialConfigurationIdAndCredentialIdentifierProvided) },
-        )
     }
 
-    /**
-     * Gets the [RequestedResponseEncryption] that corresponds to the provided values.
-     */
-    context(_: Raise<IssueCredentialError.InvalidEncryptionParameters>)
-    suspend fun CredentialResponseEncryptionTO.toDomain(): RequestedResponseEncryption.Required =
-        withContext(Dispatchers.Default) {
-            val encryptionKey =
-                catch({ JWK.parse(Json.encodeToString(key)) }) {
-                    raise(InvalidEncryptionParameters("Failed to parse JWK", it))
+    val proof =
+        when {
+            proofs != null -> {
+                val jwtProofs = proofs.jwtProofs?.map { UnvalidatedProof.Jwt(it) }
+                val attestations = proofs.attestations?.map { UnvalidatedProof.Attestation(it) }
+                // Proof object contains exactly one parameter named as the proof type
+                ensure(1 == listOfNotNull(jwtProofs, attestations).size) {
+                    InvalidProof("Only a single proof type is allowed")
                 }
-            val encryptionMethod =
-                catch({ EncryptionMethod.parse(method) }) {
-                    raise(InvalidEncryptionParameters("Failed to parse encryption method", it))
+
+                val proofs = (jwtProofs.orEmpty() + attestations.orEmpty()).toNonEmptyListOrNull()
+                ensureNotNull(proofs) { MissingProof }
+                ensure(proofs.size == 1) {
+                    InvalidProof("You can provide at most 1 proof")
                 }
-            withError({ InvalidEncryptionParameters(it, null) }) {
-                RequestedResponseEncryption
-                    .Required(
-                        encryptionKey,
-                        encryptionMethod,
-                        zipAlgorithm,
-                    )
+                proofs.first()
+            }
+
+            else -> {
+                raise(MissingProof)
             }
         }
 
-    /**
-     * Verifies this [RequestedResponseEncryption] is supported by the provided [CredentialResponseEncryption], otherwise
-     * raises an [InvalidEncryptionParameters].
-     */
-    context(_: Raise<InvalidEncryptionParameters>)
-    fun RequestedResponseEncryption.ensureIsSupported(supported: CredentialResponseEncryption) {
-        when (supported) {
-            is CredentialResponseEncryption.NotSupported -> {
-                ensure(this !is RequestedResponseEncryption.Required) {
-                    // credential response encryption not supported by issuer but required by client
-                    InvalidEncryptionParameters("credential response encryption is not supported", null)
-                }
-            }
+    val credentialResponseEncryption =
+        credentialResponseEncryption?.toDomain() ?: RequestedResponseEncryption.NotRequired
+    credentialResponseEncryption.ensureIsSupported(supportedEncryption)
 
-            is CredentialResponseEncryption.Optional -> {
-                if (this is RequestedResponseEncryption.Required) {
-                    // credential response encryption supported by issuer and required by client
-                    // ensure provided parameters are supported
-                    ensure(this.encryptionAlgorithm in supported.parameters.algorithmsSupported) {
-                        InvalidEncryptionParameters(
-                            "jwe encryption algorithm '${this.encryptionAlgorithm.name}' is not supported",
-                        )
+    fun credentialRequestByCredentialConfigurationId(
+        credentialConfigurationId: CredentialConfigurationId,
+    ): UnresolvedCredentialRequest.ByCredentialConfigurationId =
+        supportedCredentialConfigurations
+            .firstOrNull { credentialConfigurationId == it.id }
+            ?.let { credentialConfiguration ->
+                val credentialRequest =
+                    when (credentialConfiguration) {
+                        is MsoMdocCredentialConfiguration -> {
+                            credentialConfiguration.credentialRequest(proof, credentialResponseEncryption)
+                        }
+
+                        is SdJwtVcCredentialConfiguration -> {
+                            credentialConfiguration.credentialRequest(proof, credentialResponseEncryption)
+                        }
+
+                        is JwtVcJsonCredentialConfiguration -> {
+                            raise(UnsupportedCredentialType(format = JWT_VS_JSON_FORMAT))
+                        }
                     }
-                    ensure(this.encryptionMethod in supported.parameters.methodsSupported) {
-                        InvalidEncryptionParameters(
-                            "jwe encryption method '${this.encryptionMethod.name}' is not supported",
-                        )
-                    }
-                }
+                UnresolvedCredentialRequest.ByCredentialConfigurationId(
+                    credentialConfigurationId,
+                    credentialRequest,
+                )
+            } ?: raise(UnsupportedCredentialConfigurationId(credentialConfigurationId))
+
+    fun credentialRequestByCredentialIdentifier(credentialIdentifier: String): UnresolvedCredentialRequest.ByCredentialIdentifier =
+        UnresolvedCredentialRequest.ByCredentialIdentifier(
+            CredentialIdentifier(credentialIdentifier),
+            proof,
+            credentialResponseEncryption,
+        )
+
+    val credentialConfigurationIdOrCredentialIdentifier =
+        Ior.fromNullables(
+            credentialConfigurationId,
+            credentialIdentifier,
+        ) ?: raise(MissingBothCredentialConfigurationIdAndCredentialIdentifier)
+    return credentialConfigurationIdOrCredentialIdentifier.fold(
+        {
+            val credentialConfigurationId = CredentialConfigurationId(it)
+            credentialRequestByCredentialConfigurationId(credentialConfigurationId)
+        },
+        { credentialIdentifier -> credentialRequestByCredentialIdentifier(credentialIdentifier) },
+        { _, _ -> raise(BothCredentialConfigurationIdAndCredentialIdentifierProvided) },
+    )
+}
+
+/**
+ * Gets the [RequestedResponseEncryption] that corresponds to the provided values.
+ */
+context(_: Raise<IssueCredentialError.InvalidEncryptionParameters>)
+private suspend fun CredentialResponseEncryptionTO.toDomain(): RequestedResponseEncryption.Required =
+    withContext(Dispatchers.Default) {
+        val encryptionKey =
+            catch({ JWK.parse(Json.encodeToString(key)) }) {
+                raise(InvalidEncryptionParameters("Failed to parse JWK", it))
             }
+        val encryptionMethod =
+            catch({ EncryptionMethod.parse(method) }) {
+                raise(InvalidEncryptionParameters("Failed to parse encryption method", it))
+            }
+        withError({ InvalidEncryptionParameters(it, null) }) {
+            RequestedResponseEncryption
+                .Required(
+                    encryptionKey,
+                    encryptionMethod,
+                    zipAlgorithm,
+                )
+        }
+    }
 
-            is CredentialResponseEncryption.Required -> {
-                ensure(this is RequestedResponseEncryption.Required) {
-                    // credential response encryption required by issuer but not required by client
-                    InvalidEncryptionParameters("credential response encryption is required")
-                }
+/**
+ * Verifies this [RequestedResponseEncryption] is supported by the provided [CredentialResponseEncryption], otherwise
+ * raises an [InvalidEncryptionParameters].
+ */
+context(_: Raise<InvalidEncryptionParameters>)
+private fun RequestedResponseEncryption.ensureIsSupported(supported: CredentialResponseEncryption) {
+    when (supported) {
+        is CredentialResponseEncryption.NotSupported -> {
+            ensure(this !is RequestedResponseEncryption.Required) {
+                // credential response encryption not supported by issuer but required by client
+                InvalidEncryptionParameters("credential response encryption is not supported", null)
+            }
+        }
 
+        is CredentialResponseEncryption.Optional -> {
+            if (this is RequestedResponseEncryption.Required) {
+                // credential response encryption supported by issuer and required by client
                 // ensure provided parameters are supported
                 ensure(this.encryptionAlgorithm in supported.parameters.algorithmsSupported) {
                     InvalidEncryptionParameters(
@@ -717,6 +696,25 @@ private interface Validations {
                         "jwe encryption method '${this.encryptionMethod.name}' is not supported",
                     )
                 }
+            }
+        }
+
+        is CredentialResponseEncryption.Required -> {
+            ensure(this is RequestedResponseEncryption.Required) {
+                // credential response encryption required by issuer but not required by client
+                InvalidEncryptionParameters("credential response encryption is required")
+            }
+
+            // ensure provided parameters are supported
+            ensure(this.encryptionAlgorithm in supported.parameters.algorithmsSupported) {
+                InvalidEncryptionParameters(
+                    "jwe encryption algorithm '${this.encryptionAlgorithm.name}' is not supported",
+                )
+            }
+            ensure(this.encryptionMethod in supported.parameters.methodsSupported) {
+                InvalidEncryptionParameters(
+                    "jwe encryption method '${this.encryptionMethod.name}' is not supported",
+                )
             }
         }
     }

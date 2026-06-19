@@ -15,16 +15,12 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.ehic
 
-import arrow.core.Either
-import arrow.core.raise.catch
-import arrow.core.raise.either
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.sdJwtVcIssuer
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.Username
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps.asJwsJsonObject
@@ -47,7 +43,7 @@ sealed interface EncodeEuropeanHealthInsuranceCardInSdJwtVc {
         holderPublicKey: JWK,
         dateOfIssuance: Instant,
         dateOfExpiry: Instant,
-    ): Either<IssueCredentialError, JsonElement>
+    ): JsonElement
 
     companion object {
         fun jwsJsonFlattened(
@@ -92,15 +88,11 @@ private class JwsJsonFlattenedEncoder(
         holderPublicKey: JWK,
         dateOfIssuance: Instant,
         dateOfExpiry: Instant,
-    ): Either<IssueCredentialError, JsonElement> =
-        either {
-            val sdJwt =
-                catch({
-                    issuer.createSdJwt(vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
-                }) { raise(IssueCredentialError.Unexpected("Unable to create SD-JWT VC", it)) }
-
-            sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)
-        }
+    ): JsonElement {
+        val sdJwt =
+            issuer.createSdJwt(vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
+        return sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)
+    }
 }
 
 private class CompactEncoder(
@@ -117,15 +109,11 @@ private class CompactEncoder(
         holderPublicKey: JWK,
         dateOfIssuance: Instant,
         dateOfExpiry: Instant,
-    ): Either<IssueCredentialError, JsonElement> =
-        either {
-            val sdJwt =
-                catch({
-                    issuer.createSdJwt(vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
-                }) { raise(IssueCredentialError.Unexpected("Unable to create SD-JWT VC", it)) }
-
-            JsonPrimitive(sdJwt.serialize())
-        }
+    ): JsonElement {
+        val sdJwt =
+            issuer.createSdJwt(vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
+        return JsonPrimitive(sdJwt.serialize())
+    }
 }
 
 private fun sdJwt(
@@ -148,7 +136,10 @@ private fun sdJwt(
         cnf(holderPublicKey)
         claim(RFC7519.EXPIRATION_TIME, dateOfExpiry.epochSeconds)
         claim(RFC7519.NOT_BEFORE, dateOfIssuance.epochSeconds)
-        sdClaim(EuropeanHealthInsuranceCardClaims.PersonalAdministrativeNumber.name, ehic.personalAdministrativeNumber.value)
+        sdClaim(
+            EuropeanHealthInsuranceCardClaims.PersonalAdministrativeNumber.name,
+            ehic.personalAdministrativeNumber.value,
+        )
         claim(EuropeanHealthInsuranceCardClaims.IssuingCountry.name, ehic.issuingCountry.value)
         objClaim(EuropeanHealthInsuranceCardClaims.IssuingAuthority.attribute.name) {
             claim(EuropeanHealthInsuranceCardClaims.IssuingAuthority.Id.name, ehic.issuingAuthority.id.value)
@@ -167,10 +158,16 @@ private fun sdJwt(
             claim(EuropeanHealthInsuranceCardClaims.AuthenticSource.Name.name, ehic.authenticSource.name.value)
         }
         ehic.endingDate?.let {
-            claim(EuropeanHealthInsuranceCardClaims.EndingDate.name, formatter.format(it.withZoneSameInstant(ZoneOffset.UTC)))
+            claim(
+                EuropeanHealthInsuranceCardClaims.EndingDate.name,
+                formatter.format(it.withZoneSameInstant(ZoneOffset.UTC)),
+            )
         }
         ehic.startingDate?.let {
-            claim(EuropeanHealthInsuranceCardClaims.StartingDate.name, formatter.format(it.withZoneSameInstant(ZoneOffset.UTC)))
+            claim(
+                EuropeanHealthInsuranceCardClaims.StartingDate.name,
+                formatter.format(it.withZoneSameInstant(ZoneOffset.UTC)),
+            )
         }
         sdClaim(EuropeanHealthInsuranceCardClaims.DocumentNumber.name, ehic.documentNumber.value)
     }

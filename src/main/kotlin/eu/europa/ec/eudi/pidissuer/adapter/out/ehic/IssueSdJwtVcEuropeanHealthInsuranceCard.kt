@@ -15,11 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.ehic
 
-import arrow.core.Either
 import arrow.core.NonEmptySet
 import arrow.core.nonEmptySetOf
-import arrow.core.raise.either
-import arrow.core.raise.ensureNotNull
+import arrow.core.raise.Raise
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
@@ -234,62 +232,61 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
         require(validity.isPositive())
     }
 
+    context(_: Raise<IssueCredentialError>)
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
         validatedProof: ValidatedProof,
-    ): Either<IssueCredentialError, CredentialResponse> =
-        either {
-            log.info("Issuing DC4EU EHIC")
+    ): CredentialResponse {
+        log.info("Issuing DC4EU EHIC")
 
-            val now = clock.now()
-            val holderPublicKeys = validatedProof.credentialKeys.value
-            val ehic = getEuropeanHealthInsuranceCardData()
-            val dateOfIssuance = now
-            val dateOfExpiry = dateOfIssuance + validity
+        val now = clock.now()
+        val holderPublicKeys = validatedProof.credentialKeys.value
+        val ehic = getEuropeanHealthInsuranceCardData()
+        val dateOfIssuance = now
+        val dateOfExpiry = dateOfIssuance + validity
 
-            val notificationId = if (notificationsEnabled) generateNotificationId() else null
+        val notificationId = if (notificationsEnabled) generateNotificationId() else null
 
-            val issuedCredentials =
-                holderPublicKeys
-                    .parMap(Dispatchers.Default, 4) {
-                        val encodedCredential =
-                            encode(
-                                ehic,
-                                authorizationContext.username,
-                                it,
-                                dateOfIssuance = dateOfIssuance,
-                                dateOfExpiry = dateOfExpiry,
-                            ).bind()
-
-                        storeIssuedCredential(
-                            IssuedCredential(
-                                SD_JWT_VC_FORMAT,
-                                EuropeanHealthInsuranceCardVct.value,
-                                clock.now(),
-                                dateOfExpiry,
-                                notificationId,
-                                status = null,
-                                clientStatus = authorizationContext.clientStatus.status.statusList,
-                                keyStorageStatus = validatedProof.keyStorageStatus.status.statusList,
-                            ),
+        val issuedCredentials =
+            holderPublicKeys
+                .parMap(Dispatchers.Default, 4) {
+                    val encodedCredential =
+                        encode(
+                            ehic,
+                            authorizationContext.username,
+                            it,
+                            dateOfIssuance = dateOfIssuance,
+                            dateOfExpiry = dateOfExpiry,
                         )
 
-                        encodedCredential
-                    }.toNonEmptyListOrNull()
+                    storeIssuedCredential(
+                        IssuedCredential(
+                            SD_JWT_VC_FORMAT,
+                            EuropeanHealthInsuranceCardVct.value,
+                            clock.now(),
+                            dateOfExpiry,
+                            notificationId,
+                            status = null,
+                            clientStatus = authorizationContext.clientStatus.status.statusList,
+                            keyStorageStatus = validatedProof.keyStorageStatus.status.statusList,
+                        ),
+                    )
 
-            ensureNotNull(issuedCredentials) {
-                IssueCredentialError.Unexpected("Unable to issue DC4EU EHIC")
+                    encodedCredential
+                }.toNonEmptyListOrNull()
+
+        // That's a runtime error, not a business error
+        checkNotNull(issuedCredentials) { "Cannot happen" }
+
+        return CredentialResponse
+            .Issued(issuedCredentials, notificationId)
+            .also {
+                log.info("Successfully issued DC4EU EHIC")
+                log.debug("Issued DC4EU EHIC data {}", it)
             }
-
-            CredentialResponse
-                .Issued(issuedCredentials, notificationId)
-                .also {
-                    log.info("Successfully issued DC4EU EHIC")
-                    log.debug("Issued DC4EU EHIC data {}", it)
-                }
-        }
+    }
 
     companion object {
         fun jwsJsonFlattened(

@@ -16,10 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.*
-import arrow.core.raise.either
-import arrow.core.raise.ensure
-import arrow.core.raise.ensureNotNull
-import arrow.core.raise.withError
+import arrow.core.raise.Raise
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
@@ -29,12 +26,11 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
-import eu.europa.ec.eudi.pidissuer.port.out.status.asIssueCredentialError
+import eu.europa.ec.eudi.pidissuer.port.out.status.withPolicy
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.coroutines.Dispatchers
 import kotlinx.datetime.TimeZone
@@ -246,85 +242,85 @@ internal class IssueSdJwtVcPid(
             supportedCredential.type,
         )
 
+    context(_: Raise<IssueCredentialError>)
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
         validatedProof: ValidatedProof,
-    ): Either<IssueCredentialError, CredentialResponse> =
-        either {
-            log.info("Handling issuance request ...")
+    ): CredentialResponse {
+        log.info("Handling issuance request ...")
 
-            val holderPubKeys = validatedProof.credentialKeys.value
-            val (pid, pidMetaData) = getPidData(authorizationContext)
-            val issuedAt = clock.now()
-            val expiresAt = issuedAt + validity
-            val notBefore = calculateNotUseBefore?.invoke(issuedAt)
+        val holderPubKeys = validatedProof.credentialKeys.value
+        val (pid, pidMetaData) = getPidData(authorizationContext)
+        val issuedAt = clock.now()
+        val expiresAt = issuedAt + validity
+        val notBefore = calculateNotUseBefore?.invoke(issuedAt)
 
-            ensure(expiresAt > issuedAt) {
-                Unexpected("exp should be after iat")
+        check(expiresAt > issuedAt) {
+            // Runtime error, not a business error
+            "exp should be after iat"
+        }
+        notBefore?.let {
+            check(it > issuedAt) {
+                // Runtime error, not a business error
+                "nbf should be after iat"
             }
-            notBefore?.let {
-                ensure(it > issuedAt) {
-                    Unexpected("nbf should be after iat")
-                }
+        }
+        if (null != pidMetaData.issuanceDate && null != notBefore) {
+            val issuanceDateAtStartOfDay = pidMetaData.issuanceDate.atStartOfDayIn(timeZone)
+            check(issuanceDateAtStartOfDay <= notBefore) {
+                // Runtime error, not a business error
+                "date_of_issuance must not be after nbf"
             }
-            if (null != pidMetaData.issuanceDate && null != notBefore) {
-                val issuanceDateAtStartOfDay = pidMetaData.issuanceDate.atStartOfDayIn(timeZone)
-                ensure(issuanceDateAtStartOfDay <= notBefore) {
-                    Unexpected("date_of_issuance must not be after nbf")
-                }
-            }
+        }
 
-            val notificationId = if (notificationsEnabled) generateNotificationId() else null
+        val notificationId = if (notificationsEnabled) generateNotificationId() else null
 
-            val issuedCredentials =
-                holderPubKeys
-                    .parMap(Dispatchers.Default, 4) { holderPubKey ->
-                        val statusListToken =
-                            generateStatusListToken
-                                .takeIf { credentialReusePolicy.shouldIncludeStatusList }
-                                ?.let { srv ->
-                                    withError({ allocationError -> allocationError.asIssueCredentialError() }) {
-                                        srv.invoke(supportedCredential.type.value, expiresAt)
-                                    }
-                                }
-                        val encodedCredential =
-                            encodePidInSdJwt(
-                                pid,
-                                pidMetaData,
-                                holderPubKey,
-                                issuedAt = issuedAt,
-                                expiresAt = expiresAt,
-                                notBefore = notBefore,
-                                statusListToken,
-                            )
-
-                        storeIssuedCredential(
-                            IssuedCredential(
-                                format = SD_JWT_VC_FORMAT,
-                                type = supportedCredential.type.value,
-                                issuedAt = issuedAt,
-                                expiresAt = expiresAt,
-                                notificationId = notificationId,
-                                status = statusListToken,
-                                clientStatus = authorizationContext.clientStatus.status.statusList,
-                                keyStorageStatus = validatedProof.keyStorageStatus.status.statusList,
-                            ),
+        val issuedCredentials =
+            holderPubKeys
+                .parMap(Dispatchers.Default, 4) { holderPubKey ->
+                    val statusListToken =
+                        context(credentialReusePolicy) {
+                            generateStatusListToken.withPolicy(supportedCredential.type.value, expiresAt)
+                        }
+                    val encodedCredential =
+                        encodePidInSdJwt(
+                            pid,
+                            pidMetaData,
+                            holderPubKey,
+                            issuedAt = issuedAt,
+                            expiresAt = expiresAt,
+                            notBefore = notBefore,
+                            statusListToken,
                         )
 
-                        encodedCredential
-                    }.toNonEmptyListOrNull()
+                    storeIssuedCredential(
+                        IssuedCredential(
+                            format = SD_JWT_VC_FORMAT,
+                            type = supportedCredential.type.value,
+                            issuedAt = issuedAt,
+                            expiresAt = expiresAt,
+                            notificationId = notificationId,
+                            status = statusListToken,
+                            clientStatus = authorizationContext.clientStatus.status.statusList,
+                            keyStorageStatus = validatedProof.keyStorageStatus.status.statusList,
+                        ),
+                    )
 
-            ensureNotNull(issuedCredentials) {
-                Unexpected("Unable to issue PID")
-            }
+                    encodedCredential
+                }.toNonEmptyListOrNull()
 
-            CredentialResponse
-                .Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
-                .also {
-                    log.info("Successfully issued PIDs")
-                    log.debug("Issued PIDs data {}", it)
-                }
+        checkNotNull(issuedCredentials) {
+            // That's a runtime error, not a business error
+            "Cannot happen"
         }
+
+        return CredentialResponse
+            .Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
+            .also {
+                log.info("Successfully issued PIDs")
+                log.debug("Issued PIDs data {}", it)
+            }
+    }
 }
