@@ -321,14 +321,11 @@ private val log = LoggerFactory.getLogger(IssueCredential::class.java)
  */
 class IssueCredential(
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
-    resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
+    private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
     private val encryptCredentialResponse: EncryptCredentialResponse,
-    validateProof: ValidateProof,
-    clock: Clock,
+    private val validateProof: ValidateProof,
+    private val clock: Clock,
 ) {
-    private val services: Services =
-        Services(credentialIssuerMetadata, resolveCredentialRequestByCredentialIdentifier, validateProof, clock)
-
     suspend fun fromEncryptedRequest(
         authorizationContext: AuthorizationContext,
         credentialRequestJwt: String,
@@ -367,8 +364,7 @@ class IssueCredential(
         credentialRequestTO: CredentialRequestTO,
     ): IssueCredentialResponse =
         withError(transform = { Either.Right(it) }) {
-            val (request, issued) =
-                services.issueCredential(authorizationContext, credentialRequestTO)
+            val (request, issued) = doIssueCredential(authorizationContext, credentialRequestTO)
             issued.successResponse(request.credentialResponseEncryption)
         }
 
@@ -379,40 +375,9 @@ class IssueCredential(
             is RequestedResponseEncryption.Required -> encryptCredentialResponse(plain, encryption)
         }
     }
-}
 
-//
-// Pre-Processing
-//
-
-context(_: Raise<CredentialOrEncryptedError<IssueCredentialError>>, credentialIssuerMetadata: CredentialIssuerMetaData)
-private suspend fun PlainOrEncrypted<CredentialRequestTO>.decryptIfNeeded(): CredentialRequestTO =
-    withError(transform = { it.left() }) {
-        fun CredentialRequestTO.verifyPlainRequestAgainstEncryptionRequirements() {
-            ensure(credentialResponseEncryption == null) {
-                ResponseEncryptionRequiresEncryptedRequest
-            }
-            ensure(credentialIssuerMetadata.credentialRequestEncryption !is CredentialRequestEncryption.Required) {
-                RequestEncryptionIsRequired
-            }
-        }
-
-        suspend fun String.decrypt(): CredentialRequestTO = decryptCredentialRequest(this)
-
-        return fold(
-            ifLeft = { plain -> plain.apply { verifyPlainRequestAgainstEncryptionRequirements() } },
-            ifRight = { encrypted -> encrypted.decrypt() },
-        )
-    }
-
-private class Services(
-    private val credentialIssuerMetadata: CredentialIssuerMetaData,
-    private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
-    private val validateProof: ValidateProof,
-    private val clock: Clock,
-) {
     context(_: Raise<IssueCredentialError>)
-    suspend fun issueCredential(
+    private suspend fun doIssueCredential(
         authorizationContext: AuthorizationContext,
         credentialRequestTO: CredentialRequestTO,
     ): Pair<CredentialRequest, CredentialResponse> {
@@ -524,6 +489,30 @@ private class Services(
         return specificIssuer
     }
 }
+
+//
+// Pre-Processing
+//
+
+context(_: Raise<CredentialOrEncryptedError<IssueCredentialError>>, credentialIssuerMetadata: CredentialIssuerMetaData)
+private suspend fun PlainOrEncrypted<CredentialRequestTO>.decryptIfNeeded(): CredentialRequestTO =
+    withError(transform = { it.left() }) {
+        fun CredentialRequestTO.verifyPlainRequestAgainstEncryptionRequirements() {
+            ensure(credentialResponseEncryption == null) {
+                ResponseEncryptionRequiresEncryptedRequest
+            }
+            ensure(credentialIssuerMetadata.credentialRequestEncryption !is CredentialRequestEncryption.Required) {
+                RequestEncryptionIsRequired
+            }
+        }
+
+        suspend fun String.decrypt(): CredentialRequestTO = decryptCredentialRequest(this)
+
+        return fold(
+            ifLeft = { plain -> plain.apply { verifyPlainRequestAgainstEncryptionRequirements() } },
+            ifRight = { encrypted -> encrypted.decrypt() },
+        )
+    }
 //
 // Mapping to domain
 //
