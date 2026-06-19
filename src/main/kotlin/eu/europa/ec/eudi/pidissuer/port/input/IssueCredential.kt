@@ -417,17 +417,18 @@ private class Services(
         credentialRequestTO: CredentialRequestTO,
     ): Pair<CredentialRequest, CredentialResponse> {
         logRequest(credentialRequestTO)
+
+        val preferredClientStatusPeriod = credentialIssuerMetadata.preferredClientStatusPeriod.value
+        ensure((authorizationContext.clientStatus.expiresAt - clock.now()) >= preferredClientStatusPeriod) {
+            InvalidClientStatus("Client Status expires before preferred client status period")
+        }
+
         val unresolvedRequest =
             credentialRequestTO.toDomain(
                 credentialIssuerMetadata.credentialResponseEncryption,
                 credentialIssuerMetadata.batchCredentialIssuance,
                 credentialIssuerMetadata.credentialConfigurationsSupported,
             )
-
-        val preferredClientStatusPeriod = credentialIssuerMetadata.preferredClientStatusPeriod.value
-        ensure((authorizationContext.clientStatus.expiresAt - clock.now()) >= preferredClientStatusPeriod) {
-            InvalidClientStatus("Client Status expires before preferred client status period")
-        }
 
         val request =
             when (unresolvedRequest) {
