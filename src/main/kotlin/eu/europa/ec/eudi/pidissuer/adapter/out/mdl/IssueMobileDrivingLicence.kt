@@ -403,10 +403,7 @@ internal class IssueMobileDrivingLicence(
             val holderKeys =
                 validatedProof.credentialKeys.value
                     .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
-            val licence = getMobileDrivingLicenceData(authorizationContext).bind()
-            ensureNotNull(licence) {
-                Unexpected("Unable to fetch mDL data")
-            }
+            val licence = getMobileDrivingLicenceData(authorizationContext)
 
             val issuedAt = clock.now()
             val expiresAt = issuedAt + validity

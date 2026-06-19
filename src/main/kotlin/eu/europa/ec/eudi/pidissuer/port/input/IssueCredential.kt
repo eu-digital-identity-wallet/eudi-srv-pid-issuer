@@ -147,6 +147,8 @@ sealed interface IssueCredentialError {
         val expected: Scope,
     ) : IssueCredentialError
 
+    data object AttestationDatasetNotFound : IssueCredentialError
+
     data class Unexpected(
         val msg: String,
         val cause: Throwable? = null,
@@ -207,6 +209,9 @@ enum class CredentialErrorTypeTo {
 
     @SerialName("credential_request_denied")
     CREDENTIAL_REQUEST_DENIED,
+
+    @SerialName("attestation_dataset_not_found")
+    ATTESTATION_DATASET_NOT_FOUND,
 }
 
 /**
@@ -808,6 +813,11 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
                 val description =
                     errorDescriptionWithErrorCauseDescription("'claims' does not have the expected structure", error)
                 CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
+            }
+
+            AttestationDatasetNotFound -> {
+                val description = "Attestation Dataset not found"
+                CredentialErrorTypeTo.ATTESTATION_DATASET_NOT_FOUND to description
             }
         }
     return IssueCredentialResponse.FailedTO(type, description)
