@@ -192,8 +192,7 @@ class GetDeferredCredential(
             },
             catch = { exception ->
                 log.error("Unexpected error while getting deferred credential", exception)
-                val description = "Unexpected runtime error ${exception.message}"
-                DeferredCredentialResponse.Failed(FailedTO(GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST, description))
+                throw exception
             },
         )
 

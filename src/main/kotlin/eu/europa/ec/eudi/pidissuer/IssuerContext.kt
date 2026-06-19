@@ -1024,7 +1024,7 @@ fun beans(
                 .associateBy { Vct(it.vct) }
                 .mapValues { it.value.resource }
         val metaDataApi = MetaDataApi(bean(), bean(), typeMetadata, bean())
-        val walletApi = WalletApi(bean(), bean(), bean(), bean(), bean())
+        val walletApi = WalletApi(bean(), bean(), bean(), bean())
         val issuerUi = IssuerUi(credentialsOfferUri, bean(), bean(), bean())
         val issuerApi = IssuerApi(bean())
         metaDataApi.route

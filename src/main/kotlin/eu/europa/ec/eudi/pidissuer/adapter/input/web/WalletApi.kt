@@ -16,20 +16,17 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.NonEmptySet
-import arrow.core.raise.effect
-import arrow.core.raise.fold
+import arrow.core.raise.catch
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
 import eu.europa.ec.eudi.pidissuer.adapter.out.json.jsonSupport
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
 import eu.europa.ec.eudi.pidissuer.domain.ClientStatus
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.domain.TS3
 import eu.europa.ec.eudi.pidissuer.port.input.*
-import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonElement
 import org.springframework.http.CacheControl
 import org.springframework.http.HttpStatus
@@ -46,7 +43,6 @@ private val APPLICATION_JWT = MediaType.parseMediaType("application/jwt")
 internal class WalletApi(
     private val issueCredential: IssueCredential,
     private val getDeferredCredential: GetDeferredCredential,
-    private val getPidData: GetPidData,
     private val handleNotificationRequest: HandleNotificationRequest,
     private val handleNonceRequest: HandleNonceRequest,
 ) {
@@ -60,11 +56,6 @@ internal class WalletApi(
                         APPLICATION_JWT,
                     ),
                 this@WalletApi::handleIssueCredential,
-            )
-            GET(
-                CREDENTIAL_ENDPOINT,
-                contentType(MediaType.APPLICATION_JSON) and accept(MediaType.APPLICATION_JSON),
-                this@WalletApi::handleHelloHolder,
             )
             POST(
                 DEFERRED_ENDPOINT,
@@ -86,90 +77,42 @@ internal class WalletApi(
             ) { handleNonceRequest() }
         }
 
-    private suspend fun handleIssueCredential(req: ServerRequest): ServerResponse {
-        val context = req.authorizationContext()
-        val response =
-            try {
-                when (req.headers().contentType().getOrNull()) {
-                    MediaType.APPLICATION_JSON -> {
+    private suspend fun handleIssueCredential(req: ServerRequest): ServerResponse =
+        catch<ServerWebInputException, IssueCredentialResponse>(
+            block = {
+                val context = req.authorizationContext()
+                when (req.jsonOrJwt()) {
+                    JsonOrJwt.Json -> {
                         val request = req.awaitBody<CredentialRequestTO>()
                         issueCredential.fromPlainRequest(context, request)
                     }
 
-                    APPLICATION_JWT -> {
+                    JsonOrJwt.Jwt -> {
                         val jwt = req.awaitBody<String>()
                         issueCredential.fromEncryptedRequest(context, jwt)
                     }
-
-                    else -> {
-                        error("Unexpected content-type")
-                    }
                 }
-            } catch (error: ServerWebInputException) {
-                IssueCredentialResponse.FailedTO(
-                    type = CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST,
-                    errorDescription =
-                        buildString {
-                            append("Request body could not be parsed")
-                            if (error.message.isNotBlank()) {
-                                append(": ${error.message}")
-                            }
-                        },
-                )
-            }
-        return response.toServerResponse()
-    }
+            },
+            catch = { it.asIssueCredentialResponse() },
+        ).toServerResponse()
 
     private suspend fun handleGetDeferredCredential(req: ServerRequest): ServerResponse =
-        coroutineScope {
-            val response =
-                try {
-                    when (req.headers().contentType().getOrNull()) {
-                        MediaType.APPLICATION_JSON -> {
-                            val request = req.awaitBody<DeferredCredentialRequestTO>()
-                            getDeferredCredential.fromPlainRequest(request)
-                        }
-
-                        APPLICATION_JWT -> {
-                            val jwt = req.awaitBody<String>()
-                            getDeferredCredential.fromEncryptedRequest(jwt)
-                        }
-
-                        else -> {
-                            error("Unexpected content-type")
-                        }
+        catch<ServerWebInputException, DeferredCredentialResponse>(
+            block = {
+                when (req.jsonOrJwt()) {
+                    JsonOrJwt.Json -> {
+                        val request = req.awaitBody<DeferredCredentialRequestTO>()
+                        getDeferredCredential.fromPlainRequest(request)
                     }
-                } catch (error: ServerWebInputException) {
-                    DeferredCredentialResponse.Failed(
-                        FailedTO(
-                            type = GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST,
-                            errorDescription =
-                                buildString {
-                                    append("Request body could not be parsed")
-                                    if (error.message.isNotBlank()) {
-                                        append(": ${error.message}")
-                                    }
-                                },
-                        ),
-                    )
-                }
-            response.toServerResponse()
-        }
 
-    private suspend fun handleHelloHolder(req: ServerRequest): ServerResponse =
-        effect {
-            val context = req.authorizationContext()
-            getPidData(context.username)
-        }.fold(
-            transform = { pid ->
-                ServerResponse
-                    .ok()
-                    .cacheControl(CacheControl.noStore())
-                    .json()
-                    .bodyValueAndAwait(pid)
+                    JsonOrJwt.Jwt -> {
+                        val jwt = req.awaitBody<String>()
+                        getDeferredCredential.fromEncryptedRequest(jwt)
+                    }
+                }
             },
-            recover = { ServerResponse.notFound().cacheControl(CacheControl.noStore()).buildAndAwait() },
-        )
+            catch = { it.asDeferredCredentialResponse() },
+        ).toServerResponse()
 
     private suspend fun handleNotificationRequest(request: ServerRequest): ServerResponse =
         when (val response = handleNotificationRequest(request.awaitBody<JsonElement>())) {
@@ -264,6 +207,18 @@ private suspend fun ServerRequest.authorizationContext(): AuthorizationContext {
     return AuthorizationContext(username, accessToken, scopes, clientId, clientStatus.toClientStatus())
 }
 
+private enum class JsonOrJwt {
+    Json,
+    Jwt,
+}
+
+private fun ServerRequest.jsonOrJwt(): JsonOrJwt =
+    when (headers().contentType().getOrNull()) {
+        MediaType.APPLICATION_JSON -> JsonOrJwt.Json
+        APPLICATION_JWT -> JsonOrJwt.Jwt
+        else -> error("Unexpected content-type")
+    }
+
 private suspend fun IssueCredentialResponse.toServerResponse(): ServerResponse =
     when (this) {
         is IssueCredentialResponse.PlainTO -> {
@@ -339,3 +294,18 @@ private suspend fun DeferredCredentialResponse.toServerResponse(): ServerRespons
                 .bodyValueAndAwait(this.content)
         }
     }
+
+private fun ServerWebInputException.asIssueCredentialResponse(): IssueCredentialResponse.FailedTO =
+    IssueCredentialResponse.FailedTO(
+        type = CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST,
+        errorDescription = "Request cannot be parsed. ${if (message.isBlank()) "" else ("Error: $message ")}",
+    )
+
+private fun ServerWebInputException.asDeferredCredentialResponse(): DeferredCredentialResponse.Failed =
+    DeferredCredentialResponse.Failed(
+        content =
+            FailedTO(
+                type = GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST,
+                errorDescription = "Request cannot be parsed. ${if (message.isBlank()) "" else ("Error: $message ")}",
+            ),
+    )

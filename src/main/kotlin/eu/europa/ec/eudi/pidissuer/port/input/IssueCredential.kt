@@ -357,8 +357,7 @@ class IssueCredential(
             },
             catch = { exception ->
                 log.error("Unexpected error while issuing credential", exception)
-                val description = "Unexpected runtime error ${exception.message}"
-                IssueCredentialResponse.FailedTO(CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST, description)
+                throw exception
             },
         )
 
