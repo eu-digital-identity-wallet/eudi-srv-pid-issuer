@@ -389,7 +389,6 @@ class IssueCredential(
         val unresolvedRequest =
             credentialRequestTO.toDomain(
                 credentialIssuerMetadata.credentialResponseEncryption,
-                credentialIssuerMetadata.batchCredentialIssuance,
                 credentialIssuerMetadata.credentialConfigurationsSupported,
             )
 
@@ -541,10 +540,8 @@ private sealed interface UnresolvedCredentialRequest {
 context(_: Raise<IssueCredentialError>)
 private suspend fun CredentialRequestTO.toDomain(
     supportedEncryption: CredentialResponseEncryption,
-    supportedBatchIssuance: BatchCredentialIssuance,
     supportedCredentialConfigurations: List<CredentialConfiguration>,
 ): UnresolvedCredentialRequest {
-    checkBatchIssuance(supportedBatchIssuance)
     val proof = extractProof()
 
     val credentialResponseEncryption =
@@ -583,15 +580,6 @@ private suspend fun CredentialRequestTO.toDomain(
         { credentialIdentifier -> credentialRequestByCredentialIdentifier(credentialIdentifier) },
         { _, _ -> raise(BothCredentialConfigurationIdAndCredentialIdentifierProvided) },
     )
-}
-
-context(_: Raise<IssueCredentialError>)
-private fun CredentialRequestTO.checkBatchIssuance(supportedBatchIssuance: BatchCredentialIssuance) {
-    if (supportedBatchIssuance is BatchCredentialIssuance.NotSupported) {
-        ensure(proofs == null) {
-            InvalidProof("Credential Endpoint does not support Batch Issuance")
-        }
-    }
 }
 
 context(_: Raise<IssueCredentialError>)
