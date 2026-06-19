@@ -179,7 +179,7 @@ class GetDeferredCredential(
                 context(credentialIssuerMetadata) {
                     encryptedOrPlain.decryptIfNeeded()
                 }
-            getDeferredCredential(request)
+            doGetDeferredCredential(request)
         }.fold(
             transform = { it },
             recover = { error ->
@@ -193,7 +193,7 @@ class GetDeferredCredential(
         )
 
     context(_: Raise<CredentialOrEncryptedError<GetDeferredCredentialError>>)
-    private suspend fun getDeferredCredential(request: DeferredCredentialRequestTO): DeferredCredentialResponse =
+    private suspend fun doGetDeferredCredential(request: DeferredCredentialRequestTO): DeferredCredentialResponse =
         withError(transform = { it.right() }) {
             val transactionId = TransactionId(request.transactionId)
             val credentialResponseEncryption =
