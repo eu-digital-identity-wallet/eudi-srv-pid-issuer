@@ -45,7 +45,7 @@ class RevokeCredentialsWithRevokedStatus(
     private val deleteIssuedCredential: DeleteIssuedCredential,
     private val concurrency: Int = 2,
 ) {
-    private val superVisor = Dispatchers.IO + SupervisorJob()
+    private val dispatcher = Dispatchers.IO
 
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend operator fun invoke() {
@@ -55,7 +55,7 @@ class RevokeCredentialsWithRevokedStatus(
         log.info("Checking revocation status for active credential(s)")
         val activeCredentials = getNonExpiredIssuedCredentials(clock.now())
 
-        activeCredentials.parMap(superVisor, concurrency) { credential ->
+        activeCredentials.parMap(dispatcher, concurrency) { credential ->
             processCredential(credential)
         }
     }
