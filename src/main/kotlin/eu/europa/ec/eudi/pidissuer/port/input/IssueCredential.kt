@@ -617,9 +617,18 @@ private fun CredentialConfiguration.buildCredentialRequest(
     credentialResponseEncryption: RequestedResponseEncryption,
 ): CredentialRequest =
     when (this) {
-        is MsoMdocCredentialConfiguration -> credentialRequest(proof, credentialResponseEncryption)
-        is SdJwtVcCredentialConfiguration -> credentialRequest(proof, credentialResponseEncryption)
-        is JwtVcJsonCredentialConfiguration -> raise(UnsupportedCredentialType(format = JWT_VS_JSON_FORMAT))
+        is MsoMdocCredentialConfiguration -> {
+            credentialRequest(proof, credentialResponseEncryption)
+        }
+
+        is SdJwtVcCredentialConfiguration -> {
+            credentialRequest(proof, credentialResponseEncryption)
+        }
+
+        is JwtVcJsonCredentialConfiguration -> {
+            // JwtVcJson is present in metadata for advertisement but issuance is not implemented
+            raise(UnsupportedCredentialType(format = JWT_VS_JSON_FORMAT))
+        }
     }
 
 /**
