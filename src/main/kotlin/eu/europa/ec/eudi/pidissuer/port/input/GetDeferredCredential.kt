@@ -158,9 +158,6 @@ sealed interface GetDeferredCredentialError {
     ) : GetDeferredCredentialError
 }
 
-private typealias Request = Either<DeferredCredentialRequestTO, String>
-private typealias Error = Either<RequestEncryptionError, GetDeferredCredentialError>
-
 private val log = LoggerFactory.getLogger(GetDeferredCredential::class.java)
 
 /**
@@ -176,7 +173,7 @@ class GetDeferredCredential(
     suspend fun fromPlainRequest(requestTO: DeferredCredentialRequestTO): DeferredCredentialResponse =
         getDeferredCredential(requestTO.left())
 
-    private suspend fun getDeferredCredential(encryptedOrPlain: Request): DeferredCredentialResponse =
+    private suspend fun getDeferredCredential(encryptedOrPlain: PlainOrEncrypted<DeferredCredentialRequestTO>): DeferredCredentialResponse =
         effect {
             val request =
                 context(credentialIssuerMetadata) {
@@ -186,7 +183,7 @@ class GetDeferredCredential(
         }.fold(
             transform = { it },
             recover = { error ->
-                log.warn("Failed to get deferred credential $error")
+                log.warn("Failed to get deferred credential {}", error)
                 error.response()
             },
             catch = { exception ->
@@ -195,15 +192,15 @@ class GetDeferredCredential(
             },
         )
 
-    context(_: Raise<Error>)
+    context(_: Raise<CredentialOrEncryptedError<GetDeferredCredentialError>>)
     private suspend fun getDeferredCredential(request: DeferredCredentialRequestTO): DeferredCredentialResponse =
         withError(transform = { it.right() }) {
             val transactionId = TransactionId(request.transactionId)
             val credentialResponseEncryption =
                 request.credentialResponseEncryption
-                    ?.let { toDomain(it) }
+                    ?.let { toRequestedResponseEncryption(it) }
                     ?: RequestedResponseEncryption.NotRequired
-            log.info("GetDeferredCredential for $transactionId ...")
+            log.info("GetDeferredCredential for {} ...", transactionId)
 
             return when (val result = loadDeferredCredentialByTransactionId(transactionId)) {
                 LoadDeferredCredentialResult.InvalidTransactionId -> {
@@ -229,8 +226,8 @@ class GetDeferredCredential(
 // Request pre-processing
 //
 
-context(_: Raise<Error>, credentialIssuerMetadata: CredentialIssuerMetaData)
-private suspend fun Request.decryptIfNeeded(): DeferredCredentialRequestTO =
+context(_: Raise<CredentialOrEncryptedError<GetDeferredCredentialError>>, credentialIssuerMetadata: CredentialIssuerMetaData)
+private suspend fun PlainOrEncrypted<DeferredCredentialRequestTO>.decryptIfNeeded(): DeferredCredentialRequestTO =
     withError(transform = { it.left() }) {
         fun DeferredCredentialRequestTO.verifyEncryptionForPlainRequest() {
             ensure(credentialResponseEncryption == null) {
@@ -248,7 +245,7 @@ private suspend fun Request.decryptIfNeeded(): DeferredCredentialRequestTO =
     }
 
 context(_: Raise<GetDeferredCredentialError>)
-private suspend fun toDomain(requestTO: CredentialResponseEncryptionTO): RequestedResponseEncryption.Required =
+private suspend fun toRequestedResponseEncryption(requestTO: CredentialResponseEncryptionTO): RequestedResponseEncryption.Required =
     withContext(Dispatchers.Default) {
         val encryptionKey =
             catch({ JWK.parse(Json.encodeToString(requestTO.key)) }) {
@@ -332,7 +329,7 @@ private suspend fun LoadDeferredCredentialResult.Found.response(
 // Error Response
 //
 
-private fun Error.response(): DeferredCredentialResponse =
+private fun CredentialOrEncryptedError<GetDeferredCredentialError>.response(): DeferredCredentialResponse =
     fold(
         ifLeft = { encryptionError -> encryptionError.toTO() },
         ifRight = { issuanceError -> issuanceError.toTO() },
