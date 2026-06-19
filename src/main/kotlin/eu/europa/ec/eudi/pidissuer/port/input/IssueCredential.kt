@@ -559,34 +559,8 @@ private suspend fun CredentialRequestTO.toDomain(
     supportedBatchIssuance: BatchCredentialIssuance,
     supportedCredentialConfigurations: List<CredentialConfiguration>,
 ): UnresolvedCredentialRequest {
-    if (supportedBatchIssuance is BatchCredentialIssuance.NotSupported) {
-        ensure(proofs == null) {
-            InvalidProof("Credential Endpoint does not support Batch Issuance")
-        }
-    }
-
-    val proof =
-        when {
-            proofs != null -> {
-                val jwtProofs = proofs.jwtProofs?.map { UnvalidatedProof.Jwt(it) }
-                val attestations = proofs.attestations?.map { UnvalidatedProof.Attestation(it) }
-                // Proof object contains exactly one parameter named as the proof type
-                ensure(1 == listOfNotNull(jwtProofs, attestations).size) {
-                    InvalidProof("Only a single proof type is allowed")
-                }
-
-                val proofs = (jwtProofs.orEmpty() + attestations.orEmpty()).toNonEmptyListOrNull()
-                ensureNotNull(proofs) { MissingProof }
-                ensure(proofs.size == 1) {
-                    InvalidProof("You can provide at most 1 proof")
-                }
-                proofs.first()
-            }
-
-            else -> {
-                raise(MissingProof)
-            }
-        }
+    checkBatchIssuance(supportedBatchIssuance)
+    val proof = extractProof()
 
     val credentialResponseEncryption =
         credentialResponseEncryption?.toDomain() ?: RequestedResponseEncryption.NotRequired
@@ -638,6 +612,32 @@ private suspend fun CredentialRequestTO.toDomain(
         { credentialIdentifier -> credentialRequestByCredentialIdentifier(credentialIdentifier) },
         { _, _ -> raise(BothCredentialConfigurationIdAndCredentialIdentifierProvided) },
     )
+}
+
+context(_: Raise<IssueCredentialError>)
+private fun CredentialRequestTO.checkBatchIssuance(supportedBatchIssuance: BatchCredentialIssuance) {
+    if (supportedBatchIssuance is BatchCredentialIssuance.NotSupported) {
+        ensure(proofs == null) {
+            InvalidProof("Credential Endpoint does not support Batch Issuance")
+        }
+    }
+}
+
+context(_: Raise<IssueCredentialError>)
+private fun CredentialRequestTO.extractProof(): UnvalidatedProof {
+    ensureNotNull(proofs) { MissingProof }
+    val jwtProofs = proofs.jwtProofs?.map { UnvalidatedProof.Jwt(it) }
+    val attestations = proofs.attestations?.map { UnvalidatedProof.Attestation(it) }
+    ensure(1 == listOfNotNull(jwtProofs, attestations).size) {
+        InvalidProof("Only a single proof type is allowed")
+    }
+
+    val extracted = (jwtProofs.orEmpty() + attestations.orEmpty()).toNonEmptyListOrNull()
+    ensureNotNull(extracted) { MissingProof }
+    ensure(extracted.size == 1) {
+        InvalidProof("You can provide at most 1 proof")
+    }
+    return extracted.first()
 }
 
 /**
