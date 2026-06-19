@@ -15,7 +15,10 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.ehic
 
+import arrow.core.raise.Raise
 import eu.europa.ec.eudi.pidissuer.domain.toZonedDateTime
+import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import kotlinx.datetime.TimeZone
 import java.util.*
 import kotlin.time.Clock
@@ -26,7 +29,8 @@ class GetEuropeanHealthInsuranceCardDataMock(
     private val timeZone: TimeZone,
     private val issuingCountry: IssuingCountry,
 ) : GetEuropeanHealthInsuranceCardData {
-    override suspend fun invoke(): EuropeanHealthInsuranceCard {
+    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>)
+    override suspend fun invoke(authorizationContext: AuthorizationContext): EuropeanHealthInsuranceCard {
         val now = clock.now()
         val endingDate = now + 365.days
         val startingDate = endingDate - (5 * 31).days

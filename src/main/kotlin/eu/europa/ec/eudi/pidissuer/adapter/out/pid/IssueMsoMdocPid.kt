@@ -324,6 +324,8 @@ internal fun pidMsoMdocV1(
         credentialReusePolicy = credentialReusePolicy,
     )
 
+private val msoMdocPidLog = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
+
 /**
  * Service for issuing PID MsoMdoc credential
  */
@@ -340,7 +342,9 @@ internal class IssueMsoMdocPid(
     private val generateStatusListToken: AllocateStatus,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : AttestationIssuer {
-    private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
+    init {
+        require(validity.isPositive())
+    }
 
     override val supportedCredential: MsoMdocCredentialConfiguration =
         pidMsoMdocV1(
@@ -359,7 +363,7 @@ internal class IssueMsoMdocPid(
         credentialIdentifier: CredentialIdentifier?,
         proof: ValidatedProof,
     ): CredentialResponse {
-        log.info("Handling issuance request ...")
+        msoMdocPidLog.info("Handling issuance request ...")
         val holderPubKeys =
             proof.credentialKeys.value
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
@@ -387,7 +391,7 @@ internal class IssueMsoMdocPid(
                             expiresAt = expiresAt,
                             statusListToken,
                         ).also {
-                            log.info("Issued $it")
+                            msoMdocPidLog.info("Issued $it")
                         }
 
                     storeIssuedCredential(
@@ -411,8 +415,8 @@ internal class IssueMsoMdocPid(
         return CredentialResponse
             .Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
             .also {
-                log.info("Successfully issued PIDs")
-                log.debug("Issued PIDs data {}", it)
+                msoMdocPidLog.info("Successfully issued PIDs")
+                msoMdocPidLog.debug("Issued PIDs data {}", it)
             }
     }
 }

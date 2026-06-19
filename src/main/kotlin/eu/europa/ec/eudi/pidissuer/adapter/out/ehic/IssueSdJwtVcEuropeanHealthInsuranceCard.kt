@@ -243,7 +243,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
 
         val now = clock.now()
         val holderPublicKeys = proof.credentialKeys.value
-        val ehic = getEuropeanHealthInsuranceCardData()
+        val ehic = getEuropeanHealthInsuranceCardData(authorizationContext)
         val dateOfIssuance = now
         val dateOfExpiry = dateOfIssuance + validity
 
@@ -265,7 +265,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                         IssuedCredential(
                             SD_JWT_VC_FORMAT,
                             EuropeanHealthInsuranceCardVct.value,
-                            clock.now(),
+                            now,
                             dateOfExpiry,
                             notificationId,
                             status = null,

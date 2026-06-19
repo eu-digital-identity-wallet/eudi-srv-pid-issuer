@@ -387,8 +387,11 @@ internal class IssueMobileDrivingLicence(
             credentialReusePolicy,
         )
 
-    override val publicKey: JWK?
-        get() = null
+    override val publicKey: JWK? = null
+
+    init {
+        require(validity.isPositive())
+    }
 
     context(_: Raise<IssueCredentialError>)
     override suspend fun invoke(

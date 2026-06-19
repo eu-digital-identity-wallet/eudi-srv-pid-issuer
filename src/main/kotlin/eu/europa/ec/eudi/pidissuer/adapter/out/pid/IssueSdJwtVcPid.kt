@@ -231,8 +231,11 @@ internal class IssueSdJwtVcPid(
             credentialReusePolicy,
         )
 
-    override val publicKey: JWK
-        get() = issuerSigningKey.key.toPublicJWK()
+    override val publicKey: JWK = issuerSigningKey.key.toPublicJWK()
+
+    init {
+        require(validity.isPositive())
+    }
 
     private val encodePidInSdJwt =
         EncodePidInSdJwtVc(

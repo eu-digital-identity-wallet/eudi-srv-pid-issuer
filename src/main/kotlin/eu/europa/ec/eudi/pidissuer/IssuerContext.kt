@@ -906,7 +906,8 @@ fun beans(
                             bean(),
                             validity,
                             digestHashAlgorithm,
-                            if (notificationsEnabled) bean() else null,
+                            notificationsEnabled,
+                            bean(),
                             bean(),
                             learningCredentialReusePolicy,
                         )

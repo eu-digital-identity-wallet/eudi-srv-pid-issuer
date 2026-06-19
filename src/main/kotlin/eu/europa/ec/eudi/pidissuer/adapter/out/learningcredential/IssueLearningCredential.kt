@@ -40,14 +40,15 @@ import kotlin.time.Duration
 private val log = LoggerFactory.getLogger(IssueLearningCredential::class.java)
 
 internal class IssueLearningCredential(
-    override val supportedCredential: CredentialConfiguration,
+    override val supportedCredential: SdJwtVcCredentialConfiguration,
     override val publicKey: JWK,
     override val keyAttestationRequirement: KeyAttestationRequirement,
     private val clock: Clock,
     private val getLearningCredential: GetLearningCredential,
     override val validity: Duration,
     private val encodeLearningCredential: EncodeLearningCredential,
-    private val generateNotificationId: GenerateNotificationId?,
+    private val notificationsEnabled: Boolean,
+    private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredential: StoreIssuedCredential,
 ) : AttestationIssuer {
     init {
@@ -76,7 +77,7 @@ internal class IssueLearningCredential(
                     dateOfExpiry
             }
 
-        val notificationId = generateNotificationId?.invoke()
+        val notificationId = if (notificationsEnabled) generateNotificationId() else null
 
         val issuedCredentials =
             holderKeys
@@ -125,7 +126,8 @@ internal class IssueLearningCredential(
             getPidData: GetPidData,
             validity: Duration,
             digestsHashAlgorithm: HashAlgorithm,
-            generateNotificationId: GenerateNotificationId?,
+            notificationsEnabled: Boolean,
+            generateNotificationId: GenerateNotificationId,
             storeIssuedCredential: StoreIssuedCredential,
             credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
         ): IssueLearningCredential {
@@ -151,6 +153,7 @@ internal class IssueLearningCredential(
                     issuerSigningKey,
                     credentialConfiguration.type,
                 ),
+                notificationsEnabled,
                 generateNotificationId,
                 storeIssuedCredential,
             )
