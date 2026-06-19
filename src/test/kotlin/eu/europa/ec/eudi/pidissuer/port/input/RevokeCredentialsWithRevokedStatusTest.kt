@@ -24,6 +24,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
 import kotlinx.coroutines.test.runTest
 import java.net.URI
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -179,14 +180,14 @@ internal class RevokeCredentialsWithRevokedStatusTest {
             val credential1 = credential(clientStatusUri = URI.create("https://example.com/status/1"))
             val credential2 = credential(clientStatusUri = URI.create("https://example.com/status/2"))
             val revoked = mutableListOf<IssuedCredential>()
-            var markStatusAsRevokedCallCount = 0
+            val markStatusAsRevokedCallCount = AtomicInteger(0)
             val useCase =
                 RevokeCredentialsWithRevokedStatus(
                     clock = clock,
                     deleteExpiredIssuedCredentials = { _ -> },
                     getNonExpiredIssuedCredentials = { _ -> listOf(credential1, credential2) },
                     getStatusListTokenStatus = { _, _ -> StatusListTokenStatus.INVALID },
-                    markStatusAsRevoked = { markStatusAsRevokedCallCount++ },
+                    markStatusAsRevoked = { markStatusAsRevokedCallCount.incrementAndGet() },
                     deleteIssuedCredential = { credential ->
                         if (credential == credential1) throw RuntimeException("Persistence error")
                         revoked.add(credential)
@@ -195,7 +196,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
 
             useCase()
 
-            assertEquals(2, markStatusAsRevokedCallCount)
+            assertEquals(2, markStatusAsRevokedCallCount.get())
             assertEquals(listOf(credential2), revoked)
         }
 
