@@ -25,7 +25,7 @@ import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.jwkExtensions
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.toECKeyOrFail
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
@@ -365,10 +365,8 @@ internal class IssueMsoMdocPid(
         either {
             log.info("Handling issuance request ...")
             val holderPubKeys =
-                with(jwkExtensions()) {
-                    validatedProof.credentialKeys.value
-                        .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
-                }
+                validatedProof.credentialKeys.value
+                    .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
 
             val pidData = getPidData(authorizationContext)
             val (pid, pidMetaData) = pidData.bind()
