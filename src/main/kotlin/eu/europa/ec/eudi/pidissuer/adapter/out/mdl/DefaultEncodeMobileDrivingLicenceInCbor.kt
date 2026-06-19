@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
-import arrow.core.Either
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.coseAlgorithm
@@ -25,7 +24,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.MsoMdocSigner
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.toTDate
 import eu.europa.ec.eudi.pidissuer.domain.ClaimDefinition
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import id.walt.mdoc.dataelement.DataElement
 import id.walt.mdoc.dataelement.toDataElement
 import id.walt.mdoc.doc.MDocBuilder
@@ -53,11 +51,7 @@ class DefaultEncodeMobileDrivingLicenceInCbor(
         issuedAt: Instant,
         expiresAt: Instant,
         statusListToken: StatusListToken?,
-    ): Either<Unexpected, String> =
-        Either
-            .catch {
-                signer.sign(licence, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
-            }.mapLeft { Unexpected("Failed to encode mDL", it) }
+    ): String = signer.sign(licence, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
 }
 
 private fun MDocBuilder.addItemsToSign(licence: MobileDrivingLicence) {
@@ -66,7 +60,12 @@ private fun MDocBuilder.addItemsToSign(licence: MobileDrivingLicence) {
     addItemsToSign(licence.issuer)
     addItemToSign(MsoMdocMdlV1Claims.DocumentNumber, licence.documentNumber.value.toDataElement())
     addItemToSign(MsoMdocMdlV1Claims.DrivingPrivileges, licence.privileges.map { it.toDE() }.toDataElement())
-    licence.administrativeNumber?.let { addItemToSign(MsoMdocMdlV1Claims.AdministrativeNumber, it.value.toDataElement()) }
+    licence.administrativeNumber?.let {
+        addItemToSign(
+            MsoMdocMdlV1Claims.AdministrativeNumber,
+            it.value.toDataElement(),
+        )
+    }
 }
 
 private fun MDocBuilder.addItemsToSign(driver: Driver) {

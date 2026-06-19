@@ -34,5 +34,5 @@ interface EncodeMobileDrivingLicenceInCbor {
         issuedAt: Instant,
         expiresAt: Instant,
         statusListToken: StatusListToken?,
-    ): Either<IssueCredentialError.Unexpected, String>
+    ): String
 }

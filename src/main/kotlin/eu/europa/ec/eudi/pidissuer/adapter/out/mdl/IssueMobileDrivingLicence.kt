@@ -429,7 +429,7 @@ internal class IssueMobileDrivingLicence(
                                 issuedAt = issuedAt,
                                 expiresAt = expiresAt,
                                 statusListToken,
-                            ).bind()
+                            )
 
                         storeIssuedCredential(
                             IssuedCredential(
