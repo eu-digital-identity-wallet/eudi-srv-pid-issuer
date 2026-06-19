@@ -16,6 +16,8 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.NonEmptySet
+import arrow.core.raise.effect
+import arrow.core.raise.fold
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.oauth2.sdk.token.AccessToken
@@ -27,7 +29,6 @@ import eu.europa.ec.eudi.pidissuer.domain.ClientStatus
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.domain.TS3
 import eu.europa.ec.eudi.pidissuer.port.input.*
-import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonElement
 import org.springframework.http.CacheControl
@@ -156,21 +157,19 @@ internal class WalletApi(
         }
 
     private suspend fun handleHelloHolder(req: ServerRequest): ServerResponse =
-        coroutineScope {
-            val context = async { req.authorizationContext() }
-            val pid = getPidData(context.await().username)
-            if (null != pid)
+        effect {
+            val context = req.authorizationContext()
+            getPidData(context.username)
+        }.fold(
+            transform = { pid ->
                 ServerResponse
                     .ok()
                     .cacheControl(CacheControl.noStore())
                     .json()
                     .bodyValueAndAwait(pid)
-            else
-                ServerResponse
-                    .notFound()
-                    .cacheControl(CacheControl.noStore())
-                    .buildAndAwait()
-        }
+            },
+            recover = { ServerResponse.notFound().cacheControl(CacheControl.noStore()).buildAndAwait() },
+        )
 
     private suspend fun handleNotificationRequest(request: ServerRequest): ServerResponse =
         when (val response = handleNotificationRequest(request.awaitBody<JsonElement>())) {

@@ -16,10 +16,13 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.nonEmptyListOf
+import arrow.core.raise.Raise
+import arrow.core.raise.context.ensure
 import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.util.JSONObjectUtils
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAssurancePlaceOfBirth
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.loadResource
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.Username
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
@@ -86,16 +89,17 @@ class GetPidDataFromKeyCloak(
         }
     }
 
-    override suspend fun invoke(username: Username): Pair<Pid, PidMetaData>? {
+    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>)
+    override suspend fun invoke(username: Username): Pair<Pid, PidMetaData> {
         log.info("Trying to get PID Data from Keycloak ...")
         val userInfo =
-            userInfo(username).also {
-                if (log.isInfoEnabled) log.info(it.toString())
-            }
-        return userInfo?.let { pid(it) }
+            userInfo(username)
+                .also { if (log.isInfoEnabled) log.info(it.toString()) }
+        return pid(userInfo)
     }
 
-    private suspend fun userInfo(username: Username): UserInfo? {
+    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>)
+    private suspend fun userInfo(username: Username): UserInfo {
         fun UserRepresentation.address(): AddressData? {
             val street = attributes["street"]?.firstOrNull()
             val houseNumber = attributes["address_house_number"]?.firstOrNull()
@@ -141,25 +145,24 @@ class GetPidDataFromKeyCloak(
             }
         }
 
-        return getUserByUsername(username)
-            ?.let { user ->
-                UserInfo(
-                    familyName = user.lastName,
-                    givenName = user.firstName,
-                    birthFamilyName = user.attributes["birth_family_name"]?.firstOrNull(),
-                    birthGivenName = user.attributes["birth_given_name"]?.firstOrNull(),
-                    sub = user.username,
-                    email = user.email,
-                    address = user.address(),
-                    birthDate = user.attributes["birthdate"]?.firstOrNull(),
-                    gender = user.attributes["gender"]?.firstOrNull()?.toUInt(),
-                    genderAsString = user.attributes["gender_as_string"]?.firstOrNull(),
-                    placeOfBirth = user.placeOfBirth(),
-                    picture = null,
-                    nationality = user.attributes["nationality"]?.firstOrNull(),
-                    personalAdministrativeNumber = user.attributes["personal_administrative_number"]?.firstOrNull(),
-                )
-            }
+        val user = getUserByUsername(username)
+
+        return UserInfo(
+            familyName = user.lastName,
+            givenName = user.firstName,
+            birthFamilyName = user.attributes["birth_family_name"]?.firstOrNull(),
+            birthGivenName = user.attributes["birth_given_name"]?.firstOrNull(),
+            sub = user.username,
+            email = user.email,
+            address = user.address(),
+            birthDate = user.attributes["birthdate"]?.firstOrNull(),
+            gender = user.attributes["gender"]?.firstOrNull()?.toUInt(),
+            genderAsString = user.attributes["gender_as_string"]?.firstOrNull(),
+            placeOfBirth = user.placeOfBirth(),
+            picture = null,
+            nationality = user.attributes["nationality"]?.firstOrNull(),
+            personalAdministrativeNumber = user.attributes["personal_administrative_number"]?.firstOrNull(),
+        )
     }
 
     /**
@@ -167,7 +170,8 @@ class GetPidDataFromKeyCloak(
      *
      * @param username The username of the user the details of whose to fetch
      */
-    private suspend fun getUserByUsername(username: String): UserRepresentation? {
+    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>)
+    private suspend fun getUserByUsername(username: String): UserRepresentation {
         val accessToken = getAdminAccessToken()
         val url =
             URLBuilder()
@@ -188,11 +192,8 @@ class GetPidDataFromKeyCloak(
                 }.retrieve()
                 .awaitBody<List<UserRepresentation>>()
 
-        return if (users.size != 1) {
-            null
-        } else {
-            users.first()
-        }
+        ensure(users.size == 1) { IssueCredentialError.AttestationDatasetNotFound }
+        return users.first()
     }
 
     /**

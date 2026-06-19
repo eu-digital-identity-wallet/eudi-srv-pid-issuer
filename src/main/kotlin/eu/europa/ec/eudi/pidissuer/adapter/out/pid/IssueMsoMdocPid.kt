@@ -368,8 +368,7 @@ internal class IssueMsoMdocPid(
                 validatedProof.credentialKeys.value
                     .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
 
-            val pidData = getPidData(authorizationContext)
-            val (pid, pidMetaData) = pidData.bind()
+            val (pid, pidMetaData) = getPidData(authorizationContext)
 
             val issuedAt = clock.now()
             val expiresAt = issuedAt + validity

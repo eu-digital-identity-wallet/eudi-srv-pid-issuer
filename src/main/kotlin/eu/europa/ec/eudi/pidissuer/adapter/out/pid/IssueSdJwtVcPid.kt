@@ -256,7 +256,7 @@ internal class IssueSdJwtVcPid(
             log.info("Handling issuance request ...")
 
             val holderPubKeys = validatedProof.credentialKeys.value
-            val (pid, pidMetaData) = getPidData(authorizationContext).bind()
+            val (pid, pidMetaData) = getPidData(authorizationContext)
             val issuedAt = clock.now()
             val expiresAt = issuedAt + validity
             val notBefore = calculateNotUseBefore?.invoke(issuedAt)
