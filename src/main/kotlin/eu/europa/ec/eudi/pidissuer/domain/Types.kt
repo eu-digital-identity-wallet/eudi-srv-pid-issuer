@@ -174,14 +174,6 @@ data class StatusListToken(
     val index: UInt,
 )
 
-enum class IntegrityHashAlgorithm(
-    val id: String,
-) {
-    SHA_256("sha256"),
-    SHA_384("sha384"),
-    SHA_512("sha512"),
-}
-
 @JvmInline
 value class CoseAlgorithm(
     val value: Int,

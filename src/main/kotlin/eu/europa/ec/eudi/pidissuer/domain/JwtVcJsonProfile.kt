@@ -53,11 +53,3 @@ data class JwtVcJsonCredentialConfiguration(
 
 @Suppress("unused")
 object DummyJwtVc
-
-/**
- * A W3C VC signed as a JWT, not using JSON-LD, Issued Credential.
- */
-@JvmInline
-value class JwtVcIssuedCredential(
-    val credential: NimbusSignedJWT,
-)
