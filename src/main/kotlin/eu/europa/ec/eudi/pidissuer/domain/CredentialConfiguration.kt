@@ -148,11 +148,3 @@ sealed interface CredentialConfiguration {
     val attestationCategory: AttestationCategory
     val credentialReusePolicy: CredentialReusePolicy
 }
-
-internal fun CredentialConfiguration.validateCryptographicBindingsAndProofTypes() {
-    val hasCryptoBinding = cryptographicBindingMethodsSupported != null
-    val deviceBinding = this@validateCryptographicBindingsAndProofTypes.deviceBinding is DeviceBinding.Required
-    require(hasCryptoBinding == deviceBinding) {
-        "deviceBinding must be present if cryptographicBindingMethodsSupported are provided, and omitted otherwise"
-    }
-}

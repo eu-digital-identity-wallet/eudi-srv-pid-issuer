@@ -63,7 +63,6 @@ data class MsoMdocCredentialConfiguration(
         require(claims.all { it.isMsoMDoc() }) {
             "'claims' does not contain valid MSO MDoc ClaimDefinitions"
         }
-        validateCryptographicBindingsAndProofTypes()
     }
 
     override val cryptographicBindingMethodsSupported: NonEmptySet<CryptographicBindingMethod>

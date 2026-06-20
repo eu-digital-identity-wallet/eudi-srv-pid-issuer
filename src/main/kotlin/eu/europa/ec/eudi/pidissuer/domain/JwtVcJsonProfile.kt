@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptySet
+import arrow.core.nonEmptySetOf
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 
@@ -32,16 +33,18 @@ val JWT_VS_JSON_FORMAT = Format(JWT_VS_JSON_FORMAT_VALUE)
 data class JwtVcJsonCredentialConfiguration(
     override val id: CredentialConfigurationId,
     override val scope: Scope,
-    override val cryptographicBindingMethodsSupported: NonEmptySet<CryptographicBindingMethod>?,
     val credentialSigningAlgorithmsSupported: NonEmptySet<JWSAlgorithm>?,
     override val display: List<CredentialDisplay>,
     override val deviceBinding: DeviceBinding,
     override val attestationCategory: AttestationCategory,
     override val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : CredentialConfiguration {
-    init {
-        validateCryptographicBindingsAndProofTypes()
-    }
+    override val cryptographicBindingMethodsSupported: NonEmptySet<CryptographicBindingMethod>?
+        get() =
+            when (deviceBinding) {
+                DeviceBinding.None -> null
+                is DeviceBinding.Required -> nonEmptySetOf(CryptographicBindingMethod.Jwk)
+            }
 }
 
 //
