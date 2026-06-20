@@ -30,7 +30,6 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
 import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.*
 import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ResolveCredentialRequestByCredentialIdentifier
-import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
 import eu.europa.ec.eudi.pidissuer.port.out.jose.decryptCredentialRequest
 import kotlinx.coroutines.Dispatchers
@@ -604,7 +603,7 @@ private fun CredentialConfiguration.buildCredentialRequest(
         }
 
         is JwtVcJsonCredentialConfiguration -> {
-            // JwtVcJson is present in metadata for advertisement but issuance is not implemented
+            // JwtVcJson is present in metadata for the advertisement, but issuance is not implemented
             raise(UnsupportedCredentialType(format = JWT_VS_JSON_FORMAT))
         }
     }
