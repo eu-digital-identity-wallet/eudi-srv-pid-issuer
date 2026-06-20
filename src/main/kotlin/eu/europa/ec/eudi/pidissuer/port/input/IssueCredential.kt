@@ -554,12 +554,12 @@ private suspend fun CredentialRequestTO.toDomain(
             credentialIdentifier,
         ) ?: raise(MissingBothCredentialConfigurationIdAndCredentialIdentifier)
     return credentialConfigurationIdOrCredentialIdentifier.fold(
-        {
+        fa = {
             val credentialConfigurationId = CredentialConfigurationId(it)
             credentialRequestByCredentialConfigurationId(credentialConfigurationId)
         },
-        { credentialIdentifier -> credentialRequestByCredentialIdentifier(credentialIdentifier) },
-        { _, _ -> raise(BothCredentialConfigurationIdAndCredentialIdentifierProvided) },
+        fb = { credentialIdentifier -> credentialRequestByCredentialIdentifier(credentialIdentifier) },
+        fab = { _, _ -> raise(BothCredentialConfigurationIdAndCredentialIdentifierProvided) },
     )
 }
 
