@@ -51,6 +51,7 @@ data class JwtVcJsonCredentialConfiguration(
 // Credential Offer
 //
 
+@Suppress("unused")
 object DummyJwtVc
 
 /**

@@ -30,7 +30,6 @@ import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.jwtProof
 import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ResolveCredentialRequestByCredentialIdentifier
-import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonPrimitive
