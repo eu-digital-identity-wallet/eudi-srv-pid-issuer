@@ -84,33 +84,6 @@ class IssueCredentialTest {
             preferredClientStatusPeriod = PreferredClientStatusPeriod(400.days),
         )
 
-    private val validateProof =
-        object : ValidateProof {
-            context(_: Raise<IssueCredentialError>, cfg: CredentialConfiguration)
-            override suspend fun invoke(
-                unvalidatedProof: UnvalidatedProof?,
-                at: Instant,
-            ): KeyAttestation {
-                val testKeyPublic = ECKeyGenerator(Curve.P_256).generate().toPublicJWK()
-                return KeyAttestation(
-                    credentialKeys = CredentialKeys(nonEmptyListOf(testKeyPublic)),
-                    cNonce = "test-nonce",
-                    keyStorageStatus =
-                        KeyStorageStatus(
-                            status =
-                                Status(
-                                    statusList =
-                                        StatusListToken(
-                                            statusList = URI.create("https://example.com/status"),
-                                            index = 0u,
-                                        ),
-                                ),
-                            exp = clock.now(),
-                        ),
-                )
-            }
-        }
-
     private val encryptCredentialResponse =
         EncryptCredentialResponse { _, _ ->
             IssueCredentialResponse.EncryptedJwtIssued("encrypted-jwt")
