@@ -44,10 +44,6 @@ operator fun ClaimDefinition.Companion.invoke(
     display: Display = emptyMap(),
 ): ClaimDefinition = ClaimDefinition(ClaimPath(nameSpace, attributeName), mandatory, display)
 
-data class MsoMdocPolicy(
-    val oneTimeUse: Boolean,
-)
-
 /**
  * @param docType string identifying the credential type as defined in ISO.18013-5.
  */

@@ -114,7 +114,7 @@ class IssueCredentialTest {
         }
 
     private val encryptCredentialResponse =
-        EncryptCredentialResponse { response, _ ->
+        EncryptCredentialResponse { _, _ ->
             IssueCredentialResponse.EncryptedJwtIssued("encrypted-jwt")
         }
 
@@ -126,7 +126,6 @@ class IssueCredentialTest {
             credentialIssuerMetadata = metaData,
             resolveCredentialRequestByCredentialIdentifier = resolveCredentialRequestByCredentialIdentifier,
             encryptCredentialResponse = encryptCredentialResponse,
-            validateProof = validateProof,
             clock = clock,
         )
 

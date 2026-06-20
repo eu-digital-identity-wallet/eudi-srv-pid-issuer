@@ -28,15 +28,12 @@ import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import eu.europa.ec.eudi.pidissuer.adapter.out.json.jsonSupport
-import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
-import eu.europa.ec.eudi.pidissuer.domain.CredentialRequestEncryption
 import eu.europa.ec.eudi.pidissuer.domain.CredentialRequestEncryptionSupportedParameters
 import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError
 import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.DeserializationStrategy
-import kotlinx.serialization.serializer
 
 context(
     _: Raise<RequestEncryptionError>,

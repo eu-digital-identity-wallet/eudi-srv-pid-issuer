@@ -18,10 +18,8 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 import arrow.core.raise.Raise
 import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
-import arrow.core.toNonEmptyListOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidNonce
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
 import kotlin.time.Instant
@@ -53,9 +51,20 @@ internal class DefaultValidateProof(
                 context(jwtProofType, attestationProofType, cfg.credentialReusePolicy, verifyNonce) {
                     val proof =
                         when (unvalidatedProof) {
-                            null -> raise(IssueCredentialError.MissingProof)
-                            is UnvalidatedProof.Jwt -> validateJwtProofWithKeyAttestation(unvalidatedProof, at)
-                            is UnvalidatedProof.Attestation -> validateAttestationProof(unvalidatedProof, at).limitKeys()
+                            null -> {
+                                raise(IssueCredentialError.MissingProof)
+                            }
+
+                            is UnvalidatedProof.Jwt -> {
+                                validateJwtProofWithKeyAttestation(unvalidatedProof, at)
+                            }
+
+                            is UnvalidatedProof.Attestation -> {
+                                validateAttestationProof(
+                                    unvalidatedProof,
+                                    at,
+                                ).limitKeys()
+                            }
                         }
                     proof.ensureFreshNonce(at).limitKeys()
                 }

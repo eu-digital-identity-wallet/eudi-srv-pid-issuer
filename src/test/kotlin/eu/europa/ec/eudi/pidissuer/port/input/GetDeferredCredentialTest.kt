@@ -216,10 +216,9 @@ class GetDeferredCredentialTest {
                 )
             val getDeferred =
                 GetDeferredCredential(
-                    loadDeferredCredentialByTransactionId =
-                        LoadDeferredCredentialByTransactionId {
-                            throw UnsupportedOperationException("Should not be called")
-                        },
+                    loadDeferredCredentialByTransactionId = {
+                        throw UnsupportedOperationException("Should not be called")
+                    },
                     encryptCredentialResponse = encryptDeferredResponse,
                     credentialIssuerMetadata =
                         metadata(

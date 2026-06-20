@@ -977,7 +977,6 @@ fun beans(
             credentialIssuerMetadata = bean(),
             resolveCredentialRequestByCredentialIdentifier = bean(),
             encryptCredentialResponse = bean(),
-            validateProof = bean(),
             clock = bean(),
         )
     }

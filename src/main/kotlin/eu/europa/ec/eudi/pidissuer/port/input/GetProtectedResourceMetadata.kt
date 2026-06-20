@@ -29,6 +29,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 
+@Suppress("unused")
 @Serializable
 enum class BearerMethodTO {
     @SerialName(RFC9728.BEARER_METHOD_HEADER)

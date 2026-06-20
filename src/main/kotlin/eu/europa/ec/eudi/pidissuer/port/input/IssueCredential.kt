@@ -323,7 +323,6 @@ class IssueCredential(
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
     private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
     private val encryptCredentialResponse: EncryptCredentialResponse,
-    private val validateProof: ValidateProof,
     private val clock: Clock,
 ) {
     suspend fun fromEncryptedRequest(
