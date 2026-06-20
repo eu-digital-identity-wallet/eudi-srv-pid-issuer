@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.persistence
 
+import arrow.core.NonEmptyList
 import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
 import eu.europa.ec.eudi.pidissuer.domain.NotificationId
 
@@ -22,5 +23,5 @@ fun interface LoadIssuedCredentialsByNotificationId {
     /**
      * Loads an issued credential by its notification id.
      */
-    suspend operator fun invoke(notificationId: NotificationId): List<IssuedCredential>
+    suspend operator fun invoke(notificationId: NotificationId): NonEmptyList<IssuedCredential>?
 }

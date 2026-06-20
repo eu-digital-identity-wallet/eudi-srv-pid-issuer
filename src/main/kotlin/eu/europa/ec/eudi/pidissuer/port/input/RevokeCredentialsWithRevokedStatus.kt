@@ -15,7 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
-import eu.europa.ec.eudi.pidissuer.domain.Clock
+import arrow.core.raise.effect
+import arrow.core.raise.fold
+import arrow.fx.coroutines.parMap
 import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.DeleteExpiredIssuedCredentials
@@ -24,10 +26,9 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.GetNonExpiredIssuedCrede
 import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.MarkStatusAsRevoked
 import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.flatMapMerge
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.*
 import org.slf4j.LoggerFactory
+import kotlin.time.Clock
 
 private val log = LoggerFactory.getLogger(RevokeCredentialsWithRevokedStatus::class.java)
 
@@ -42,7 +43,10 @@ class RevokeCredentialsWithRevokedStatus(
     private val getStatusListTokenStatus: GetStatusListTokenStatus,
     private val markStatusAsRevoked: MarkStatusAsRevoked,
     private val deleteIssuedCredential: DeleteIssuedCredential,
+    private val concurrency: Int = 2,
 ) {
+    private val dispatcher = Dispatchers.IO
+
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend operator fun invoke() {
         log.info("Deleting expired issued credentials")
@@ -51,72 +55,88 @@ class RevokeCredentialsWithRevokedStatus(
         log.info("Checking revocation status for active credential(s)")
         val activeCredentials = getNonExpiredIssuedCredentials(clock.now())
 
-        activeCredentials
-            .flatMapMerge { credential ->
-                flow {
-                    emit(processCredential(credential))
-                }
-            }.collect { }
+        activeCredentials.parMap(dispatcher, concurrency) { credential ->
+            processCredential(credential)
+        }
     }
 
-    private suspend fun processCredential(credential: IssuedCredential) =
-        runCatching {
-            val mustRevoke =
-                isStatusRevoked(
-                    "client status",
-                    credential.clientStatus,
-                ) || (
+    private suspend fun processCredential(credential: IssuedCredential): Unit =
+        coroutineScope {
+            val clientStatus =
+                async {
+                    isStatusRevoked("client status", credential.clientStatus)
+                }
+            val keyStorageStatus =
+                async {
                     credential.keyStorageStatus != null &&
                         isStatusRevoked(
                             "key storage status",
                             credential.keyStorageStatus,
                         )
-                )
+                }
+            val mustRevoke = clientStatus.await() || keyStorageStatus.await()
             if (mustRevoke) {
                 revokeCredential(credential)
             }
-        }.onFailure { e ->
-            log.error(
-                "Unexpected error processing credential: {}",
-                e.message,
-                e,
-            )
         }
 
     private suspend fun revokeCredential(credential: IssuedCredential) {
-        if (credential.status != null) {
-            markStatusAsRevoked(credential.status)
-                .onRight {
-                    deleteIssuedCredential(credential)
-                }.onLeft { e ->
-                    log.warn(
-                        "Failed to revoke credential with status list '{}' due to error: {}",
-                        credential.status.statusList,
-                        e.message,
-                        e,
-                    )
-                }
-        } else {
+        effect {
+            if (credential.status != null) {
+                markStatusAsRevoked(credential.status)
+            }
             deleteIssuedCredential(credential)
-        }
+        }.fold(
+            transform = {},
+            recover = { e -> log(credential.status, e) },
+            catch = { t ->
+                log.warn(
+                    "Failed to revoke credential with status list '{}'",
+                    credential.status?.statusList,
+                    t,
+                )
+            },
+        )
     }
 
     private suspend fun isStatusRevoked(
         statusName: String,
         statusListToken: StatusListToken,
-    ): Boolean {
-        val (uri, index) = statusListToken
-        return getStatusListTokenStatus(uri, index).fold(
-            ifLeft = { error ->
-                log.warn(
-                    "Failed to check {} for credential with status list '{}': {}",
-                    statusName,
-                    statusListToken.statusList,
-                    error.message,
-                )
+    ): Boolean =
+        effect {
+            val (uri, index) = statusListToken
+            val statusToken = getStatusListTokenStatus(uri, index)
+            statusToken == StatusListTokenStatus.INVALID
+        }.fold(
+            transform = { it },
+            recover = { e ->
+                log(statusName, statusListToken, e)
                 false
             },
-            ifRight = { statusToken -> statusToken == StatusListTokenStatus.INVALID },
+        )
+
+    private fun log(
+        status: StatusListToken?,
+        error: MarkStatusAsRevoked.Error,
+    ) {
+        log.warn(
+            "Failed to revoke credential with status list '{}' due to error: {}",
+            status?.statusList,
+            error.value,
+        )
+    }
+
+    private fun log(
+        statusName: String,
+        statusListToken: StatusListToken,
+        error: GetStatusListTokenStatus.Error,
+    ) {
+        log.warn(
+            "Failed to check {} for credential with status list '{}' at index {}",
+            statusName,
+            statusListToken.statusList,
+            statusListToken.index,
+            error.value,
         )
     }
 }

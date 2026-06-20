@@ -16,6 +16,10 @@
 package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptyList
+import arrow.core.raise.Raise
+import arrow.core.raise.catch
+import arrow.core.raise.context.ensure
+import arrow.core.raise.context.raise
 import arrow.core.serialization.NonEmptyListSerializer
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSObject
@@ -33,38 +37,43 @@ data class KeyAttestationJWT private constructor(
     val claims: KeyAttestationClaims,
 ) {
     companion object {
+        context(_: Raise<String>)
         operator fun invoke(value: String): KeyAttestationJWT = KeyAttestationJWT(SignedJWT.parse(value))
 
+        context(_: Raise<String>)
         operator fun invoke(jwt: SignedJWT): KeyAttestationJWT {
-            with(jwt) {
-                ensureSignedWithSupportedAlgorithm()
-                ensureCorrectHeaderType()
-            }
+            jwt.ensureSignedWithSupportedAlgorithm()
+            jwt.ensureCorrectHeaderType()
             val deserializedClaims =
-                runCatching {
-                    val serializedClaims = JSONObjectUtils.toJSONString(jwt.jwtClaimsSet.toJSONObject())
-                    jsonSupport.decodeFromString<KeyAttestationClaims>(serializedClaims)
-                }.getOrElse { throw IllegalArgumentException("Invalid Key Attestation JWT", it) }
+                catch(
+                    {
+                        val serializedClaims = JSONObjectUtils.toJSONString(jwt.jwtClaimsSet.toJSONObject())
+                        jsonSupport.decodeFromString<KeyAttestationClaims>(serializedClaims)
+                    },
+                ) { _ -> raise("Invalid Key Attestation JWT") }
 
             return KeyAttestationJWT(jwt, deserializedClaims)
         }
     }
 }
 
+context(_: Raise<String>)
 private fun SignedJWT.ensureCorrectHeaderType() =
-    require(header.type != null && (header.type.type == OpenId4VciSpec.KEY_ATTESTATION_JWT_TYPE)) {
+    ensure(header.type != null && (header.type.type == OpenId4VciSpec.KEY_ATTESTATION_JWT_TYPE)) {
         "Invalid Key Attestation JWT. Type must be set to `${OpenId4VciSpec.KEY_ATTESTATION_JWT_TYPE}`"
     }
 
+context(_: Raise<String>)
 private fun SignedJWT.ensureSignedWithSupportedAlgorithm() {
-    check(state == JWSObject.State.SIGNED || state == JWSObject.State.VERIFIED) {
+    ensure(state == JWSObject.State.SIGNED || state == JWSObject.State.VERIFIED) {
         "Provided JWT is not signed"
     }
     requireSupportedKeyAttestationAlgorithm(header.algorithm)
 }
 
+context(_: Raise<String>)
 private fun requireSupportedKeyAttestationAlgorithm(alg: JWSAlgorithm) =
-    require(alg in TS3.SUPPORTED_KEY_ATTESTATION_SIGNING_ALGORITHMS) {
+    ensure(alg in TS3.SUPPORTED_KEY_ATTESTATION_SIGNING_ALGORITHMS) {
         "Key Attestation algorithm '${alg.name}' is not supported, must be one of: " +
             TS3.SUPPORTED_KEY_ATTESTATION_SIGNING_ALGORITHMS.joinToString(", ") { it.name }
     }
@@ -87,7 +96,7 @@ data class KeyAttestationClaims(
 @JvmInline
 @Serializable
 value class AttestedKeys(
-    @Serializable(with = JWKNonEmptyListSerializer::class)val value: NonEmptyList<JWK>,
+    @Serializable(with = JWKNonEmptyListSerializer::class) val value: NonEmptyList<JWK>,
 ) {
     init {
         value.forEachIndexed { index, jwk ->

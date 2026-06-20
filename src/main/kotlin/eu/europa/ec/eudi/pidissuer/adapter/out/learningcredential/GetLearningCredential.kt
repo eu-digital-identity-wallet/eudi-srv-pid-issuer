@@ -16,16 +16,19 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential
 
 import arrow.core.nonEmptyListOf
+import arrow.core.raise.Raise
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.IsoAlpha2CountryCode
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
-import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import kotlin.random.Random
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 
 fun interface GetLearningCredential {
+    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>)
     suspend operator fun invoke(context: AuthorizationContext): LearningCredential
 
     companion object {
@@ -41,9 +44,10 @@ private class GetMockLearningCredential(
     private val getPidData: GetPidData,
     private val random: Random = Random,
 ) : GetLearningCredential {
+    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>)
     override suspend fun invoke(context: AuthorizationContext): LearningCredential {
         val now = clock.now()
-        val pid = checkNotNull(getPidData(context.username)?.first)
+        val (pid, _) = getPidData(context.username)
         return LearningCredential(
             issuer =
                 Issuer(

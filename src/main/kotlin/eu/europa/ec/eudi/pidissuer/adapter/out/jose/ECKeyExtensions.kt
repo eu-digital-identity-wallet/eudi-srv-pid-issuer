@@ -16,17 +16,21 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import com.nimbusds.jose.jwk.ECKey
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.bouncycastle.util.io.pem.PemObject
 import org.bouncycastle.util.io.pem.PemWriter
 import java.io.StringWriter
 import kotlin.io.encoding.Base64
 
-internal fun ECKey.toPem(): String =
-    StringWriter().use { stringWriter ->
-        PemWriter(stringWriter).use { pemWriter ->
-            pemWriter.writeObject(PemObject("PUBLIC KEY", this.toECPublicKey().encoded))
+internal suspend fun ECKey.toPem(): String =
+    withContext(Dispatchers.IO) {
+        StringWriter().use { stringWriter ->
+            PemWriter(stringWriter).use { pemWriter ->
+                pemWriter.writeObject(PemObject("PUBLIC KEY", toECPublicKey().encoded))
+            }
+            stringWriter.toString()
         }
-        stringWriter.toString()
     }
 
-internal fun ECKey.toBase64UrlSafeEncodedPem(): String = Base64.UrlSafe.encode(this.toPem().toByteArray())
+internal suspend fun ECKey.toBase64UrlSafeEncodedPem(): String = Base64.UrlSafe.encode(this.toPem().toByteArray())

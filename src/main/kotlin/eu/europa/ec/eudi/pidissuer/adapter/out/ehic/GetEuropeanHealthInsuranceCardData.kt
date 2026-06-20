@@ -15,6 +15,11 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.ehic
 
+import arrow.core.raise.Raise
+import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+
 fun interface GetEuropeanHealthInsuranceCardData {
-    suspend operator fun invoke(): EuropeanHealthInsuranceCard
+    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>)
+    suspend operator fun invoke(authorizationContext: AuthorizationContext): EuropeanHealthInsuranceCard
 }

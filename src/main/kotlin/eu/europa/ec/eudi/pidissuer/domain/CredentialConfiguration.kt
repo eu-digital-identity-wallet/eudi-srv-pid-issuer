@@ -16,7 +16,9 @@
 package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptySet
+import arrow.core.nonEmptySetOf
 import com.nimbusds.jose.JWSAlgorithm
+import eu.europa.ec.eudi.pidissuer.domain.DeviceBinding.Required.ProofOption
 import kotlinx.serialization.Serializable
 
 /**
@@ -75,27 +77,6 @@ sealed interface ProofType {
         val signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
         val keyAttestationRequirement: KeyAttestationRequirement,
     ) : ProofType
-
-    companion object {
-        fun proofTypes(
-            supportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-            keyAttestationRequirement: KeyAttestationRequirement,
-        ): Set<ProofType> {
-            supportedSigningAlgorithms.forEach {
-                require(it in JWSAlgorithm.Family.EC) {
-                    "Only EC signing algorithms are supported."
-                }
-            }
-            return buildSet {
-                add(
-                    Jwt(supportedSigningAlgorithms, keyAttestationRequirement),
-                )
-                add(
-                    Attestation(supportedSigningAlgorithms, keyAttestationRequirement),
-                )
-            }
-        }
-    }
 }
 
 fun ProofType.type(): ProofTypeEnum =
@@ -109,20 +90,47 @@ enum class ProofTypeEnum {
     ATTESTATION,
 }
 
-@JvmInline
-value class ProofTypesSupported private constructor(
-    val values: Set<ProofType>,
-) {
-    operator fun get(type: ProofTypeEnum): ProofType? = values.firstOrNull { it.type() == type }
+sealed interface DeviceBinding {
+    data object None : DeviceBinding
+
+    data class Required constructor(
+        val algorithmsSupported: NonEmptySet<JWSAlgorithm>,
+        val keyStorageRequirement: KeyAttestationRequirement,
+        val proofType: ProofOption = ProofOption.Either,
+    ) : DeviceBinding {
+        enum class ProofOption {
+            ProofJwtWithKeyAttestation,
+            ProofKeyAttestation,
+            Either,
+        }
+
+        fun proofTypesSupported(): NonEmptySet<ProofType> {
+            fun jwtWithKA() = ProofType.Jwt(algorithmsSupported, keyStorageRequirement)
+
+            fun attestation() = ProofType.Attestation(algorithmsSupported, keyStorageRequirement)
+            return when (proofType) {
+                ProofOption.ProofJwtWithKeyAttestation -> nonEmptySetOf(jwtWithKA(), attestation())
+                ProofOption.ProofKeyAttestation -> nonEmptySetOf(attestation())
+                ProofOption.Either -> nonEmptySetOf(jwtWithKA(), attestation())
+            }
+        }
+    }
 
     companion object {
-        val Empty: ProofTypesSupported = ProofTypesSupported(emptySet())
+        val AllowedAlgorithms = nonEmptySetOf(JWSAlgorithm.ES256, JWSAlgorithm.ES384, JWSAlgorithm.ES512)
 
-        operator fun invoke(values: Set<ProofType>): ProofTypesSupported {
-            require(values.groupBy(ProofType::type).all { (_, instances) -> instances.size == 1 }) {
-                "Multiple instance of the same proof type are not allowed"
+        fun ts3(
+            algorithmsSupported: NonEmptySet<JWSAlgorithm> = AllowedAlgorithms,
+            preferredKeyStorageStatusPeriod: PreferredKeyStorageStatusPeriod,
+        ): Required {
+            require(algorithmsSupported.all { it in AllowedAlgorithms }) {
+                "Only EC signing algorithms are supported."
             }
-            return ProofTypesSupported(values)
+            return Required(
+                algorithmsSupported,
+                KeyAttestationRequirement.ts3(preferredKeyStorageStatusPeriod),
+                ProofOption.Either,
+            )
         }
     }
 }
@@ -135,16 +143,8 @@ sealed interface CredentialConfiguration {
     val id: CredentialConfigurationId
     val scope: Scope
     val display: List<CredentialDisplay>
-    val cryptographicBindingMethodsSupported: Set<CryptographicBindingMethod>
-    val proofTypesSupported: ProofTypesSupported
+    val cryptographicBindingMethodsSupported: NonEmptySet<CryptographicBindingMethod>?
+    val deviceBinding: DeviceBinding
     val attestationCategory: AttestationCategory
     val credentialReusePolicy: CredentialReusePolicy
-}
-
-internal fun CredentialConfiguration.validateCryptographicBindingsAndProofTypes() {
-    val hasCryptoBinding = cryptographicBindingMethodsSupported.isNotEmpty()
-    val hasProofTypes = proofTypesSupported != ProofTypesSupported.Empty
-    require(hasCryptoBinding == hasProofTypes) {
-        "proofTypesSupported must be present if cryptographicBindingMethodsSupported are provided, and omitted otherwise"
-    }
 }

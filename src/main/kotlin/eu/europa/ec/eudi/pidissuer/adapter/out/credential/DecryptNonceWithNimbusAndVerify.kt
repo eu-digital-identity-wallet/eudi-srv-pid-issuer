@@ -30,6 +30,8 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.toKotlinInstant
 import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import kotlin.time.Instant
 
@@ -71,10 +73,12 @@ internal class DecryptNonceWithNimbusAndVerify(
         value: String,
         at: Instant,
     ): Boolean =
-        result {
-            val jwt = EncryptedJWT.parse(value)
-            val claimSet = processor.process(jwt, null)
-            val expiresAt = requireNotNull(claimSet.expirationTime) { "expirationTime is required" }
-            at < expiresAt.toKotlinInstant()
-        }.getOrElse { false }
+        withContext(Dispatchers.Default) {
+            result {
+                val jwt = EncryptedJWT.parse(value)
+                val claimSet = processor.process(jwt, null)
+                val expiresAt = requireNotNull(claimSet.expirationTime) { "expirationTime is required" }
+                at < expiresAt.toKotlinInstant()
+            }.getOrElse { false }
+        }
 }

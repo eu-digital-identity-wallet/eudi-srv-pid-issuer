@@ -26,7 +26,7 @@ interface EncodePidInCbor {
     suspend operator fun invoke(
         pid: Pid,
         pidMetaData: PidMetaData,
-        holderKey: ECKey,
+        deviceKey: ECKey,
         issuedAt: Instant,
         expiresAt: Instant,
         statusListToken: StatusListToken?,

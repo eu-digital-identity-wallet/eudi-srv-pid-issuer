@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.status
 
-import arrow.core.Either
+import arrow.core.raise.Raise
 import java.net.URI
 
 /**
@@ -34,8 +34,14 @@ fun interface GetStatusListTokenStatus {
      * @param uri the URI of the status list token
      * @param index the index of the entry within the status list
      */
+    context(_: Raise<Error>)
     suspend operator fun invoke(
         uri: URI,
         index: UInt,
-    ): Either<Throwable, StatusListTokenStatus>
+    ): StatusListTokenStatus
+
+    @JvmInline
+    value class Error(
+        val value: Throwable,
+    )
 }

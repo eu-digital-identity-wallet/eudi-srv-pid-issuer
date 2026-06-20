@@ -15,8 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
-import arrow.core.Either
-import arrow.core.raise.either
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
@@ -27,8 +25,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.sdJwtVcIssuer
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObject
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
@@ -51,8 +47,8 @@ class EncodePidInSdJwtVc(
      * according to the requirements of SD-JWT VC
      * - No decoys
      * - JWS header kid should contain the id of issuer's key
-     * - JWS header typ should contain value "vs+sd-jwt"
-     * In addition the issuer will use the config to select
+     * - JWS header typ should contain value "vs+sd-jwt,"
+     * In addition, the issuer will use the config to select
      * [HashAlgorithm], [JWSAlgorithm] and [issuer's key][ECKey]
      */
     private val issuer: SdJwtIssuer<SignedJWT> by lazy { issuerSigningKey.sdJwtVcIssuer(hashAlgorithm) }
@@ -60,37 +56,33 @@ class EncodePidInSdJwtVc(
     suspend operator fun invoke(
         pid: Pid,
         pidMetaData: PidMetaData,
-        holderKey: JWK,
+        deviceKey: JWK,
         issuedAt: Instant,
         expiresAt: Instant,
         notBefore: Instant?,
         statusListToken: StatusListToken?,
-    ): Either<IssueCredentialError, String> =
-        either {
-            val sdJwtSpec =
-                selectivelyDisclosed(
-                    pid = pid,
-                    pidMetaData = pidMetaData,
-                    vct = vct,
-                    credentialIssuerId = credentialIssuerId,
-                    holderPubKey = holderKey,
-                    iat = issuedAt,
-                    exp = expiresAt,
-                    nbf = notBefore,
-                    statusListToken = statusListToken,
-                )
-            val issuedSdJwt: SdJwt<SignedJWT> =
-                issuer.issue(sdJwtSpec).getOrElse {
-                    raise(Unexpected("Error while creating SD-JWT", it))
-                }
-            if (log.isInfoEnabled) {
-                log.info(with(Printer) { issuedSdJwt.prettyPrint() })
-            }
-
-            with(NimbusSdJwtOps) {
-                issuedSdJwt.serialize()
-            }
+    ): String {
+        val sdJwtSpec =
+            selectivelyDisclosed(
+                pid = pid,
+                pidMetaData = pidMetaData,
+                vct = vct,
+                credentialIssuerId = credentialIssuerId,
+                holderPubKey = deviceKey,
+                iat = issuedAt,
+                exp = expiresAt,
+                nbf = notBefore,
+                statusListToken = statusListToken,
+            )
+        val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow()
+        if (log.isInfoEnabled) {
+            log.info(with(Printer) { issuedSdJwt.prettyPrint() })
         }
+
+        return with(NimbusSdJwtOps) {
+            issuedSdJwt.serialize()
+        }
+    }
 }
 
 private fun selectivelyDisclosed(

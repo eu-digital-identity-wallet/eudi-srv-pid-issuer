@@ -15,7 +15,12 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
-import arrow.core.Either
+import arrow.core.raise.Raise
+import arrow.core.raise.catch
+import arrow.core.raise.context.ensureNotNull
+import arrow.core.raise.context.raise
+import arrow.core.raise.effect
+import arrow.core.raise.fold
 import eu.europa.ec.eudi.pidissuer.domain.NotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadIssuedCredentialsByNotificationId
 import kotlinx.serialization.Required
@@ -23,69 +28,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.decodeFromJsonElement
 import org.slf4j.LoggerFactory
-
-@Suppress("unused")
-@Serializable
-enum class EventTypeTO {
-    /**
-     * The Credential was successfully stored in the Wallet, with or without user action.
-     */
-    @SerialName("credential_accepted")
-    CredentialAccepted,
-
-    /**
-     * Unsuccessful Credential issuance was caused by a user action.
-     */
-    @SerialName("credential_deleted")
-    CredentialDeleted,
-
-    /**
-     * Unsuccessful Credential issuance (all other cases).
-     */
-    @SerialName("credential_failure")
-    CredentialFailure,
-}
-
-@Serializable
-data class NotificationRequestTO(
-    @SerialName("notification_id") @Required val notificationId: String,
-    @SerialName("event") @Required val eventType: EventTypeTO,
-    @SerialName("event_description") val description: String? = null,
-)
-
-@Serializable
-enum class ErrorTypeTO {
-    /**
-     * The notification_id in the Notification Request was invalid.
-     */
-    @SerialName("invalid_notification_id")
-    InvalidNotificationId,
-
-    /**
-     *  The Notification Request is missing a required parameter, includes
-     *  an unsupported parameter or parameter value, repeats the same parameter,
-     *  or is otherwise malformed.
-     */
-    @SerialName("invalid_notification_request")
-    InvalidNotificationRequest,
-}
-
-sealed interface NotificationResponse {
-    /**
-     * Indicate a Notification Request was successfully handled.
-     */
-    data object Success : NotificationResponse
-
-    /**
-     * Indicates a NotificationRequest could not be successfully handled.
-     */
-    @Serializable
-    data class NotificationErrorResponseTO(
-        @SerialName("error") @Required val errorType: ErrorTypeTO,
-    ) : NotificationResponse
-}
 
 private val log = LoggerFactory.getLogger(HandleNotificationRequest::class.java)
 
@@ -96,20 +39,25 @@ class HandleNotificationRequest(
     private val loadIssuedCredentialsByNotificationId: LoadIssuedCredentialsByNotificationId,
 ) {
     suspend operator fun invoke(requestBody: JsonElement): NotificationResponse =
-        Either
-            .catch { Json.decodeFromJsonElement<NotificationRequestTO>(requestBody) }
-            .fold(
-                ifLeft = { NotificationResponse.NotificationErrorResponseTO(ErrorTypeTO.InvalidNotificationRequest) },
-                ifRight = { notificationRequest ->
-                    val notificationId = NotificationId(notificationRequest.notificationId)
-                    val credentials = loadIssuedCredentialsByNotificationId(notificationId)
+        effect {
+            process(requestBody)
+        }.fold(
+            transform = { NotificationResponse.Success },
+            recover = { NotificationResponse.NotificationErrorResponseTO(it) },
+        )
 
-                    if (credentials.isNotEmpty()) {
-                        log.info("Received Notification Request '$notificationRequest' for Credentials '$credentials'")
-                        NotificationResponse.Success
-                    } else {
-                        NotificationResponse.NotificationErrorResponseTO(ErrorTypeTO.InvalidNotificationId)
-                    }
-                },
-            )
+    context(_: Raise<ErrorTypeTO>)
+    suspend fun process(requestBody: JsonElement) {
+        val notificationRequest = parseRequest(requestBody)
+        val notificationId = NotificationId(notificationRequest.notificationId)
+        val credentials = loadIssuedCredentialsByNotificationId(notificationId)
+        ensureNotNull(credentials) { ErrorTypeTO.InvalidNotificationId }
+        log.info("Received Notification Request '$notificationRequest' for Credentials '$credentials'")
+    }
+
+    context(_: Raise<ErrorTypeTO>)
+    private fun parseRequest(requestBody: JsonElement): NotificationRequestTO =
+        catch({ Json.decodeFromJsonElement(NotificationRequestTO.serializer(), requestBody) }) {
+            raise(ErrorTypeTO.InvalidNotificationRequest)
+        }
 }

@@ -15,9 +15,12 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.Either
-import arrow.core.raise.either
-import arrow.core.raise.ensureNotNull
+import arrow.core.raise.Raise
+import arrow.core.raise.context.ensure
+import arrow.core.raise.context.ensureNotNull
+import arrow.core.raise.context.raise
+import arrow.core.raise.effect
+import arrow.core.raise.fold
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
@@ -31,9 +34,10 @@ import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import com.nimbusds.jwt.proc.JWTProcessor
-import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 import kotlin.time.Instant
@@ -41,67 +45,64 @@ import kotlin.time.Instant
 /**
  * Validator for JWT Proofs.
  */
-internal class ValidateJwtProof(
+internal class ValidateJwtProofWithKeyAttestation(
     private val credentialIssuerId: CredentialIssuerId,
     private val verifyKeyAttestation: VerifyKeyAttestation,
 ) {
+    context(_: Raise<IssueCredentialError.InvalidProof>, _: ProofType.Jwt)
     suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof.Jwt,
-        credentialConfiguration: CredentialConfiguration,
         at: Instant,
-    ): Either<IssueCredentialError.InvalidProof, ValidatedProof> =
-        either {
-            val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.JWT]
-            ensureNotNull(proofType) {
-                val message = "credential configuration '${credentialConfiguration.id.value}' doesn't support 'jwt' proofs"
-                IssueCredentialError.InvalidProof(message)
-            }
-            check(proofType is ProofType.Jwt)
-            validatedProof(unvalidatedProof, proofType, at).bind()
-        }
+    ): KeyAttestation =
+        effect { doValidate(unvalidatedProof, at) }
+            .fold(
+                transform = { it },
+                recover = { raise(IssueCredentialError.InvalidProof(it)) },
+                catch = { raise(IssueCredentialError.InvalidProof("Invalid proof JWT", it)) },
+            )
 
-    private suspend fun validatedProof(
+    context(_: Raise<String>, proofType: ProofType.Jwt)
+    private suspend fun doValidate(
         unvalidatedProof: UnvalidatedProof.Jwt,
-        proofType: ProofType.Jwt,
         at: Instant,
-    ): Either<IssueCredentialError.InvalidProof, ValidatedProof> =
-        Either
-            .catch {
-                val signedJwt = SignedJWT.parse(unvalidatedProof.jwt)
-                val nonce = requireNotNull(signedJwt.jwtClaimsSet.getStringClaim("nonce")) { "Missing 'nonce'" }
-                require(signedJwt.header.algorithm in proofType.signingAlgorithmsSupported) {
-                    "JWT proof signing algorithm '${signedJwt.header.algorithm}' is not supported, " +
-                        "must be one of: ${proofType.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
-                }
-                val (algorithm, credentialKeys, keyStorageStatus) =
-                    algorithmAndCredentialKey(
-                        signedJwt,
-                        proofType,
-                        verifyKeyAttestation,
-                        nonce,
-                        at,
-                    )
-                require(signedJwt.header.keyID == ETSI119472Part3.KEY_ATTESTATION_JWT_PROOF_SIGNING_KEY_INDEX.toString()) {
-                    "JWT Proof with `key_attestation` must contain header `kid` " +
-                        "with value `${ETSI119472Part3.KEY_ATTESTATION_JWT_PROOF_SIGNING_KEY_INDEX}`"
-                }
-
-                require(keyStorageStatus.exp >= at + proofType.keyAttestationRequirement.preferredKeyStorageStatusPeriod.value) {
-                    "Key Storage Status expiration date does not meet the preferred key storage status period"
-                }
-
-                val keySelector = keySelector(credentialKeys, algorithm)
-                val processor = processor(credentialIssuerId, keySelector)
-                processor.process(signedJwt, null)
-
-                ValidatedProof(
-                    credentialKeys = credentialKeys,
-                    cNonce = nonce,
-                    keyStorageStatus = keyStorageStatus,
+    ): KeyAttestation =
+        withContext(Dispatchers.Default) {
+            val signedJwt = SignedJWT.parse(unvalidatedProof.jwt)
+            val nonce = ensureNotNull(signedJwt.jwtClaimsSet.getStringClaim("nonce")) { "Missing 'nonce'" }
+            ensure(signedJwt.header.algorithm in proofType.signingAlgorithmsSupported) {
+                "JWT proof signing algorithm '${signedJwt.header.algorithm}' is not supported, " +
+                    "must be one of: ${proofType.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
+            }
+            val (algorithm, credentialKeys, keyStorageStatus) =
+                algorithmAndCredentialKey(
+                    signedJwt,
+                    proofType,
+                    verifyKeyAttestation,
+                    expectedKeyAttestationNonce = nonce,
+                    at,
                 )
-            }.mapLeft { IssueCredentialError.InvalidProof("Invalid proof JWT", it) }
+            ensure(signedJwt.header.keyID == ETSI119472Part3.KEY_ATTESTATION_JWT_PROOF_SIGNING_KEY_INDEX.toString()) {
+                "JWT Proof with `key_attestation` must contain header `kid` " +
+                    "with value `${ETSI119472Part3.KEY_ATTESTATION_JWT_PROOF_SIGNING_KEY_INDEX}`"
+            }
+
+            ensure(keyStorageStatus.exp >= at + proofType.keyAttestationRequirement.preferredKeyStorageStatusPeriod.value) {
+                "Key Storage Status expiration date does not meet the preferred key storage status period"
+            }
+
+            val keySelector = keySelector(credentialKeys, algorithm)
+            val processor = processor(credentialIssuerId, keySelector)
+            processor.process(signedJwt, null)
+
+            KeyAttestation(
+                credentialKeys = credentialKeys,
+                cNonce = nonce,
+                keyStorageStatus = keyStorageStatus,
+            )
+        }
 }
 
+context(_: Raise<String>)
 private suspend fun algorithmAndCredentialKey(
     signedJwt: SignedJWT,
     proofType: ProofType.Jwt,
@@ -115,11 +116,10 @@ private suspend fun algorithmAndCredentialKey(
         header.algorithm
             .takeIf(JWSAlgorithm.Family.EC::contains)
             ?.takeIf(supported::contains)
-            ?: error("signing algorithm '${header.algorithm.name}' is not supported")
+    ensureNotNull(algorithm) { "signing algorithm '${header.algorithm.name}' is not supported" }
 
-    val keyAttestation = header.getCustomParam("key_attestation") as String?
-
-    requireNotNull(keyAttestation) { "JWT Proof must contain `key_attestation`" }
+    val keyAttestation = header.getCustomParam("key_attestation") as? String?
+    ensureNotNull(keyAttestation) { "JWT Proof must contain `key_attestation`" }
 
     val (credentialKeys, keyStorageStatus) =
         CredentialKeys.fromKeyAttestation(
@@ -134,6 +134,7 @@ private suspend fun algorithmAndCredentialKey(
     return Triple(algorithm, credentialKeys, keyStorageStatus)
 }
 
+context(_: Raise<String>)
 private suspend fun CredentialKeys.Companion.fromKeyAttestation(
     keyAttestation: String,
     proofJwt: ProofType.Jwt,
@@ -142,7 +143,7 @@ private suspend fun CredentialKeys.Companion.fromKeyAttestation(
     at: Instant,
 ): Pair<CredentialKeys, KeyStorageStatus> {
     val keyAttestationJWT = KeyAttestationJWT(keyAttestation)
-    require(keyAttestationJWT.jwt.header.algorithm in proofJwt.signingAlgorithmsSupported) {
+    ensure(keyAttestationJWT.jwt.header.algorithm in proofJwt.signingAlgorithmsSupported) {
         "Key attestation signing algorithm '${keyAttestationJWT.jwt.header.algorithm}' is not supported, " +
             "must be one of: ${proofJwt.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
     }
@@ -153,9 +154,9 @@ private suspend fun CredentialKeys.Companion.fromKeyAttestation(
             keyAttestationRequirement = proofJwt.keyAttestationRequirement,
             expectExpirationClaim = true,
             at = at,
-        ).getOrThrow()
+        )
     if (null != nonce) {
-        require(expectedNonce == nonce) { "Key Attestation 'nonce' does not match JWT Proof 'nonce'" }
+        ensure(expectedNonce == nonce) { "Key Attestation 'nonce' does not match JWT Proof 'nonce'" }
     }
 
     return CredentialKeys(attestedKeys) to keyAttestationJWT.claims.keyStorageStatus

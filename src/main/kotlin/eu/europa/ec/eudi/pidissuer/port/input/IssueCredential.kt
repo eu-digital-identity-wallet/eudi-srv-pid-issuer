@@ -17,69 +17,41 @@ package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.*
 import arrow.core.raise.Raise
-import arrow.core.raise.either
-import arrow.core.raise.ensure
-import arrow.core.raise.ensureNotNull
-import com.nimbusds.jose.CompressionAlgorithm
+import arrow.core.raise.catch
+import arrow.core.raise.context.ensure
+import arrow.core.raise.context.ensureNotNull
+import arrow.core.raise.context.raise
+import arrow.core.raise.context.withError
+import arrow.core.raise.effect
+import arrow.core.raise.fold
 import com.nimbusds.jose.EncryptionMethod
-import com.nimbusds.jose.JWEAlgorithm
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.decryptCredentialRequest
-import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
+import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
-import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.*
-import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
-import eu.europa.ec.eudi.pidissuer.port.out.credential.ResolveCredentialRequestByCredentialIdentifier
-import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
+import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
-import kotlinx.coroutines.coroutineScope
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.*
+import eu.europa.ec.eudi.pidissuer.port.out.jose.RequestEncryptionError
+import eu.europa.ec.eudi.pidissuer.port.out.jose.RequestEncryptionError.*
+import eu.europa.ec.eudi.pidissuer.port.out.jose.decryptCredentialRequest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import org.slf4j.LoggerFactory
-
-@Serializable
-data class ProofsTO(
-    @SerialName("jwt") val jwtProofs: List<String>? = null,
-    @SerialName("attestation") val attestations: List<String>? = null,
-)
-
-@Serializable
-data class CredentialResponseEncryptionTO(
-    @SerialName("jwk") @Required val key: JsonObject,
-    @SerialName("enc") @Required val method: String,
-    @SerialName("zip") val zipAlgorithm: String? = null,
-)
-
-@Serializable
-data class CredentialRequestTO(
-    @SerialName("credential_identifier")
-    val credentialIdentifier: String? = null,
-    @SerialName("credential_configuration_id")
-    val credentialConfigurationId: String? = null,
-    val proofs: ProofsTO? = null,
-    @SerialName("credential_response_encryption")
-    val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
-)
+import kotlin.time.Clock
 
 /**
  * Errors that might be raised while trying to issue a credential.
  */
 sealed interface IssueCredentialError {
-    /**
-     * Indicates that both 'credential_configuration_id' and 'credential_identifier' was missing from a Credential Request.
-     */
+    data class EncryptionError(
+        val cause: RequestEncryptionError,
+    ) : IssueCredentialError
+
     data object MissingBothCredentialConfigurationIdAndCredentialIdentifier : IssueCredentialError
 
-    /**
-     * Indicates that a Credential Request erroneously contained both 'credential_configuration_id' and 'credential_identifier'.
-     */
     data object BothCredentialConfigurationIdAndCredentialIdentifierProvided : IssueCredentialError
 
-    /**
-     * Indicates a credential request contained an unsupported 'format'.
-     */
     data class UnsupportedCredentialConfigurationId(
         val credentialConfigurationId: CredentialConfigurationId,
     ) : IssueCredentialError
@@ -89,52 +61,32 @@ sealed interface IssueCredentialError {
         val types: List<String> = emptyList(),
     ) : IssueCredentialError
 
-    /**
-     * Indicates that a Credential Request contained an invalid 'credential_identifier'.
-     */
     data class InvalidCredentialIdentifier(
         val credentialIdentifier: CredentialIdentifier,
     ) : IssueCredentialError
 
-    /**
-     * Indicates that Proof of Possession was not provided.
-     */
     data object MissingProof : IssueCredentialError
 
-    /**
-     * Indicates the provided 'claims' did not have the expected structure.
-     */
     data class InvalidClaims(
         val error: Throwable,
     ) : IssueCredentialError
 
-    /**
-     * Indicates a credential request contained an invalid 'jwt' proof.
-     */
     data class InvalidProof(
         val msg: String,
         val cause: Throwable? = null,
     ) : IssueCredentialError
 
-    /**
-     * Indicates a credential request contained a proof with an invalid 'nonce'.
-     */
     data class InvalidNonce(
         val msg: String,
         val cause: Throwable? = null,
     ) : IssueCredentialError
 
-    /**
-     * Indicates a credential request contains an invalid 'credential_response_encryption_alg'.
-     */
     data class InvalidEncryptionParameters(
-        val error: Throwable,
+        val msg: String,
+        val error: Throwable? = null,
     ) : IssueCredentialError
 
-    /**
-     * Indicates a 'client_status` error'.
-     */
-    data class InvalidClientStatus(
+    data class InvalidClientStatusExpiration(
         val msg: String,
         val cause: Throwable? = null,
     ) : IssueCredentialError
@@ -143,544 +95,279 @@ sealed interface IssueCredentialError {
         val expected: Scope,
     ) : IssueCredentialError
 
-    data class Unexpected(
-        val msg: String,
-        val cause: Throwable? = null,
-    ) : IssueCredentialError
+    data object AttestationDatasetNotFound : IssueCredentialError
 }
 
-sealed interface RequestEncryptionError {
-    data class UnparseableEncryptedRequest(
-        val cause: Throwable? = null,
-    ) : RequestEncryptionError
-
-    data object RequestEncryptionNotSupported : RequestEncryptionError
-
-    data object RequestEncryptionIsRequired : RequestEncryptionError
-
-    data object ResponseEncryptionRequiresEncryptedRequest : RequestEncryptionError
-
-    data class UnsupportedEncryptionAlgorithm(
-        val encryptionAlgorithm: JWEAlgorithm,
-        val algorithmsSupported: NonEmptySet<JWEAlgorithm>,
-    ) : RequestEncryptionError
-
-    data class UnsupportedEncryptionMethod(
-        val encryptionMethod: EncryptionMethod,
-        val methodsSupported: NonEmptySet<EncryptionMethod>,
-    ) : RequestEncryptionError
-
-    data object RequestCompressionNotSupported : RequestEncryptionError
-
-    data class UnsupportedRequestCompressionMethod(
-        val compressionAlgorithm: CompressionAlgorithm,
-        val compressionMethodsSupported: NonEmptySet<CompressionAlgorithm>?,
-    ) : RequestEncryptionError
-}
-
-/**
- * An error that occurred during the Credential Issuance.
- */
-@Serializable
-enum class CredentialErrorTypeTo {
-    @SerialName("invalid_credential_request")
-    INVALID_CREDENTIAL_REQUEST,
-
-    @SerialName("unknown_credential_configuration")
-    UNKNOWN_CREDENTIAL_CONFIGURATION,
-
-    @SerialName("unknown_credential_identifier")
-    UNKNOWN_CREDENTIAL_IDENTIFIER,
-
-    @SerialName("invalid_proof")
-    INVALID_PROOF,
-
-    @SerialName("invalid_nonce")
-    INVALID_NONCE,
-
-    @SerialName("invalid_encryption_parameters")
-    INVALID_ENCRYPTION_PARAMETERS,
-
-    @SerialName("credential_request_denied")
-    CREDENTIAL_REQUEST_DENIED,
-}
-
-/**
- * The outcome of trying to issue a Credential.
- */
-sealed interface IssueCredentialResponse {
-    /**
-     * A response to a successfully processed Credential Request.
-     * The Credential might have been issued immediately, or its issuance might have been deferred.
-     */
-    @Serializable
-    data class PlainTO(
-        val credentials: List<CredentialTO>? = null,
-        @SerialName("transaction_id") val transactionId: String? = null,
-        @SerialName("interval") val interval: Long? = null,
-        @SerialName("notification_id") val notificationId: String? = null,
-    ) : IssueCredentialResponse {
-        init {
-            if (null != transactionId) {
-                require(null == credentials) {
-                    "cannot provide credentials when transactionId is provided"
-                }
-                require(null == notificationId) {
-                    "cannot provide notificationId when transactionId is provided"
-                }
-                requireNotNull(interval) {
-                    "'interval' must be provided when 'transactionId' is provided"
-                }
-            } else {
-                requireNotNull(!credentials.isNullOrEmpty()) {
-                    "'credentials' must be provided"
-                }
-            }
-        }
-
-        companion object {
-            /**
-             * Multiple credentials have been issued.
-             */
-            fun issued(
-                credentials: List<JsonElement>,
-                notificationId: String? = null,
-            ): PlainTO = PlainTO(credentials = credentials.map { CredentialTO(it) }, notificationId = notificationId)
-
-            /**
-             * Credential issuance has been deferred.
-             */
-            fun deferred(
-                transactionId: String,
-                interval: Long,
-            ): PlainTO = PlainTO(transactionId = transactionId, interval = interval)
-        }
-
-        /**
-         * A single issued Credential.
-         */
-        @Serializable
-        @JvmInline
-        value class CredentialTO(
-            val value: JsonObject,
-        ) {
-            init {
-                val credential =
-                    requireNotNull(value["credential"]) {
-                        "value must have a 'credential' property"
-                    }
-
-                require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
-                    "credential must be either a JsonObjects or a string JsonPrimitive"
-                }
-            }
-
-            companion object {
-                operator fun invoke(
-                    credential: JsonElement,
-                    builder: JsonObjectBuilder.() -> Unit = { },
-                ): CredentialTO =
-                    CredentialTO(
-                        buildJsonObject {
-                            put("credential", credential)
-                            builder()
-                        },
-                    )
-            }
-        }
-    }
-
-    /**
-     * A Credential has been issued as an encrypted JWT.
-     */
-    data class EncryptedJwtIssued(
-        val jwt: String,
-    ) : IssueCredentialResponse
-
-    /**
-     * Indicates a request for issuing a Credential could not be processed due to an error.
-     */
-    @Serializable
-    data class FailedTO(
-        @SerialName("error") @Required val type: CredentialErrorTypeTo,
-        @SerialName("error_description") val errorDescription: String? = null,
-    ) : IssueCredentialResponse
-}
+typealias PlainOrEncrypted<T> = Either<T, String>
 
 private val log = LoggerFactory.getLogger(IssueCredential::class.java)
 
 /**
- * Usecase for issuing a Credential.
+ * Use case for issuing a Credential.
  */
 class IssueCredential(
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
-    private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
     private val encryptCredentialResponse: EncryptCredentialResponse,
-    private val validateProof: ValidateProof,
     private val clock: Clock,
 ) {
-    private fun Raise<IssueCredentialError>.services(): Services =
-        Services(this, credentialIssuerMetadata, resolveCredentialRequestByCredentialIdentifier, validateProof, clock)
-
     suspend fun fromEncryptedRequest(
         authorizationContext: AuthorizationContext,
         credentialRequestJwt: String,
-    ): IssueCredentialResponse =
-        either {
-            val request: CredentialRequestTO = decryptCredentialRequest(credentialRequestJwt, credentialIssuerMetadata)
-            invoke(authorizationContext, request)
-        }.getOrElse { error ->
-            error.toTO()
-        }
+    ): IssueCredentialResponse = issueCredential(authorizationContext, credentialRequestJwt.right())
 
     suspend fun fromPlainRequest(
         authorizationContext: AuthorizationContext,
         credentialRequestTO: CredentialRequestTO,
-    ): IssueCredentialResponse =
-        either {
-            ensure(credentialRequestTO.credentialResponseEncryption == null) {
-                ResponseEncryptionRequiresEncryptedRequest
-            }
-            ensure(credentialIssuerMetadata.credentialRequestEncryption !is CredentialRequestEncryption.Required) {
-                RequestEncryptionIsRequired
-            }
-            invoke(authorizationContext, credentialRequestTO)
-        }.getOrElse { error ->
-            error.toTO()
-        }
+    ): IssueCredentialResponse = issueCredential(authorizationContext, credentialRequestTO.left())
 
-    private suspend operator fun invoke(
+    private suspend fun issueCredential(
         authorizationContext: AuthorizationContext,
-        credentialRequestTO: CredentialRequestTO,
+        plainOrEncrypted: PlainOrEncrypted<CredentialRequestTO>,
     ): IssueCredentialResponse =
-        coroutineScope {
-            either {
-                val credentialConfigurationIdOrCredentialIdentifier =
-                    credentialRequestTO.credentialConfigurationId
-                        ?: credentialRequestTO.credentialIdentifier
-                log.info("Handling issuance request for $credentialConfigurationIdOrCredentialIdentifier..")
-                val (request, issued) =
-                    services().issueCredential(authorizationContext, credentialRequestTO)
-                successResponse(request, issued)
-            }.getOrElse { error -> errorResponse(error) }
-        }
-
-    private fun successResponse(
-        request: CredentialRequest,
-        credential: CredentialResponse,
-    ): IssueCredentialResponse {
-        val plain = credential.toTO()
-        return when (val encryption = request.credentialResponseEncryption) {
-            RequestedResponseEncryption.NotRequired -> plain
-            is RequestedResponseEncryption.Required -> encryptCredentialResponse(plain, encryption).getOrThrow()
-        }
-    }
-
-    private fun errorResponse(error: IssueCredentialError): IssueCredentialResponse {
-        log.warn("Issuance failed: $error")
-        return error.toTO()
-    }
-}
-
-private class Services(
-    raise: Raise<IssueCredentialError>,
-    private val credentialIssuerMetadata: CredentialIssuerMetaData,
-    private val resolveCredentialRequestByCredentialIdentifier: ResolveCredentialRequestByCredentialIdentifier,
-    private val validateProof: ValidateProof,
-    private val clock: Clock,
-) : Validations,
-    Raise<IssueCredentialError> by raise {
-    suspend fun issueCredential(
-        authorizationContext: AuthorizationContext,
-        credentialRequestTO: CredentialRequestTO,
-    ): Pair<CredentialRequest, CredentialResponse> =
-        coroutineScope {
-            val unresolvedRequest =
-                credentialRequestTO.toDomain(
-                    credentialIssuerMetadata.credentialResponseEncryption,
-                    credentialIssuerMetadata.batchCredentialIssuance,
-                    credentialIssuerMetadata.credentialConfigurationsSupported,
-                )
-
-            val preferredClientStatusPeriod = credentialIssuerMetadata.preferredClientStatusPeriod.value
-            ensure((authorizationContext.clientStatus.expiresAt - clock.now()) >= preferredClientStatusPeriod) {
-                InvalidClientStatus("Client Status expires before preferred client status period")
-            }
-
+        effect {
             val request =
-                when (unresolvedRequest) {
-                    is UnresolvedCredentialRequest.ByCredentialConfigurationId -> {
-                        ResolvedCredentialRequest(
-                            unresolvedRequest.credentialConfigurationId,
-                            unresolvedRequest.credentialRequest,
-                            null,
-                        )
-                    }
-
-                    is UnresolvedCredentialRequest.ByCredentialIdentifier -> {
-                        resolve(unresolvedRequest)
-                    }
+                context(credentialIssuerMetadata) {
+                    plainOrEncrypted.decryptIfNeeded()
                 }
-            val issued = issue(authorizationContext, request)
-            request.credentialRequest to issued
-        }
+            issueCredential(authorizationContext, request)
+        }.fold(
+            transform = { it },
+            recover = { error ->
+                log.warn("Failed to issue credential {}", error)
+                error.response()
+            },
+            catch = { exception ->
+                log.error("Unexpected error while issuing credential", exception)
+                throw exception
+            },
+        )
 
-    private suspend fun resolve(unresolvedRequest: UnresolvedCredentialRequest.ByCredentialIdentifier): ResolvedCredentialRequest =
-        either {
-            val resolvedRequest =
-                resolveCredentialRequestByCredentialIdentifier(
-                    unresolvedRequest.credentialIdentifier,
-                    unresolvedRequest.unvalidatedProofs,
-                    unresolvedRequest.credentialResponseEncryption,
-                )
-            ensureNotNull(resolvedRequest) { InvalidCredentialIdentifier(unresolvedRequest.credentialIdentifier) }
-        }.bind()
-
-    private suspend fun issue(
+    context(_: Raise<IssueCredentialError>)
+    private suspend fun issueCredential(
         authorizationContext: AuthorizationContext,
-        resolvedCredentialRequest: ResolvedCredentialRequest,
-    ): CredentialResponse {
-        val issueSpecificCredential = specificIssuerFor(authorizationContext, resolvedCredentialRequest)
-        val validatedProof =
-            validateProof(
-                resolvedCredentialRequest.credentialRequest.unvalidatedProof,
-                issueSpecificCredential.supportedCredential,
-                clock.now(),
-            ).bind()
-        return issueSpecificCredential(
-            authorizationContext,
-            resolvedCredentialRequest.credentialRequest,
-            resolvedCredentialRequest.credentialIdentifier,
-            validatedProof,
-        ).bind()
+        request: CredentialRequestTO,
+    ): IssueCredentialResponse {
+        logRequest(request)
+        context(credentialIssuerMetadata, clock) {
+            authorizationContext.checkClientStatusExpiration()
+        }
+        return context(authorizationContext, credentialIssuerMetadata) {
+            val validatedRequest = request.validate()
+            val (authorizedRequest, issueAttestation) = validatedRequest.authorize()
+            val issued = issueAttestation(authorizedRequest)
+            val responseEncryption = authorizedRequest.credentialResponseEncryption
+            issued.successResponse(responseEncryption)
+        }
     }
 
-    private fun specificIssuerFor(
-        authorizationContext: AuthorizationContext,
-        resolvedCredentialRequest: ResolvedCredentialRequest,
-    ): IssueSpecificCredential {
-        val credentialRequest = resolvedCredentialRequest.credentialRequest
-        val specificIssuers =
-            credentialIssuerMetadata.specificCredentialIssuers
-                .filter { issuer ->
-                    either {
-                        assertIsSupported(credentialRequest, issuer.supportedCredential)
-                    }.isRight()
-                }
-        ensure(specificIssuers.isNotEmpty()) {
-            val types =
-                when (credentialRequest) {
-                    is MsoMdocCredentialRequest -> listOf(credentialRequest.docType)
-                    is SdJwtVcCredentialRequest -> listOf(credentialRequest.type).map { it.value }
-                }
-            UnsupportedCredentialType(credentialRequest.format, types)
+    private suspend fun CredentialResponse.successResponse(encryption: RequestedResponseEncryption): IssueCredentialResponse {
+        val plain = toVCI()
+        return when (encryption) {
+            RequestedResponseEncryption.NotRequired -> plain
+            is RequestedResponseEncryption.Required -> encryptCredentialResponse(plain, encryption)
         }
+    }
 
-        val specificIssuer =
-            specificIssuers.find { issuer ->
-                issuer.supportedCredential.id == resolvedCredentialRequest.credentialConfigurationId
-            }
-        ensureNotNull(specificIssuer) {
-            UnsupportedCredentialConfigurationId(resolvedCredentialRequest.credentialConfigurationId)
-        }
-        ensure(specificIssuer.supportedCredential.scope in authorizationContext.scopes) {
-            WrongScope(specificIssuer.supportedCredential.scope)
-        }
-
-        return specificIssuer
+    private fun logRequest(credentialRequestTO: CredentialRequestTO) {
+        val credentialConfigurationIdOrCredentialIdentifier =
+            credentialRequestTO.credentialConfigurationId
+                ?: credentialRequestTO.credentialIdentifier
+        log.info("Handling issuance request for {}..", credentialConfigurationIdOrCredentialIdentifier)
     }
 }
+
+private data class ValidatedRequest(
+    val id: Either<CredentialIdentifier, CredentialConfigurationId>,
+    val proof: UnvalidatedProof?,
+    val credentialResponseEncryption: RequestedResponseEncryption,
+)
+
+context(
+    _: Raise<IssueCredentialError>,
+    metadata: CredentialIssuerMetaData,
+)
+private suspend fun CredentialRequestTO.validate(): ValidatedRequest {
+    val proof = proofs?.toDomain()
+    val credentialResponseEncryption =
+        credentialResponseEncryption
+            ?.toDomain()
+            ?: RequestedResponseEncryption.NotRequired
+
+    credentialResponseEncryption.ensureIsSupported(metadata.credentialResponseEncryption)
+    return ValidatedRequest(
+        id(),
+        proof,
+        credentialResponseEncryption,
+    )
+}
+
+context(_: Raise<IssueCredentialError>)
+private fun CredentialRequestTO.id(): Either<CredentialIdentifier, CredentialConfigurationId> {
+    val credentialConfigurationIdOrCredentialIdentifier =
+        Ior.fromNullables(
+            credentialIdentifier?.let { CredentialIdentifier(it) },
+            credentialConfigurationId?.let { CredentialConfigurationId(it) },
+        ) ?: raise(MissingBothCredentialConfigurationIdAndCredentialIdentifier)
+    return credentialConfigurationIdOrCredentialIdentifier.fold(
+        fa = { credentialId -> credentialId.left() },
+        fb = { credentialConfigurationId -> credentialConfigurationId.right() },
+        fab = { _, _ -> raise(BothCredentialConfigurationIdAndCredentialIdentifierProvided) },
+    )
+}
+
+context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext, metadata: CredentialIssuerMetaData)
+private fun ValidatedRequest.authorize(): Pair<AuthorizedCredentialRequest, AttestationIssuer> =
+    id.fold(
+        ifRight = { credentialConfigurationId ->
+            val attestationIssuer =
+                metadata.attestationIssuers
+                    .firstOrNull { iss -> iss.supportedCredential.id == credentialConfigurationId }
+            ensureNotNull(attestationIssuer) {
+                UnsupportedCredentialConfigurationId(credentialConfigurationId)
+            }
+
+            val authorizedScopes = authorizationContext.scopes
+            val requiredScopes = attestationIssuer.supportedCredential.scope
+            ensure(requiredScopes in authorizedScopes) {
+                WrongScope(requiredScopes)
+            }
+
+            val authorizedRequest =
+                AuthorizedCredentialRequest(
+                    proof,
+                    credentialResponseEncryption,
+                    credentialId = null,
+                )
+            authorizedRequest to attestationIssuer
+        },
+        ifLeft = { credentialId ->
+            // TODO: check if credential identifier is valid
+            //  against the authorization context'
+            raise(InvalidCredentialIdentifier(credentialId))
+        },
+    )
+
+//
+// Pre-Processing
+//
+
+context(
+    _: Raise<EncryptionError>,
+    metadata: CredentialIssuerMetaData
+)
+private suspend fun PlainOrEncrypted<CredentialRequestTO>.decryptIfNeeded(): CredentialRequestTO =
+    withError(transform = { EncryptionError(it) }) {
+        fun CredentialRequestTO.verifyPlainRequestAgainstEncryptionRequirements() =
+            apply {
+                ensure(credentialResponseEncryption == null) {
+                    ResponseEncryptionRequiresEncryptedRequest
+                }
+                ensure(metadata.credentialRequestEncryption !is CredentialRequestEncryption.Required) {
+                    RequestEncryptionIsRequired
+                }
+            }
+        return fold(
+            ifLeft = { plain -> plain.verifyPlainRequestAgainstEncryptionRequirements() },
+            ifRight = { encrypted -> decryptCredentialRequest(encrypted) },
+        )
+    }
 //
 // Mapping to domain
 //
 
-/**
- * An unresolved Credential Request.
- */
-private sealed interface UnresolvedCredentialRequest {
-    /**
-     * A Credential Request placed by Credential Configuration Id.
-     */
-    data class ByCredentialConfigurationId(
-        val credentialConfigurationId: CredentialConfigurationId,
-        val credentialRequest: CredentialRequest,
-    ) : UnresolvedCredentialRequest
-
-    /**
-     * A Credential Request placed by Credential Identifier.
-     */
-    data class ByCredentialIdentifier(
-        val credentialIdentifier: CredentialIdentifier,
-        val unvalidatedProofs: UnvalidatedProof,
-        val credentialResponseEncryption: RequestedResponseEncryption,
-    ) : UnresolvedCredentialRequest
-}
-
-private val BatchCredentialIssuance.maxProofsSupported: Int
-    get() =
-        when (this) {
-            BatchCredentialIssuance.NotSupported -> 1
-            is BatchCredentialIssuance.Supported -> batchSize
-        }
-
-private interface Validations : Raise<IssueCredentialError> {
-    /**
-     * Tries to convert a [CredentialRequestTO] to a [CredentialRequest].
-     */
-    fun CredentialRequestTO.toDomain(
-        supportedEncryption: CredentialResponseEncryption,
-        supportedBatchIssuance: BatchCredentialIssuance,
-        supportedCredentialConfigurations: List<CredentialConfiguration>,
-    ): UnresolvedCredentialRequest {
-        if (supportedBatchIssuance is BatchCredentialIssuance.NotSupported) {
-            ensure(proofs == null) {
-                InvalidProof("Credential Endpoint does not support Batch Issuance")
-            }
-        }
-
-        val proof =
-            when {
-                proofs != null -> {
-                    val jwtProofs = proofs.jwtProofs?.map { UnvalidatedProof.Jwt(it) }
-                    val attestations = proofs.attestations?.map { UnvalidatedProof.Attestation(it) }
-                    // Proof object contains exactly one parameter named as the proof type
-                    ensure(1 == listOfNotNull(jwtProofs, attestations).size) {
-                        InvalidProof("Only a single proof type is allowed")
-                    }
-
-                    val proofs = (jwtProofs.orEmpty() + attestations.orEmpty()).toNonEmptyListOrNull()
-                    ensureNotNull(proofs) { MissingProof }
-                    ensure(proofs.size == 1) {
-                        InvalidProof("You can provide at most 1 proof")
-                    }
-                    proofs.first()
-                }
-
-                else -> {
-                    raise(MissingProof)
-                }
-            }
-
-        val credentialResponseEncryption = credentialResponseEncryption?.toDomain() ?: RequestedResponseEncryption.NotRequired
-        credentialResponseEncryption.ensureIsSupported(supportedEncryption)
-
-        fun credentialRequestByCredentialConfigurationId(
-            credentialConfigurationId: CredentialConfigurationId,
-        ): UnresolvedCredentialRequest.ByCredentialConfigurationId =
-            supportedCredentialConfigurations
-                .firstOrNull { credentialConfigurationId == it.id }
-                ?.let { credentialConfiguration ->
-                    val credentialRequest =
-                        when (credentialConfiguration) {
-                            is MsoMdocCredentialConfiguration -> {
-                                credentialConfiguration.credentialRequest(proof, credentialResponseEncryption)
-                            }
-
-                            is SdJwtVcCredentialConfiguration -> {
-                                credentialConfiguration.credentialRequest(proof, credentialResponseEncryption)
-                            }
-
-                            is JwtVcJsonCredentialConfiguration -> {
-                                raise(UnsupportedCredentialType(format = JWT_VS_JSON_FORMAT))
-                            }
-                        }
-                    UnresolvedCredentialRequest.ByCredentialConfigurationId(credentialConfigurationId, credentialRequest)
-                } ?: raise(UnsupportedCredentialConfigurationId(credentialConfigurationId))
-
-        fun credentialRequestByCredentialIdentifier(credentialIdentifier: String): UnresolvedCredentialRequest.ByCredentialIdentifier =
-            UnresolvedCredentialRequest.ByCredentialIdentifier(
-                CredentialIdentifier(credentialIdentifier),
-                proof,
-                credentialResponseEncryption,
-            )
-
-        val credentialConfigurationIdOrCredentialIdentifier =
-            Ior.fromNullables(
-                credentialConfigurationId,
-                credentialIdentifier,
-            ) ?: raise(MissingBothCredentialConfigurationIdAndCredentialIdentifier)
-        return credentialConfigurationIdOrCredentialIdentifier.fold(
-            {
-                val credentialConfigurationId = CredentialConfigurationId(it)
-                credentialRequestByCredentialConfigurationId(credentialConfigurationId)
-            },
-            { credentialIdentifier -> credentialRequestByCredentialIdentifier(credentialIdentifier) },
-            { _, _ -> raise(BothCredentialConfigurationIdAndCredentialIdentifierProvided) },
-        )
+context(_: Raise<IssueCredentialError>)
+private fun CredentialRequestTO.ProofsTO.toDomain(): UnvalidatedProof {
+    val jwtProofs = jwtProofs?.map { UnvalidatedProof.Jwt(it) }
+    val attestations = attestations?.map { UnvalidatedProof.Attestation(it) }
+    ensure(1 == listOfNotNull(jwtProofs, attestations).size) {
+        InvalidProof("Only a single proof type is allowed")
     }
 
-    /**
-     * Gets the [RequestedResponseEncryption] that corresponds to the provided values.
-     */
-    fun CredentialResponseEncryptionTO.toDomain(): RequestedResponseEncryption.Required =
-        RequestedResponseEncryption
-            .Required(
-                Json.encodeToString(key),
-                method,
-                zipAlgorithm,
-            ).getOrElse { raise(InvalidEncryptionParameters(it)) }
+    val extracted = (jwtProofs.orEmpty() + attestations.orEmpty()).toNonEmptyListOrNull()
+    ensureNotNull(extracted) { MissingProof }
+    ensure(extracted.size == 1) {
+        InvalidProof("You can provide at most 1 proof")
+    }
+    return extracted.first()
+}
 
-    /**
-     * Verifies this [RequestedResponseEncryption] is supported by the provided [CredentialResponseEncryption], otherwise
-     * raises an [InvalidEncryptionParameters].
-     */
-    fun RequestedResponseEncryption.ensureIsSupported(supported: CredentialResponseEncryption) {
-        when (supported) {
-            is CredentialResponseEncryption.NotSupported -> {
-                ensure(this !is RequestedResponseEncryption.Required) {
-                    // credential response encryption not supported by issuer but required by client
-                    InvalidEncryptionParameters(IllegalArgumentException("credential response encryption is not supported"))
-                }
+/**
+ * Gets the [RequestedResponseEncryption] that corresponds to the provided values.
+ */
+context(_: Raise<InvalidEncryptionParameters>)
+private suspend fun CredentialResponseEncryptionTO.toDomain(): RequestedResponseEncryption.Required =
+    withContext(Dispatchers.Default) {
+        val encryptionKey =
+            catch({ JWK.parse(Json.encodeToString(key)) }) {
+                raise(InvalidEncryptionParameters("Failed to parse JWK", it))
             }
-
-            is CredentialResponseEncryption.Optional -> {
-                if (this is RequestedResponseEncryption.Required) {
-                    // credential response encryption supported by issuer and required by client
-                    // ensure provided parameters are supported
-                    ensure(this.encryptionAlgorithm in supported.parameters.algorithmsSupported) {
-                        InvalidEncryptionParameters(
-                            IllegalArgumentException(
-                                "jwe encryption algorithm '${this.encryptionAlgorithm.name}' is not supported",
-                            ),
-                        )
-                    }
-                    ensure(this.encryptionMethod in supported.parameters.methodsSupported) {
-                        InvalidEncryptionParameters(
-                            IllegalArgumentException(
-                                "jwe encryption method '${this.encryptionMethod.name}' is not supported",
-                            ),
-                        )
-                    }
-                }
+        val encryptionMethod =
+            catch({ EncryptionMethod.parse(method) }) {
+                raise(InvalidEncryptionParameters("Failed to parse encryption method", it))
             }
+        withError({ InvalidEncryptionParameters(it, null) }) {
+            RequestedResponseEncryption
+                .Required(
+                    encryptionKey,
+                    encryptionMethod,
+                    zipAlgorithm,
+                )
+        }
+    }
 
-            is CredentialResponseEncryption.Required -> {
-                ensure(this is RequestedResponseEncryption.Required) {
-                    // credential response encryption required by issuer but not required by client
-                    InvalidEncryptionParameters(IllegalArgumentException("credential response encryption is required"))
-                }
+/**
+ * Verifies this [RequestedResponseEncryption] is supported by the provided [CredentialResponseEncryption], otherwise
+ * raises an [InvalidEncryptionParameters].
+ */
+context(_: Raise<InvalidEncryptionParameters>)
+private fun RequestedResponseEncryption.ensureIsSupported(supported: CredentialResponseEncryption) {
+    when (supported) {
+        is CredentialResponseEncryption.NotSupported -> {
+            ensure(this !is RequestedResponseEncryption.Required) {
+                // credential response encryption isn't supported by issuer but required by client
+                InvalidEncryptionParameters("credential response encryption is not supported", null)
+            }
+        }
 
+        is CredentialResponseEncryption.Optional -> {
+            if (this is RequestedResponseEncryption.Required) {
+                // credential response encryption supported by issuer and required by client
                 // ensure provided parameters are supported
                 ensure(this.encryptionAlgorithm in supported.parameters.algorithmsSupported) {
                     InvalidEncryptionParameters(
-                        IllegalArgumentException(
-                            "jwe encryption algorithm '${this.encryptionAlgorithm.name}' is not supported",
-                        ),
+                        "jwe encryption algorithm '${this.encryptionAlgorithm.name}' is not supported",
                     )
                 }
                 ensure(this.encryptionMethod in supported.parameters.methodsSupported) {
                     InvalidEncryptionParameters(
-                        IllegalArgumentException(
-                            "jwe encryption method '${this.encryptionMethod.name}' is not supported",
-                        ),
+                        "jwe encryption method '${this.encryptionMethod.name}' is not supported",
                     )
                 }
+            }
+        }
+
+        is CredentialResponseEncryption.Required -> {
+            ensure(this is RequestedResponseEncryption.Required) {
+                // credential response encryption required by issuer but not required by client
+                InvalidEncryptionParameters("credential response encryption is required")
+            }
+
+            // ensure provided parameters are supported
+            ensure(this.encryptionAlgorithm in supported.parameters.algorithmsSupported) {
+                InvalidEncryptionParameters(
+                    "jwe encryption algorithm '${this.encryptionAlgorithm.name}' is not supported",
+                )
+            }
+            ensure(this.encryptionMethod in supported.parameters.methodsSupported) {
+                InvalidEncryptionParameters(
+                    "jwe encryption method '${this.encryptionMethod.name}' is not supported",
+                )
             }
         }
     }
 }
 
-fun CredentialResponse.toTO(): IssueCredentialResponse.PlainTO =
+fun CredentialResponse.toVCI(): IssueCredentialResponse.PlainTO =
     when (this) {
         is CredentialResponse.Issued -> {
             IssueCredentialResponse.PlainTO.issued(
@@ -697,7 +384,7 @@ fun CredentialResponse.toTO(): IssueCredentialResponse.PlainTO =
 /**
  * Creates a new [IssueCredentialResponse.FailedTO] from the provided [error].
  */
-private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
+private fun IssueCredentialError.response(): IssueCredentialResponse.FailedTO {
     val (type, description) =
         when (this) {
             is UnsupportedCredentialConfigurationId -> {
@@ -724,7 +411,11 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
             }
 
             is InvalidEncryptionParameters -> {
-                val description = errorDescriptionWithErrorCauseDescription("Invalid Credential Response Encryption Parameters", error)
+                val description =
+                    errorDescriptionWithErrorCauseDescription(
+                        "Invalid Credential Response Encryption Parameters: $msg",
+                        error,
+                    )
                 CredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS to description
             }
 
@@ -732,14 +423,9 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
                 CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Wrong scope. Expected ${expected.value}"
             }
 
-            is InvalidClientStatus -> {
+            is InvalidClientStatusExpiration -> {
                 CredentialErrorTypeTo.CREDENTIAL_REQUEST_DENIED to
                     errorDescriptionWithErrorCauseDescription("Invalid Client Status: $msg", cause)
-            }
-
-            is Unexpected -> {
-                CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
-                    errorDescriptionWithErrorCauseDescription(msg, cause)
             }
 
             is MissingBothCredentialConfigurationIdAndCredentialIdentifier -> {
@@ -758,65 +444,67 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
             }
 
             is InvalidClaims -> {
-                val description = errorDescriptionWithErrorCauseDescription("'claims' does not have the expected structure", error)
+                val description =
+                    errorDescriptionWithErrorCauseDescription(
+                        "'claims' does not have the expected structure",
+                        error,
+                    )
                 CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
+            }
+
+            AttestationDatasetNotFound -> {
+                val description = "Attestation Dataset not found"
+                CredentialErrorTypeTo.ATTESTATION_DATASET_NOT_FOUND to description
+            }
+
+            is EncryptionError -> {
+                cause.toVCI()
             }
         }
     return IssueCredentialResponse.FailedTO(type, description)
 }
 
-internal fun errorDescriptionWithErrorCauseDescription(
-    description: String,
-    cause: Throwable?,
-): String =
-    buildString {
-        append(description)
-        if (null != cause && !cause.message.isNullOrBlank()) {
-            append(": ${cause.message}")
+private fun RequestEncryptionError.toVCI(): Pair<CredentialErrorTypeTo, String> =
+    when (this) {
+        is UnparseableEncryptedRequest -> {
+            val description =
+                errorDescriptionWithErrorCauseDescription("Encrypted request cannot be parsed as a JWT", cause)
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
+        }
+
+        is RequestEncryptionIsRequired -> {
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request encryption is required"
+        }
+
+        is RequestEncryptionNotSupported -> {
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request encryption is not supported"
+        }
+
+        is ResponseEncryptionRequiresEncryptedRequest -> {
+            val description = "Credential response encryption requires an encrypted credential request"
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
+        }
+
+        is UnsupportedEncryptionAlgorithm -> {
+            val description =
+                "Unsupported encryption method $encryptionAlgorithm, supported methods: $algorithmsSupported"
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
+        }
+
+        is UnsupportedEncryptionMethod -> {
+            val description =
+                "Unsupported encryption method $encryptionMethod, supported methods: $methodsSupported"
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
+        }
+
+        is RequestCompressionNotSupported -> {
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request compression is not supported"
+        }
+
+        is UnsupportedRequestCompressionMethod -> {
+            val description =
+                "Unsupported credential request compression method $compressionAlgorithm, " +
+                    "supported methods: $compressionMethodsSupported"
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
         }
     }
-
-private fun RequestEncryptionError.toTO(): IssueCredentialResponse.FailedTO {
-    val (type, description) =
-        when (this) {
-            is UnparseableEncryptedRequest -> {
-                val description = errorDescriptionWithErrorCauseDescription("Encrypted request cannot be parsed as a JWT", cause)
-                CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
-            }
-
-            is RequestEncryptionIsRequired -> {
-                CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request encryption is required"
-            }
-
-            is RequestEncryptionNotSupported -> {
-                CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request encryption is not supported"
-            }
-
-            is ResponseEncryptionRequiresEncryptedRequest -> {
-                val description = "Credential response encryption requires an encrypted credential request"
-                CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
-            }
-
-            is UnsupportedEncryptionAlgorithm -> {
-                val description = "Unsupported encryption method $encryptionAlgorithm, supported methods: $algorithmsSupported"
-                CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
-            }
-
-            is UnsupportedEncryptionMethod -> {
-                val description = "Unsupported encryption method $encryptionMethod, supported methods: $methodsSupported"
-                CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
-            }
-
-            is RequestCompressionNotSupported -> {
-                CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request compression is not supported"
-            }
-
-            is UnsupportedRequestCompressionMethod -> {
-                val description =
-                    "Unsupported credential request compression method $compressionAlgorithm, " +
-                        "supported methods: $compressionMethodsSupported"
-                CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
-            }
-        }
-    return IssueCredentialResponse.FailedTO(type, description)
-}

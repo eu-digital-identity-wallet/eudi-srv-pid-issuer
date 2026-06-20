@@ -15,21 +15,16 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
-import arrow.core.Either
-import arrow.core.raise.either
-import arrow.core.raise.ensureNotNull
+import arrow.core.raise.Raise
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.Username
 
 fun interface GetPidData {
-    suspend operator fun invoke(username: Username): Pair<Pid, PidMetaData>?
-
-    suspend operator fun invoke(
-        authorizationContext: AuthorizationContext,
-    ): Either<IssueCredentialError.Unexpected, Pair<Pid, PidMetaData>> =
-        either {
-            val data = invoke(authorizationContext.username)
-            ensureNotNull(data) { IssueCredentialError.Unexpected("Cannot obtain data") }
-        }
+    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>)
+    suspend operator fun invoke(username: Username): Pair<Pid, PidMetaData>
 }
+
+context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>)
+suspend operator fun GetPidData.invoke(authorizationContext: AuthorizationContext): Pair<Pid, PidMetaData> =
+    invoke(authorizationContext.username)

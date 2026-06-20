@@ -29,6 +29,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 
+@Suppress("unused")
 @Serializable
 enum class BearerMethodTO {
     @SerialName(RFC9728.BEARER_METHOD_HEADER)
@@ -65,7 +66,7 @@ class GetProtectedResourceMetadata(
             resource = credentialIssuerMetadata.id.externalForm,
             authorizationServers = credentialIssuerMetadata.authorizationServers.map { it.externalForm }.toNonEmptyListOrNull(),
             scopesSupported =
-                credentialIssuerMetadata.specificCredentialIssuers
+                credentialIssuerMetadata.attestationIssuers
                     .map {
                         it.supportedCredential.scope.value
                     }.distinct()

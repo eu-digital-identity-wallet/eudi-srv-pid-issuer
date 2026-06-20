@@ -15,15 +15,22 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.ehic
 
-import eu.europa.ec.eudi.pidissuer.domain.Clock
+import arrow.core.raise.Raise
+import eu.europa.ec.eudi.pidissuer.domain.toZonedDateTime
+import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import kotlinx.datetime.TimeZone
 import java.util.*
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 
 class GetEuropeanHealthInsuranceCardDataMock(
     private val clock: Clock,
+    private val timeZone: TimeZone,
     private val issuingCountry: IssuingCountry,
 ) : GetEuropeanHealthInsuranceCardData {
-    override suspend fun invoke(): EuropeanHealthInsuranceCard {
+    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>)
+    override suspend fun invoke(authorizationContext: AuthorizationContext): EuropeanHealthInsuranceCard {
         val now = clock.now()
         val endingDate = now + 365.days
         val startingDate = endingDate - (5 * 31).days
@@ -41,8 +48,8 @@ class GetEuropeanHealthInsuranceCardDataMock(
                     id = AuthenticSource.Id("Uber-GR"),
                     name = Name("Uber Health Insurance"),
                 ),
-            endingDate = with(clock) { endingDate.toZonedDateTime() },
-            startingDate = with(clock) { startingDate.toZonedDateTime() },
+            endingDate = endingDate.toZonedDateTime(timeZone),
+            startingDate = startingDate.toZonedDateTime(timeZone),
             documentNumber = DocumentNumber(UUID.randomUUID().toString()),
         )
     }

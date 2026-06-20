@@ -16,8 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptySet
-import arrow.core.raise.Raise
-import arrow.core.raise.ensure
+import arrow.core.nonEmptySetOf
 
 //
 // Credential MetaData
@@ -44,22 +43,17 @@ operator fun ClaimDefinition.Companion.invoke(
     display: Display = emptyMap(),
 ): ClaimDefinition = ClaimDefinition(ClaimPath(nameSpace, attributeName), mandatory, display)
 
-data class MsoMdocPolicy(
-    val oneTimeUse: Boolean,
-)
-
 /**
  * @param docType string identifying the credential type as defined in ISO.18013-5.
  */
 data class MsoMdocCredentialConfiguration(
     override val id: CredentialConfigurationId,
     val docType: MsoDocType,
-    override val cryptographicBindingMethodsSupported: Set<CryptographicBindingMethod>,
     val credentialSigningAlgorithmsSupported: NonEmptySet<CoseAlgorithm>?,
     override val scope: Scope,
     override val display: List<CredentialDisplay> = emptyList(),
     val claims: List<ClaimDefinition> = emptyList(),
-    override val proofTypesSupported: ProofTypesSupported = ProofTypesSupported.Empty,
+    override val deviceBinding: DeviceBinding.Required,
     override val attestationCategory: AttestationCategory,
     override val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : CredentialConfiguration {
@@ -67,36 +61,8 @@ data class MsoMdocCredentialConfiguration(
         require(claims.all { it.isMsoMDoc() }) {
             "'claims' does not contain valid MSO MDoc ClaimDefinitions"
         }
-        validateCryptographicBindingsAndProofTypes()
     }
-}
 
-internal fun MsoMdocCredentialConfiguration.credentialRequest(
-    unvalidatedProof: UnvalidatedProof,
-    credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
-): MsoMdocCredentialRequest =
-    MsoMdocCredentialRequest(
-        unvalidatedProof = unvalidatedProof,
-        credentialResponseEncryption = credentialResponseEncryption,
-        docType = docType,
-    )
-
-//
-// Credential Request
-//
-data class MsoMdocCredentialRequest(
-    override val unvalidatedProof: UnvalidatedProof,
-    override val credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
-    val docType: MsoDocType,
-) : CredentialRequest {
-    override val format: Format = MSO_MDOC_FORMAT
-}
-
-internal fun Raise<String>.validate(
-    msoMdocCredentialRequest: MsoMdocCredentialRequest,
-    meta: MsoMdocCredentialConfiguration,
-) {
-    ensure(msoMdocCredentialRequest.docType == meta.docType) {
-        "doctype is ${msoMdocCredentialRequest.docType} but was expecting ${meta.docType}"
-    }
+    override val cryptographicBindingMethodsSupported: NonEmptySet<CryptographicBindingMethod>
+        get() = nonEmptySetOf(CryptographicBindingMethod.CoseKey)
 }

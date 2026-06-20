@@ -16,16 +16,20 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.nonEmptyListOf
+import arrow.core.raise.Raise
+import arrow.core.raise.context.ensure
 import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.util.JSONObjectUtils
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAssurancePlaceOfBirth
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.loadResource
-import eu.europa.ec.eudi.pidissuer.domain.Clock
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.Username
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonIgnoreUnknownKeys
@@ -37,7 +41,9 @@ import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
 import java.util.*
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Instant
 
 private val log = LoggerFactory.getLogger(GetPidDataFromKeyCloak::class.java)
 
@@ -69,6 +75,7 @@ class GetPidDataFromKeyCloak(
     private val issuerCountry: IsoCountry,
     private val issuingJurisdiction: IsoCountrySubdivision?,
     private val clock: Clock,
+    private val timeZone: TimeZone,
     private val webClient: WebClient,
     private val keyCloak: Url,
     private val administrationClient: AdministrationClient,
@@ -82,16 +89,17 @@ class GetPidDataFromKeyCloak(
         }
     }
 
-    override suspend fun invoke(username: Username): Pair<Pid, PidMetaData>? {
+    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>)
+    override suspend fun invoke(username: Username): Pair<Pid, PidMetaData> {
         log.info("Trying to get PID Data from Keycloak ...")
         val userInfo =
-            userInfo(username).also {
-                if (log.isInfoEnabled) log.info(it.toString())
-            }
-        return userInfo?.let { pid(it) }
+            userInfo(username)
+                .also { if (log.isInfoEnabled) log.info(it.toString()) }
+        return pid(userInfo)
     }
 
-    private suspend fun userInfo(username: Username): UserInfo? {
+    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>)
+    private suspend fun userInfo(username: Username): UserInfo {
         fun UserRepresentation.address(): AddressData? {
             val street = attributes["street"]?.firstOrNull()
             val houseNumber = attributes["address_house_number"]?.firstOrNull()
@@ -137,25 +145,24 @@ class GetPidDataFromKeyCloak(
             }
         }
 
-        return getUserByUsername(username)
-            ?.let { user ->
-                UserInfo(
-                    familyName = user.lastName,
-                    givenName = user.firstName,
-                    birthFamilyName = user.attributes["birth_family_name"]?.firstOrNull(),
-                    birthGivenName = user.attributes["birth_given_name"]?.firstOrNull(),
-                    sub = user.username,
-                    email = user.email,
-                    address = user.address(),
-                    birthDate = user.attributes["birthdate"]?.firstOrNull(),
-                    gender = user.attributes["gender"]?.firstOrNull()?.toUInt(),
-                    genderAsString = user.attributes["gender_as_string"]?.firstOrNull(),
-                    placeOfBirth = user.placeOfBirth(),
-                    picture = null,
-                    nationality = user.attributes["nationality"]?.firstOrNull(),
-                    personalAdministrativeNumber = user.attributes["personal_administrative_number"]?.firstOrNull(),
-                )
-            }
+        val user = getUserByUsername(username)
+
+        return UserInfo(
+            familyName = user.lastName,
+            givenName = user.firstName,
+            birthFamilyName = user.attributes["birth_family_name"]?.firstOrNull(),
+            birthGivenName = user.attributes["birth_given_name"]?.firstOrNull(),
+            sub = user.username,
+            email = user.email,
+            address = user.address(),
+            birthDate = user.attributes["birthdate"]?.firstOrNull(),
+            gender = user.attributes["gender"]?.firstOrNull()?.toUInt(),
+            genderAsString = user.attributes["gender_as_string"]?.firstOrNull(),
+            placeOfBirth = user.placeOfBirth(),
+            picture = null,
+            nationality = user.attributes["nationality"]?.firstOrNull(),
+            personalAdministrativeNumber = user.attributes["personal_administrative_number"]?.firstOrNull(),
+        )
     }
 
     /**
@@ -163,7 +170,8 @@ class GetPidDataFromKeyCloak(
      *
      * @param username The username of the user the details of whose to fetch
      */
-    private suspend fun getUserByUsername(username: String): UserRepresentation? {
+    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>)
+    private suspend fun getUserByUsername(username: String): UserRepresentation {
         val accessToken = getAdminAccessToken()
         val url =
             URLBuilder()
@@ -184,11 +192,8 @@ class GetPidDataFromKeyCloak(
                 }.retrieve()
                 .awaitBody<List<UserRepresentation>>()
 
-        return if (users.size != 1) {
-            null
-        } else {
-            users.first()
-        }
+        ensure(users.size == 1) { IssueCredentialError.AttestationDatasetNotFound }
+        return users.first()
     }
 
     /**
@@ -226,19 +231,16 @@ class GetPidDataFromKeyCloak(
     }
 
     private fun genPidMetaData(): PidMetaData {
-        val (issuanceDate, expiryDate) =
-            with(clock) {
-                val now = now()
-                now.toLocalDate() to (now + 100.days).toLocalDate()
-            }
-
+        fun Instant.toLocalDate(): LocalDate = toLocalDateTime(timeZone).date
+        val issuanceDate = clock.now()
+        val expiryDate = issuanceDate + 100.days
         return PidMetaData(
-            expiryDate = expiryDate,
+            expiryDate = expiryDate.toLocalDate(),
             issuingAuthority = IssuingAuthority.AdministrativeAuthority("${issuerCountry.value} Administrative authority"),
             issuingCountry = issuerCountry,
             documentNumber = DocumentNumber(UUID.randomUUID().toString()),
             issuingJurisdiction = issuingJurisdiction,
-            issuanceDate = issuanceDate,
+            issuanceDate = issuanceDate.toLocalDate(),
             trustAnchor = null,
             attestationLegalCategory = null,
         )

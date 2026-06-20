@@ -25,7 +25,6 @@ import com.nimbusds.oauth2.sdk.dpop.verifiers.InvalidDPoPProofException
 import com.nimbusds.oauth2.sdk.id.ClientID
 import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import com.nimbusds.openid.connect.sdk.Nonce
-import eu.europa.ec.eudi.pidissuer.domain.Clock
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.reactor.mono
 import net.minidev.json.JSONObject
@@ -37,6 +36,7 @@ import org.springframework.security.oauth2.core.OAuth2TokenIntrospectionClaimNam
 import org.springframework.security.oauth2.server.resource.introspection.BadOpaqueTokenException
 import org.springframework.security.oauth2.server.resource.introspection.SpringReactiveOpaqueTokenIntrospector
 import reactor.core.publisher.Mono
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 /**
@@ -81,7 +81,13 @@ class DPoPTokenReactiveAuthenticationManager(
             throw OAuth2AuthenticationException(DPoPTokenError.invalidToken("Access token is not valid"), exception)
         } catch (exception: Exception) {
             if (NonFatal(exception))
-                throw OAuth2AuthenticationException(DPoPTokenError.serverError("Unable to introspect access token", exception), exception)
+                throw OAuth2AuthenticationException(
+                    DPoPTokenError.serverError(
+                        "Unable to introspect access token",
+                        exception,
+                    ),
+                    exception,
+                )
             else
                 throw exception
         }
@@ -157,7 +163,12 @@ private fun OAuth2AuthenticatedPrincipal.jwkThumbprint(): JWKThumbprintConfirmat
         JWKThumbprintConfirmation.parse(JSONObject(cnf))
     } catch (exception: Exception) {
         if (NonFatal(exception))
-            throw OAuth2AuthenticationException(DPoPTokenError.serverError("Unable to extract DPoP confirmation", exception))
+            throw OAuth2AuthenticationException(
+                DPoPTokenError.serverError(
+                    "Unable to extract DPoP confirmation",
+                    exception,
+                ),
+            )
         else
             throw exception
     }

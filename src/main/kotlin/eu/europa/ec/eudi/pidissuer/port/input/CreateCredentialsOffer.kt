@@ -30,9 +30,6 @@ import eu.europa.ec.eudi.pidissuer.domain.CredentialConfigurationId
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError.InvalidCredentialConfigurationId
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError.MissingCredentialConfigurationIds
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.net.URI
 
@@ -64,62 +61,6 @@ sealed interface CreateCredentialsOfferError {
         val cause: Throwable,
     ) : CreateCredentialsOfferError
 }
-
-@Serializable
-private data class AuthorizationCodeTO(
-    @SerialName("issuer_state") val issuerState: String? = null,
-    @SerialName("authorization_server") val authorizationServer: String? = null,
-)
-
-@Serializable
-private enum class InputModeTO {
-    @SerialName("numeric")
-    Numeric,
-
-    @SerialName("text")
-    Text,
-}
-
-@Serializable
-private data class TransactionCodeTO(
-    @SerialName("input_mode") val inputMode: InputModeTO? = null,
-    @SerialName("length") val length: Int? = null,
-    @SerialName("description") val description: String? = null,
-) {
-    init {
-        require(length == null || length > 0) {
-            "Length if provided should positive number"
-        }
-        require(description == null || description.length <= 300) {
-            "Description is provided should dont exceed 300 characters"
-        }
-    }
-}
-
-@Serializable
-private data class PreAuthorizedCodeTO(
-    @SerialName("pre-authorized_code") @Required val preAuthorizedCode: String,
-    @SerialName("tx_code") val transactionCode: TransactionCodeTO? = null,
-    @SerialName("interval") val interval: Long? = null,
-    @SerialName("authorization_server") val authorizationServer: String? = null,
-)
-
-@Serializable
-private data class GrantsTO(
-    @SerialName("authorization_code") val authorizationCode: AuthorizationCodeTO? = null,
-    @SerialName("urn:ietf:params:oauth:grant-type:pre-authorized_code") val preAuthorizedCode: PreAuthorizedCodeTO? = null,
-)
-
-/**
- * A Credential Offer as per
- * [OpenId4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-4.1).
- */
-@Serializable
-private data class CredentialsOfferTO(
-    @SerialName("credential_issuer") @Required val credentialIssuer: String,
-    @SerialName("credential_configuration_ids") @Required val credentialConfigurationIds: Set<String>,
-    @SerialName("grants") val grants: GrantsTO? = null,
-)
 
 /**
  * Generates a Credential Offer and a QR Code in PNG format.

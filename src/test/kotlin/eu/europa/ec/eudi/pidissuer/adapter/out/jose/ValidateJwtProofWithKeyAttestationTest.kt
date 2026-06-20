@@ -15,10 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.NonEmptyList
-import arrow.core.nonEmptySetOf
-import arrow.core.toNonEmptyListOrNull
-import arrow.core.toNonEmptySetOrNull
+import arrow.core.*
+import arrow.core.raise.either
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -33,27 +31,40 @@ import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.mobileDrivingLicenceV1
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.loadResource
 import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import java.security.cert.X509Certificate
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.fail
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 
-internal class ValidateJwtProofTest {
+internal class ValidateJwtProofWithKeyAttestationTest {
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.System
-    private val verifyKeyAttestation = VerifyKeyAttestation(isTrustedKeyAttestationIssuer = IsTrustedKeyAttestationIssuer.Ignored)
-    private val validateJwtProof = ValidateJwtProof(issuer, verifyKeyAttestation)
+    private val verifyKeyAttestation =
+        VerifyKeyAttestation(isTrustedKeyAttestationIssuer = IsTrustedKeyAttestationIssuer.Ignored)
+    private val validateJwtProofWithKeyAttestation = ValidateJwtProofWithKeyAttestation(issuer, verifyKeyAttestation)
     private val credentialConfiguration =
         mobileDrivingLicenceV1(
             CoseAlgorithm(-7),
-            checkNotNull(ECDSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
-            KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(60.days)),
+            deviceBinding =
+                DeviceBinding.Required(
+                    checkNotNull(ECDSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
+                    KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(60.days)),
+                ),
         )
+
+    private val supported =
+        credentialConfiguration.deviceBinding
+            .proofTypesSupported()
+            .filterIsInstance<ProofType.Jwt>()
+            .first()
 
     @Test
     internal fun `proof validation fails with incorrect 'typ'`() =
@@ -64,14 +75,16 @@ internal class ValidateJwtProofTest {
                     type(JOSEObjectType.JWT)
                     jwk(key.toPublicJWK())
                 }
-            val result =
-                validateJwtProof(
-                    UnvalidatedProof.Jwt(signedJwt.serialize()),
-                    credentialConfiguration,
-                    clock.now(),
-                )
-
-            assert(result.isLeft())
+            context(supported) {
+                either {
+                    validateJwtProofWithKeyAttestation(
+                        UnvalidatedProof.Jwt(signedJwt.serialize()),
+                        clock.now(),
+                    )
+                }.swap().getOrElse {
+                    fail("Expected failure but got $it")
+                }
+            }
         }
 
     @Test
@@ -79,15 +92,16 @@ internal class ValidateJwtProofTest {
         runTest {
             val key = loadKey()
             val signedJwt = generateSignedJwt(key, "nonce")
-
-            val result =
-                validateJwtProof(
-                    UnvalidatedProof.Jwt(signedJwt.serialize()),
-                    credentialConfiguration,
-                    clock.now(),
-                )
-
-            assert(result.isLeft())
+            context(supported) {
+                either {
+                    validateJwtProofWithKeyAttestation(
+                        UnvalidatedProof.Jwt(signedJwt.serialize()),
+                        clock.now(),
+                    )
+                }.swap() getOrElse {
+                    fail("Expected failure but got $it")
+                }
+            }
         }
 
     @Test
@@ -101,14 +115,11 @@ internal class ValidateJwtProofTest {
                     x509CertChain(chain.map { Base64.encode(it.encoded) })
                 }
 
-            val result =
-                validateJwtProof(
-                    UnvalidatedProof.Jwt(signedJwt.serialize()),
-                    credentialConfiguration,
-                    clock.now(),
-                )
-
-            assertTrue { result.isLeft() }
+            context(supported) {
+                either { validateJwtProofWithKeyAttestation(UnvalidatedProof.Jwt(signedJwt.serialize()), clock.now()) }
+                    .swap()
+                    .getOrElse { fail("Expected failure but got $it") }
+            }
         }
 
     @Test
@@ -121,14 +132,11 @@ internal class ValidateJwtProofTest {
                     jwk(incorrectKey.toPublicJWK())
                 }
 
-            val result =
-                validateJwtProof(
-                    UnvalidatedProof.Jwt(signedJwt.serialize()),
-                    credentialConfiguration,
-                    clock.now(),
-                )
-
-            assertTrue { result.isLeft() }
+            context(supported) {
+                either { validateJwtProofWithKeyAttestation(UnvalidatedProof.Jwt(signedJwt.serialize()), clock.now()) }
+                    .swap()
+                    .getOrElse { fail("Expected failure but got $it") }
+            }
         }
 
     @Test
@@ -141,14 +149,11 @@ internal class ValidateJwtProofTest {
                     x509CertChain(incorrectKey.toPublicJWK().x509CertChain)
                 }
 
-            val result =
-                validateJwtProof(
-                    UnvalidatedProof.Jwt(signedJwt.serialize()),
-                    credentialConfiguration,
-                    clock.now(),
-                )
-
-            assertTrue { result.isLeft() }
+            context(supported) {
+                either { validateJwtProofWithKeyAttestation(UnvalidatedProof.Jwt(signedJwt.serialize()), clock.now()) }
+                    .swap()
+                    .getOrElse { fail("Expected failure but got $it") }
+            }
         }
 
     @Test
@@ -160,14 +165,11 @@ internal class ValidateJwtProofTest {
                 generateSignedJwt(key, "nonce") {
                     keyID("did:jwk:${Base64URL.encode(incorrectKey.toPublicJWK().toJSONString())}#0")
                 }
-            val result =
-                validateJwtProof(
-                    UnvalidatedProof.Jwt(signedJwt.serialize()),
-                    credentialConfiguration,
-                    clock.now(),
-                )
-
-            assertTrue { result.isLeft() }
+            context(supported) {
+                either { validateJwtProofWithKeyAttestation(UnvalidatedProof.Jwt(signedJwt.serialize()), clock.now()) }
+                    .swap()
+                    .getOrElse { fail("Expected failure but got $it") }
+            }
         }
 
     @Test
@@ -178,18 +180,26 @@ internal class ValidateJwtProofTest {
                 generateSignedJwt(key, "nonce") {
                     jwk(key.toPublicJWK())
                 }
-            val result =
-                validateJwtProof(
-                    UnvalidatedProof.Jwt(signedJwt.serialize()),
-                    mobileDrivingLicenceV1(
-                        CoseAlgorithm(-7),
+
+            val credentialConfiguration =
+                mobileDrivingLicenceV1(
+                    CoseAlgorithm(-7),
+                    DeviceBinding.Required(
                         nonEmptySetOf(JWSAlgorithm.ES512),
                         KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(60.days)),
                     ),
-                    clock.now(),
                 )
 
-            assertTrue { result.isLeft() }
+            val supported =
+                credentialConfiguration.deviceBinding
+                    .proofTypesSupported()
+                    .filterIsInstance<ProofType.Jwt>()
+                    .first()
+            context(supported) {
+                either { validateJwtProofWithKeyAttestation(UnvalidatedProof.Jwt(signedJwt.serialize()), clock.now()) }
+                    .swap()
+                    .getOrElse { fail("Expected failure but got $it") }
+            }
         }
 
     private fun generateSignedJwt(
