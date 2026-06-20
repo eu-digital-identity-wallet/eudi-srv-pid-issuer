@@ -228,12 +228,8 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
         require(validity.isPositive())
     }
 
-    context(_: Raise<IssueCredentialError>)
-    override suspend fun invoke(
-        authorizationContext: AuthorizationContext,
-        request: CredentialRequest,
-        credentialIdentifier: CredentialIdentifier?,
-    ): CredentialResponse {
+    context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
+    override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
         log.info("Issuing DC4EU EHIC")
 
         val now = clock.now()

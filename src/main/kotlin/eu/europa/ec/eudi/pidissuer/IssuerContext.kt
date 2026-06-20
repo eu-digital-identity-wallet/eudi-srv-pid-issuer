@@ -532,57 +532,7 @@ fun beans(
         val cNonceExpiresIn = env.duration("issuer.cnonce.expiration") ?: 5.minutes
         HandleNonceRequest(clock, cNonceExpiresIn, bean())
     }
-    registerBean {
-        val resolvers =
-            buildMap<CredentialIdentifier, CredentialRequestFactory> {
-                if (enableMobileDrivingLicence) {
-                    this[CredentialIdentifier(MobileDrivingLicenceV1Scope.value)] =
-                        { identifier, unvalidatedProof, requestedResponseEncryption ->
-                            ResolvedCredentialRequest(
-                                MobileDrivingLicenceV1CredentialConfigurationId,
-                                MsoMdocCredentialRequest(
-                                    unvalidatedProof = unvalidatedProof,
-                                    credentialResponseEncryption = requestedResponseEncryption,
-                                    docType = MobileDrivingLicenceV1DocType,
-                                ),
-                                identifier,
-                            )
-                        }
-                }
 
-                if (enableMsoMdocPid) {
-                    this[CredentialIdentifier(PidMsoMdocScope.value)] =
-                        { identifier, unvalidatedProof, requestedResponseEncryption ->
-                            ResolvedCredentialRequest(
-                                PidMsoMdocV1CredentialConfigurationId,
-                                MsoMdocCredentialRequest(
-                                    unvalidatedProof = unvalidatedProof,
-                                    credentialResponseEncryption = requestedResponseEncryption,
-                                    docType = PidMsoMdocV1DocType,
-                                ),
-                                identifier,
-                            )
-                        }
-                }
-
-                if (enableSdJwtVcPid) {
-                    this[CredentialIdentifier(PidSdJwtVcScope.value)] =
-                        { identifier, unvalidatedProofs, requestedResponseEncryption ->
-                            ResolvedCredentialRequest(
-                                SdJwtVcPidCredentialConfigurationId,
-                                SdJwtVcCredentialRequest(
-                                    unvalidatedProof = unvalidatedProofs,
-                                    credentialResponseEncryption = requestedResponseEncryption,
-                                    type = SdJwtVcPidVct,
-                                ),
-                                identifier,
-                            )
-                        }
-                }
-            }
-
-        DefaultResolveCredentialRequestByCredentialIdentifier(resolvers)
-    }
     registerBean(lazyInit = true) {
         val signedMetadataIssuer =
             env
@@ -977,7 +927,6 @@ fun beans(
     registerBean {
         IssueCredential(
             credentialIssuerMetadata = bean(),
-            resolveCredentialRequestByCredentialIdentifier = bean(),
             encryptCredentialResponse = bean(),
             clock = bean(),
         )

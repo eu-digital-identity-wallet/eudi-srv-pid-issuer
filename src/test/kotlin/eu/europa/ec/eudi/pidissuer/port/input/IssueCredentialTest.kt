@@ -29,7 +29,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.jwtProof
 import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
-import eu.europa.ec.eudi.pidissuer.port.out.credential.ResolveCredentialRequestByCredentialIdentifier
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonPrimitive
@@ -63,12 +62,9 @@ class IssueCredentialTest {
             override val publicKey = null
             override val validity = 365.days
 
-            context(_: Raise<IssueCredentialError>)
-            override suspend fun invoke(
-                authorizationContext: AuthorizationContext,
-                request: CredentialRequest,
-                credentialIdentifier: CredentialIdentifier?,
-            ): CredentialResponse = CredentialResponse.Issued(nonEmptyListOf(JsonPrimitive("test-credential")))
+            context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext,)
+            override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse =
+                CredentialResponse.Issued(nonEmptyListOf(JsonPrimitive("test-credential")))
         }
 
     private val metaData =
@@ -88,13 +84,9 @@ class IssueCredentialTest {
             IssueCredentialResponse.EncryptedJwtIssued("encrypted-jwt")
         }
 
-    private val resolveCredentialRequestByCredentialIdentifier =
-        ResolveCredentialRequestByCredentialIdentifier { _, _, _ -> null }
-
     private val issueCredential =
         IssueCredential(
             credentialIssuerMetadata = metaData,
-            resolveCredentialRequestByCredentialIdentifier = resolveCredentialRequestByCredentialIdentifier,
             encryptCredentialResponse = encryptCredentialResponse,
             clock = clock,
         )

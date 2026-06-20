@@ -241,12 +241,8 @@ internal class IssueSdJwtVcPid(
             supportedCredential.type,
         )
 
-    context(_: Raise<IssueCredentialError>)
-    override suspend fun invoke(
-        authorizationContext: AuthorizationContext,
-        request: CredentialRequest,
-        credentialIdentifier: CredentialIdentifier?,
-    ): CredentialResponse {
+    context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
+    override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
         log.info("Handling issuance request ...")
         val issuedAt = clock.now()
         val keyAttestation = keyAttestation(request, issuedAt, validateProof)

@@ -387,12 +387,8 @@ internal class IssueMobileDrivingLicence(
         require(validity.isPositive())
     }
 
-    context(_: Raise<IssueCredentialError>)
-    override suspend fun invoke(
-        authorizationContext: AuthorizationContext,
-        request: CredentialRequest,
-        credentialIdentifier: CredentialIdentifier?,
-    ): CredentialResponse {
+    context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
+    override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
         log.info("Issuing mDL")
         val issuedAt = clock.now()
         val keyAttestation = keyAttestation(request, issuedAt, validateProof)

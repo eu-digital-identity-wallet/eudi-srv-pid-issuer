@@ -166,37 +166,10 @@ sealed interface RequestedResponseEncryption {
 }
 
 /**
- * A Credential Request.
- */
-sealed interface CredentialRequest {
-    val format: Format
-    val unvalidatedProof: UnvalidatedProof?
-    val credentialResponseEncryption: RequestedResponseEncryption
-}
-
-context(_: Raise<String>)
-fun assertIsSupported(
-    credentialRequest: CredentialRequest,
-    meta: CredentialConfiguration,
-) {
-    when (credentialRequest) {
-        is MsoMdocCredentialRequest -> {
-            ensure(meta is MsoMdocCredentialConfiguration) { "Was expecting a ${MSO_MDOC_FORMAT.value}" }
-            validate(credentialRequest, meta)
-        }
-
-        is SdJwtVcCredentialRequest -> {
-            ensure(meta is SdJwtVcCredentialConfiguration) { "Was expecting a ${SD_JWT_VC_FORMAT.value}" }
-            validate(credentialRequest, meta)
-        }
-    }
-}
-
-/**
  * A resolved Credential Request
  */
-data class ResolvedCredentialRequest(
-    val credentialConfigurationId: CredentialConfigurationId,
-    val credentialRequest: CredentialRequest,
-    val credentialIdentifier: CredentialIdentifier?,
+data class AuthorizedCredentialRequest(
+    val proof: UnvalidatedProof?,
+    val credentialResponseEncryption: RequestedResponseEncryption,
+    val credentialId: CredentialIdentifier?,
 )

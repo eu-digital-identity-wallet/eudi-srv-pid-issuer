@@ -17,8 +17,6 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptySet
 import arrow.core.nonEmptySetOf
-import arrow.core.raise.Raise
-import arrow.core.raise.context.ensure
 
 //
 // Credential MetaData
@@ -67,35 +65,4 @@ data class MsoMdocCredentialConfiguration(
 
     override val cryptographicBindingMethodsSupported: NonEmptySet<CryptographicBindingMethod>
         get() = nonEmptySetOf(CryptographicBindingMethod.CoseKey)
-}
-
-internal fun MsoMdocCredentialConfiguration.credentialRequest(
-    unvalidatedProof: UnvalidatedProof?,
-    credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
-): MsoMdocCredentialRequest =
-    MsoMdocCredentialRequest(
-        unvalidatedProof = unvalidatedProof,
-        credentialResponseEncryption = credentialResponseEncryption,
-        docType = docType,
-    )
-
-//
-// Credential Request
-//
-data class MsoMdocCredentialRequest(
-    override val unvalidatedProof: UnvalidatedProof?,
-    override val credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
-    val docType: MsoDocType,
-) : CredentialRequest {
-    override val format: Format = MSO_MDOC_FORMAT
-}
-
-context(_: Raise<String>)
-internal fun validate(
-    msoMdocCredentialRequest: MsoMdocCredentialRequest,
-    meta: MsoMdocCredentialConfiguration,
-) {
-    ensure(msoMdocCredentialRequest.docType == meta.docType) {
-        "doctype is ${msoMdocCredentialRequest.docType} but was expecting ${meta.docType}"
-    }
 }

@@ -35,17 +35,13 @@ interface AttestationIssuer {
     val publicKey: JWK?
     val validity: Duration
 
-    context(_: Raise<IssueCredentialError>)
-    suspend operator fun invoke(
-        authorizationContext: AuthorizationContext,
-        request: CredentialRequest,
-        credentialIdentifier: CredentialIdentifier?,
-    ): CredentialResponse
+    context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext,)
+    suspend operator fun invoke(request: AuthorizedCredentialRequest): CredentialResponse
 }
 
 context(_: Raise<IssueCredentialError>)
 suspend fun AttestationIssuer.keyAttestation(
-    request: CredentialRequest,
+    request: AuthorizedCredentialRequest,
     at: Instant,
     validateProof: ValidateProof,
 ): KeyAttestation {
@@ -54,7 +50,7 @@ suspend fun AttestationIssuer.keyAttestation(
     }
     val proof =
         context(validateProof, supportedCredential) {
-            validateProof(request.unvalidatedProof, at)
+            validateProof(request.proof, at)
         }
     ensureNotNull(proof) {
         IssueCredentialError.MissingProof
@@ -79,12 +75,6 @@ private class DeferredIssuer(
     override val supportedCredential: CredentialConfiguration
         get() =
             when (val cfg = issuer.supportedCredential) {
-                is JwtVcJsonCredentialConfiguration -> {
-                    cfg.copy(
-                        id = CredentialConfigurationId(cfg.id.value + "_deferred"),
-                        display = cfg.display.map { it.copy(name = it.name.copy(name = it.name.name + " (deferred)")) },
-                    )
-                }
 
                 is MsoMdocCredentialConfiguration -> {
                     cfg.copy(
@@ -103,13 +93,9 @@ private class DeferredIssuer(
 
     private val log = LoggerFactory.getLogger(DeferredIssuer::class.java)
 
-    context(_: Raise<IssueCredentialError>)
-    override suspend fun invoke(
-        authorizationContext: AuthorizationContext,
-        request: CredentialRequest,
-        credentialIdentifier: CredentialIdentifier?,
-    ): CredentialResponse {
-        val credentialResponse = issuer.invoke(authorizationContext, request, credentialIdentifier)
+    context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext,)
+    override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
+        val credentialResponse = issuer.invoke(request)
 
         // That's a runtime exception because it would be a bug in the issuer
         check(credentialResponse is CredentialResponse.Issued) {

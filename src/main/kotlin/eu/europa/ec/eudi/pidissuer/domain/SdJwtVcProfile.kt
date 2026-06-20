@@ -17,8 +17,6 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptySet
 import arrow.core.nonEmptySetOf
-import arrow.core.raise.Raise
-import arrow.core.raise.context.ensure
 import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 
@@ -50,35 +48,4 @@ data class SdJwtVcCredentialConfiguration(
                 DeviceBinding.None -> null
                 is DeviceBinding.Required -> nonEmptySetOf(CryptographicBindingMethod.Jwk)
             }
-}
-
-internal fun SdJwtVcCredentialConfiguration.credentialRequest(
-    unvalidatedProofs: UnvalidatedProof?,
-    credentialResponseEncryption: RequestedResponseEncryption,
-): SdJwtVcCredentialRequest =
-    SdJwtVcCredentialRequest(
-        unvalidatedProof = unvalidatedProofs,
-        credentialResponseEncryption = credentialResponseEncryption,
-        type = type,
-    )
-
-//
-// Credential Offer
-//
-data class SdJwtVcCredentialRequest(
-    override val unvalidatedProof: UnvalidatedProof?,
-    override val credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
-    val type: SdJwtVcType,
-) : CredentialRequest {
-    override val format: Format = SD_JWT_VC_FORMAT
-}
-
-context(_: Raise<String>)
-internal fun validate(
-    sdJwtVcCredentialRequest: SdJwtVcCredentialRequest,
-    meta: SdJwtVcCredentialConfiguration,
-) {
-    ensure(sdJwtVcCredentialRequest.type == meta.type) {
-        "doctype is ${sdJwtVcCredentialRequest.type} but was expecting ${meta.type}"
-    }
 }

@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
-import arrow.core.Either
 import arrow.core.left
 import arrow.core.raise.Raise
 import arrow.core.raise.catch
@@ -27,128 +26,22 @@ import arrow.core.raise.fold
 import arrow.core.right
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.jwk.JWK
-import com.nimbusds.jwt.EncryptedJWT
-import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.*
+import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
+import eu.europa.ec.eudi.pidissuer.domain.CredentialRequestEncryption
+import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
+import eu.europa.ec.eudi.pidissuer.domain.TransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptDeferredResponse
+import eu.europa.ec.eudi.pidissuer.port.out.jose.RequestEncryptionError
+import eu.europa.ec.eudi.pidissuer.port.out.jose.RequestEncryptionError.*
 import eu.europa.ec.eudi.pidissuer.port.out.jose.decryptCredentialRequest
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadDeferredCredentialByTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadDeferredCredentialResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import org.slf4j.LoggerFactory
 
-@Serializable
-data class DeferredCredentialRequestTO(
-    @Required @SerialName(OpenId4VciSpec.TRANSACTION_ID) val transactionId: String,
-    @SerialName(OpenId4VciSpec.CREDENTIAL_RESPONSE_ENCRYPTION)
-    val credentialResponseEncryption: CredentialResponseEncryptionTO? = null,
-)
-
-@Serializable
-enum class GetDeferredCredentialErrorTypeTo {
-    @SerialName("invalid_transaction_id")
-    INVALID_TRANSACTION_ID,
-
-    @SerialName("invalid_encryption_parameters")
-    INVALID_ENCRYPTION_PARAMETERS,
-
-    @SerialName("invalid_credential_request")
-    INVALID_CREDENTIAL_REQUEST,
-}
-
-typealias JsonOrEncryptedJwt<JSON> = Either<JSON, EncryptedJWT>
-
-@Serializable
-data class IssuancePendingTO(
-    @SerialName(OpenId4VciSpec.TRANSACTION_ID) val transactionId: String,
-    @SerialName(OpenId4VciSpec.INTERVAL) val interval: Long,
-)
-
-@Serializable
-data class IssuedTO(
-    val credentials: List<CredentialTO>,
-    @SerialName(OpenId4VciSpec.NOTIFICATION_ID) val notificationId: String? = null,
-) {
-    init {
-        require(credentials.isNotEmpty()) {
-            "credentials must not be empty"
-        }
-    }
-
-    companion object {
-        /**
-         * Multiple credentials have been issued.
-         */
-        operator fun invoke(
-            credentials: JsonArray,
-            notificationId: String?,
-        ): IssuedTO =
-            IssuedTO(
-                credentials = credentials.map { CredentialTO(it) },
-                notificationId = notificationId,
-            )
-    }
-
-    /**
-     * A single issued Credential.
-     */
-    @Serializable
-    @JvmInline
-    value class CredentialTO(
-        val value: JsonObject,
-    ) {
-        init {
-            val credential =
-                requireNotNull(value["credential"]) {
-                    "value must have a 'credential' property"
-                }
-
-            require(credential is JsonObject || (credential is JsonPrimitive && credential.isString)) {
-                "credential must be either a JsonObjects or a string JsonPrimitive"
-            }
-        }
-
-        companion object {
-            operator fun invoke(
-                credential: JsonElement,
-                builder: JsonObjectBuilder.() -> Unit = { },
-            ): CredentialTO =
-                CredentialTO(
-                    buildJsonObject {
-                        put("credential", credential)
-                        builder()
-                    },
-                )
-        }
-    }
-}
-
-@Serializable
-data class FailedTO(
-    @SerialName("error") @Required val type: GetDeferredCredentialErrorTypeTo,
-    @SerialName("error_description") val errorDescription: String? = null,
-)
-
-sealed interface DeferredCredentialResponse {
-    data class IssuancePending(
-        val content: JsonOrEncryptedJwt<IssuancePendingTO>,
-    ) : DeferredCredentialResponse
-
-    data class Issued(
-        val content: JsonOrEncryptedJwt<IssuedTO>,
-    ) : DeferredCredentialResponse
-
-    data class Failed(
-        val content: FailedTO,
-    ) : DeferredCredentialResponse
-}
-
-@Serializable
 sealed interface GetDeferredCredentialError {
     data class EncryptionError(
         val cause: RequestEncryptionError,
@@ -345,13 +238,13 @@ private fun GetDeferredCredentialError.response(): DeferredCredentialResponse.Fa
             }
 
             is GetDeferredCredentialError.EncryptionError -> {
-                cause.toTO()
+                cause.toVCI()
             }
         }
     return DeferredCredentialResponse.Failed(FailedTO(type, description))
 }
 
-private fun RequestEncryptionError.toTO(): Pair<GetDeferredCredentialErrorTypeTo, String> =
+private fun RequestEncryptionError.toVCI(): Pair<GetDeferredCredentialErrorTypeTo, String> =
     when (this) {
         is UnparseableEncryptedRequest -> {
             GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to

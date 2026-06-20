@@ -60,12 +60,9 @@ class GetDeferredCredentialTest {
             override val publicKey = null
             override val validity = 365.days
 
-            context(_: Raise<IssueCredentialError>)
-            override suspend fun invoke(
-                authorizationContext: AuthorizationContext,
-                request: CredentialRequest,
-                credentialIdentifier: CredentialIdentifier?,
-            ): CredentialResponse = throw UnsupportedOperationException("Not expected in this test")
+            context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
+            override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse =
+                throw UnsupportedOperationException("Not expected in this test")
         }
 
     private val encryptDeferredResponse =

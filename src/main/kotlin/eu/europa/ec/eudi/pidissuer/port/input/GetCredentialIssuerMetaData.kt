@@ -216,7 +216,6 @@ private fun ImageUri.toTransferObject(): DisplayTO.LogoTO =
 
 private fun CredentialConfiguration.format(): Format =
     when (this) {
-        is JwtVcJsonCredentialConfiguration -> JWT_VS_JSON_FORMAT
         is MsoMdocCredentialConfiguration -> MSO_MDOC_FORMAT
         is SdJwtVcCredentialConfiguration -> SD_JWT_VC_FORMAT
     }
@@ -240,7 +239,6 @@ private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject =
             }
         }
         when (d) {
-            is JwtVcJsonCredentialConfiguration -> error("Not supported: $d")
             is MsoMdocCredentialConfiguration -> d.toTransferObject()(this)
             is SdJwtVcCredentialConfiguration -> d.toTransferObject()(this)
         }

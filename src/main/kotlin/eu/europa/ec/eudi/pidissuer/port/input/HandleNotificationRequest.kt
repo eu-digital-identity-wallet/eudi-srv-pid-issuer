@@ -30,67 +30,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import org.slf4j.LoggerFactory
 
-@Suppress("unused")
-@Serializable
-enum class EventTypeTO {
-    /**
-     * The Credential was successfully stored in the Wallet, with or without user action.
-     */
-    @SerialName("credential_accepted")
-    CredentialAccepted,
-
-    /**
-     * Unsuccessful Credential issuance was caused by a user action.
-     */
-    @SerialName("credential_deleted")
-    CredentialDeleted,
-
-    /**
-     * Unsuccessful Credential issuance (all other cases).
-     */
-    @SerialName("credential_failure")
-    CredentialFailure,
-}
-
-@Serializable
-data class NotificationRequestTO(
-    @SerialName("notification_id") @Required val notificationId: String,
-    @SerialName("event") @Required val eventType: EventTypeTO,
-    @SerialName("event_description") val description: String? = null,
-)
-
-@Serializable
-enum class ErrorTypeTO {
-    /**
-     * The notification_id in the Notification Request was invalid.
-     */
-    @SerialName("invalid_notification_id")
-    InvalidNotificationId,
-
-    /**
-     *  The Notification Request is missing a required parameter, includes
-     *  an unsupported parameter or parameter value, repeats the same parameter,
-     *  or is otherwise malformed.
-     */
-    @SerialName("invalid_notification_request")
-    InvalidNotificationRequest,
-}
-
-sealed interface NotificationResponse {
-    /**
-     * Indicate a Notification Request was successfully handled.
-     */
-    data object Success : NotificationResponse
-
-    /**
-     * Indicates a NotificationRequest could not be successfully handled.
-     */
-    @Serializable
-    data class NotificationErrorResponseTO(
-        @SerialName("error") @Required val errorType: ErrorTypeTO,
-    ) : NotificationResponse
-}
-
 private val log = LoggerFactory.getLogger(HandleNotificationRequest::class.java)
 
 /**

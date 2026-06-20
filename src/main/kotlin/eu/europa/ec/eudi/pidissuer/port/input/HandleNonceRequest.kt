@@ -16,19 +16,8 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlin.time.Clock
 import kotlin.time.Duration
-
-/**
- * Response to a Nonce Request.
- */
-@Serializable
-data class NonceResponseTO(
-    @Required @SerialName("c_nonce") val cNonce: String,
-)
 
 /**
  * Handles a CNonce Request.

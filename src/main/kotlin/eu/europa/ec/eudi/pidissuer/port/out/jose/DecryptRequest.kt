@@ -20,8 +20,7 @@ import arrow.core.raise.context.raise
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.decryptWithNimbus
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.CredentialRequestEncryption
-import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError
-import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.RequestEncryptionNotSupported
+import eu.europa.ec.eudi.pidissuer.port.out.jose.RequestEncryptionError.RequestEncryptionNotSupported
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.serializer
 

@@ -350,12 +350,8 @@ internal class IssueMsoMdocPid(
 
     override val publicKey: JWK? = null
 
-    context(_: Raise<IssueCredentialError>)
-    override suspend fun invoke(
-        authorizationContext: AuthorizationContext,
-        request: CredentialRequest,
-        credentialIdentifier: CredentialIdentifier?,
-    ): CredentialResponse {
+    context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
+    override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
         msoMdocPidLog.info("Handling issuance request ...")
         val issuedAt = clock.now()
         val keyAttestation = keyAttestation(request, issuedAt, validateProof)
