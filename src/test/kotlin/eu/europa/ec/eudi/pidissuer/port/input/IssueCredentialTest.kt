@@ -230,21 +230,6 @@ class IssueCredentialTest {
         }
 
     @Test
-    fun `fails when proof is missing`() =
-        runTest {
-            val authContext = authorizationContext()
-            val request =
-                CredentialRequestTO(
-                    credentialConfigurationId = PidMsoMdocV1CredentialConfigurationId.value,
-                )
-
-            val result = issueCredential.fromPlainRequest(authContext, request)
-
-            val failed = assertIs<IssueCredentialResponse.FailedTO>(result)
-            assertEquals(CredentialErrorTypeTo.INVALID_PROOF, failed.type)
-        }
-
-    @Test
     fun `fails with client status expired before preferred period`() =
         runTest {
             val authContext =

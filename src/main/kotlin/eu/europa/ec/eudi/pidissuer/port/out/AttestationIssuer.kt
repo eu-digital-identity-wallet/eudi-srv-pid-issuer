@@ -20,14 +20,12 @@ import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreDeferredCredential
 import org.slf4j.LoggerFactory
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Instant
 
 interface AttestationIssuer {
     val supportedCredential: CredentialConfiguration
@@ -42,18 +40,6 @@ interface AttestationIssuer {
         credentialIdentifier: CredentialIdentifier?,
     ): CredentialResponse
 }
-
-context(
-    _: Raise<IssueCredentialError>,
-    validate: ValidateProof
-)
-suspend fun AttestationIssuer.validateProof(
-    credentialRequest: CredentialRequest,
-    at: Instant,
-): KeyAttestation? =
-    context(supportedCredential) {
-        validate(credentialRequest.unvalidatedProof, at)
-    }
 
 fun AttestationIssuer.asDeferred(
     generateTransactionId: GenerateTransactionId,

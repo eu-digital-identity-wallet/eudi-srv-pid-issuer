@@ -73,7 +73,7 @@ internal class ValidateJwtProofWithKeyAttestationTest {
                 either {
                     validateJwtProofWithKeyAttestation(
                         UnvalidatedProof.Jwt(signedJwt.serialize()),
-                        clock.now()
+                        clock.now(),
                     )
                 }.swap().getOrElse {
                     fail("Expected failure but got $it")
@@ -90,7 +90,7 @@ internal class ValidateJwtProofWithKeyAttestationTest {
                 either {
                     validateJwtProofWithKeyAttestation(
                         UnvalidatedProof.Jwt(signedJwt.serialize()),
-                        clock.now()
+                        clock.now(),
                     )
                 }.swap() getOrElse {
                     fail("Expected failure but got $it")
