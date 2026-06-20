@@ -40,9 +40,9 @@ sealed interface EncodeEuropeanHealthInsuranceCardInSdJwtVc {
     suspend operator fun invoke(
         ehic: EuropeanHealthInsuranceCard,
         holder: Username,
-        holderPublicKey: JWK,
-        dateOfIssuance: Instant,
-        dateOfExpiry: Instant,
+        deviceKey: JWK,
+        issuedAt: Instant,
+        expiresAt: Instant,
     ): JsonElement
 
     companion object {
@@ -85,12 +85,12 @@ private class JwsJsonFlattenedEncoder(
     override suspend operator fun invoke(
         ehic: EuropeanHealthInsuranceCard,
         holder: Username,
-        holderPublicKey: JWK,
-        dateOfIssuance: Instant,
-        dateOfExpiry: Instant,
+        deviceKey: JWK,
+        issuedAt: Instant,
+        expiresAt: Instant,
     ): JsonElement {
         val sdJwt =
-            issuer.createSdJwt(vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
+            issuer.createSdJwt(vct, ehic, holder, deviceKey, credentialIssuerId, issuedAt, expiresAt)
         return sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)
     }
 }
@@ -106,12 +106,12 @@ private class CompactEncoder(
     override suspend operator fun invoke(
         ehic: EuropeanHealthInsuranceCard,
         holder: Username,
-        holderPublicKey: JWK,
-        dateOfIssuance: Instant,
-        dateOfExpiry: Instant,
+        deviceKey: JWK,
+        issuedAt: Instant,
+        expiresAt: Instant,
     ): JsonElement {
         val sdJwt =
-            issuer.createSdJwt(vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
+            issuer.createSdJwt(vct, ehic, holder, deviceKey, credentialIssuerId, issuedAt, expiresAt)
         return JsonPrimitive(sdJwt.serialize())
     }
 }

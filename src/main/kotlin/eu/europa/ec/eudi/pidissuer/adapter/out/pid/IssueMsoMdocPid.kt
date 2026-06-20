@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 import arrow.core.NonEmptySet
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
+import arrow.core.raise.context.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
@@ -28,6 +29,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
@@ -38,6 +40,7 @@ import org.slf4j.LoggerFactory
 import java.util.Locale.ENGLISH
 import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Instant
 
 val PidMsoMdocScope: Scope = Scope("eu.europa.ec.eudi.pid_mso_mdoc")
 
@@ -341,6 +344,7 @@ internal class IssueMsoMdocPid(
     override val keyAttestationRequirement: KeyAttestationRequirement,
     private val generateStatusListToken: AllocateStatus,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+    private val validateProof: ValidateProof,
 ) : AttestationIssuer {
     init {
         require(validity.isPositive())
@@ -361,23 +365,22 @@ internal class IssueMsoMdocPid(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-        proof: ValidatedProof,
     ): CredentialResponse {
         msoMdocPidLog.info("Handling issuance request ...")
-        val holderPubKeys =
-            proof.credentialKeys.value
-                .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
-
-        val (pid, pidMetaData) = getPidData(authorizationContext)
-
         val issuedAt = clock.now()
+        val keyAttestation = keyAttestation(request, issuedAt)
+        val deviceKeys =
+            keyAttestation.credentialKeys.value
+                .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
+        val (pid, pidMetaData) = getPidData(authorizationContext)
         val expiresAt = issuedAt + validity
-
         val notificationId = if (notificationsEnabled) generateNotificationId() else null
+        val clientStatus = authorizationContext.clientStatus.status.statusList
+        val keyStorageStatus = keyAttestation.keyStorageStatus.status.statusList
 
         val issuedCredentials =
-            holderPubKeys
-                .parMap(Dispatchers.Default, 4) { holderKey ->
+            deviceKeys
+                .parMap(Dispatchers.Default, 4) { deviceKey ->
                     val statusListToken =
                         context(credentialReusePolicy) {
                             generateStatusListToken.withPolicy(supportedCredential.docType, expiresAt)
@@ -386,7 +389,7 @@ internal class IssueMsoMdocPid(
                         encodePidInCbor(
                             pid,
                             pidMetaData,
-                            holderKey,
+                            deviceKey,
                             issuedAt = issuedAt,
                             expiresAt = expiresAt,
                             statusListToken,
@@ -402,8 +405,8 @@ internal class IssueMsoMdocPid(
                             expiresAt = expiresAt,
                             notificationId = notificationId,
                             status = statusListToken,
-                            clientStatus = authorizationContext.clientStatus.status.statusList,
-                            keyStorageStatus = proof.keyStorageStatus.status.statusList,
+                            clientStatus = clientStatus,
+                            keyStorageStatus = keyStorageStatus,
                         ),
                     )
 
@@ -418,5 +421,23 @@ internal class IssueMsoMdocPid(
                 msoMdocPidLog.info("Successfully issued PIDs")
                 msoMdocPidLog.debug("Issued PIDs data {}", it)
             }
+    }
+
+    context(_: Raise<IssueCredentialError>)
+    private suspend fun keyAttestation(
+        request: CredentialRequest,
+        at: Instant,
+    ): KeyAttestation {
+        check(supportedCredential.proofTypesSupported.values.isNotEmpty()) {
+            "No proof types supported set"
+        }
+        val proof =
+            context(validateProof, supportedCredential) {
+                validateProof(request.unvalidatedProof, at)
+            }
+        ensureNotNull(proof) {
+            IssueCredentialError.MissingProof
+        }
+        return proof
     }
 }

@@ -166,12 +166,12 @@ class BaseWalletApiTest {
                 override suspend fun invoke(
                     pid: Pid,
                     pidMetaData: PidMetaData,
-                    holderKey: ECKey,
+                    deviceKey: ECKey,
                     issuedAt: Instant,
                     expiresAt: Instant,
                     statusListToken: StatusListToken?,
                 ): String {
-                    println(holderKey)
+                    println(deviceKey)
                     return "PID"
                 }
             }

@@ -67,7 +67,6 @@ class GetDeferredCredentialTest {
                 authorizationContext: AuthorizationContext,
                 request: CredentialRequest,
                 credentialIdentifier: CredentialIdentifier?,
-                proof: ValidatedProof,
             ): CredentialResponse = throw UnsupportedOperationException("Not expected in this test")
         }
 

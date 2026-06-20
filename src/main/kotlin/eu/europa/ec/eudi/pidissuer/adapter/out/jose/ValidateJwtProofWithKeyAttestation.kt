@@ -45,37 +45,27 @@ import kotlin.time.Instant
 /**
  * Validator for JWT Proofs.
  */
-internal class ValidateJwtProof(
+internal class ValidateJwtProofWithKeyAttestation(
     private val credentialIssuerId: CredentialIssuerId,
     private val verifyKeyAttestation: VerifyKeyAttestation,
 ) {
-    context(_: Raise<IssueCredentialError.InvalidProof>, credentialConfiguration: CredentialConfiguration,)
+    context(_: Raise<IssueCredentialError.InvalidProof>, _: ProofType.Jwt)
     suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof.Jwt,
         at: Instant,
-    ): ValidatedProof =
-        effect {
-            val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.JWT]
-            ensureNotNull(proofType) {
-                "credential configuration '${credentialConfiguration.id.value}' doesn't support 'jwt' proofs"
-            }
-            check(proofType is ProofType.Jwt) {
-                // That's a runtime exception. Not an expected error
-                "Cannot happen"
-            }
-            validatedProof(unvalidatedProof, proofType, at)
-        }.fold(
-            transform = { it },
-            recover = { raise(IssueCredentialError.InvalidProof(it)) },
-            catch = { raise(IssueCredentialError.InvalidProof("Invalid proof JWT", it)) },
-        )
+    ): KeyAttestation =
+        effect { doValidate(unvalidatedProof, at) }
+            .fold(
+                transform = { it },
+                recover = { raise(IssueCredentialError.InvalidProof(it)) },
+                catch = { raise(IssueCredentialError.InvalidProof("Invalid proof JWT", it)) },
+            )
 
-    context(_: Raise<String>)
-    private suspend fun validatedProof(
+    context(_: Raise<String>, proofType: ProofType.Jwt)
+    private suspend fun doValidate(
         unvalidatedProof: UnvalidatedProof.Jwt,
-        proofType: ProofType.Jwt,
         at: Instant,
-    ): ValidatedProof =
+    ): KeyAttestation =
         withContext(Dispatchers.Default) {
             val signedJwt = SignedJWT.parse(unvalidatedProof.jwt)
             val nonce = ensureNotNull(signedJwt.jwtClaimsSet.getStringClaim("nonce")) { "Missing 'nonce'" }
@@ -104,7 +94,7 @@ internal class ValidateJwtProof(
             val processor = processor(credentialIssuerId, keySelector)
             processor.process(signedJwt, null)
 
-            ValidatedProof(
+            KeyAttestation(
                 credentialKeys = credentialKeys,
                 cNonce = nonce,
                 keyStorageStatus = keyStorageStatus,

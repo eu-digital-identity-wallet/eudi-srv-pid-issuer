@@ -54,7 +54,7 @@ class DefaultValidateProofTest {
                 )
 
             // 2 attested keys, all distinct, none truncated
-            assertEquals(2, result.credentialKeys.value.size)
+            assertEquals(2, result?.credentialKeys?.value?.size)
         }
 
     @Test
@@ -73,7 +73,7 @@ class DefaultValidateProofTest {
                     policy = policy,
                 )
 
-            assertEquals(1, result.credentialKeys.value.size)
+            assertEquals(1, result?.credentialKeys?.value?.size)
         }
 
     @Test
@@ -92,18 +92,18 @@ class DefaultValidateProofTest {
                     policy = policy,
                 )
 
-            assertEquals(3, result.credentialKeys.value.size)
+            assertEquals(3, result?.credentialKeys?.value?.size)
         }
 
     private suspend fun runValidateProofs(
         proof: Pair<UnvalidatedProof.Jwt, *>,
         policy: CredentialReusePolicy,
-    ): ValidatedProof {
+    ): KeyAttestation? {
         val (unvalidatedProof, _) = proof
 
         val validator =
             DefaultValidateProof(
-                validateJwtProof = ValidateJwtProof(issuer, verifyKeyAttestation),
+                validateJwtProofWithKeyAttestation = ValidateJwtProofWithKeyAttestation(issuer, verifyKeyAttestation),
                 validateAttestationProof = ValidateAttestationProof(verifyKeyAttestation),
                 verifyNonce = { _, _ -> true },
             )

@@ -56,7 +56,7 @@ class EncodePidInSdJwtVc(
     suspend operator fun invoke(
         pid: Pid,
         pidMetaData: PidMetaData,
-        holderKey: JWK,
+        deviceKey: JWK,
         issuedAt: Instant,
         expiresAt: Instant,
         notBefore: Instant?,
@@ -68,7 +68,7 @@ class EncodePidInSdJwtVc(
                 pidMetaData = pidMetaData,
                 vct = vct,
                 credentialIssuerId = credentialIssuerId,
-                holderPubKey = holderKey,
+                holderPubKey = deviceKey,
                 iat = issuedAt,
                 exp = expiresAt,
                 nbf = notBefore,

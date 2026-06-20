@@ -19,12 +19,15 @@ import arrow.core.NonEmptyList
 import arrow.core.raise.Raise
 import arrow.core.raise.context.ensure
 import arrow.core.raise.context.ensureNotNull
-import arrow.core.raise.ensure
+import arrow.core.toNonEmptyListOrThrow
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.AsymmetricJWK
 import com.nimbusds.jose.jwk.JWK
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidNonce
+import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
+import kotlin.time.Instant
 
 /**
  * Proof of possession.
@@ -46,11 +49,39 @@ sealed interface UnvalidatedProof {
     ) : UnvalidatedProof
 }
 
-data class ValidatedProof(
+data class KeyAttestation(
     val credentialKeys: CredentialKeys,
     val cNonce: String,
     val keyStorageStatus: KeyStorageStatus,
 )
+
+context(_: Raise<InvalidNonce>, verifyNonce: VerifyNonce)
+suspend fun KeyAttestation.ensureFreshNonce(at: Instant): KeyAttestation =
+    apply {
+        ensure(verifyNonce(cNonce, at)) {
+            InvalidNonce("CNonce is not valid or fresh")
+        }
+    }
+
+context(_: CredentialReusePolicy)
+fun KeyAttestation.limitKeys(): KeyAttestation = copy(credentialKeys = credentialKeys.limitToPolicy())
+
+context(policy: CredentialReusePolicy)
+private fun CredentialKeys.limitToPolicy(): CredentialKeys =
+    when (policy) {
+        CredentialReusePolicy.None -> {
+            this
+        }
+
+        is CredentialReusePolicy.EUDI -> {
+            val limit =
+                when {
+                    policy.options.any { it is EudiReusePolicy.LimitedTime } -> 1
+                    else -> policy.effectiveBatchSize
+                }
+            if (limit == null) this else CredentialKeys(value.take(limit).toNonEmptyListOrThrow())
+        }
+    }
 
 /**
  * This is the public key or reference to it
@@ -139,7 +170,7 @@ sealed interface RequestedResponseEncryption {
  */
 sealed interface CredentialRequest {
     val format: Format
-    val unvalidatedProof: UnvalidatedProof
+    val unvalidatedProof: UnvalidatedProof?
     val credentialResponseEncryption: RequestedResponseEncryption
 }
 

@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.raise.Raise
 import arrow.core.raise.context.ensure
+import arrow.core.raise.context.raise
 import arrow.core.toNonEmptyListOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
@@ -29,55 +30,40 @@ import kotlin.time.Instant
  * Validators for Proofs.
  */
 internal class DefaultValidateProof(
-    private val validateJwtProof: ValidateJwtProof,
+    private val validateJwtProofWithKeyAttestation: ValidateJwtProofWithKeyAttestation,
     private val validateAttestationProof: ValidateAttestationProof,
     private val verifyNonce: VerifyNonce,
 ) : ValidateProof {
-    context(_: Raise<IssueCredentialError>, _: CredentialConfiguration,)
+    context(_: Raise<IssueCredentialError>, cfg: CredentialConfiguration)
     override suspend operator fun invoke(
-        unvalidatedProof: UnvalidatedProof,
+        unvalidatedProof: UnvalidatedProof?,
         at: Instant,
-    ): ValidatedProof {
-        val validatedProof = validate(unvalidatedProof, at)
-        val limitedCredentialKeys = validatedProof.credentialKeys.limitToPolicy()
-        return validatedProof.copy(credentialKeys = limitedCredentialKeys)
-    }
-
-    context(_: Raise<IssueCredentialError>, credentialConfiguration: CredentialConfiguration,)
-    private suspend fun validate(
-        unvalidatedProof: UnvalidatedProof,
-        at: Instant,
-    ): ValidatedProof {
-        val proof =
-            when (unvalidatedProof) {
-                is UnvalidatedProof.Jwt -> {
-                    validateJwtProof(unvalidatedProof, at)
+    ): KeyAttestation? {
+        val jwtProofType = cfg.proofTypesSupported[ProofTypeEnum.JWT] as? ProofType.Jwt
+        val attestationProofType = cfg.proofTypesSupported[ProofTypeEnum.ATTESTATION] as? ProofType.Attestation
+        return when {
+            jwtProofType == null && attestationProofType == null -> {
+                ensure(unvalidatedProof == null) {
+                    IssueCredentialError.InvalidProof("No proof types supported")
                 }
+                null
+            }
 
-                is UnvalidatedProof.Attestation -> {
-                    validateAttestationProof(unvalidatedProof, at)
+            jwtProofType != null && attestationProofType != null -> {
+                context(jwtProofType, attestationProofType, cfg.credentialReusePolicy, verifyNonce) {
+                    val proof =
+                        when (unvalidatedProof) {
+                            null -> raise(IssueCredentialError.MissingProof)
+                            is UnvalidatedProof.Jwt -> validateJwtProofWithKeyAttestation(unvalidatedProof, at)
+                            is UnvalidatedProof.Attestation -> validateAttestationProof(unvalidatedProof, at).limitKeys()
+                        }
+                    proof.ensureFreshNonce(at).limitKeys()
                 }
             }
-        ensure(verifyNonce(proof.cNonce, at)) {
-            InvalidNonce("CNonce is not valid")
+
+            else -> {
+                error("Misconfiguration: Either both Jwt and Attestation Proof Types must be supported or none of them")
+            }
         }
-        return proof
     }
 }
-
-context(credentialConfiguration: CredentialConfiguration)
-private fun CredentialKeys.limitToPolicy(): CredentialKeys =
-    when (val policy = credentialConfiguration.credentialReusePolicy) {
-        CredentialReusePolicy.None -> {
-            this
-        }
-
-        is CredentialReusePolicy.EUDI -> {
-            val limit =
-                when {
-                    policy.options.any { it is EudiReusePolicy.LimitedTime } -> 1
-                    else -> policy.effectiveBatchSize
-                }
-            if (limit == null) this else CredentialKeys(value.take(limit).toNonEmptyListOrThrow())
-        }
-    }

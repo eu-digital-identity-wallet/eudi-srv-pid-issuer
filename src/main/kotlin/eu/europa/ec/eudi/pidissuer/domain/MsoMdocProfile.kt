@@ -72,7 +72,7 @@ data class MsoMdocCredentialConfiguration(
 }
 
 internal fun MsoMdocCredentialConfiguration.credentialRequest(
-    unvalidatedProof: UnvalidatedProof,
+    unvalidatedProof: UnvalidatedProof?,
     credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
 ): MsoMdocCredentialRequest =
     MsoMdocCredentialRequest(
@@ -85,7 +85,7 @@ internal fun MsoMdocCredentialConfiguration.credentialRequest(
 // Credential Request
 //
 data class MsoMdocCredentialRequest(
-    override val unvalidatedProof: UnvalidatedProof,
+    override val unvalidatedProof: UnvalidatedProof?,
     override val credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
     val docType: MsoDocType,
 ) : CredentialRequest {

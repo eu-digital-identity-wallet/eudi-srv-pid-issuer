@@ -71,7 +71,6 @@ class IssueCredentialTest {
                 authorizationContext: AuthorizationContext,
                 request: CredentialRequest,
                 credentialIdentifier: CredentialIdentifier?,
-                proof: ValidatedProof,
             ): CredentialResponse = CredentialResponse.Issued(nonEmptyListOf(JsonPrimitive("test-credential")))
         }
 
@@ -89,13 +88,13 @@ class IssueCredentialTest {
 
     private val validateProof =
         object : ValidateProof {
-            context(_: Raise<IssueCredentialError>, _: CredentialConfiguration)
+            context(_: Raise<IssueCredentialError>, cfg: CredentialConfiguration)
             override suspend fun invoke(
-                unvalidatedProof: UnvalidatedProof,
+                unvalidatedProof: UnvalidatedProof?,
                 at: Instant,
-            ): ValidatedProof {
+            ): KeyAttestation {
                 val testKeyPublic = ECKeyGenerator(Curve.P_256).generate().toPublicJWK()
-                return ValidatedProof(
+                return KeyAttestation(
                     credentialKeys = CredentialKeys(nonEmptyListOf(testKeyPublic)),
                     cNonce = "test-nonce",
                     keyStorageStatus =

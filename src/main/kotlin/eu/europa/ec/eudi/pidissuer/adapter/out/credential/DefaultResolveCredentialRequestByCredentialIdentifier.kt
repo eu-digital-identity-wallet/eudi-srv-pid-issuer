@@ -22,14 +22,14 @@ import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ResolveCredentialRequestByCredentialIdentifier
 
 typealias CredentialRequestFactory =
-    (CredentialIdentifier, UnvalidatedProof, RequestedResponseEncryption) -> ResolvedCredentialRequest
+    (CredentialIdentifier, UnvalidatedProof?, RequestedResponseEncryption) -> ResolvedCredentialRequest
 
 class DefaultResolveCredentialRequestByCredentialIdentifier(
     private val factories: Map<CredentialIdentifier, CredentialRequestFactory>,
 ) : ResolveCredentialRequestByCredentialIdentifier {
     override suspend fun invoke(
         identifier: CredentialIdentifier,
-        unvalidatedProof: UnvalidatedProof,
+        unvalidatedProof: UnvalidatedProof?,
         credentialResponseEncryption: RequestedResponseEncryption,
     ): ResolvedCredentialRequest? =
         factories[identifier]?.let { factory -> factory(identifier, unvalidatedProof, credentialResponseEncryption) }

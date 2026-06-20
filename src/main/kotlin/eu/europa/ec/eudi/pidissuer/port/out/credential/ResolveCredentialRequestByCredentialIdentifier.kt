@@ -27,7 +27,7 @@ import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
 fun interface ResolveCredentialRequestByCredentialIdentifier {
     suspend operator fun invoke(
         identifier: CredentialIdentifier,
-        unvalidatedProof: UnvalidatedProof,
+        unvalidatedProof: UnvalidatedProof?,
         credentialResponseEncryption: RequestedResponseEncryption,
     ): ResolvedCredentialRequest?
 }

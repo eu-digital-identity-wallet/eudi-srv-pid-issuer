@@ -50,7 +50,7 @@ data class SdJwtVcCredentialConfiguration(
 }
 
 internal fun SdJwtVcCredentialConfiguration.credentialRequest(
-    unvalidatedProofs: UnvalidatedProof,
+    unvalidatedProofs: UnvalidatedProof?,
     credentialResponseEncryption: RequestedResponseEncryption,
 ): SdJwtVcCredentialRequest =
     SdJwtVcCredentialRequest(
@@ -63,7 +63,7 @@ internal fun SdJwtVcCredentialConfiguration.credentialRequest(
 // Credential Offer
 //
 data class SdJwtVcCredentialRequest(
-    override val unvalidatedProof: UnvalidatedProof,
+    override val unvalidatedProof: UnvalidatedProof?,
     override val credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
     val type: SdJwtVcType,
 ) : CredentialRequest {

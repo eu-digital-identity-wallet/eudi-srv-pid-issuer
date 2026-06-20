@@ -15,11 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
-import arrow.core.Either
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.domain.CoseAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import kotlin.time.Instant
 
 /**
@@ -30,7 +28,7 @@ interface EncodeMobileDrivingLicenceInCbor {
 
     suspend operator fun invoke(
         licence: MobileDrivingLicence,
-        holderKey: ECKey,
+        deviceKey: ECKey,
         issuedAt: Instant,
         expiresAt: Instant,
         statusListToken: StatusListToken?,

@@ -138,7 +138,7 @@ sealed interface IssueCredentialError {
     /**
      * Indicates a 'client_status` error'.
      */
-    data class InvalidClientStatus(
+    data class InvalidClientStatusExpiration(
         val msg: String,
         val cause: Throwable? = null,
     ) : IssueCredentialError
@@ -382,9 +382,8 @@ class IssueCredential(
         credentialRequestTO: CredentialRequestTO,
     ): Pair<RequestedResponseEncryption, CredentialResponse> {
         logRequest(credentialRequestTO)
-        val preferredClientStatusPeriod = credentialIssuerMetadata.preferredClientStatusPeriod.value
-        ensure((authorizationContext.clientStatus.expiresAt - clock.now()) >= preferredClientStatusPeriod) {
-            InvalidClientStatus("Client Status expires before preferred client status period")
+        context(credentialIssuerMetadata, clock) {
+            authorizationContext.checkClientStatusExpiration()
         }
         val unresolvedRequest =
             credentialRequestTO.toDomain(
@@ -393,11 +392,9 @@ class IssueCredential(
             )
 
         val request = resolveRequest(unresolvedRequest)
-        val issueSpecificCredential = specificIssuerFor(authorizationContext, request)
+        val issueAttestation = specificIssuerFor(authorizationContext, request)
         val (_, credentialRequest, credentialIdentifier) = request
-        val validatedProof = issueSpecificCredential.validateProof(credentialRequest)
-        val issued =
-            issueSpecificCredential(authorizationContext, credentialRequest, credentialIdentifier, validatedProof)
+        val issued = issueAttestation.invoke(authorizationContext, credentialRequest, credentialIdentifier)
         val responseEncryption = credentialRequest.credentialResponseEncryption
         return responseEncryption to issued
     }
@@ -437,15 +434,6 @@ class IssueCredential(
             InvalidCredentialIdentifier(unresolvedRequest.credentialIdentifier)
         }
     }
-
-    context(_: Raise<IssueCredentialError>)
-    private suspend fun AttestationIssuer.validateProof(credentialRequest: CredentialRequest): ValidatedProof =
-        context(supportedCredential) {
-            validateProof(
-                credentialRequest.unvalidatedProof,
-                clock.now(),
-            )
-        }
 
     context(_: Raise<IssueCredentialError>)
     private fun specificIssuerFor(
@@ -529,7 +517,7 @@ private sealed interface UnresolvedCredentialRequest {
      */
     data class ByCredentialIdentifier(
         val credentialIdentifier: CredentialIdentifier,
-        val unvalidatedProofs: UnvalidatedProof,
+        val unvalidatedProofs: UnvalidatedProof?,
         val credentialResponseEncryption: RequestedResponseEncryption,
     ) : UnresolvedCredentialRequest
 }
@@ -537,15 +525,19 @@ private sealed interface UnresolvedCredentialRequest {
 /**
  * Tries to convert a [CredentialRequestTO] to a [CredentialRequest].
  */
-context(_: Raise<IssueCredentialError>)
+context(
+    _: Raise<IssueCredentialError>
+)
 private suspend fun CredentialRequestTO.toDomain(
     supportedEncryption: CredentialResponseEncryption,
     supportedCredentialConfigurations: List<CredentialConfiguration>,
 ): UnresolvedCredentialRequest {
-    val proof = extractProof()
-
+    val unvalidatedProof = proofs?.toDomain()
     val credentialResponseEncryption =
-        credentialResponseEncryption?.toDomain() ?: RequestedResponseEncryption.NotRequired
+        credentialResponseEncryption
+            ?.toDomain()
+            ?: RequestedResponseEncryption.NotRequired
+
     credentialResponseEncryption.ensureIsSupported(supportedEncryption)
 
     fun credentialRequestByCredentialConfigurationId(
@@ -556,14 +548,14 @@ private suspend fun CredentialRequestTO.toDomain(
             ?.let { credentialConfiguration ->
                 UnresolvedCredentialRequest.ByCredentialConfigurationId(
                     credentialConfigurationId,
-                    credentialConfiguration.buildCredentialRequest(proof, credentialResponseEncryption),
+                    credentialConfiguration.buildCredentialRequest(unvalidatedProof, credentialResponseEncryption),
                 )
             } ?: raise(UnsupportedCredentialConfigurationId(credentialConfigurationId))
 
     fun credentialRequestByCredentialIdentifier(credentialIdentifier: String): UnresolvedCredentialRequest.ByCredentialIdentifier =
         UnresolvedCredentialRequest.ByCredentialIdentifier(
             CredentialIdentifier(credentialIdentifier),
-            proof,
+            unvalidatedProof,
             credentialResponseEncryption,
         )
 
@@ -583,10 +575,9 @@ private suspend fun CredentialRequestTO.toDomain(
 }
 
 context(_: Raise<IssueCredentialError>)
-private fun CredentialRequestTO.extractProof(): UnvalidatedProof {
-    ensureNotNull(proofs) { MissingProof }
-    val jwtProofs = proofs.jwtProofs?.map { UnvalidatedProof.Jwt(it) }
-    val attestations = proofs.attestations?.map { UnvalidatedProof.Attestation(it) }
+private fun CredentialRequestTO.ProofsTO.toDomain(): UnvalidatedProof {
+    val jwtProofs = jwtProofs?.map { UnvalidatedProof.Jwt(it) }
+    val attestations = attestations?.map { UnvalidatedProof.Attestation(it) }
     ensure(1 == listOfNotNull(jwtProofs, attestations).size) {
         InvalidProof("Only a single proof type is allowed")
     }
@@ -601,7 +592,7 @@ private fun CredentialRequestTO.extractProof(): UnvalidatedProof {
 
 context(_: Raise<IssueCredentialError>)
 private fun CredentialConfiguration.buildCredentialRequest(
-    proof: UnvalidatedProof,
+    proof: UnvalidatedProof?,
     credentialResponseEncryption: RequestedResponseEncryption,
 ): CredentialRequest =
     when (this) {
@@ -757,7 +748,7 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
                 CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Wrong scope. Expected ${expected.value}"
             }
 
-            is InvalidClientStatus -> {
+            is InvalidClientStatusExpiration -> {
                 CredentialErrorTypeTo.CREDENTIAL_REQUEST_DENIED to
                     errorDescriptionWithErrorCauseDescription("Invalid Client Status: $msg", cause)
             }

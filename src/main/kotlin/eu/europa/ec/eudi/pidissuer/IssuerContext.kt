@@ -696,7 +696,7 @@ fun beans(
         }
     }
     registerBean { VerifyKeyAttestation(isTrustedKeyAttestationIssuer = bean()) }
-    registerBean { ValidateJwtProof(issuerPublicUrl, bean()) }
+    registerBean { ValidateJwtProofWithKeyAttestation(issuerPublicUrl, bean()) }
     registerBean { ValidateAttestationProof(bean()) }
     registerBean { DefaultValidateProof(bean(), bean(), bean()) }
     registerBean {
@@ -728,6 +728,7 @@ fun beans(
                                 ),
                             generateStatusListToken = bean(),
                             credentialReusePolicy = pidMsoMdocReusePolicy,
+                            validateProof = bean(),
                         )
                     add(issueMsoMdocPid)
                     add(issueMsoMdocPid.asDeferred(bean(), bean(), clock))
@@ -770,6 +771,7 @@ fun beans(
                                 ),
                             credentialReusePolicy = pidSdJwtVcReusePolicy,
                             validity = expiresIn,
+                            validateProof = bean(),
                         )
 
                     add(issueSdJwtVcPid)
@@ -802,6 +804,7 @@ fun beans(
                                 ),
                             generateStatusListToken = bean(),
                             credentialReusePolicy = mdlIssuerReusePolicy,
+                            validateProof = bean(),
                         )
                     add(mdlIssuer)
                     add(mdlIssuer.asDeferred(bean(), bean(), clock))
@@ -850,6 +853,7 @@ fun beans(
                                 jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                                 keyAttestationRequirement = keyAttestationRequirement,
                                 credentialReusePolicy = ehicReusePolicy,
+                                validateProof = bean(),
                             )
                         add(ehicJwsJsonFlattenedIssuer)
                         add(ehicJwsJsonFlattenedIssuer.asDeferred(bean(), bean(), clock))
@@ -870,6 +874,7 @@ fun beans(
                                 jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
                                 keyAttestationRequirement = keyAttestationRequirement,
                                 credentialReusePolicy = ehicReusePolicy,
+                                validateProof = bean(),
                             )
                         add(ehicCompactIssuer)
                         add(ehicCompactIssuer.asDeferred(bean(), bean(), bean()))
@@ -910,6 +915,7 @@ fun beans(
                             bean(),
                             bean(),
                             learningCredentialReusePolicy,
+                            bean(),
                         )
 
                     add(sdJwtVcCompactIssuer)

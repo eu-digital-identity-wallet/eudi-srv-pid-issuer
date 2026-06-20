@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.*
 import arrow.core.raise.Raise
+import arrow.core.raise.context.ensureNotNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
@@ -27,6 +28,7 @@ import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
@@ -212,7 +214,7 @@ internal class IssueSdJwtVcPid(
     private val clock: Clock,
     private val timeZone: TimeZone,
     hashAlgorithm: HashAlgorithm,
-    private val issuerSigningKey: IssuerSigningKey,
+    issuerSigningKey: IssuerSigningKey,
     private val getPidData: GetPidData,
     private val calculateNotUseBefore: TimeDependant<Instant>?,
     private val notificationsEnabled: Boolean,
@@ -222,6 +224,7 @@ internal class IssueSdJwtVcPid(
     jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
     override val keyAttestationRequirement: KeyAttestationRequirement,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+    private val validateProof: ValidateProof,
 ) : AttestationIssuer {
     override val supportedCredential: SdJwtVcCredentialConfiguration =
         pidSdJwtVcV1(
@@ -250,13 +253,12 @@ internal class IssueSdJwtVcPid(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-        proof: ValidatedProof,
     ): CredentialResponse {
         log.info("Handling issuance request ...")
-
-        val holderPubKeys = proof.credentialKeys.value
-        val (pid, pidMetaData) = getPidData(authorizationContext)
         val issuedAt = clock.now()
+        val keyAttestation = keyAttestation(request, issuedAt)
+        val deviceKeys = keyAttestation.credentialKeys.value
+        val (pid, pidMetaData) = getPidData(authorizationContext)
         val expiresAt = issuedAt + validity
         val notBefore = calculateNotUseBefore?.invoke(issuedAt)
 
@@ -279,10 +281,12 @@ internal class IssueSdJwtVcPid(
         }
 
         val notificationId = if (notificationsEnabled) generateNotificationId() else null
+        val clientStatus = authorizationContext.clientStatus.status.statusList
+        val keyStorageStatus = keyAttestation.keyStorageStatus.status.statusList
 
         val issuedCredentials =
-            holderPubKeys
-                .parMap(Dispatchers.Default, 4) { holderPubKey ->
+            deviceKeys
+                .parMap(Dispatchers.Default, 4) { deviceKey ->
                     val statusListToken =
                         context(credentialReusePolicy) {
                             generateStatusListToken.withPolicy(supportedCredential.type.value, expiresAt)
@@ -291,7 +295,7 @@ internal class IssueSdJwtVcPid(
                         encodePidInSdJwt(
                             pid,
                             pidMetaData,
-                            holderPubKey,
+                            deviceKey,
                             issuedAt = issuedAt,
                             expiresAt = expiresAt,
                             notBefore = notBefore,
@@ -306,8 +310,8 @@ internal class IssueSdJwtVcPid(
                             expiresAt = expiresAt,
                             notificationId = notificationId,
                             status = statusListToken,
-                            clientStatus = authorizationContext.clientStatus.status.statusList,
-                            keyStorageStatus = proof.keyStorageStatus.status.statusList,
+                            clientStatus = clientStatus,
+                            keyStorageStatus = keyStorageStatus,
                         ),
                     )
 
@@ -325,5 +329,23 @@ internal class IssueSdJwtVcPid(
                 log.info("Successfully issued PIDs")
                 log.debug("Issued PIDs data {}", it)
             }
+    }
+
+    context(_: Raise<IssueCredentialError>)
+    private suspend fun keyAttestation(
+        request: CredentialRequest,
+        at: Instant,
+    ): KeyAttestation {
+        check(supportedCredential.proofTypesSupported.values.isNotEmpty()) {
+            "No proof types supported set"
+        }
+        val proof =
+            context(validateProof, supportedCredential) {
+                validateProof(request.unvalidatedProof, at)
+            }
+        ensureNotNull(proof) {
+            IssueCredentialError.MissingProof
+        }
+        return proof
     }
 }

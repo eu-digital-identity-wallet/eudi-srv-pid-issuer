@@ -47,11 +47,11 @@ class DefaultEncodeMobileDrivingLicenceInCbor(
 
     override suspend fun invoke(
         licence: MobileDrivingLicence,
-        holderKey: ECKey,
+        deviceKey: ECKey,
         issuedAt: Instant,
         expiresAt: Instant,
         statusListToken: StatusListToken?,
-    ): String = signer.sign(licence, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
+    ): String = signer.sign(licence, deviceKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
 }
 
 private fun MDocBuilder.addItemsToSign(licence: MobileDrivingLicence) {

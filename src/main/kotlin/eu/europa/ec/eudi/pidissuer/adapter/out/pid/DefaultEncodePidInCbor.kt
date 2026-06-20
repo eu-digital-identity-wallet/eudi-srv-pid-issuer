@@ -44,11 +44,11 @@ internal class DefaultEncodePidInCbor(
     override suspend fun invoke(
         pid: Pid,
         pidMetaData: PidMetaData,
-        holderKey: ECKey,
+        deviceKey: ECKey,
         issuedAt: Instant,
         expiresAt: Instant,
         statusListToken: StatusListToken?,
-    ): String = signer.sign(pid to pidMetaData, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
+    ): String = signer.sign(pid to pidMetaData, deviceKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
 }
 
 private fun MDocBuilder.addItemsToSign(pid: Pid) {

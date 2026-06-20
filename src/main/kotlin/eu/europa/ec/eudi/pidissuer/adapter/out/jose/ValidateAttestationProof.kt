@@ -28,17 +28,12 @@ import kotlin.time.Instant
 internal class ValidateAttestationProof(
     private val verifyKeyAttestation: VerifyKeyAttestation,
 ) {
-    context(_: Raise<IssueCredentialError.InvalidProof>, credentialConfiguration: CredentialConfiguration,)
+    context(_: Raise<IssueCredentialError.InvalidProof>, proofType: ProofType.Attestation,)
     suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof.Attestation,
         at: Instant,
-    ): ValidatedProof =
+    ): KeyAttestation =
         effect {
-            val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.ATTESTATION]
-            ensureNotNull(proofType) {
-                "Credential configuration '${credentialConfiguration.id.value}' doesn't support 'attestation' proofs"
-            }
-            check(proofType is ProofType.Attestation)
             val keyAttestationJWT = KeyAttestationJWT(unvalidatedProof.jwt)
 
             ensure(keyAttestationJWT.jwt.header.algorithm in proofType.signingAlgorithmsSupported) {
@@ -57,7 +52,7 @@ internal class ValidateAttestationProof(
         keyAttestationJWT: KeyAttestationJWT,
         proofType: ProofType.Attestation,
         at: Instant,
-    ): ValidatedProof {
+    ): KeyAttestation {
         val (attestedKeys, nonce) =
             verifyKeyAttestation(
                 keyAttestation = keyAttestationJWT,
@@ -74,7 +69,7 @@ internal class ValidateAttestationProof(
             "Key Storage Status expiration date does not meet the preferred key storage status period"
         }
 
-        return ValidatedProof(
+        return KeyAttestation(
             credentialKeys = CredentialKeys(attestedKeys),
             cNonce = nonce,
             keyStorageStatus = keyAttestationJWT.claims.keyStorageStatus,
