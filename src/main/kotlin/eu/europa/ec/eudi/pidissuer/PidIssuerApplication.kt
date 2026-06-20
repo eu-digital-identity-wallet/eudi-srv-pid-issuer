@@ -15,13 +15,14 @@
  */
 package eu.europa.ec.eudi.pidissuer
 
-import eu.europa.ec.eudi.pidissuer.domain.Clock
+import kotlinx.datetime.TimeZone
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
 import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.scheduling.annotation.EnableScheduling
+import kotlin.time.Clock
 
 @SpringBootApplication
 @EnableConfigurationProperties(IssuerMetadataProperties::class, SdJwtVcProperties::class)
@@ -32,7 +33,7 @@ fun main(args: Array<String>) {
     runApplication<PidIssuerApplication>(*args) {
         addInitializers(
             ApplicationContextInitializer<GenericApplicationContext> {
-                it.register(beans(Clock.System))
+                it.register(beans(Clock.System, TimeZone.currentSystemDefault()))
             },
         )
     }

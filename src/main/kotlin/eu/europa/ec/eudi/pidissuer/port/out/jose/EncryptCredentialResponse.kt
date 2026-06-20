@@ -15,13 +15,12 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.jose
 
-import arrow.core.Either
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
 
 fun interface EncryptCredentialResponse {
-    operator fun invoke(
+    suspend operator fun invoke(
         response: IssueCredentialResponse.PlainTO,
         parameters: RequestedResponseEncryption.Required,
-    ): Either<Throwable, IssueCredentialResponse.EncryptedJwtIssued>
+    ): IssueCredentialResponse.EncryptedJwtIssued
 }

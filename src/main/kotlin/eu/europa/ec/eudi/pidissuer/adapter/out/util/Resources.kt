@@ -36,3 +36,10 @@ suspend fun loadResource(
             }
         }
     }
+
+suspend fun loadResource(path: String): ByteArray? =
+    withContext(Dispatchers.IO) {
+        val resource =
+            Resources::class.java.getResourceAsStream(path)
+        resource?.use { it.readAllBytes() }
+    }

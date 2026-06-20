@@ -15,26 +15,28 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
-import arrow.core.*
-import arrow.core.raise.either
-import arrow.core.raise.ensureNotNull
+import arrow.core.nonEmptySetOf
+import arrow.core.raise.Raise
+import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
-import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.jwkExtensions
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.toECKeyOrFail
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
-import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
+import eu.europa.ec.eudi.pidissuer.port.out.keyAttestation
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
-import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
+import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
+import eu.europa.ec.eudi.pidissuer.port.out.status.withPolicy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.util.Locale.ENGLISH
+import kotlin.time.Clock
 import kotlin.time.Duration
 
 val PidMsoMdocScope: Scope = Scope("eu.europa.ec.eudi.pid_mso_mdoc")
@@ -278,8 +280,10 @@ private fun pidDocType(v: Int?): String =
     else
         "$PID_DOCTYPE.$v"
 
+@Suppress("SameParameterValue")
 private fun pidNameSpace(v: Int?): MsoNameSpace = pidDocType(v)
 
+@Suppress("UNUSED")
 private fun pidDomesticNameSpace(
     v: Int?,
     countryCode: String,
@@ -295,8 +299,7 @@ val PidMsoMdocV1DocType: MsoDocType = pidDocType(1)
 
 internal fun pidMsoMdocV1(
     credentialSigningAlgorithm: CoseAlgorithm,
-    proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    keyAttestationRequirement: KeyAttestationRequirement,
+    deviceBinding: DeviceBinding.Required,
     credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ): MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
@@ -309,16 +312,14 @@ internal fun pidMsoMdocV1(
                 ),
             ),
         claims = MsoMdocPidClaims.all(),
-        cryptographicBindingMethodsSupported = setOf(CryptographicBindingMethod.CoseKey),
         credentialSigningAlgorithmsSupported = nonEmptySetOf(credentialSigningAlgorithm),
         scope = PidMsoMdocScope,
-        proofTypesSupported =
-            ProofTypesSupported(
-                ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
-            ),
+        deviceBinding = deviceBinding,
         attestationCategory = AttestationCategory.Pid,
         credentialReusePolicy = credentialReusePolicy,
     )
+
+private val msoMdocPidLog = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
 
 /**
  * Service for issuing PID MsoMdoc credential
@@ -331,86 +332,80 @@ internal class IssueMsoMdocPid(
     private val clock: Clock,
     override val validity: Duration,
     private val storeIssuedCredential: StoreIssuedCredential,
-    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    override val keyAttestationRequirement: KeyAttestationRequirement,
-    private val generateStatusListToken: GenerateStatusListToken,
+    private val generateStatusListToken: AllocateStatus,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
-) : IssueSpecificCredential {
-    private val log = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
+    private val validateProof: ValidateProof,
+    deviceBinding: DeviceBinding.Required,
+) : AttestationIssuer {
+    init {
+        require(validity.isPositive())
+    }
 
     override val supportedCredential: MsoMdocCredentialConfiguration =
         pidMsoMdocV1(
             encodePidInCbor.signingAlgorithm,
-            jwtProofsSupportedSigningAlgorithms,
-            keyAttestationRequirement,
+            deviceBinding,
             credentialReusePolicy,
         )
 
     override val publicKey: JWK? = null
 
-    override suspend fun invoke(
-        authorizationContext: AuthorizationContext,
-        request: CredentialRequest,
-        credentialIdentifier: CredentialIdentifier?,
-        validatedProof: ValidatedProof,
-    ): Either<IssueCredentialError, CredentialResponse> =
-        either {
-            log.info("Handling issuance request ...")
-            val holderPubKeys =
-                with(jwkExtensions()) {
-                    validatedProof.credentialKeys.value
-                        .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
-                }
+    context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
+    override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
+        msoMdocPidLog.info("Handling issuance request ...")
+        val issuedAt = clock.now()
+        val keyAttestation = keyAttestation(request, issuedAt, validateProof)
+        val deviceKeys =
+            keyAttestation.credentialKeys.value
+                .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
+        val (pid, pidMetaData) = getPidData(authorizationContext)
+        val expiresAt = issuedAt + validity
+        val notificationId = if (notificationsEnabled) generateNotificationId() else null
+        val clientStatus = authorizationContext.clientStatus.status.statusList
+        val keyStorageStatus = keyAttestation.keyStorageStatus.status.statusList
 
-            val pidData = getPidData(authorizationContext)
-            val (pid, pidMetaData) = pidData.bind()
+        val issuedCredentials =
+            deviceKeys
+                .parMap(Dispatchers.Default, 4) { deviceKey ->
+                    val statusListToken =
+                        context(credentialReusePolicy) {
+                            generateStatusListToken.withPolicy(supportedCredential.docType, expiresAt)
+                        }
+                    val encodedCredential =
+                        encodePidInCbor(
+                            pid,
+                            pidMetaData,
+                            deviceKey,
+                            issuedAt = issuedAt,
+                            expiresAt = expiresAt,
+                            statusListToken,
+                        ).also {
+                            msoMdocPidLog.info("Issued $it")
+                        }
 
-            val issuedAt = clock.now()
-            val expiresAt = issuedAt + validity
+                    storeIssuedCredential(
+                        IssuedCredential(
+                            format = MSO_MDOC_FORMAT,
+                            type = supportedCredential.docType,
+                            issuedAt = issuedAt,
+                            expiresAt = expiresAt,
+                            notificationId = notificationId,
+                            status = statusListToken,
+                            clientStatus = clientStatus,
+                            keyStorageStatus = keyStorageStatus,
+                        ),
+                    )
 
-            val notificationId = if (notificationsEnabled) generateNotificationId() else null
+                    encodedCredential
+                }.toNonEmptyListOrNull()
 
-            val issuedCredentials =
-                holderPubKeys
-                    .parMap(Dispatchers.Default, 4) { holderKey ->
-                        val statusListToken =
-                            generateStatusListToken.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
-                                it(supportedCredential.docType, expiresAt)
-                                    .getOrElse { error ->
-                                        raise(Unexpected("Unable to generate Status List Token", error))
-                                    }
-                            }
-                        val encodedCredential =
-                            encodePidInCbor(pid, pidMetaData, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
-                                .also {
-                                    log.info("Issued $it")
-                                }
+        checkNotNull(issuedCredentials) { "Cannot happen" }
 
-                        storeIssuedCredential(
-                            IssuedCredential(
-                                format = MSO_MDOC_FORMAT,
-                                type = supportedCredential.docType,
-                                issuedAt = issuedAt,
-                                expiresAt = expiresAt,
-                                notificationId = notificationId,
-                                status = statusListToken,
-                                clientStatus = authorizationContext.clientStatus.status.statusList,
-                                keyStorageStatus = validatedProof.keyStorageStatus.status.statusList,
-                            ),
-                        )
-
-                        encodedCredential
-                    }.toNonEmptyListOrNull()
-
-            ensureNotNull(issuedCredentials) {
-                Unexpected("Unable to issue PID")
+        return CredentialResponse
+            .Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
+            .also {
+                msoMdocPidLog.info("Successfully issued PIDs")
+                msoMdocPidLog.debug("Issued PIDs data {}", it)
             }
-
-            CredentialResponse
-                .Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
-                .also {
-                    log.info("Successfully issued PIDs")
-                    log.debug("Issued PIDs data {}", it)
-                }
-        }
+    }
 }

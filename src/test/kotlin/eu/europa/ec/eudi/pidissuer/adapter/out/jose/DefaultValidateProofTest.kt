@@ -15,25 +15,32 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
+import arrow.core.getOrElse
 import arrow.core.nonEmptySetOf
+import arrow.core.raise.either
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
-import eu.europa.ec.eudi.pidissuer.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
 import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.jwtProof
+import eu.europa.ec.eudi.pidissuer.keyAttestationJWT
 import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
 import kotlinx.coroutines.test.runTest
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.fail
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
 class DefaultValidateProofTest {
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.System
-    private val verifyKeyAttestation = VerifyKeyAttestation(isTrustedKeyAttestationIssuer = IsTrustedKeyAttestationIssuer.Ignored)
+    private val verifyKeyAttestation =
+        VerifyKeyAttestation(isTrustedKeyAttestationIssuer = IsTrustedKeyAttestationIssuer.Ignored)
 
     @Test
     internal fun `keys are not truncated when reuse policy is None`() =
@@ -47,7 +54,7 @@ class DefaultValidateProofTest {
                 )
 
             // 2 attested keys, all distinct, none truncated
-            assertEquals(2, result.credentialKeys.value.size)
+            assertEquals(2, result?.credentialKeys?.value?.size)
         }
 
     @Test
@@ -66,7 +73,7 @@ class DefaultValidateProofTest {
                     policy = policy,
                 )
 
-            assertEquals(1, result.credentialKeys.value.size)
+            assertEquals(1, result?.credentialKeys?.value?.size)
         }
 
     @Test
@@ -85,18 +92,18 @@ class DefaultValidateProofTest {
                     policy = policy,
                 )
 
-            assertEquals(3, result.credentialKeys.value.size)
+            assertEquals(3, result?.credentialKeys?.value?.size)
         }
 
     private suspend fun runValidateProofs(
         proof: Pair<UnvalidatedProof.Jwt, *>,
         policy: CredentialReusePolicy,
-    ): ValidatedProof {
+    ): KeyAttestation? {
         val (unvalidatedProof, _) = proof
 
         val validator =
             DefaultValidateProof(
-                validateJwtProof = ValidateJwtProof(issuer, verifyKeyAttestation),
+                validateJwtProofWithKeyAttestation = ValidateJwtProofWithKeyAttestation(issuer, verifyKeyAttestation),
                 validateAttestationProof = ValidateAttestationProof(verifyKeyAttestation),
                 verifyNonce = { _, _ -> true },
             )
@@ -104,25 +111,24 @@ class DefaultValidateProofTest {
         val configuration =
             pidMsoMdocV1(
                 CoseAlgorithm(-7),
-                nonEmptySetOf(JWSAlgorithm.ES256),
-                KeyAttestationRequirement(
-                    keyStorage = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
-                    userAuthentication = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
-                    preferredKeyStorageStatusPeriod = PreferredKeyStorageStatusPeriod(31.days),
-                ),
+                deviceBinding =
+                    DeviceBinding.Required(
+                        nonEmptySetOf(JWSAlgorithm.ES256),
+                        KeyAttestationRequirement(
+                            keyStorage = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
+                            userAuthentication = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
+                            preferredKeyStorageStatusPeriod = PreferredKeyStorageStatusPeriod(31.days),
+                        ),
+                    ),
                 credentialReusePolicy = policy,
             )
 
-        val result =
-            validator(
-                unvalidatedProof,
-                configuration,
-                clock.now(),
-            )
-        return result.fold({ fail("Expected success but got $it") }, { it })
+        return context(configuration) {
+            either { validator(unvalidatedProof, clock.now()) } getOrElse { fail("Expected success but got $it") }
+        }
     }
 
-    private suspend fun generateJwtProofWithAttestation(extraKeysNo: Int = 0): Pair<UnvalidatedProof.Jwt, ECKey> {
+    private suspend fun generateJwtProofWithAttestation(extraKeysNo: Int): Pair<UnvalidatedProof.Jwt, ECKey> {
         val clock = Clock.System
         val jwtProofSigningKey = ECKeyGenerator(Curve.P_256).generate()
         val keyAttestationJwt =

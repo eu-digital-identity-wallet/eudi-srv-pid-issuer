@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential
 
 import arrow.core.NonEmptyList
-import arrow.core.NonEmptySet
 import arrow.core.nonEmptyListOf
 import arrow.core.nonEmptySetOf
 import com.nimbusds.jose.JWSAlgorithm
@@ -205,20 +204,16 @@ fun LearningCredential.Companion.sdJwtVcCredentialConfiguration(
     scope: Scope,
     credentialSigningAlgorithm: JWSAlgorithm,
     display: CredentialDisplay,
-    proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    keyAttestationRequirement: KeyAttestationRequirement,
+    deviceBinding: DeviceBinding.Required,
     credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) = SdJwtVcCredentialConfiguration(
     id,
     SdJwtVcType("urn:eu.europa.ec.eudi:learning:credential:1"),
     scope,
-    nonEmptySetOf(CryptographicBindingMethod.Jwk),
     nonEmptySetOf(credentialSigningAlgorithm),
     nonEmptyListOf(display),
     SdJwtVcClaims.all(),
-    ProofTypesSupported(
-        ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
-    ),
+    deviceBinding = deviceBinding,
     attestationCategory = AttestationCategory.Eaa,
     credentialReusePolicy = credentialReusePolicy,
 )

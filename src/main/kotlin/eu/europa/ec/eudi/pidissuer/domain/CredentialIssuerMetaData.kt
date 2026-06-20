@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptyList
 import arrow.core.NonEmptySet
+import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
@@ -24,7 +25,7 @@ import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.RSAKey
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec.ZIP_ALGORITHMS
-import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
+import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
 import java.util.*
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
@@ -68,6 +69,13 @@ data class CredentialRequestEncryptionSupportedParameters(
         require(zipAlgorithmsSupported?.all { it.name in ZIP_ALGORITHMS } ?: true) {
             "zipAlgorithmsSupported must be one of ${ZIP_ALGORITHMS.joinToString(", ") { it }}"
         }
+    }
+
+    val algorithmsSupported: NonEmptySet<JWEAlgorithm> by lazy {
+        encryptionKeys.keys
+            .map { JWEAlgorithm(it.algorithm.name) }
+            .toNonEmptySetOrNull()
+            ?: error("Cannot happen")
     }
 }
 
@@ -214,7 +222,7 @@ data class CredentialIssuerDisplay(
  * @param credentialResponseEncryption indicates whether the issuer requires the
  * Credential Response encrypted or not.
  * @param display display properties of a Credential Issuer for a certain language
- * @param specificCredentialIssuers the list of the specific issuers supported
+ * @param attestationIssuers the list of the specific issuers supported
  * @param preferredClientStatusPeriod the preferred client status period in seconds
  */
 data class CredentialIssuerMetaData(
@@ -228,7 +236,7 @@ data class CredentialIssuerMetaData(
     val credentialRequestEncryption: CredentialRequestEncryption,
     val credentialResponseEncryption: CredentialResponseEncryption,
     val display: List<CredentialIssuerDisplay> = emptyList(),
-    val specificCredentialIssuers: NonEmptyList<IssueSpecificCredential>,
+    val attestationIssuers: NonEmptyList<AttestationIssuer>,
     val preferredClientStatusPeriod: PreferredClientStatusPeriod,
 ) {
     init {
@@ -237,12 +245,12 @@ data class CredentialIssuerMetaData(
             "only one display object can be configured per locale"
         }
 
-        val credentialConfigurationIds = specificCredentialIssuers.map { it.supportedCredential.id }
+        val credentialConfigurationIds = attestationIssuers.map { it.supportedCredential.id }
         require(credentialConfigurationIds.size == credentialConfigurationIds.distinct().size) {
             "credential configuration ids must be unique"
         }
 
-        val maxValidityOfIssuedCredentials = specificCredentialIssuers.maxOf { it.validity }
+        val maxValidityOfIssuedCredentials = attestationIssuers.maxOf { it.validity }
 
         require(preferredClientStatusPeriod.value >= maxValidityOfIssuedCredentials) {
             "preferredClientStatusPeriod must be greater than or equal to the max validity of issued credentials configured"
@@ -250,7 +258,7 @@ data class CredentialIssuerMetaData(
     }
 
     val credentialConfigurationsSupported: List<CredentialConfiguration>
-        get() = specificCredentialIssuers.map { it.supportedCredential }
+        get() = attestationIssuers.map { it.supportedCredential }
 }
 
 /**

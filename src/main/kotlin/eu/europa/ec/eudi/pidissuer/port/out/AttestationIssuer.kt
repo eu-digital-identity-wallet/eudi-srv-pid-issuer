@@ -15,55 +15,66 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out
 
-import arrow.core.Either
-import arrow.core.raise.either
+import arrow.core.raise.Raise
+import arrow.core.raise.context.ensureNotNull
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreDeferredCredential
 import org.slf4j.LoggerFactory
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
-interface IssueSpecificCredential {
+interface AttestationIssuer {
     val supportedCredential: CredentialConfiguration
     val publicKey: JWK?
-    val keyAttestationRequirement: KeyAttestationRequirement
     val validity: Duration
 
-    suspend operator fun invoke(
-        authorizationContext: AuthorizationContext,
-        request: CredentialRequest,
-        credentialIdentifier: CredentialIdentifier?,
-        validatedProof: ValidatedProof,
-    ): Either<IssueCredentialError, CredentialResponse>
+    context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext,)
+    suspend operator fun invoke(request: AuthorizedCredentialRequest): CredentialResponse
 }
 
-fun IssueSpecificCredential.asDeferred(
+context(_: Raise<IssueCredentialError>)
+suspend fun AttestationIssuer.keyAttestation(
+    request: AuthorizedCredentialRequest,
+    at: Instant,
+    validateProof: ValidateProof,
+): KeyAttestation {
+    check(supportedCredential.deviceBinding is DeviceBinding.Required) {
+        "Applicable only to credentials with device binding"
+    }
+    val proof =
+        context(validateProof, supportedCredential) {
+            validateProof(request.proof, at)
+        }
+    ensureNotNull(proof) {
+        IssueCredentialError.MissingProof
+    }
+    return proof
+}
+
+fun AttestationIssuer.asDeferred(
     generateTransactionId: GenerateTransactionId,
     storeDeferredCredential: StoreDeferredCredential,
     clock: Clock,
     interval: Duration = 1.minutes,
-): IssueSpecificCredential = DeferredIssuer(this, generateTransactionId, storeDeferredCredential, clock, interval)
+): AttestationIssuer = DeferredIssuer(this, generateTransactionId, storeDeferredCredential, clock, interval)
 
 private class DeferredIssuer(
-    val issuer: IssueSpecificCredential,
+    val issuer: AttestationIssuer,
     val generateTransactionId: GenerateTransactionId,
     val storeDeferredCredential: StoreDeferredCredential,
     val clock: Clock,
     val interval: Duration,
-) : IssueSpecificCredential by issuer {
+) : AttestationIssuer by issuer {
     override val supportedCredential: CredentialConfiguration
         get() =
             when (val cfg = issuer.supportedCredential) {
-                is JwtVcJsonCredentialConfiguration -> {
-                    cfg.copy(
-                        id = CredentialConfigurationId(cfg.id.value + "_deferred"),
-                        display = cfg.display.map { it.copy(name = it.name.copy(name = it.name.name + " (deferred)")) },
-                    )
-                }
 
                 is MsoMdocCredentialConfiguration -> {
                     cfg.copy(
@@ -82,23 +93,19 @@ private class DeferredIssuer(
 
     private val log = LoggerFactory.getLogger(DeferredIssuer::class.java)
 
-    override suspend fun invoke(
-        authorizationContext: AuthorizationContext,
-        request: CredentialRequest,
-        credentialIdentifier: CredentialIdentifier?,
-        validatedProof: ValidatedProof,
-    ): Either<IssueCredentialError, CredentialResponse> =
-        either {
-            val credentialResponse =
-                issuer.invoke(authorizationContext, request, credentialIdentifier, validatedProof).bind()
+    context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext,)
+    override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
+        val credentialResponse = issuer.invoke(request)
 
-            require(credentialResponse is CredentialResponse.Issued) { "Actual issuer should return issued credentials" }
-
-            val transactionId = generateTransactionId()
-            val notIssuedBefore = clock.now() + interval
-            storeDeferredCredential.invoke(transactionId, credentialResponse, notIssuedBefore)
-            CredentialResponse.Deferred(transactionId, interval).also {
-                log.info("Repackaged $credentialResponse  as $it")
-            }
+        // That's a runtime exception because it would be a bug in the issuer
+        check(credentialResponse is CredentialResponse.Issued) {
+            "Actual issuer should return issued credentials"
         }
+        val transactionId = generateTransactionId()
+        val notIssuedBefore = clock.now() + interval
+        storeDeferredCredential.invoke(transactionId, credentialResponse, notIssuedBefore)
+        val deferred = CredentialResponse.Deferred(transactionId, interval)
+        log.info("Repackaged $credentialResponse  as $deferred")
+        return deferred
+    }
 }

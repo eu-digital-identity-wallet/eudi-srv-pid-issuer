@@ -15,17 +15,17 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.credential
 
-import arrow.core.Either
+import arrow.core.raise.Raise
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
+import eu.europa.ec.eudi.pidissuer.domain.KeyAttestation
 import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
-import eu.europa.ec.eudi.pidissuer.domain.ValidatedProof
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import kotlin.time.Instant
 
 fun interface ValidateProof {
+    context(_: Raise<IssueCredentialError>, cfg: CredentialConfiguration)
     suspend operator fun invoke(
-        unvalidatedProof: UnvalidatedProof,
-        credentialConfiguration: CredentialConfiguration,
+        unvalidatedProof: UnvalidatedProof?,
         at: Instant,
-    ): Either<IssueCredentialError, ValidatedProof>
+    ): KeyAttestation?
 }

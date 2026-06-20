@@ -15,10 +15,11 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.Either
 import arrow.core.NonEmptyList
 import arrow.core.NonEmptySet
-import arrow.core.raise.either
+import arrow.core.raise.Raise
+import arrow.core.raise.context.ensure
+import arrow.core.raise.context.raise
 import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
@@ -52,39 +53,40 @@ internal class VerifyKeyAttestation(
     private val maxSkew: Duration = 30.seconds,
     private val isTrustedKeyAttestationIssuer: IsTrustedKeyAttestationIssuer,
 ) {
+    context(_: Raise<String>)
     suspend operator fun invoke(
         keyAttestation: KeyAttestationJWT,
         signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
         keyAttestationRequirement: KeyAttestationRequirement,
         expectExpirationClaim: Boolean,
         at: Instant,
-    ): Either<Throwable, Pair<NonEmptyList<JWK>, String?>> =
-        either {
-            with(keyAttestation) {
-                val nonce = claims.nonce
-                val algorithm = extractSupportedAlgorithm(signingAlgorithmsSupported)
-                val walletProviderSigningKey = extractSigningKey()
-                val key =
-                    walletProviderSigningKey.key
-                        .ensureCompatibleWith(algorithm)
-                        .ensureIsPublicAsymmetricKey()
-                verifySignature(key, algorithm, expectExpirationClaim)
-                ensureMeetsKeyAttestationRequirements(keyAttestationRequirement, nonce)
-                if (walletProviderSigningKey is WalletProviderSigningKey.X5C) {
-                    walletProviderSigningKey.ensureTrustWalletProvider()
-                }
-
-                keyAttestation.claims.attestedKeys.value to nonce
+    ): Pair<NonEmptyList<JWK>, String?> =
+        with(keyAttestation) {
+            val nonce = claims.nonce
+            val algorithm = extractSupportedAlgorithm(signingAlgorithmsSupported)
+            val walletProviderSigningKey = extractSigningKey()
+            val key =
+                walletProviderSigningKey.key
+                    .ensureCompatibleWith(algorithm)
+                    .ensureIsPublicAsymmetricKey()
+            verifySignature(key, algorithm, expectExpirationClaim)
+            ensureMeetsKeyAttestationRequirements(keyAttestationRequirement, nonce)
+            if (walletProviderSigningKey is WalletProviderSigningKey.X5C) {
+                walletProviderSigningKey.ensureTrustWalletProvider()
             }
+
+            keyAttestation.claims.attestedKeys.value to nonce
         }
 
+    context(_: Raise<String>)
     private suspend fun WalletProviderSigningKey.X5C.ensureTrustWalletProvider() {
         val result = isTrustedKeyAttestationIssuer(x5c)
-        require(result is TrustResult.IsTrusted) {
+        ensure(result is TrustResult.IsTrusted) {
             "Key attestation is not issued by a trusted wallet provider"
         }
     }
 
+    context(_: Raise<String>)
     private fun KeyAttestationJWT.extractSigningKey(): WalletProviderSigningKey {
         val header = jwt.header
         val kid: String? = header.keyID
@@ -105,7 +107,7 @@ internal class VerifyKeyAttestation(
             }
 
             else -> {
-                error("Invalid Key attestation : No signing key found in one of 'kid' or 'x5c'. 'trust_chain not yet supported'")
+                raise("Invalid Key attestation : No signing key found in one of 'kid' or 'x5c'. 'trust_chain not yet supported'")
             }
         }
     }
@@ -139,6 +141,7 @@ internal class VerifyKeyAttestation(
         processor.process(jwt, null)
     }
 
+    context(_: Raise<String>)
     private suspend fun KeyAttestationJWT.ensureMeetsKeyAttestationRequirements(
         keyAttestationRequirement: KeyAttestationRequirement,
         nonce: String?,
@@ -146,14 +149,14 @@ internal class VerifyKeyAttestation(
         // if key storage constraints are expected, the passed key attestation must meet these constraints
         keyAttestationRequirement.keyStorage?.let {
             val keyStorage = claims.keyStorage
-            require(keyAttestationRequirement.keyStorage.containsAll(keyStorage)) {
+            ensure(keyAttestationRequirement.keyStorage.containsAll(keyStorage)) {
                 "The provided key storage's attack resistance does not match the expected one."
             }
         }
         // if user authentication constraints are expected, the passed key attestation must meet these constraints
         keyAttestationRequirement.userAuthentication?.let {
             val userAuthentication = claims.userAuthentication
-            require(keyAttestationRequirement.userAuthentication.containsAll(userAuthentication)) {
+            ensure(keyAttestationRequirement.userAuthentication.containsAll(userAuthentication)) {
                 "The provided user authentication's attack resistance does not match the expected one."
             }
         }
@@ -161,24 +164,26 @@ internal class VerifyKeyAttestation(
         verifyAttestedKey
             ?.verify(attestedKeys.value, keyAttestationRequirement, nonce)
             ?.mapLeft {
-                error("${it.size} of the total ${attestedKeys.value.size} attested keys failed to pass verification")
+                raise("${it.size} of the total ${attestedKeys.value.size} attested keys failed to pass verification")
             }
     }
 }
 
+context(_: Raise<String>)
 private fun KeyAttestationJWT.extractSupportedAlgorithm(signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>): JWSAlgorithm =
     jwt.header.algorithm
         .takeIf(JWSAlgorithm.Family.EC::contains)
         ?.takeIf(signingAlgorithmsSupported::contains)
-        ?: error("signing algorithm of key attestation '${jwt.header.algorithm.name}' is not supported")
+        ?: raise("signing algorithm of key attestation '${jwt.header.algorithm.name}' is not supported")
 
+context(_: Raise<String>)
 private fun JWK.ensureCompatibleWith(signingAlgorithm: JWSAlgorithm): JWK {
     val keySupportedAlgorithms =
         when (this) {
             is ECKey -> ECDSASigner.SUPPORTED_ALGORITHMS
-            else -> error("unsupported key type '${keyType.value}'")
+            else -> raise("unsupported key type '${keyType.value}'")
         }
-    require(signingAlgorithm in keySupportedAlgorithms) {
+    ensure(signingAlgorithm in keySupportedAlgorithms) {
         "key type '${keyType.value}' is not compatible with signing algorithm '${algorithm.name}'"
     }
     return this

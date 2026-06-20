@@ -15,8 +15,12 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.Either
-import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
+import arrow.core.raise.Raise
+import arrow.core.raise.context.ensure
+import arrow.core.raise.context.ensureNotNull
+import arrow.core.raise.context.raise
+import arrow.core.raise.effect
+import arrow.core.raise.fold
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import kotlin.time.Instant
@@ -24,32 +28,31 @@ import kotlin.time.Instant
 internal class ValidateAttestationProof(
     private val verifyKeyAttestation: VerifyKeyAttestation,
 ) {
+    context(_: Raise<IssueCredentialError.InvalidProof>, proofType: ProofType.Attestation,)
     suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof.Attestation,
-        credentialConfiguration: CredentialConfiguration,
         at: Instant,
-    ): Either<IssueCredentialError.InvalidProof, ValidatedProof> =
-        Either
-            .catch {
-                val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.ATTESTATION]
-                requireNotNull(proofType) {
-                    "Credential configuration '${credentialConfiguration.id.value}' doesn't support 'attestation' proofs"
-                }
-                check(proofType is ProofType.Attestation)
-                val keyAttestationJWT = KeyAttestationJWT(unvalidatedProof.jwt)
+    ): KeyAttestation =
+        effect {
+            val keyAttestationJWT = KeyAttestationJWT(unvalidatedProof.jwt)
 
-                require(keyAttestationJWT.jwt.header.algorithm in proofType.signingAlgorithmsSupported) {
-                    "Key attestation signing algorithm '${keyAttestationJWT.jwt.header.algorithm}' is not supported, " +
-                        "must be one of: ${proofType.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
-                }
-                credentialKeyAndNonce(keyAttestationJWT, proofType, at)
-            }.mapLeft { IssueCredentialError.InvalidProof("Invalid proof Attestation", it) }
+            ensure(keyAttestationJWT.jwt.header.algorithm in proofType.signingAlgorithmsSupported) {
+                "Key attestation signing algorithm '${keyAttestationJWT.jwt.header.algorithm}' is not supported, " +
+                    "must be one of: ${proofType.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
+            }
+            credentialKeyAndNonce(keyAttestationJWT, proofType, at)
+        }.fold(
+            transform = { it },
+            recover = { raise(IssueCredentialError.InvalidProof(it)) },
+            catch = { raise(IssueCredentialError.InvalidProof("Invalid proof Attestation", it)) },
+        )
 
+    context(_: Raise<String>)
     private suspend fun credentialKeyAndNonce(
         keyAttestationJWT: KeyAttestationJWT,
         proofType: ProofType.Attestation,
         at: Instant,
-    ): ValidatedProof {
+    ): KeyAttestation {
         val (attestedKeys, nonce) =
             verifyKeyAttestation(
                 keyAttestation = keyAttestationJWT,
@@ -57,16 +60,16 @@ internal class ValidateAttestationProof(
                 keyAttestationRequirement = proofType.keyAttestationRequirement,
                 expectExpirationClaim = false,
                 at = at,
-            ).getOrThrow()
-        requireNotNull(nonce) { "Key attestation does not contain a c_nonce." }
+            )
+        ensureNotNull(nonce) { "Key attestation does not contain a c_nonce." }
 
-        require(
+        ensure(
             keyAttestationJWT.claims.keyStorageStatus.exp >= at + proofType.keyAttestationRequirement.preferredKeyStorageStatusPeriod.value,
         ) {
             "Key Storage Status expiration date does not meet the preferred key storage status period"
         }
 
-        return ValidatedProof(
+        return KeyAttestation(
             credentialKeys = CredentialKeys(attestedKeys),
             cNonce = nonce,
             keyStorageStatus = keyAttestationJWT.claims.keyStorageStatus,

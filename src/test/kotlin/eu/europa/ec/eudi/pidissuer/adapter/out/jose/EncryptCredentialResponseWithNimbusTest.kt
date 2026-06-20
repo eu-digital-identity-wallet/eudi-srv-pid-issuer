@@ -17,8 +17,10 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.Either
 import arrow.core.getOrElse
+import arrow.core.raise.either
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.JWK
@@ -33,7 +35,6 @@ import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
-import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
@@ -44,6 +45,7 @@ import java.util.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.fail
+import kotlin.time.Clock
 
 internal class EncryptCredentialResponseWithNimbusTest {
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
@@ -61,7 +63,9 @@ internal class EncryptCredentialResponseWithNimbusTest {
                     .keyID("rsa-jwt")
                     .generate()
             val jwk = key.toPublicJWK()
-            val parameters = RequestedResponseEncryption.Required(jwk)
+            val parameters =
+                either { RequestedResponseEncryption.Required(jwk, EncryptionMethod.A256GCM) }
+                    .getOrElse { fail(it) }
             val unencrypted =
                 IssueCredentialResponse.PlainTO(
                     credentials = listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("credential"))),
@@ -82,7 +86,9 @@ internal class EncryptCredentialResponseWithNimbusTest {
                     .keyID("ec-jwt")
                     .generate()
             val jwk = key.toPublicJWK()
-            val parameters = RequestedResponseEncryption.Required(jwk)
+            val parameters =
+                either { RequestedResponseEncryption.Required(jwk, EncryptionMethod.A256GCM) }
+                    .getOrElse { fail(it) }
             val unencrypted =
                 IssueCredentialResponse.PlainTO(
                     credentials = listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("credential"))),
@@ -93,13 +99,12 @@ internal class EncryptCredentialResponseWithNimbusTest {
             encryptAndVerify(unencrypted, parameters, key)
         }
 
-    private fun encryptAndVerify(
+    private suspend fun encryptAndVerify(
         unencrypted: IssueCredentialResponse.PlainTO,
         parameters: RequestedResponseEncryption.Required,
         decryptionKey: JWK,
     ) {
-        val encrypted = encrypter(unencrypted, parameters).getOrElse { fail(it.message, it) }
-
+        val encrypted = encrypter(unencrypted, parameters)
         val processor =
             DefaultJWTProcessor<SecurityContext>().apply {
                 jweTypeVerifier = DefaultJOSEObjectTypeVerifier.JWT

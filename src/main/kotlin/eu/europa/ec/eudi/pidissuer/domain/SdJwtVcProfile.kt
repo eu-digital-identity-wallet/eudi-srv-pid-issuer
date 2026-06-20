@@ -16,8 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptySet
-import arrow.core.raise.Raise
-import arrow.core.raise.ensure
+import arrow.core.nonEmptySetOf
 import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 
@@ -36,45 +35,17 @@ data class SdJwtVcCredentialConfiguration(
     override val id: CredentialConfigurationId,
     val type: SdJwtVcType,
     override val scope: Scope,
-    override val cryptographicBindingMethodsSupported: NonEmptySet<CryptographicBindingMethod>,
     val credentialSigningAlgorithmsSupported: NonEmptySet<JWSAlgorithm>?,
     override val display: List<CredentialDisplay>,
     val claims: List<ClaimDefinition>,
-    override val proofTypesSupported: ProofTypesSupported = ProofTypesSupported.Empty,
+    override val deviceBinding: DeviceBinding,
     override val attestationCategory: AttestationCategory,
     override val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : CredentialConfiguration {
-    init {
-        validateCryptographicBindingsAndProofTypes()
-    }
-}
-
-internal fun SdJwtVcCredentialConfiguration.credentialRequest(
-    unvalidatedProofs: UnvalidatedProof,
-    credentialResponseEncryption: RequestedResponseEncryption,
-): SdJwtVcCredentialRequest =
-    SdJwtVcCredentialRequest(
-        unvalidatedProof = unvalidatedProofs,
-        credentialResponseEncryption = credentialResponseEncryption,
-        type = type,
-    )
-
-//
-// Credential Offer
-//
-data class SdJwtVcCredentialRequest(
-    override val unvalidatedProof: UnvalidatedProof,
-    override val credentialResponseEncryption: RequestedResponseEncryption = RequestedResponseEncryption.NotRequired,
-    val type: SdJwtVcType,
-) : CredentialRequest {
-    override val format: Format = SD_JWT_VC_FORMAT
-}
-
-internal fun Raise<String>.validate(
-    sdJwtVcCredentialRequest: SdJwtVcCredentialRequest,
-    meta: SdJwtVcCredentialConfiguration,
-) {
-    ensure(sdJwtVcCredentialRequest.type == meta.type) {
-        "doctype is ${sdJwtVcCredentialRequest.type} but was expecting ${meta.type}"
-    }
+    override val cryptographicBindingMethodsSupported: NonEmptySet<CryptographicBindingMethod>?
+        get() =
+            when (deviceBinding) {
+                DeviceBinding.None -> null
+                is DeviceBinding.Required -> nonEmptySetOf(CryptographicBindingMethod.Jwk)
+            }
 }

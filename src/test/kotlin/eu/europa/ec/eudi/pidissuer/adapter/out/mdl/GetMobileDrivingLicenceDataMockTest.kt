@@ -17,9 +17,9 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
 import arrow.core.getOrElse
 import arrow.core.nonEmptySetOf
+import arrow.core.raise.either
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
 import eu.europa.ec.eudi.pidissuer.domain.ClientStatus
-import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.domain.StatusClaim
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
@@ -27,6 +27,8 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import kotlinx.coroutines.test.runTest
 import java.net.URI
 import kotlin.test.Test
+import kotlin.test.fail
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 
 internal class GetMobileDrivingLicenceDataMockTest {
@@ -49,13 +51,15 @@ internal class GetMobileDrivingLicenceDataMockTest {
                     expiresAt = expiresAt,
                 )
 
-            getMobileDrivingLicenceData(
-                AuthorizationContext(
-                    "username",
-                    BearerAccessToken.parse("Bearer token"),
-                    nonEmptySetOf(Scope("test")),
-                    clientStatus = clientStatus,
-                ),
-            ).getOrElse { throw RuntimeException(it.msg, it.cause) }
+            either {
+                getMobileDrivingLicenceData(
+                    AuthorizationContext(
+                        "username",
+                        BearerAccessToken.parse("Bearer token"),
+                        nonEmptySetOf(Scope("test")),
+                        clientStatus = clientStatus,
+                    ),
+                )
+            }.getOrElse { fail() }
         }
 }
