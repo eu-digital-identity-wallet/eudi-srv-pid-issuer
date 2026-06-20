@@ -18,7 +18,6 @@ package eu.europa.ec.eudi.pidissuer.domain
 import arrow.core.NonEmptySet
 import arrow.core.nonEmptySetOf
 import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 
 //
 // Credential MetaData
