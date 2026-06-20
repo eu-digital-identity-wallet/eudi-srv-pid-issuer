@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.status
 
-import arrow.core.Either
 import arrow.core.raise.Raise
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 

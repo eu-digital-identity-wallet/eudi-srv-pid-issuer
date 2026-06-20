@@ -15,8 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.jose
 
-import arrow.core.Either
-import arrow.core.raise.Raise
 import eu.europa.ec.eudi.pidissuer.domain.RequestedResponseEncryption
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialResponse
 
