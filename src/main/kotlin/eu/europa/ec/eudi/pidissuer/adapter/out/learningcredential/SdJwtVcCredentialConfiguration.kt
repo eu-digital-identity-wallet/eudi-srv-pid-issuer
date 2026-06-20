@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential
 
 import arrow.core.NonEmptyList
-import arrow.core.NonEmptySet
 import arrow.core.nonEmptyListOf
 import arrow.core.nonEmptySetOf
 import com.nimbusds.jose.JWSAlgorithm
