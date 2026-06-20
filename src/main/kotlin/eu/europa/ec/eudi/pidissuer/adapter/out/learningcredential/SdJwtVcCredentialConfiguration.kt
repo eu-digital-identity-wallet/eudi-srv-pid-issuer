@@ -210,7 +210,6 @@ fun LearningCredential.Companion.sdJwtVcCredentialConfiguration(
     id,
     SdJwtVcType("urn:eu.europa.ec.eudi:learning:credential:1"),
     scope,
-    nonEmptySetOf(CryptographicBindingMethod.Jwk),
     nonEmptySetOf(credentialSigningAlgorithm),
     nonEmptyListOf(display),
     SdJwtVcClaims.all(),

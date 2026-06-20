@@ -351,7 +351,6 @@ internal fun mobileDrivingLicenceV1(
                 ),
             ),
         claims = MsoMdocMdlV1Claims.all(),
-        cryptographicBindingMethodsSupported = setOf(CryptographicBindingMethod.CoseKey),
         credentialSigningAlgorithmsSupported = nonEmptySetOf(credentialSigningAlgorithm),
         scope = MobileDrivingLicenceV1Scope,
         deviceBinding = deviceBinding,

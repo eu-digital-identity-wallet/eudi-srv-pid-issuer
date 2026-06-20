@@ -189,7 +189,6 @@ fun pidSdJwtVcV1(
                 ),
             ),
         claims = SdJwtVcPidClaims.all(),
-        cryptographicBindingMethodsSupported = nonEmptySetOf(CryptographicBindingMethod.Jwk),
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
         scope = PidSdJwtVcScope,
         deviceBinding = deviceBinding,

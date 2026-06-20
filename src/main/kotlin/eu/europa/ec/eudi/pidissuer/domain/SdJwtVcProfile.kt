@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptySet
+import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
 import arrow.core.raise.context.ensure
 import com.nimbusds.jose.JWSAlgorithm
@@ -36,7 +37,6 @@ data class SdJwtVcCredentialConfiguration(
     override val id: CredentialConfigurationId,
     val type: SdJwtVcType,
     override val scope: Scope,
-    override val cryptographicBindingMethodsSupported: NonEmptySet<CryptographicBindingMethod>,
     val credentialSigningAlgorithmsSupported: NonEmptySet<JWSAlgorithm>?,
     override val display: List<CredentialDisplay>,
     val claims: List<ClaimDefinition>,
@@ -44,9 +44,12 @@ data class SdJwtVcCredentialConfiguration(
     override val attestationCategory: AttestationCategory,
     override val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : CredentialConfiguration {
-    init {
-        validateCryptographicBindingsAndProofTypes()
-    }
+    override val cryptographicBindingMethodsSupported: NonEmptySet<CryptographicBindingMethod>?
+        get() =
+            when (deviceBinding) {
+                DeviceBinding.None -> null
+                is DeviceBinding.Required -> nonEmptySetOf(CryptographicBindingMethod.Jwk)
+            }
 }
 
 internal fun SdJwtVcCredentialConfiguration.credentialRequest(

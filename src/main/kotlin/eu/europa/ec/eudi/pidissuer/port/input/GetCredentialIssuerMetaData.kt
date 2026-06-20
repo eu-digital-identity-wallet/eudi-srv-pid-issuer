@@ -226,7 +226,6 @@ private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject =
         put("format", d.format().value)
         put("scope", d.scope.value)
         d.cryptographicBindingMethodsSupported
-            .takeIf { it.isNotEmpty() }
             ?.let { cryptographicBindingMethodsSupported ->
                 putJsonArray("cryptographic_binding_methods_supported") {
                     addAll(cryptographicBindingMethodsSupported.map { it.methodName() })

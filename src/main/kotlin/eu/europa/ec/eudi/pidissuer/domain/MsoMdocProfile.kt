@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptySet
+import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
 import arrow.core.raise.context.ensure
 
@@ -50,7 +51,6 @@ operator fun ClaimDefinition.Companion.invoke(
 data class MsoMdocCredentialConfiguration(
     override val id: CredentialConfigurationId,
     val docType: MsoDocType,
-    override val cryptographicBindingMethodsSupported: Set<CryptographicBindingMethod>,
     val credentialSigningAlgorithmsSupported: NonEmptySet<CoseAlgorithm>?,
     override val scope: Scope,
     override val display: List<CredentialDisplay> = emptyList(),
@@ -65,6 +65,9 @@ data class MsoMdocCredentialConfiguration(
         }
         validateCryptographicBindingsAndProofTypes()
     }
+
+    override val cryptographicBindingMethodsSupported: NonEmptySet<CryptographicBindingMethod>
+        get() = nonEmptySetOf(CryptographicBindingMethod.CoseKey)
 }
 
 internal fun MsoMdocCredentialConfiguration.credentialRequest(

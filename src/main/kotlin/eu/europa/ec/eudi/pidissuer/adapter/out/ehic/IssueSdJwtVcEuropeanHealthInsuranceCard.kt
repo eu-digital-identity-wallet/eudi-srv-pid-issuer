@@ -202,7 +202,6 @@ private fun europeanHealthInsuranceCardCredentialConfiguration(
         id = credentialConfigurationId,
         type = EuropeanHealthInsuranceCardVct,
         scope = scope,
-        cryptographicBindingMethodsSupported = nonEmptySetOf(CryptographicBindingMethod.Jwk),
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
         display = listOf(credentialDisplay),
         claims = EuropeanHealthInsuranceCardClaims.all(),
