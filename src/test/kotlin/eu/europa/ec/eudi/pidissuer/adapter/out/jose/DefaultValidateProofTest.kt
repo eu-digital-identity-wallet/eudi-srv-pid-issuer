@@ -128,7 +128,7 @@ class DefaultValidateProofTest {
         }
     }
 
-    private suspend fun generateJwtProofWithAttestation(extraKeysNo: Int = 0): Pair<UnvalidatedProof.Jwt, ECKey> {
+    private suspend fun generateJwtProofWithAttestation(extraKeysNo: Int): Pair<UnvalidatedProof.Jwt, ECKey> {
         val clock = Clock.System
         val jwtProofSigningKey = ECKeyGenerator(Curve.P_256).generate()
         val keyAttestationJwt =
