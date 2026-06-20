@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential
 
 import arrow.core.NonEmptySet
 import arrow.core.raise.Raise
-import arrow.core.raise.context.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
@@ -30,6 +29,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
+import eu.europa.ec.eudi.pidissuer.port.out.keyAttestation
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
@@ -69,7 +69,7 @@ internal class IssueLearningCredential(
         log.info("Issuing Learning Credential")
 
         val issuedAt = clock.now()
-        val keyAttestation = keyAttestation(request, issuedAt)
+        val keyAttestation = keyAttestation(request, issuedAt, validateProof)
         val learningCredentialAttributes = getLearningCredential(authorizationContext)
 
         val expiresAt =
@@ -121,24 +121,6 @@ internal class IssueLearningCredential(
                 log.info("Successfully issued Learning Credential")
                 log.debug("Issued Learning Credential data {}", it)
             }
-    }
-
-    context(_: Raise<IssueCredentialError>)
-    private suspend fun keyAttestation(
-        request: CredentialRequest,
-        at: Instant,
-    ): KeyAttestation {
-        check(supportedCredential.proofTypesSupported.values.isNotEmpty()) {
-            "No proof types supported set"
-        }
-        val proof =
-            context(validateProof, supportedCredential) {
-                validateProof(request.unvalidatedProof, at)
-            }
-        ensureNotNull(proof) {
-            IssueCredentialError.MissingProof
-        }
-        return proof
     }
 
     companion object {

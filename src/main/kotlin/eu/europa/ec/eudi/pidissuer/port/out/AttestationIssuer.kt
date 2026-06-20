@@ -16,16 +16,19 @@
 package eu.europa.ec.eudi.pidissuer.port.out
 
 import arrow.core.raise.Raise
+import arrow.core.raise.context.ensureNotNull
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreDeferredCredential
 import org.slf4j.LoggerFactory
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
 interface AttestationIssuer {
     val supportedCredential: CredentialConfiguration
@@ -39,6 +42,25 @@ interface AttestationIssuer {
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
     ): CredentialResponse
+}
+
+context(_: Raise<IssueCredentialError>)
+suspend fun AttestationIssuer.keyAttestation(
+    request: CredentialRequest,
+    at: Instant,
+    validateProof: ValidateProof,
+): KeyAttestation {
+    check(supportedCredential.proofTypesSupported.values.isNotEmpty()) {
+        "No proof types supported set"
+    }
+    val proof =
+        context(validateProof, supportedCredential) {
+            validateProof(request.unvalidatedProof, at)
+        }
+    ensureNotNull(proof) {
+        IssueCredentialError.MissingProof
+    }
+    return proof
 }
 
 fun AttestationIssuer.asDeferred(
