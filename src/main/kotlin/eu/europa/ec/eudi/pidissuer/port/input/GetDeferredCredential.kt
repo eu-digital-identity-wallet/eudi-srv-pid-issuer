@@ -150,6 +150,10 @@ sealed interface DeferredCredentialResponse {
 
 @Serializable
 sealed interface GetDeferredCredentialError {
+    data class EncryptionError(
+        val cause: RequestEncryptionError,
+    ) : GetDeferredCredentialError
+
     data object InvalidTransactionId : GetDeferredCredentialError
 
     data class InvalidEncryptionParameters(
@@ -192,43 +196,42 @@ class GetDeferredCredential(
             },
         )
 
-    context(_: Raise<CredentialOrEncryptedError<GetDeferredCredentialError>>)
-    private suspend fun doGetDeferredCredential(request: DeferredCredentialRequestTO): DeferredCredentialResponse =
-        withError(transform = { it.right() }) {
-            val transactionId = TransactionId(request.transactionId)
-            val credentialResponseEncryption =
-                request.credentialResponseEncryption
-                    ?.let { toRequestedResponseEncryption(it) }
-                    ?: RequestedResponseEncryption.NotRequired
-            log.info("GetDeferredCredential for {} ...", transactionId)
+    context(_: Raise<GetDeferredCredentialError>)
+    private suspend fun doGetDeferredCredential(request: DeferredCredentialRequestTO): DeferredCredentialResponse {
+        val transactionId = TransactionId(request.transactionId)
+        val credentialResponseEncryption =
+            request.credentialResponseEncryption
+                ?.let { toRequestedResponseEncryption(it) }
+                ?: RequestedResponseEncryption.NotRequired
+        log.info("GetDeferredCredential for {} ...", transactionId)
 
-            return when (val result = loadDeferredCredentialByTransactionId(transactionId)) {
-                LoadDeferredCredentialResult.InvalidTransactionId -> {
-                    raise(GetDeferredCredentialError.InvalidTransactionId)
+        return when (val result = loadDeferredCredentialByTransactionId(transactionId)) {
+            LoadDeferredCredentialResult.InvalidTransactionId -> {
+                raise(GetDeferredCredentialError.InvalidTransactionId)
+            }
+
+            is LoadDeferredCredentialResult.IssuancePending -> {
+                context(encryptCredentialResponse) {
+                    result.response(credentialResponseEncryption)
                 }
+            }
 
-                is LoadDeferredCredentialResult.IssuancePending -> {
-                    context(encryptCredentialResponse) {
-                        result.response(credentialResponseEncryption)
-                    }
-                }
-
-                is LoadDeferredCredentialResult.Found -> {
-                    context(encryptCredentialResponse) {
-                        result.response(credentialResponseEncryption)
-                    }
+            is LoadDeferredCredentialResult.Found -> {
+                context(encryptCredentialResponse) {
+                    result.response(credentialResponseEncryption)
                 }
             }
         }
+    }
 }
 
 //
 // Request pre-processing
 //
 
-context(_: Raise<CredentialOrEncryptedError<GetDeferredCredentialError>>, credentialIssuerMetadata: CredentialIssuerMetaData)
+context(_: Raise<GetDeferredCredentialError>, credentialIssuerMetadata: CredentialIssuerMetaData)
 private suspend fun PlainOrEncrypted<DeferredCredentialRequestTO>.decryptIfNeeded(): DeferredCredentialRequestTO =
-    withError(transform = { it.left() }) {
+    withError(transform = { GetDeferredCredentialError.EncryptionError(it) }) {
         fun DeferredCredentialRequestTO.verifyEncryptionForPlainRequest() {
             ensure(credentialResponseEncryption == null) {
                 ResponseEncryptionRequiresEncryptedRequest
@@ -329,57 +332,7 @@ private suspend fun LoadDeferredCredentialResult.Found.response(
 // Error Response
 //
 
-private fun CredentialOrEncryptedError<GetDeferredCredentialError>.response(): DeferredCredentialResponse =
-    fold(
-        ifLeft = { encryptionError -> encryptionError.toTO() },
-        ifRight = { issuanceError -> issuanceError.toTO() },
-    )
-
-private fun RequestEncryptionError.toTO(): DeferredCredentialResponse.Failed {
-    val (type, description) =
-        when (this) {
-            is UnparseableEncryptedRequest -> {
-                GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
-                    errorDescriptionWithErrorCauseDescription("Encrypted request cannot be parsed as a JWT", cause)
-            }
-
-            is RequestEncryptionIsRequired -> {
-                GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request encryption is required"
-            }
-
-            is RequestEncryptionNotSupported -> {
-                GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request encryption is not supported"
-            }
-
-            is ResponseEncryptionRequiresEncryptedRequest -> {
-                GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
-                    "Credential response encryption requires an encrypted credential request"
-            }
-
-            is UnsupportedEncryptionAlgorithm -> {
-                GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
-                    "Unsupported encryption method $encryptionAlgorithm, supported methods: $algorithmsSupported"
-            }
-
-            is UnsupportedEncryptionMethod -> {
-                GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
-                    "Unsupported encryption method $encryptionMethod, supported methods: $methodsSupported"
-            }
-
-            is RequestCompressionNotSupported -> {
-                GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request compression is not supported"
-            }
-
-            is UnsupportedRequestCompressionMethod -> {
-                GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
-                    "Unsupported credential request compression method $compressionAlgorithm, " +
-                    "supported methods: $compressionMethodsSupported"
-            }
-        }
-    return DeferredCredentialResponse.Failed(FailedTO(type, description))
-}
-
-private fun GetDeferredCredentialError.toTO(): DeferredCredentialResponse.Failed {
+private fun GetDeferredCredentialError.response(): DeferredCredentialResponse.Failed {
     val (type, description) =
         when (this) {
             is GetDeferredCredentialError.InvalidTransactionId -> {
@@ -390,6 +343,51 @@ private fun GetDeferredCredentialError.toTO(): DeferredCredentialResponse.Failed
                 GetDeferredCredentialErrorTypeTo.INVALID_ENCRYPTION_PARAMETERS to
                     errorDescriptionWithErrorCauseDescription("Invalid encryption parameters", error)
             }
+
+            is GetDeferredCredentialError.EncryptionError -> {
+                cause.toTO()
+            }
         }
     return DeferredCredentialResponse.Failed(FailedTO(type, description))
 }
+
+private fun RequestEncryptionError.toTO(): Pair<GetDeferredCredentialErrorTypeTo, String> =
+    when (this) {
+        is UnparseableEncryptedRequest -> {
+            GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
+                errorDescriptionWithErrorCauseDescription("Encrypted request cannot be parsed as a JWT", cause)
+        }
+
+        is RequestEncryptionIsRequired -> {
+            GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request encryption is required"
+        }
+
+        is RequestEncryptionNotSupported -> {
+            GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request encryption is not supported"
+        }
+
+        is ResponseEncryptionRequiresEncryptedRequest -> {
+            GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
+                "Credential response encryption requires an encrypted credential request"
+        }
+
+        is UnsupportedEncryptionAlgorithm -> {
+            GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
+                "Unsupported encryption method $encryptionAlgorithm, supported methods: $algorithmsSupported"
+        }
+
+        is UnsupportedEncryptionMethod -> {
+            GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
+                "Unsupported encryption method $encryptionMethod, supported methods: $methodsSupported"
+        }
+
+        is RequestCompressionNotSupported -> {
+            GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request compression is not supported"
+        }
+
+        is UnsupportedRequestCompressionMethod -> {
+            GetDeferredCredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to
+                "Unsupported credential request compression method $compressionAlgorithm, " +
+                "supported methods: $compressionMethodsSupported"
+        }
+    }

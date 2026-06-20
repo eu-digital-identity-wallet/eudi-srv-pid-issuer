@@ -69,6 +69,10 @@ data class CredentialRequestTO(
  * Errors that might be raised while trying to issue a credential.
  */
 sealed interface IssueCredentialError {
+    data class EncryptionError(
+        val cause: RequestEncryptionError,
+    ) : IssueCredentialError
+
     /**
      * Indicates that both 'credential_configuration_id' and 'credential_identifier' was missing from a Credential Request.
      */
@@ -311,7 +315,6 @@ sealed interface IssueCredentialResponse {
 }
 
 typealias PlainOrEncrypted<T> = Either<T, String>
-typealias CredentialOrEncryptedError<E> = Either<RequestEncryptionError, E>
 
 private val log = LoggerFactory.getLogger(IssueCredential::class.java)
 
@@ -356,29 +359,11 @@ class IssueCredential(
             },
         )
 
-    context(_: Raise<CredentialOrEncryptedError<IssueCredentialError>>)
+    context(_: Raise<IssueCredentialError>)
     private suspend fun issueCredential(
         authorizationContext: AuthorizationContext,
         credentialRequestTO: CredentialRequestTO,
-    ): IssueCredentialResponse =
-        withError(transform = { Either.Right(it) }) {
-            val (responseEncryption, issued) = doIssueCredential(authorizationContext, credentialRequestTO)
-            issued.successResponse(responseEncryption)
-        }
-
-    private suspend fun CredentialResponse.successResponse(encryption: RequestedResponseEncryption): IssueCredentialResponse {
-        val plain = toTO()
-        return when (encryption) {
-            RequestedResponseEncryption.NotRequired -> plain
-            is RequestedResponseEncryption.Required -> encryptCredentialResponse(plain, encryption)
-        }
-    }
-
-    context(_: Raise<IssueCredentialError>)
-    private suspend fun doIssueCredential(
-        authorizationContext: AuthorizationContext,
-        credentialRequestTO: CredentialRequestTO,
-    ): Pair<RequestedResponseEncryption, CredentialResponse> {
+    ): IssueCredentialResponse {
         logRequest(credentialRequestTO)
         context(credentialIssuerMetadata, clock) {
             authorizationContext.checkClientStatusExpiration()
@@ -394,7 +379,15 @@ class IssueCredential(
         val (_, credentialRequest, credentialIdentifier) = request
         val issued = issueAttestation.invoke(authorizationContext, credentialRequest, credentialIdentifier)
         val responseEncryption = credentialRequest.credentialResponseEncryption
-        return responseEncryption to issued
+        return issued.successResponse(responseEncryption)
+    }
+
+    private suspend fun CredentialResponse.successResponse(encryption: RequestedResponseEncryption): IssueCredentialResponse {
+        val plain = toTO()
+        return when (encryption) {
+            RequestedResponseEncryption.NotRequired -> plain
+            is RequestedResponseEncryption.Required -> encryptCredentialResponse(plain, encryption)
+        }
     }
 
     context(_: Raise<IssueCredentialError>)
@@ -475,11 +468,11 @@ class IssueCredential(
 //
 
 context(
-    _: Raise<CredentialOrEncryptedError<IssueCredentialError>>,
+    _: Raise<EncryptionError>,
     metadata: CredentialIssuerMetaData
 )
 private suspend fun PlainOrEncrypted<CredentialRequestTO>.decryptIfNeeded(): CredentialRequestTO =
-    withError(transform = { it.left() }) {
+    withError(transform = { EncryptionError(it) }) {
         fun CredentialRequestTO.verifyPlainRequestAgainstEncryptionRequirements() =
             apply {
                 ensure(credentialResponseEncryption == null) {
@@ -523,9 +516,7 @@ private sealed interface UnresolvedCredentialRequest {
 /**
  * Tries to convert a [CredentialRequestTO] to a [CredentialRequest].
  */
-context(
-    _: Raise<IssueCredentialError>
-)
+context(_: Raise<IssueCredentialError>)
 private suspend fun CredentialRequestTO.toDomain(
     supportedEncryption: CredentialResponseEncryption,
     supportedCredentialConfigurations: List<CredentialConfiguration>,
@@ -698,16 +689,10 @@ fun CredentialResponse.toTO(): IssueCredentialResponse.PlainTO =
         }
     }
 
-private fun CredentialOrEncryptedError<IssueCredentialError>.response(): IssueCredentialResponse.FailedTO =
-    fold(
-        ifLeft = { encryptionError -> encryptionError.toTO() },
-        ifRight = { credentialError -> credentialError.toTO() },
-    )
-
 /**
  * Creates a new [IssueCredentialResponse.FailedTO] from the provided [error].
  */
-private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
+private fun IssueCredentialError.response(): IssueCredentialResponse.FailedTO {
     val (type, description) =
         when (this) {
             is UnsupportedCredentialConfigurationId -> {
@@ -776,6 +761,10 @@ private fun IssueCredentialError.toTO(): IssueCredentialResponse.FailedTO {
                 val description = "Attestation Dataset not found"
                 CredentialErrorTypeTo.ATTESTATION_DATASET_NOT_FOUND to description
             }
+
+            is EncryptionError -> {
+                cause.toTO()
+            }
         }
     return IssueCredentialResponse.FailedTO(type, description)
 }
@@ -791,50 +780,47 @@ internal fun errorDescriptionWithErrorCauseDescription(
         }
     }
 
-private fun RequestEncryptionError.toTO(): IssueCredentialResponse.FailedTO {
-    val (type, description) =
-        when (this) {
-            is UnparseableEncryptedRequest -> {
-                val description =
-                    errorDescriptionWithErrorCauseDescription("Encrypted request cannot be parsed as a JWT", cause)
-                CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
-            }
-
-            is RequestEncryptionIsRequired -> {
-                CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request encryption is required"
-            }
-
-            is RequestEncryptionNotSupported -> {
-                CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request encryption is not supported"
-            }
-
-            is ResponseEncryptionRequiresEncryptedRequest -> {
-                val description = "Credential response encryption requires an encrypted credential request"
-                CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
-            }
-
-            is UnsupportedEncryptionAlgorithm -> {
-                val description =
-                    "Unsupported encryption method $encryptionAlgorithm, supported methods: $algorithmsSupported"
-                CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
-            }
-
-            is UnsupportedEncryptionMethod -> {
-                val description =
-                    "Unsupported encryption method $encryptionMethod, supported methods: $methodsSupported"
-                CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
-            }
-
-            is RequestCompressionNotSupported -> {
-                CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request compression is not supported"
-            }
-
-            is UnsupportedRequestCompressionMethod -> {
-                val description =
-                    "Unsupported credential request compression method $compressionAlgorithm, " +
-                        "supported methods: $compressionMethodsSupported"
-                CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
-            }
+private fun RequestEncryptionError.toTO(): Pair<CredentialErrorTypeTo, String> =
+    when (this) {
+        is UnparseableEncryptedRequest -> {
+            val description =
+                errorDescriptionWithErrorCauseDescription("Encrypted request cannot be parsed as a JWT", cause)
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
         }
-    return IssueCredentialResponse.FailedTO(type, description)
-}
+
+        is RequestEncryptionIsRequired -> {
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request encryption is required"
+        }
+
+        is RequestEncryptionNotSupported -> {
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request encryption is not supported"
+        }
+
+        is ResponseEncryptionRequiresEncryptedRequest -> {
+            val description = "Credential response encryption requires an encrypted credential request"
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
+        }
+
+        is UnsupportedEncryptionAlgorithm -> {
+            val description =
+                "Unsupported encryption method $encryptionAlgorithm, supported methods: $algorithmsSupported"
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
+        }
+
+        is UnsupportedEncryptionMethod -> {
+            val description =
+                "Unsupported encryption method $encryptionMethod, supported methods: $methodsSupported"
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
+        }
+
+        is RequestCompressionNotSupported -> {
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to "Credential request compression is not supported"
+        }
+
+        is UnsupportedRequestCompressionMethod -> {
+            val description =
+                "Unsupported credential request compression method $compressionAlgorithm, " +
+                    "supported methods: $compressionMethodsSupported"
+            CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
+        }
+    }
