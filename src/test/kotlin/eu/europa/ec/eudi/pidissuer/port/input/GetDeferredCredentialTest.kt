@@ -45,10 +45,12 @@ class GetDeferredCredentialTest {
     private val credentialConfiguration =
         pidMsoMdocV1(
             credentialSigningAlgorithm = CoseAlgorithm(-7),
-            proofsSupportedSigningAlgorithms = nonEmptySetOf(JWSAlgorithm.ES256),
-            keyAttestationRequirement =
-                KeyAttestationRequirement.ts3(
-                    PreferredKeyStorageStatusPeriod(60.days),
+            deviceBinding =
+                DeviceBinding.Required(
+                    nonEmptySetOf(JWSAlgorithm.ES256),
+                    KeyAttestationRequirement.ts3(
+                        PreferredKeyStorageStatusPeriod(60.days),
+                    ),
                 ),
         )
 
@@ -56,10 +58,6 @@ class GetDeferredCredentialTest {
         object : AttestationIssuer {
             override val supportedCredential: CredentialConfiguration = credentialConfiguration
             override val publicKey = null
-            override val keyAttestationRequirement =
-                KeyAttestationRequirement.ts3(
-                    PreferredKeyStorageStatusPeriod(60.days),
-                )
             override val validity = 365.days
 
             context(_: Raise<IssueCredentialError>)

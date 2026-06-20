@@ -33,7 +33,6 @@ import kotlin.time.Instant
 interface AttestationIssuer {
     val supportedCredential: CredentialConfiguration
     val publicKey: JWK?
-    val keyAttestationRequirement: KeyAttestationRequirement
     val validity: Duration
 
     context(_: Raise<IssueCredentialError>)
@@ -50,8 +49,8 @@ suspend fun AttestationIssuer.keyAttestation(
     at: Instant,
     validateProof: ValidateProof,
 ): KeyAttestation {
-    check(supportedCredential.proofTypesSupported.values.isNotEmpty()) {
-        "No proof types supported set"
+    check(supportedCredential.deviceBinding is DeviceBinding.Required) {
+        "Applicable only to credentials with device binding"
     }
     val proof =
         context(validateProof, supportedCredential) {

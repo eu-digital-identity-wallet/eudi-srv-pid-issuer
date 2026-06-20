@@ -40,7 +40,6 @@ import org.slf4j.LoggerFactory
 import java.util.Locale.ENGLISH
 import kotlin.time.Clock
 import kotlin.time.Duration
-import kotlin.time.Instant
 
 val PidMsoMdocScope: Scope = Scope("eu.europa.ec.eudi.pid_mso_mdoc")
 
@@ -302,8 +301,7 @@ val PidMsoMdocV1DocType: MsoDocType = pidDocType(1)
 
 internal fun pidMsoMdocV1(
     credentialSigningAlgorithm: CoseAlgorithm,
-    proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    keyAttestationRequirement: KeyAttestationRequirement,
+    deviceBinding: DeviceBinding.Required,
     credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ): MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
@@ -319,10 +317,7 @@ internal fun pidMsoMdocV1(
         cryptographicBindingMethodsSupported = setOf(CryptographicBindingMethod.CoseKey),
         credentialSigningAlgorithmsSupported = nonEmptySetOf(credentialSigningAlgorithm),
         scope = PidMsoMdocScope,
-        proofTypesSupported =
-            ProofTypesSupported(
-                ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
-            ),
+        deviceBinding = deviceBinding,
         attestationCategory = AttestationCategory.Pid,
         credentialReusePolicy = credentialReusePolicy,
     )
@@ -340,11 +335,10 @@ internal class IssueMsoMdocPid(
     private val clock: Clock,
     override val validity: Duration,
     private val storeIssuedCredential: StoreIssuedCredential,
-    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    override val keyAttestationRequirement: KeyAttestationRequirement,
     private val generateStatusListToken: AllocateStatus,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
     private val validateProof: ValidateProof,
+    deviceBinding: DeviceBinding.Required,
 ) : AttestationIssuer {
     init {
         require(validity.isPositive())
@@ -353,8 +347,7 @@ internal class IssueMsoMdocPid(
     override val supportedCredential: MsoMdocCredentialConfiguration =
         pidMsoMdocV1(
             encodePidInCbor.signingAlgorithm,
-            jwtProofsSupportedSigningAlgorithms,
-            keyAttestationRequirement,
+            deviceBinding,
             credentialReusePolicy,
         )
 

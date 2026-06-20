@@ -40,7 +40,7 @@ data class SdJwtVcCredentialConfiguration(
     val credentialSigningAlgorithmsSupported: NonEmptySet<JWSAlgorithm>?,
     override val display: List<CredentialDisplay>,
     val claims: List<ClaimDefinition>,
-    override val proofTypesSupported: ProofTypesSupported = ProofTypesSupported.Empty,
+    override val deviceBinding: DeviceBinding,
     override val attestationCategory: AttestationCategory,
     override val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : CredentialConfiguration {

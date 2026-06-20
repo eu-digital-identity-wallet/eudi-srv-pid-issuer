@@ -53,12 +53,18 @@ internal class ValidateJwtProofWithKeyAttestationTest {
     private val credentialConfiguration =
         mobileDrivingLicenceV1(
             CoseAlgorithm(-7),
-            checkNotNull(ECDSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
-            KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(60.days)),
+            deviceBinding =
+                DeviceBinding.Required(
+                    checkNotNull(ECDSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
+                    KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(60.days)),
+                ),
         )
 
     private val supported =
-        credentialConfiguration.proofTypesSupported.get(ProofTypeEnum.JWT) as ProofType.Jwt
+        credentialConfiguration.deviceBinding
+            .proofTypesSupported()
+            .filterIsInstance<ProofType.Jwt>()
+            .first()
 
     @Test
     internal fun `proof validation fails with incorrect 'typ'`() =
@@ -178,11 +184,17 @@ internal class ValidateJwtProofWithKeyAttestationTest {
             val credentialConfiguration =
                 mobileDrivingLicenceV1(
                     CoseAlgorithm(-7),
-                    nonEmptySetOf(JWSAlgorithm.ES512),
-                    KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(60.days)),
+                    DeviceBinding.Required(
+                        nonEmptySetOf(JWSAlgorithm.ES512),
+                        KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(60.days)),
+                    ),
                 )
 
-            val supported = credentialConfiguration.proofTypesSupported.get(ProofTypeEnum.JWT) as ProofType.Jwt
+            val supported =
+                credentialConfiguration.deviceBinding
+                    .proofTypesSupported()
+                    .filterIsInstance<ProofType.Jwt>()
+                    .first()
             context(supported) {
                 either { validateJwtProofWithKeyAttestation(UnvalidatedProof.Jwt(signedJwt.serialize()), clock.now()) }
                     .swap()

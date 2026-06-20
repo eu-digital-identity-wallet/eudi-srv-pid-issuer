@@ -39,7 +39,6 @@ import org.slf4j.LoggerFactory
 import java.util.*
 import kotlin.time.Clock
 import kotlin.time.Duration
-import kotlin.time.Instant
 
 private val EuropeanHealthInsuranceCardScope: Scope = Scope("urn:eudi:ehic:1:dc+sd-jwt")
 
@@ -197,8 +196,7 @@ private fun europeanHealthInsuranceCardCredentialConfiguration(
     credentialConfigurationId: CredentialConfigurationId,
     scope: Scope,
     credentialDisplay: CredentialDisplay,
-    proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    keyAttestationRequirement: KeyAttestationRequirement,
+    deviceBinding: DeviceBinding.Required,
     credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(
@@ -209,10 +207,7 @@ private fun europeanHealthInsuranceCardCredentialConfiguration(
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
         display = listOf(credentialDisplay),
         claims = EuropeanHealthInsuranceCardClaims.all(),
-        proofTypesSupported =
-            ProofTypesSupported(
-                ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
-            ),
+        deviceBinding = deviceBinding,
         attestationCategory = AttestationCategory.EuPubEaa,
         credentialReusePolicy = credentialReusePolicy,
     )
@@ -229,7 +224,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredential: StoreIssuedCredential,
-    override val keyAttestationRequirement: KeyAttestationRequirement,
     private val validateProof: ValidateProof,
 ) : AttestationIssuer {
     init {
@@ -303,8 +297,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             notificationsEnabled: Boolean,
             generateNotificationId: GenerateNotificationId,
             storeIssuedCredential: StoreIssuedCredential,
-            jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-            keyAttestationRequirement: KeyAttestationRequirement,
+            deviceBinding: DeviceBinding.Required,
             credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
             validateProof: ValidateProof,
         ): IssueSdJwtVcEuropeanHealthInsuranceCard =
@@ -316,8 +309,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     CredentialDisplay(
                         name = DisplayName("DC4EU European Health Insurance Card (SD-JWT VC JWS JSON)", Locale.ENGLISH),
                     ),
-                    jwtProofsSupportedSigningAlgorithms,
-                    keyAttestationRequirement,
+                    deviceBinding,
                     credentialReusePolicy,
                 ),
                 issuerSigningKey.key.toPublicJWK(),
@@ -333,7 +325,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                 notificationsEnabled,
                 generateNotificationId,
                 storeIssuedCredential,
-                keyAttestationRequirement,
                 validateProof,
             )
 
@@ -347,8 +338,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             notificationsEnabled: Boolean,
             generateNotificationId: GenerateNotificationId,
             storeIssuedCredential: StoreIssuedCredential,
-            jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-            keyAttestationRequirement: KeyAttestationRequirement,
+            deviceBinding: DeviceBinding.Required,
             credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
             validateProof: ValidateProof,
         ): IssueSdJwtVcEuropeanHealthInsuranceCard =
@@ -360,8 +350,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     CredentialDisplay(
                         name = DisplayName("DC4EU European Health Insurance Card (SD-JWT VC Compact)", Locale.ENGLISH),
                     ),
-                    jwtProofsSupportedSigningAlgorithms,
-                    keyAttestationRequirement,
+                    deviceBinding,
                     credentialReusePolicy,
                 ),
                 issuerSigningKey.key.toPublicJWK(),
@@ -377,7 +366,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                 notificationsEnabled,
                 generateNotificationId,
                 storeIssuedCredential,
-                keyAttestationRequirement,
                 validateProof,
             )
     }

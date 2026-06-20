@@ -232,17 +232,16 @@ private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject =
                     addAll(cryptographicBindingMethodsSupported.map { it.methodName() })
                 }
             }
-        d.proofTypesSupported
-            .takeIf { it != ProofTypesSupported.Empty }
-            ?.let { proofTypesSupported ->
-                putJsonObject("proof_types_supported") {
-                    proofTypesSupported.values.forEach {
-                        put(it.proofTypeName(), it.toJsonObject())
-                    }
+
+        (d.deviceBinding as? DeviceBinding.Required)?.proofTypesSupported()?.let { proofTypesSupported ->
+            putJsonObject("proof_types_supported") {
+                proofTypesSupported.forEach {
+                    put(it.proofTypeName(), it.toJsonObject())
                 }
             }
+        }
         when (d) {
-            is JwtVcJsonCredentialConfiguration -> TODO()
+            is JwtVcJsonCredentialConfiguration -> error("Not supported: $d")
             is MsoMdocCredentialConfiguration -> d.toTransferObject()(this)
             is SdJwtVcCredentialConfiguration -> d.toTransferObject()(this)
         }
@@ -252,8 +251,6 @@ private fun CryptographicBindingMethod.methodName(): String =
     when (this) {
         is CryptographicBindingMethod.Jwk -> "jwk"
         is CryptographicBindingMethod.CoseKey -> "cose_key"
-        is CryptographicBindingMethod.DidMethod -> "did:$didMethod"
-        is CryptographicBindingMethod.DidAnyMethod -> "DID"
     }
 
 private fun ProofType.proofTypeName(): String =
@@ -283,7 +280,10 @@ private fun ProofType.toJsonObject(): JsonObject =
                     addAll(userAuthentication.map { it.value })
                 }
             }
-            put(TS3.PREFERRED_KEY_STORAGE_STATUS_PERIOD, keyAttestationRequirement.preferredKeyStorageStatusPeriod.value.inWholeSeconds)
+            put(
+                TS3.PREFERRED_KEY_STORAGE_STATUS_PERIOD,
+                keyAttestationRequirement.preferredKeyStorageStatusPeriod.value.inWholeSeconds,
+            )
         }
     }
 
@@ -367,7 +367,12 @@ private fun JsonObjectBuilder.putCredentialReusePolicy(policy: CredentialReusePo
                                 }
                                 option.batchSize?.let { put("batch_size", it) }
                                 option.reissueTriggerUnused?.let { put("reissue_trigger_unused", it) }
-                                option.reissueTriggerLifetimeLeft?.let { put("reissue_trigger_lifetime_left", it.inWholeSeconds) }
+                                option.reissueTriggerLifetimeLeft?.let {
+                                    put(
+                                        "reissue_trigger_lifetime_left",
+                                        it.inWholeSeconds,
+                                    )
+                                }
                             },
                         )
                     }

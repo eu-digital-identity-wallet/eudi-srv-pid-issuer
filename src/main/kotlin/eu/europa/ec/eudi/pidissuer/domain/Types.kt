@@ -127,18 +127,6 @@ sealed interface CryptographicBindingMethod {
      * Support for keys expressed as a COSE Key object
      */
     data object CoseKey : CryptographicBindingMethod
-
-    /**
-     * Support for a specific DID method
-     */
-    data class DidMethod(
-        val didMethod: String,
-    ) : CryptographicBindingMethod
-
-    /**
-     * Support for any DID method
-     */
-    data object DidAnyMethod : CryptographicBindingMethod
 }
 
 /**
@@ -214,9 +202,11 @@ value class NonBlankString(
 typealias EpochSecondsInstant =
     @Serializable(with = InstantEpochSecondsSerializer::class)
     Instant
+
 typealias StringUrl =
     @Serializable(with = UrlStringSerializer::class)
     URL
+
 typealias StringUri =
     @Serializable(with = UriStringSerializer::class)
     URI

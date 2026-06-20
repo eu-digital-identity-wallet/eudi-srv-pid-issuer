@@ -721,9 +721,9 @@ fun beans(
                             clock = clock,
                             validity = duration,
                             storeIssuedCredential = bean(),
-                            jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
-                            keyAttestationRequirement =
-                                KeyAttestationRequirement.ts3(
+                            deviceBinding =
+                                DeviceBinding.ts3(
+                                    jwtProofsSupportedSigningAlgorithms,
                                     PreferredKeyStorageStatusPeriod(duration),
                                 ),
                             generateStatusListToken = bean(),
@@ -764,9 +764,9 @@ fun beans(
                             generateNotificationId = bean(),
                             storeIssuedCredential = bean(),
                             generateStatusListToken = bean(),
-                            jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
-                            keyAttestationRequirement =
-                                KeyAttestationRequirement.ts3(
+                            deviceBinding =
+                                DeviceBinding.ts3(
+                                    jwtProofsSupportedSigningAlgorithms,
                                     PreferredKeyStorageStatusPeriod(expiresIn),
                                 ),
                             credentialReusePolicy = pidSdJwtVcReusePolicy,
@@ -797,9 +797,9 @@ fun beans(
                             clock = clock,
                             validity = duration,
                             storeIssuedCredential = bean(),
-                            jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
-                            keyAttestationRequirement =
-                                KeyAttestationRequirement.ts3(
+                            deviceBinding =
+                                DeviceBinding.ts3(
+                                    jwtProofsSupportedSigningAlgorithms,
                                     PreferredKeyStorageStatusPeriod(duration),
                                 ),
                             generateStatusListToken = bean(),
@@ -835,8 +835,11 @@ fun beans(
                             issuingCountry,
                         )
 
-                    val keyAttestationRequirement =
-                        KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(validity))
+                    val deviceBinding =
+                        DeviceBinding.ts3(
+                            jwtProofsSupportedSigningAlgorithms,
+                            PreferredKeyStorageStatusPeriod(validity),
+                        )
 
                     if (enableJwsJsonFlattenedEhic) {
                         val ehicJwsJsonFlattenedIssuer =
@@ -850,8 +853,7 @@ fun beans(
                                 notificationsEnabled = ehicNotificationsEnabled,
                                 generateNotificationId = bean(),
                                 storeIssuedCredential = bean(),
-                                jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
-                                keyAttestationRequirement = keyAttestationRequirement,
+                                deviceBinding = deviceBinding,
                                 credentialReusePolicy = ehicReusePolicy,
                                 validateProof = bean(),
                             )
@@ -871,8 +873,7 @@ fun beans(
                                 notificationsEnabled = ehicNotificationsEnabled,
                                 generateNotificationId = bean(),
                                 storeIssuedCredential = bean(),
-                                jwtProofsSupportedSigningAlgorithms = jwtProofsSupportedSigningAlgorithms,
-                                keyAttestationRequirement = keyAttestationRequirement,
+                                deviceBinding = deviceBinding,
                                 credentialReusePolicy = ehicReusePolicy,
                                 validateProof = bean(),
                             )
@@ -902,11 +903,12 @@ fun beans(
                     val sdJwtVcCompactIssuer =
                         IssueLearningCredential.sdJwtVcCompact(
                             issuerSigningKey,
-                            jwtProofsSupportedSigningAlgorithms,
-                            keyAttestationRequirement =
+                            DeviceBinding.Required(
+                                jwtProofsSupportedSigningAlgorithms,
                                 KeyAttestationRequirement.ts3(
                                     PreferredKeyStorageStatusPeriod(validity),
                                 ),
+                            ),
                             bean(),
                             bean(),
                             validity,

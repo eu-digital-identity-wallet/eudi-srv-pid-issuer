@@ -176,8 +176,7 @@ internal val SdJwtVcPidCredentialConfigurationId: CredentialConfigurationId =
 
 fun pidSdJwtVcV1(
     signingAlgorithm: JWSAlgorithm,
-    proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    keyAttestationRequirement: KeyAttestationRequirement,
+    deviceBinding: DeviceBinding.Required,
     credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(
@@ -193,10 +192,7 @@ fun pidSdJwtVcV1(
         cryptographicBindingMethodsSupported = nonEmptySetOf(CryptographicBindingMethod.Jwk),
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
         scope = PidSdJwtVcScope,
-        proofTypesSupported =
-            ProofTypesSupported(
-                ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
-            ),
+        deviceBinding = deviceBinding,
         attestationCategory = AttestationCategory.Pid,
         credentialReusePolicy = credentialReusePolicy,
     )
@@ -221,16 +217,14 @@ internal class IssueSdJwtVcPid(
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredential: StoreIssuedCredential,
     private val generateStatusListToken: AllocateStatus,
-    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    override val keyAttestationRequirement: KeyAttestationRequirement,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
     private val validateProof: ValidateProof,
+    deviceBinding: DeviceBinding.Required,
 ) : AttestationIssuer {
     override val supportedCredential: SdJwtVcCredentialConfiguration =
         pidSdJwtVcV1(
             issuerSigningKey.signingAlgorithm,
-            jwtProofsSupportedSigningAlgorithms,
-            keyAttestationRequirement,
+            deviceBinding,
             credentialReusePolicy,
         )
 

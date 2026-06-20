@@ -205,8 +205,7 @@ fun LearningCredential.Companion.sdJwtVcCredentialConfiguration(
     scope: Scope,
     credentialSigningAlgorithm: JWSAlgorithm,
     display: CredentialDisplay,
-    proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    keyAttestationRequirement: KeyAttestationRequirement,
+    deviceBinding: DeviceBinding.Required,
     credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) = SdJwtVcCredentialConfiguration(
     id,
@@ -216,9 +215,7 @@ fun LearningCredential.Companion.sdJwtVcCredentialConfiguration(
     nonEmptySetOf(credentialSigningAlgorithm),
     nonEmptyListOf(display),
     SdJwtVcClaims.all(),
-    ProofTypesSupported(
-        ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
-    ),
+    deviceBinding = deviceBinding,
     attestationCategory = AttestationCategory.Eaa,
     credentialReusePolicy = credentialReusePolicy,
 )

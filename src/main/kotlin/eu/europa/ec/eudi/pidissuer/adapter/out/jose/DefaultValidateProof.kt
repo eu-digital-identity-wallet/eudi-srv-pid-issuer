@@ -36,43 +36,64 @@ internal class DefaultValidateProof(
     override suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof?,
         at: Instant,
-    ): KeyAttestation? {
-        val jwtProofType = cfg.proofTypesSupported[ProofTypeEnum.JWT] as? ProofType.Jwt
-        val attestationProofType = cfg.proofTypesSupported[ProofTypeEnum.ATTESTATION] as? ProofType.Attestation
-        return when {
-            jwtProofType == null && attestationProofType == null -> {
-                ensure(unvalidatedProof == null) {
-                    IssueCredentialError.InvalidProof("No proof types supported")
-                }
+    ): KeyAttestation? =
+        when (val deviceBinding = cfg.deviceBinding) {
+            DeviceBinding.None -> {
+                notProvided(unvalidatedProof)
                 null
             }
 
-            jwtProofType != null && attestationProofType != null -> {
-                context(jwtProofType, attestationProofType, cfg.credentialReusePolicy, verifyNonce) {
-                    val proof =
-                        when (unvalidatedProof) {
-                            null -> {
-                                raise(IssueCredentialError.MissingProof)
-                            }
-
-                            is UnvalidatedProof.Jwt -> {
-                                validateJwtProofWithKeyAttestation(unvalidatedProof, at)
-                            }
-
-                            is UnvalidatedProof.Attestation -> {
-                                validateAttestationProof(
-                                    unvalidatedProof,
-                                    at,
-                                ).limitKeys()
-                            }
-                        }
-                    proof.ensureFreshNonce(at).limitKeys()
+            is DeviceBinding.Required -> {
+                context(verifyNonce, cfg.credentialReusePolicy, deviceBinding) {
+                    required(unvalidatedProof, at)
                 }
             }
+        }
 
-            else -> {
-                error("Misconfiguration: Either both Jwt and Attestation Proof Types must be supported or none of them")
+    context(_: Raise<IssueCredentialError.InvalidProof>)
+    private fun notProvided(unvalidatedProof: UnvalidatedProof?) {
+        ensure(unvalidatedProof == null) {
+            IssueCredentialError.InvalidProof("No proof types supported")
+        }
+    }
+
+    context(
+        _: Raise<IssueCredentialError>,
+        deviceBinding: DeviceBinding.Required,
+        policy: CredentialReusePolicy,
+
+    )
+    private suspend fun required(
+        unvalidatedProof: UnvalidatedProof?,
+        at: Instant,
+    ): KeyAttestation {
+        val proofTypesSupported = deviceBinding.proofTypesSupported()
+        val proofJwtKwithKA = proofTypesSupported.filterIsInstance<ProofType.Jwt>().firstOrNull()
+        val proofAttestation = proofTypesSupported.filterIsInstance<ProofType.Attestation>().firstOrNull()
+        val keyAttestation =
+            when (unvalidatedProof) {
+                null -> {
+                    raise(IssueCredentialError.MissingProof)
+                }
+
+                is UnvalidatedProof.Jwt if proofJwtKwithKA != null -> {
+                    context(proofJwtKwithKA) {
+                        validateJwtProofWithKeyAttestation(unvalidatedProof, at)
+                    }
+                }
+
+                is UnvalidatedProof.Attestation if proofAttestation != null -> {
+                    context(proofAttestation) {
+                        validateAttestationProof(unvalidatedProof, at)
+                    }
+                }
+
+                else -> {
+                    raise(IssueCredentialError.InvalidProof("Unsupported proof type"))
+                }
             }
+        return context(verifyNonce) {
+            keyAttestation.ensureFreshNonce(at).limitKeys()
         }
     }
 }

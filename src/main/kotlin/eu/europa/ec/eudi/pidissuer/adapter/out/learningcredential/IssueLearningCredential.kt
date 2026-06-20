@@ -15,11 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential
 
-import arrow.core.NonEmptySet
 import arrow.core.raise.Raise
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
-import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
@@ -38,14 +36,12 @@ import org.slf4j.LoggerFactory
 import java.util.*
 import kotlin.time.Clock
 import kotlin.time.Duration
-import kotlin.time.Instant
 
 private val log = LoggerFactory.getLogger(IssueLearningCredential::class.java)
 
 internal class IssueLearningCredential(
     override val supportedCredential: SdJwtVcCredentialConfiguration,
     override val publicKey: JWK,
-    override val keyAttestationRequirement: KeyAttestationRequirement,
     private val clock: Clock,
     private val getLearningCredential: GetLearningCredential,
     override val validity: Duration,
@@ -126,8 +122,7 @@ internal class IssueLearningCredential(
     companion object {
         fun sdJwtVcCompact(
             issuerSigningKey: IssuerSigningKey,
-            proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-            keyAttestationRequirement: KeyAttestationRequirement,
+            deviceBinding: DeviceBinding.Required,
             clock: Clock,
             getPidData: GetPidData,
             validity: Duration,
@@ -144,14 +139,12 @@ internal class IssueLearningCredential(
                     Scope("urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt"),
                     issuerSigningKey.signingAlgorithm,
                     CredentialDisplay(DisplayName("Learning Credential (SD-JWT VC Compact)", Locale.ENGLISH)),
-                    proofsSupportedSigningAlgorithms,
-                    keyAttestationRequirement,
+                    deviceBinding,
                     credentialReusePolicy,
                 )
             return IssueLearningCredential(
                 credentialConfiguration,
                 issuerSigningKey.key.toPublicJWK(),
-                keyAttestationRequirement,
                 clock,
                 GetLearningCredential.mock(clock, getPidData),
                 validity,

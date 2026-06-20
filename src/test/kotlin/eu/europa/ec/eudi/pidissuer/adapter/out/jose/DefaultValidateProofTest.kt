@@ -111,12 +111,15 @@ class DefaultValidateProofTest {
         val configuration =
             pidMsoMdocV1(
                 CoseAlgorithm(-7),
-                nonEmptySetOf(JWSAlgorithm.ES256),
-                KeyAttestationRequirement(
-                    keyStorage = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
-                    userAuthentication = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
-                    preferredKeyStorageStatusPeriod = PreferredKeyStorageStatusPeriod(31.days),
-                ),
+                deviceBinding =
+                    DeviceBinding.Required(
+                        nonEmptySetOf(JWSAlgorithm.ES256),
+                        KeyAttestationRequirement(
+                            keyStorage = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
+                            userAuthentication = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
+                            preferredKeyStorageStatusPeriod = PreferredKeyStorageStatusPeriod(31.days),
+                        ),
+                    ),
                 credentialReusePolicy = policy,
             )
 

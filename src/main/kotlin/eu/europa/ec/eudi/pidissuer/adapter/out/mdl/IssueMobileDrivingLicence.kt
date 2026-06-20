@@ -40,7 +40,6 @@ import org.slf4j.LoggerFactory
 import java.util.*
 import kotlin.time.Clock
 import kotlin.time.Duration
-import kotlin.time.Instant
 
 val MobileDrivingLicenceV1Scope: Scope = Scope(mdlDocType(1u))
 
@@ -341,8 +340,7 @@ private val log = LoggerFactory.getLogger(IssueMobileDrivingLicence::class.java)
 
 internal fun mobileDrivingLicenceV1(
     credentialSigningAlgorithm: CoseAlgorithm,
-    proofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    keyAttestationRequirement: KeyAttestationRequirement,
+    deviceBinding: DeviceBinding.Required,
     credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ): MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
@@ -358,10 +356,7 @@ internal fun mobileDrivingLicenceV1(
         cryptographicBindingMethodsSupported = setOf(CryptographicBindingMethod.CoseKey),
         credentialSigningAlgorithmsSupported = nonEmptySetOf(credentialSigningAlgorithm),
         scope = MobileDrivingLicenceV1Scope,
-        proofTypesSupported =
-            ProofTypesSupported(
-                ProofType.proofTypes(proofsSupportedSigningAlgorithms, keyAttestationRequirement),
-            ),
+        deviceBinding = deviceBinding,
         attestationCategory = AttestationCategory.Eaa,
         credentialReusePolicy = credentialReusePolicy,
     )
@@ -377,17 +372,15 @@ internal class IssueMobileDrivingLicence(
     private val clock: Clock,
     override val validity: Duration,
     private val storeIssuedCredential: StoreIssuedCredential,
-    jwtProofsSupportedSigningAlgorithms: NonEmptySet<JWSAlgorithm>,
-    override val keyAttestationRequirement: KeyAttestationRequirement,
     private val generateStatusListToken: AllocateStatus,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
     private val validateProof: ValidateProof,
+    deviceBinding: DeviceBinding.Required,
 ) : AttestationIssuer {
     override val supportedCredential: MsoMdocCredentialConfiguration =
         mobileDrivingLicenceV1(
             encodeMobileDrivingLicenceInCbor.signingAlgorithm,
-            jwtProofsSupportedSigningAlgorithms,
-            keyAttestationRequirement,
+            deviceBinding,
             credentialReusePolicy,
         )
 

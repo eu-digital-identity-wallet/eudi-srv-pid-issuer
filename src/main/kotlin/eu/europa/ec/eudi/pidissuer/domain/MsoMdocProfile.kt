@@ -55,7 +55,7 @@ data class MsoMdocCredentialConfiguration(
     override val scope: Scope,
     override val display: List<CredentialDisplay> = emptyList(),
     val claims: List<ClaimDefinition> = emptyList(),
-    override val proofTypesSupported: ProofTypesSupported = ProofTypesSupported.Empty,
+    override val deviceBinding: DeviceBinding.Required,
     override val attestationCategory: AttestationCategory,
     override val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ) : CredentialConfiguration {
