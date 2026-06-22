@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@file:Suppress("unused")
+
 package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl
 
 import arrow.core.NonEmptySet
@@ -61,8 +63,6 @@ value class Latin150(
 
 /**
  * Issue and expiry date of an mDL.
- *
- * TODO: issuedAt and expiredAt are defined as either LocalDate or LocalDateTime.
  */
 data class IssueAndExpiry(
     val issuedAt: LocalDate,

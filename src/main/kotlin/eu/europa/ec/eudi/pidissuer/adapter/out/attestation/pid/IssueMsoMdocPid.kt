@@ -329,14 +329,14 @@ private val msoMdocPidLog = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
  */
 class IssueMsoMdocPid private constructor(
     override val configuration: MsoMdocCredentialConfiguration,
+    private val clock: Clock,
     private val getAttestationAttributes: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
     private val encodePidInCbor: EncodePidInCbor,
+    private val validateProof: ValidateProof,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
-    private val clock: Clock,
     private val storeIssuedCredential: StoreIssuedCredential,
     private val allocateStatus: AllocateStatus,
-    private val validateProof: ValidateProof,
 ) : AttestationIssuer {
     context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
@@ -399,30 +399,30 @@ class IssueMsoMdocPid private constructor(
 
     companion object {
         operator fun invoke(
+            clock: Clock,
             getAttestationAttributes: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
             encodePidInCbor: EncodePidInCbor,
-            notificationsEnabled: Boolean,
-            generateNotificationId: GenerateNotificationId,
-            clock: Clock,
-            validity: Duration,
-            storeIssuedCredential: StoreIssuedCredential,
-            allocateStatus: AllocateStatus,
-            validateProof: ValidateProof,
             deviceBinding: DeviceBinding.Required,
             credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+            validity: Duration,
+            validateProof: ValidateProof,
+            notificationsEnabled: Boolean,
+            generateNotificationId: GenerateNotificationId,
+            storeIssuedCredential: StoreIssuedCredential,
+            allocateStatus: AllocateStatus,
         ): IssueMsoMdocPid {
             val configuration =
                 pidMsoMdocV1(encodePidInCbor.signingAlgorithm, deviceBinding, credentialReusePolicy, validity)
             return IssueMsoMdocPid(
                 configuration,
+                clock,
                 getAttestationAttributes,
                 encodePidInCbor,
+                validateProof,
                 notificationsEnabled,
                 generateNotificationId,
-                clock,
                 storeIssuedCredential,
                 allocateStatus,
-                validateProof,
             )
         }
     }

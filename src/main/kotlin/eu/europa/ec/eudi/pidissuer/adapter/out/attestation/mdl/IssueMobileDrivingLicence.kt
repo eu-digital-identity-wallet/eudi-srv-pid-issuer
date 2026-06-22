@@ -363,14 +363,14 @@ internal fun mobileDrivingLicenceV1(
  */
 internal class IssueMobileDrivingLicence(
     override val configuration: MsoMdocCredentialConfiguration,
+    private val clock: Clock,
     private val getAttestationAttributes: GetAttestationAttributes<MobileDrivingLicence>,
     private val encodeMobileDrivingLicenceInCbor: EncodeMobileDrivingLicenceInCbor,
+    private val validateProof: ValidateProof,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
-    private val clock: Clock,
     private val storeIssuedCredential: StoreIssuedCredential,
     private val allocateStatus: AllocateStatus,
-    private val validateProof: ValidateProof,
 ) : AttestationIssuer {
     context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
@@ -430,31 +430,31 @@ internal class IssueMobileDrivingLicence(
 
     companion object {
         operator fun invoke(
+            clock: Clock,
             getAttestationAttributes: GetAttestationAttributes<MobileDrivingLicence>,
             encodeMobileDrivingLicenceInCbor: EncodeMobileDrivingLicenceInCbor,
+            deviceBinding: DeviceBinding.Required,
+            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+            validity: Duration,
+            validateProof: ValidateProof,
             notificationsEnabled: Boolean,
             generateNotificationId: GenerateNotificationId,
-            clock: Clock,
-            validity: Duration,
             storeIssuedCredential: StoreIssuedCredential,
             allocateStatus: AllocateStatus,
-            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
-            validateProof: ValidateProof,
-            deviceBinding: DeviceBinding.Required,
         ): IssueMobileDrivingLicence {
             val credentialSigningAlgorithm = encodeMobileDrivingLicenceInCbor.signingAlgorithm
             val configuration =
                 mobileDrivingLicenceV1(credentialSigningAlgorithm, deviceBinding, credentialReusePolicy, validity)
             return IssueMobileDrivingLicence(
                 configuration,
+                clock,
                 getAttestationAttributes,
                 encodeMobileDrivingLicenceInCbor,
+                validateProof,
                 notificationsEnabled,
                 generateNotificationId,
-                clock,
                 storeIssuedCredential,
                 allocateStatus,
-                validateProof,
             )
         }
     }

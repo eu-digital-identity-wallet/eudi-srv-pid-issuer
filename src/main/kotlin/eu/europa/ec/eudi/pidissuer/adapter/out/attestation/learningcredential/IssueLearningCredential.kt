@@ -50,10 +50,10 @@ internal class IssueLearningCredential(
     private val clock: Clock,
     private val getAttestationAttributes: GetAttestationAttributes<LearningCredential>,
     private val encodeLearningCredential: EncodeLearningCredential,
+    private val validateProof: ValidateProof,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredential: StoreIssuedCredential,
-    private val validateProof: ValidateProof,
 ) : AttestationIssuer {
     context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
@@ -116,17 +116,17 @@ internal class IssueLearningCredential(
 
     companion object {
         fun sdJwtVcCompact(
-            issuerSigningKey: IssuerSigningKey,
-            deviceBinding: DeviceBinding.Required,
             clock: Clock,
             getPidData: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
-            validity: Duration,
+            issuerSigningKey: IssuerSigningKey,
             digestsHashAlgorithm: HashAlgorithm,
+            deviceBinding: DeviceBinding.Required,
+            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+            validity: Duration,
+            validateProof: ValidateProof,
             notificationsEnabled: Boolean,
             generateNotificationId: GenerateNotificationId,
             storeIssuedCredential: StoreIssuedCredential,
-            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
-            validateProof: ValidateProof,
         ): IssueLearningCredential {
             val credentialConfiguration =
                 SdJwtVcCredentialConfiguration(
@@ -159,10 +159,10 @@ internal class IssueLearningCredential(
                     issuerSigningKey,
                     credentialConfiguration.type,
                 ),
+                validateProof,
                 notificationsEnabled,
                 generateNotificationId,
                 storeIssuedCredential,
-                validateProof,
             )
         }
     }

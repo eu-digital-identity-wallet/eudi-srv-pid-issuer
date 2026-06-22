@@ -33,20 +33,7 @@ import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import eu.europa.ec.eudi.pidissuer.PidIssuerApplicationTest
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.City
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.EncodePidInCbor
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.FamilyName
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.GivenName
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.IsoCountry
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.IssuingAuthority
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.Nationality
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.Pid
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidMetaData
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidMsoMdocScope
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidSdJwtVcScope
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PlaceOfBirth
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.State
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.*
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.jwtProof
 import eu.europa.ec.eudi.pidissuer.jwtProofWithKeyAttestation
@@ -1331,8 +1318,12 @@ internal class WalletApiResponseEncryptionRequiredTest : BaseWalletApiTest() {
                     .post()
                     .uri(WalletApi.CREDENTIAL_ENDPOINT)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(requestByCredentialConfigurationId(proofs = proofs, credentialResponseEncryption = encryptionParameters))
-                    .accept(MediaType.parseMediaType("application/jwt"))
+                    .bodyValue(
+                        requestByCredentialConfigurationId(
+                            proofs = proofs,
+                            credentialResponseEncryption = encryptionParameters,
+                        ),
+                    ).accept(MediaType.parseMediaType("application/jwt"))
                     .exchange()
                     .expectStatus()
                     .isBadRequest()

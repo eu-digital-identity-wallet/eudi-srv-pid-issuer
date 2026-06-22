@@ -679,23 +679,23 @@ fun beans(
                     val pidMsoMdocReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.pid.mso_mdoc")
                     val issueMsoMdocPid =
                         IssueMsoMdocPid(
+                            clock = clock,
                             getAttestationAttributes = bean(),
                             encodePidInCbor = bean(),
-                            notificationsEnabled =
-                                env.getProperty<Boolean>("issuer.pid.mso_mdoc.notifications.enabled")
-                                    ?: true,
-                            generateNotificationId = bean(),
-                            clock = clock,
-                            validity = duration,
-                            storeIssuedCredential = bean(),
                             deviceBinding =
                                 DeviceBinding.ts3(
                                     jwtProofsSupportedSigningAlgorithms,
                                     PreferredKeyStorageStatusPeriod(duration),
                                 ),
-                            allocateStatus = bean(),
                             credentialReusePolicy = pidMsoMdocReusePolicy,
+                            validity = duration,
                             validateProof = bean(),
+                            notificationsEnabled =
+                                env.getProperty<Boolean>("issuer.pid.mso_mdoc.notifications.enabled")
+                                    ?: true,
+                            generateNotificationId = bean(),
+                            storeIssuedCredential = bean(),
+                            allocateStatus = bean(),
                         )
                     add(issueMsoMdocPid)
                     add(issueMsoMdocPid.asDeferred(bean(), bean(), clock))
@@ -718,27 +718,27 @@ fun beans(
 
                     val issueSdJwtVcPid =
                         IssueSdJwtVcPid(
-                            hashAlgorithm = digestsHashAlgorithm,
-                            issuerSigningKey = getIssuerSigningKey("issuer.pid.sd_jwt_vc.signing-key"),
-                            getAttestationAttributes = bean(),
                             clock = clock,
                             timeZone = timeZone,
+                            getAttestationAttributes = bean(),
+                            issuerSigningKey = getIssuerSigningKey("issuer.pid.sd_jwt_vc.signing-key"),
                             credentialIssuerId = issuerPublicUrl,
-                            calculateNotUseBefore = notUseBefore?.let { duration -> { iat -> iat + duration } },
+                            hashAlgorithm = digestsHashAlgorithm,
+                            deviceBinding =
+                                DeviceBinding.ts3(
+                                    jwtProofsSupportedSigningAlgorithms,
+                                    PreferredKeyStorageStatusPeriod(expiresIn),
+                                ),
+                            credentialReusePolicy = pidSdJwtVcReusePolicy,
+                            validity = expiresIn,
+                            validateProof = bean(),
                             notificationsEnabled =
                                 env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled")
                                     ?: true,
                             generateNotificationId = bean(),
                             storeIssuedCredential = bean(),
                             allocateStatus = bean(),
-                            deviceBinding =
-                                DeviceBinding.ts3(
-                                    jwtProofsSupportedSigningAlgorithms,
-                                    PreferredKeyStorageStatusPeriod(expiresIn),
-                                ),
-                            validity = expiresIn,
-                            validateProof = bean(),
-                            credentialReusePolicy = pidSdJwtVcReusePolicy,
+                            calculateNotUseBefore = notUseBefore?.let { duration -> { iat -> iat + duration } },
                         )
 
                     add(issueSdJwtVcPid)
@@ -755,23 +755,23 @@ fun beans(
                     val mdlIssuerReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.mdl")
                     val mdlIssuer =
                         IssueMobileDrivingLicence(
+                            clock = clock,
                             getAttestationAttributes = bean(),
                             encodeMobileDrivingLicenceInCbor = bean(),
-                            notificationsEnabled =
-                                env.getProperty<Boolean>("issuer.mdl.notifications.enabled")
-                                    ?: true,
-                            generateNotificationId = bean(),
-                            clock = clock,
-                            validity = duration,
-                            storeIssuedCredential = bean(),
                             deviceBinding =
                                 DeviceBinding.ts3(
                                     jwtProofsSupportedSigningAlgorithms,
                                     PreferredKeyStorageStatusPeriod(duration),
                                 ),
-                            allocateStatus = bean(),
                             credentialReusePolicy = mdlIssuerReusePolicy,
+                            validity = duration,
                             validateProof = bean(),
+                            notificationsEnabled =
+                                env.getProperty<Boolean>("issuer.mdl.notifications.enabled")
+                                    ?: true,
+                            generateNotificationId = bean(),
+                            storeIssuedCredential = bean(),
+                            allocateStatus = bean(),
                         )
                     add(mdlIssuer)
                     add(mdlIssuer.asDeferred(bean(), bean(), clock))
@@ -811,18 +811,18 @@ fun beans(
                     if (enableJwsJsonFlattenedEhic) {
                         val ehicJwsJsonFlattenedIssuer =
                             IssueSdJwtVcEuropeanHealthInsuranceCard.jwsJsonFlattened(
+                                clock = clock,
+                                getAttestationAttributes = getEuropeanHealthInsuranceCardData,
                                 issuerSigningKey = issuerSigningKey,
                                 digestsHashAlgorithm = digestHashAlgorithm,
                                 credentialIssuerId = issuerPublicUrl,
-                                clock = clock,
+                                deviceBinding = deviceBinding,
+                                credentialReusePolicy = ehicReusePolicy,
                                 validity = validity,
-                                getAttestationAttributes = getEuropeanHealthInsuranceCardData,
+                                validateProof = bean(),
                                 notificationsEnabled = ehicNotificationsEnabled,
                                 generateNotificationId = bean(),
                                 storeIssuedCredential = bean(),
-                                deviceBinding = deviceBinding,
-                                credentialReusePolicy = ehicReusePolicy,
-                                validateProof = bean(),
                             )
                         add(ehicJwsJsonFlattenedIssuer)
                         add(ehicJwsJsonFlattenedIssuer.asDeferred(bean(), bean(), clock))
@@ -831,18 +831,18 @@ fun beans(
                     if (enableCompactEhic) {
                         val ehicCompactIssuer =
                             IssueSdJwtVcEuropeanHealthInsuranceCard.compact(
+                                clock = bean(),
+                                getAttestationAttributes = getEuropeanHealthInsuranceCardData,
                                 issuerSigningKey = issuerSigningKey,
                                 digestsHashAlgorithm = digestHashAlgorithm,
                                 credentialIssuerId = issuerPublicUrl,
-                                clock = bean(),
+                                deviceBinding = deviceBinding,
+                                credentialReusePolicy = ehicReusePolicy,
                                 validity = validity,
-                                getAttestationAttributes = getEuropeanHealthInsuranceCardData,
+                                validateProof = bean(),
                                 notificationsEnabled = ehicNotificationsEnabled,
                                 generateNotificationId = bean(),
                                 storeIssuedCredential = bean(),
-                                deviceBinding = deviceBinding,
-                                credentialReusePolicy = ehicReusePolicy,
-                                validateProof = bean(),
                             )
                         add(ehicCompactIssuer)
                         add(ehicCompactIssuer.asDeferred(bean(), bean(), bean()))
@@ -869,22 +869,23 @@ fun beans(
 
                     val sdJwtVcCompactIssuer =
                         IssueLearningCredential.sdJwtVcCompact(
-                            issuerSigningKey,
-                            DeviceBinding.Required(
-                                jwtProofsSupportedSigningAlgorithms,
-                                KeyAttestationRequirement.ts3(
-                                    PreferredKeyStorageStatusPeriod(validity),
+                            clock = bean(),
+                            getPidData = bean(),
+                            issuerSigningKey = issuerSigningKey,
+                            digestsHashAlgorithm = digestHashAlgorithm,
+                            deviceBinding =
+                                DeviceBinding.Required(
+                                    jwtProofsSupportedSigningAlgorithms,
+                                    KeyAttestationRequirement.ts3(
+                                        PreferredKeyStorageStatusPeriod(validity),
+                                    ),
                                 ),
-                            ),
-                            bean(),
-                            bean(),
-                            validity,
-                            digestHashAlgorithm,
-                            notificationsEnabled,
-                            bean(),
-                            bean(),
-                            learningCredentialReusePolicy,
-                            bean(),
+                            credentialReusePolicy = learningCredentialReusePolicy,
+                            validity = validity,
+                            validateProof = bean(),
+                            notificationsEnabled = notificationsEnabled,
+                            generateNotificationId = bean(),
+                            storeIssuedCredential = bean(),
                         )
 
                     add(sdJwtVcCompactIssuer)

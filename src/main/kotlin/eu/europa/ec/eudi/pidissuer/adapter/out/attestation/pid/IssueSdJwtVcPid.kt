@@ -218,13 +218,13 @@ class IssueSdJwtVcPid private constructor(
     private val clock: Clock,
     private val timeZone: TimeZone,
     private val getAttestationAttributes: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
-    private val calculateNotUseBefore: TimeDependant<Instant>?,
+    private val encodePidInSdJwt: EncodePidInSdJwtVc,
+    private val validateProof: ValidateProof,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredential: StoreIssuedCredential,
     private val allocateStatus: AllocateStatus,
-    private val validateProof: ValidateProof,
-    private val encodePidInSdJwt: EncodePidInSdJwtVc,
+    private val calculateNotUseBefore: TimeDependant<Instant>?,
 ) : AttestationIssuer {
     context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
@@ -307,21 +307,21 @@ class IssueSdJwtVcPid private constructor(
 
     companion object {
         operator fun invoke(
-            validity: Duration,
-            credentialIssuerId: CredentialIssuerId,
             clock: Clock,
             timeZone: TimeZone,
-            hashAlgorithm: HashAlgorithm,
-            issuerSigningKey: IssuerSigningKey,
             getAttestationAttributes: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
-            calculateNotUseBefore: TimeDependant<Instant>?,
+            issuerSigningKey: IssuerSigningKey,
+            credentialIssuerId: CredentialIssuerId,
+            hashAlgorithm: HashAlgorithm,
+            deviceBinding: DeviceBinding.Required,
+            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+            validity: Duration,
+            validateProof: ValidateProof,
             notificationsEnabled: Boolean,
             generateNotificationId: GenerateNotificationId,
             storeIssuedCredential: StoreIssuedCredential,
             allocateStatus: AllocateStatus,
-            validateProof: ValidateProof,
-            deviceBinding: DeviceBinding.Required,
-            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+            calculateNotUseBefore: TimeDependant<Instant>?,
         ): IssueSdJwtVcPid {
             val publicKey = issuerSigningKey.key.toPublicJWK()
             val configuration =
@@ -340,13 +340,13 @@ class IssueSdJwtVcPid private constructor(
                 clock,
                 timeZone,
                 getAttestationAttributes,
-                calculateNotUseBefore,
+                encodePidInSdJwt,
+                validateProof,
                 notificationsEnabled,
                 generateNotificationId,
                 storeIssuedCredential,
                 allocateStatus,
-                validateProof,
-                encodePidInSdJwt,
+                calculateNotUseBefore,
             )
         }
     }

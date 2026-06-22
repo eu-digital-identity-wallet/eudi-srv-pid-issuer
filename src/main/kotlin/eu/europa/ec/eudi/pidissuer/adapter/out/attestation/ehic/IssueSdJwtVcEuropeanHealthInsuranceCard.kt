@@ -219,13 +219,13 @@ private val log = LoggerFactory.getLogger(IssueSdJwtVcEuropeanHealthInsuranceCar
 
 internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
     override val configuration: SdJwtVcCredentialConfiguration,
-    private val encode: EncodeEuropeanHealthInsuranceCardInSdJwtVc,
     private val clock: Clock,
     private val getAttestationAttributes: GetAttestationAttributes<EuropeanHealthInsuranceCard>,
+    private val encode: EncodeEuropeanHealthInsuranceCardInSdJwtVc,
+    private val validateProof: ValidateProof,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredential: StoreIssuedCredential,
-    private val validateProof: ValidateProof,
 ) : AttestationIssuer {
     context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
@@ -280,18 +280,18 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
 
     companion object {
         fun jwsJsonFlattened(
+            clock: Clock,
+            getAttestationAttributes: GetAttestationAttributes<EuropeanHealthInsuranceCard>,
             issuerSigningKey: IssuerSigningKey,
             digestsHashAlgorithm: HashAlgorithm,
             credentialIssuerId: CredentialIssuerId,
-            clock: Clock,
+            deviceBinding: DeviceBinding.Required,
+            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
             validity: Duration,
-            getAttestationAttributes: GetAttestationAttributes<EuropeanHealthInsuranceCard>,
+            validateProof: ValidateProof,
             notificationsEnabled: Boolean,
             generateNotificationId: GenerateNotificationId,
             storeIssuedCredential: StoreIssuedCredential,
-            deviceBinding: DeviceBinding.Required,
-            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
-            validateProof: ValidateProof,
         ): IssueSdJwtVcEuropeanHealthInsuranceCard =
             IssueSdJwtVcEuropeanHealthInsuranceCard(
                 europeanHealthInsuranceCardCredentialConfiguration(
@@ -306,33 +306,33 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     credentialReusePolicy,
                     validity,
                 ),
+                clock,
+                getAttestationAttributes,
                 EncodeEuropeanHealthInsuranceCardInSdJwtVc.jwsJsonFlattened(
                     digestsHashAlgorithm,
                     issuerSigningKey,
                     EuropeanHealthInsuranceCardVct,
                     credentialIssuerId,
                 ),
-                clock,
-                getAttestationAttributes,
+                validateProof,
                 notificationsEnabled,
                 generateNotificationId,
                 storeIssuedCredential,
-                validateProof,
             )
 
         fun compact(
+            clock: Clock,
+            getAttestationAttributes: GetAttestationAttributes<EuropeanHealthInsuranceCard>,
             issuerSigningKey: IssuerSigningKey,
             digestsHashAlgorithm: HashAlgorithm,
             credentialIssuerId: CredentialIssuerId,
-            clock: Clock,
+            deviceBinding: DeviceBinding.Required,
+            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
             validity: Duration,
-            getAttestationAttributes: GetAttestationAttributes<EuropeanHealthInsuranceCard>,
+            validateProof: ValidateProof,
             notificationsEnabled: Boolean,
             generateNotificationId: GenerateNotificationId,
             storeIssuedCredential: StoreIssuedCredential,
-            deviceBinding: DeviceBinding.Required,
-            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
-            validateProof: ValidateProof,
         ): IssueSdJwtVcEuropeanHealthInsuranceCard =
             IssueSdJwtVcEuropeanHealthInsuranceCard(
                 europeanHealthInsuranceCardCredentialConfiguration(
@@ -347,18 +347,18 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     credentialReusePolicy,
                     validity,
                 ),
+                clock,
+                getAttestationAttributes,
                 EncodeEuropeanHealthInsuranceCardInSdJwtVc.compact(
                     digestsHashAlgorithm,
                     issuerSigningKey,
                     EuropeanHealthInsuranceCardVct,
                     credentialIssuerId,
                 ),
-                clock,
-                getAttestationAttributes,
+                validateProof,
                 notificationsEnabled,
                 generateNotificationId,
                 storeIssuedCredential,
-                validateProof,
             )
     }
 }
