@@ -44,7 +44,7 @@ internal class DefaultValidateProof(
             }
 
             is DeviceBinding.Required -> {
-                context(verifyNonce, cfg.credentialReusePolicy, deviceBinding) {
+                context(verifyNonce, cfg.reusePolicy, deviceBinding) {
                     required(unvalidatedProof, at)
                 }
             }

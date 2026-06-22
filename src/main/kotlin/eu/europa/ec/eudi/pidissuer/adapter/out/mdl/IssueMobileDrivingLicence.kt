@@ -351,8 +351,8 @@ internal fun mobileDrivingLicenceV1(
         credentialSigningAlgorithmsSupported = nonEmptySetOf(credentialSigningAlgorithm),
         scope = MobileDrivingLicenceV1Scope,
         deviceBinding = deviceBinding,
-        attestationCategory = AttestationCategory.Eaa,
-        credentialReusePolicy = credentialReusePolicy,
+        category = AttestationCategory.Eaa,
+        reusePolicy = credentialReusePolicy,
         validity = validity,
     )
 

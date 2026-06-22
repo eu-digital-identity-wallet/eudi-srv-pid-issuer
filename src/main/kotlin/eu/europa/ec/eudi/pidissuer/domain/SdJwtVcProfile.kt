@@ -30,24 +30,27 @@ value class SdJwtVcType(
     val value: String,
 )
 
-/**
- * @param type As defined in https://datatracker.ietf.org/doc/html/draft-ietf-oauth-sd-jwt-vc-00#type-claim
- */
 data class SdJwtVcCredentialConfiguration(
     override val id: CredentialConfigurationId,
     override val scope: Scope,
     override val display: List<CredentialDisplay>,
     override val deviceBinding: DeviceBinding,
-    override val attestationCategory: AttestationCategory,
-    override val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+    override val category: AttestationCategory,
+    override val reusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
     override val validity: Duration,
     val type: SdJwtVcType,
-    val credentialSigningAlgorithmsSupported: NonEmptySet<JWSAlgorithm>?,
+    val credentialSigningAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
     val publicKey: JWK,
     val claims: List<ClaimDefinition>,
 ) : CredentialConfiguration {
     init {
         require(validity.isPositive()) { "'validity' must be a positive duration" }
+        if (deviceBinding is DeviceBinding.Required) {
+            val preferredKeyStorageStatusPeriod = deviceBinding.keyStorageRequirement.preferredKeyStorageStatusPeriod
+            require(validity <= preferredKeyStorageStatusPeriod.value) {
+                "'validity' must be less than or equal to the preferred key storage status period"
+            }
+        }
     }
 
     override val cryptographicBindingMethodsSupported: NonEmptySet<CryptographicBindingMethod>?

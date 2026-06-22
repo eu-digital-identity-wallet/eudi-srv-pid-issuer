@@ -135,8 +135,7 @@ sealed interface CredentialConfiguration {
     val display: List<CredentialDisplay>
     val cryptographicBindingMethodsSupported: NonEmptySet<CryptographicBindingMethod>?
     val deviceBinding: DeviceBinding
-    val attestationCategory: AttestationCategory
-    val credentialReusePolicy: CredentialReusePolicy
-
+    val category: AttestationCategory
+    val reusePolicy: CredentialReusePolicy
     val validity: Duration
 }

@@ -59,7 +59,7 @@ suspend fun AttestationIssuer.allocateStatusWithPolicy(expiration: Instant): Sta
             is SdJwtVcCredentialConfiguration -> cfg.type.value
         }
 
-    return when (val reusePolicy = cfg.credentialReusePolicy) {
+    return when (val reusePolicy = cfg.reusePolicy) {
         is CredentialReusePolicy.EUDI if reusePolicy.shouldIncludeStatusList -> {
             either { allocateStatus(type, expiration) }.getOrElse { throw it.value }
         }

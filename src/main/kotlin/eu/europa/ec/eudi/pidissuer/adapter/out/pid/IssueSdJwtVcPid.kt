@@ -192,8 +192,8 @@ fun pidSdJwtVcV1(
         publicKey = publicKey,
         scope = PidSdJwtVcScope,
         deviceBinding = deviceBinding,
-        attestationCategory = AttestationCategory.Pid,
-        credentialReusePolicy = credentialReusePolicy,
+        category = AttestationCategory.Pid,
+        reusePolicy = credentialReusePolicy,
         validity = validity,
     )
 

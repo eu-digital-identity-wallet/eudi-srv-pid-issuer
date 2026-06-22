@@ -107,7 +107,7 @@ private fun Raise<CreateCredentialsOfferError>.validate(
     val supported = metadata.credentialConfigurationsSupported
     val selectedCategories =
         nonEmptyIds
-            .map { id -> supported.first { it.id == id }.attestationCategory }
+            .map { id -> supported.first { it.id == id }.category }
             .toSet()
 
     ensure(selectedCategories.size == 1) { CreateCredentialsOfferError.MultipleAttestationCategories }

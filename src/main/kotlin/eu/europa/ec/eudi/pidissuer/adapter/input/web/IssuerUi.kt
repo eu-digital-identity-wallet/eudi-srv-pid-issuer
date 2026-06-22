@@ -69,7 +69,7 @@ class IssuerUi(
         log.info("Displaying 'Generate Credentials Offer' page")
         val credentialConfigurationIds =
             metadata.credentialConfigurationsSupported.groupBy(
-                { it.attestationCategory },
+                { it.category },
                 { it.id.value },
             )
         val usefulLinks = createUsefulLinks(metadata.id, metadata.authorizationServers[0])

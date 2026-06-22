@@ -316,8 +316,8 @@ internal fun pidMsoMdocV1(
         credentialSigningAlgorithmsSupported = nonEmptySetOf(credentialSigningAlgorithm),
         scope = PidMsoMdocScope,
         deviceBinding = deviceBinding,
-        attestationCategory = AttestationCategory.Pid,
-        credentialReusePolicy = credentialReusePolicy,
+        category = AttestationCategory.Pid,
+        reusePolicy = credentialReusePolicy,
         validity = validity,
     )
 
