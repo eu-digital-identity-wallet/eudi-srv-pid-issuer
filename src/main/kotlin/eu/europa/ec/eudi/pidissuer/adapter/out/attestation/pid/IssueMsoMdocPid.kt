@@ -19,9 +19,10 @@ import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
+import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.toECKeyOrFail
+import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.EncodeAttributesInMdoc
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.domain.invoke
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
@@ -331,7 +332,7 @@ class IssueMsoMdocPid private constructor(
     override val configuration: MsoMdocCredentialConfiguration,
     private val clock: Clock,
     private val getAttestationAttributes: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
-    private val encodePidInCbor: EncodePidInCbor,
+    private val encodeAttributes: EncodeAttributesInMdoc<Pair<Pid, PidMetaData>>,
     private val validateProof: ValidateProof,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
@@ -346,7 +347,7 @@ class IssueMsoMdocPid private constructor(
         val deviceKeys =
             keyAttestation.credentialKeys.value
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
-        val (pid, pidMetaData) = getAttestationAttributes()
+        val attributes = getAttestationAttributes()
         val expiresAt = issuedAt + configuration.validity
         val notificationId = if (notificationsEnabled) generateNotificationId() else null
         val clientStatus = authorizationContext.clientStatus.status.statusList
@@ -360,9 +361,8 @@ class IssueMsoMdocPid private constructor(
                             allocateStatusWithPolicy(expiresAt)
                         }
                     val encodedCredential =
-                        encodePidInCbor(
-                            pid,
-                            pidMetaData,
+                        encodeAttributes(
+                            attributes,
                             deviceKey,
                             issuedAt = issuedAt,
                             expiresAt = expiresAt,
@@ -401,7 +401,7 @@ class IssueMsoMdocPid private constructor(
         operator fun invoke(
             clock: Clock,
             getAttestationAttributes: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
-            encodePidInCbor: EncodePidInCbor,
+            encodeAttributes: EncodeAttributesInMdoc<Pair<Pid, PidMetaData>>,
             deviceBinding: DeviceBinding.Required,
             credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
             validity: Duration,
@@ -412,12 +412,41 @@ class IssueMsoMdocPid private constructor(
             allocateStatus: AllocateStatus,
         ): IssueMsoMdocPid {
             val configuration =
-                pidMsoMdocV1(encodePidInCbor.signingAlgorithm, deviceBinding, credentialReusePolicy, validity)
+                pidMsoMdocV1(encodeAttributes.signingAlgorithm, deviceBinding, credentialReusePolicy, validity)
             return IssueMsoMdocPid(
                 configuration,
                 clock,
                 getAttestationAttributes,
-                encodePidInCbor,
+                encodeAttributes,
+                validateProof,
+                notificationsEnabled,
+                generateNotificationId,
+                storeIssuedCredential,
+                allocateStatus,
+            )
+        }
+
+        operator fun invoke(
+            clock: Clock,
+            getAttestationAttributes: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
+            issuerSigningKey: IssuerSigningKey,
+            deviceBinding: DeviceBinding.Required,
+            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+            validity: Duration,
+            validateProof: ValidateProof,
+            notificationsEnabled: Boolean,
+            generateNotificationId: GenerateNotificationId,
+            storeIssuedCredential: StoreIssuedCredential,
+            allocateStatus: AllocateStatus,
+        ): IssueMsoMdocPid {
+            val encodeAttributesInMdoc = encodePidInMdoc(PidMsoMdocV1DocType, issuerSigningKey)
+            return invoke(
+                clock,
+                getAttestationAttributes,
+                encodeAttributesInMdoc,
+                deviceBinding,
+                credentialReusePolicy,
+                validity,
                 validateProof,
                 notificationsEnabled,
                 generateNotificationId,

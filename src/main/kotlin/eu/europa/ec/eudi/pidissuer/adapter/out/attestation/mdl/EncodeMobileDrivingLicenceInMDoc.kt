@@ -15,44 +15,27 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl
 
-import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.DrivingPrivilege.Restriction.GenericRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.DrivingPrivilege.Restriction.ParameterizedRestriction
-import eu.europa.ec.eudi.pidissuer.adapter.out.coseAlgorithm
-import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.MsoMdocSigner
+import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.EncodeAttributesInMdoc
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.toTDate
 import eu.europa.ec.eudi.pidissuer.domain.ClaimDefinition
-import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
+import eu.europa.ec.eudi.pidissuer.domain.MsoDocType
 import id.walt.mdoc.dataelement.DataElement
 import id.walt.mdoc.dataelement.toDataElement
 import id.walt.mdoc.doc.MDocBuilder
 import kotlinx.datetime.toKotlinLocalDate
 import java.time.ZoneOffset
-import kotlin.time.Instant
 import kotlin.time.toKotlinInstant
 
-class DefaultEncodeMobileDrivingLicenceInCbor(
+fun encodeMdlInMdoc(
+    docType: MsoDocType = MobileDrivingLicenceV1DocType,
     issuerSigningKey: IssuerSigningKey,
-) : EncodeMobileDrivingLicenceInCbor {
-    override val signingAlgorithm = issuerSigningKey.coseAlgorithm
-
-    private val signer =
-        MsoMdocSigner<MobileDrivingLicence>(
-            issuerSigningKey = issuerSigningKey,
-            docType = MobileDrivingLicenceV1DocType,
-        ) { licence ->
-            addItemsToSign(licence)
-        }
-
-    override suspend fun invoke(
-        licence: MobileDrivingLicence,
-        deviceKey: ECKey,
-        issuedAt: Instant,
-        expiresAt: Instant,
-        statusListToken: StatusListToken?,
-    ): String = signer.sign(licence, deviceKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
-}
+): EncodeAttributesInMdoc<MobileDrivingLicence> =
+    EncodeAttributesInMdoc(docType, issuerSigningKey) { licence ->
+        addItemsToSign(licence)
+    }
 
 private fun MDocBuilder.addItemsToSign(licence: MobileDrivingLicence) {
     addItemsToSign(licence.driver)

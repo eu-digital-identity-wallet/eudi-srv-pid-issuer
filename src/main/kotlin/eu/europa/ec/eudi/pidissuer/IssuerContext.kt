@@ -39,21 +39,18 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.ehic.GetEuropeanHealt
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.ehic.IssueSdJwtVcEuropeanHealthInsuranceCard
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.learningcredential.IssueLearningCredential
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.*
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.DefaultEncodeMobileDrivingLicenceInCbor
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.EncodeMobileDrivingLicenceInCbor
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.GetMobileDrivingLicenceDataMock
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.IssueMobileDrivingLicence
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.AdministrationClient
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.Credentials
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.DefaultEncodePidInCbor
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.EncodePidInCbor
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.GetPidDataFromKeyCloak
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.IsoCountry
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.IssueMsoMdocPid
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.IssueSdJwtVcPid
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.Realm
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.EncodeAttributesInMdoc
 import eu.europa.ec.eudi.pidissuer.adapter.out.nonce.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.R2dbcIssuedCredentialRepository
@@ -532,15 +529,15 @@ fun beans(
             users = Realm(keycloakProperties.userRealm),
         )
     }
-    registerBean<EncodePidInCbor>(lazyInit = true) {
-        DefaultEncodePidInCbor(getIssuerSigningKey("issuer.pid.mso_mdoc.signing-key"))
+    registerBean<EncodeAttributesInMdoc<Pair<Pid, PidMetaData>>>(lazyInit = true) {
+        encodePidInMdoc(issuerSigningKey = getIssuerSigningKey("issuer.pid.mso_mdoc.signing-key"))
     }
 
     registerBean {
         GetMobileDrivingLicenceDataMock()
     }
-    registerBean<EncodeMobileDrivingLicenceInCbor>(lazyInit = true) {
-        DefaultEncodeMobileDrivingLicenceInCbor(getIssuerSigningKey("issuer.mdl.signing-key"))
+    registerBean<EncodeAttributesInMdoc<MobileDrivingLicence>>(lazyInit = true) {
+        encodeMdlInMdoc(issuerSigningKey = getIssuerSigningKey("issuer.mdl.signing-key"))
     }
 
     registerBean { DefaultGenerateQrCode() }
@@ -681,7 +678,7 @@ fun beans(
                         IssueMsoMdocPid(
                             clock = clock,
                             getAttestationAttributes = bean(),
-                            encodePidInCbor = bean(),
+                            encodeAttributes = bean(),
                             deviceBinding =
                                 DeviceBinding.ts3(
                                     jwtProofsSupportedSigningAlgorithms,
@@ -757,7 +754,7 @@ fun beans(
                         IssueMobileDrivingLicence(
                             clock = clock,
                             getAttestationAttributes = bean(),
-                            encodeMobileDrivingLicenceInCbor = bean(),
+                            encodeAttributes = bean(),
                             deviceBinding =
                                 DeviceBinding.ts3(
                                     jwtProofsSupportedSigningAlgorithms,

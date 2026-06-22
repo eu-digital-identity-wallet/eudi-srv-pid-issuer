@@ -34,6 +34,7 @@ import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import eu.europa.ec.eudi.pidissuer.PidIssuerApplicationTest
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.EncodeAttributesInMdoc
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.jwtProof
 import eu.europa.ec.eudi.pidissuer.jwtProofWithKeyAttestation
@@ -49,10 +50,12 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
+import org.springframework.beans.factory.BeanRegistrarDsl
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Primary
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
@@ -113,6 +116,7 @@ class BaseWalletApiTest {
         )
 
     @TestConfiguration
+    @Import(WalletApiTestConfig.AttestationMocksRegistrar::class)
     class WalletApiTestConfig {
         @Bean
         @Primary
@@ -158,24 +162,25 @@ class BaseWalletApiTest {
                 )
             }
 
-        @Bean
-        @Primary
-        fun encodePidInCbor(): EncodePidInCbor =
-            object : EncodePidInCbor {
-                override val signingAlgorithm: CoseAlgorithm = CoseAlgorithm(-7)
+        class AttestationMocksRegistrar :
+            BeanRegistrarDsl({
+                registerBean<EncodeAttributesInMdoc<Pair<Pid, PidMetaData>>>(primary = true) {
+                    object : EncodeAttributesInMdoc<Pair<Pid, PidMetaData>> {
+                        override val signingAlgorithm: CoseAlgorithm = CoseAlgorithm(-7)
 
-                override suspend fun invoke(
-                    pid: Pid,
-                    pidMetaData: PidMetaData,
-                    deviceKey: ECKey,
-                    issuedAt: Instant,
-                    expiresAt: Instant,
-                    statusListToken: StatusListToken?,
-                ): String {
-                    println(deviceKey)
-                    return "PID"
+                        override suspend fun invoke(
+                            attributes: Pair<Pid, PidMetaData>,
+                            deviceKey: ECKey,
+                            issuedAt: Instant,
+                            expiresAt: Instant,
+                            statusListToken: StatusListToken?,
+                        ): String {
+                            println(deviceKey)
+                            return "PID"
+                        }
+                    }
                 }
-            }
+            })
     }
 }
 

@@ -18,7 +18,9 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc
 import COSE.OneKey
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
+import eu.europa.ec.eudi.pidissuer.adapter.out.coseAlgorithm
 import eu.europa.ec.eudi.pidissuer.adapter.out.cryptoProvider
+import eu.europa.ec.eudi.pidissuer.domain.CoseAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.MsoDocType
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.domain.TokenStatusListSpec
@@ -37,19 +39,54 @@ import kotlinx.datetime.toDeprecatedInstant
 import kotlin.io.encoding.Base64
 import kotlin.time.Instant
 
+interface EncodeAttributesInMdoc<in Data> {
+    val signingAlgorithm: CoseAlgorithm
+
+    suspend operator fun invoke(
+        attributes: Data,
+        deviceKey: ECKey,
+        issuedAt: Instant,
+        expiresAt: Instant,
+        statusListToken: StatusListToken?,
+    ): String
+
+    companion object {
+        operator fun <Data> invoke(
+            docType: MsoDocType,
+            issuerSigningKey: IssuerSigningKey,
+            usage: MDocBuilder.(Data) -> Unit,
+        ): EncodeAttributesInMdoc<Data> =
+            object : EncodeAttributesInMdoc<Data> {
+                override val signingAlgorithm: CoseAlgorithm
+                    get() = issuerSigningKey.coseAlgorithm
+
+                override suspend fun invoke(
+                    attributes: Data,
+                    deviceKey: ECKey,
+                    issuedAt: Instant,
+                    expiresAt: Instant,
+                    statusListToken: StatusListToken?,
+                ): String {
+                    val signer = MsoMdocSigner(issuerSigningKey, docType, usage)
+                    return signer.sign(attributes, deviceKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
+                }
+            }
+    }
+}
+
 private val base64UrlSafeNoPadding = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
 
-internal class MsoMdocSigner<in Credential>(
+private class MsoMdocSigner<in Data>(
     private val issuerSigningKey: IssuerSigningKey,
     private val docType: MsoDocType,
-    private val usage: MDocBuilder.(Credential) -> Unit,
+    private val usage: MDocBuilder.(Data) -> Unit,
 ) {
     private val issuerCryptoProvider: SimpleCOSECryptoProvider by lazy {
         issuerSigningKey.cryptoProvider(includeRootCA = false)
     }
 
     fun sign(
-        credential: Credential,
+        credential: Data,
         deviceKey: ECKey,
         issuedAt: Instant,
         expiresAt: Instant,

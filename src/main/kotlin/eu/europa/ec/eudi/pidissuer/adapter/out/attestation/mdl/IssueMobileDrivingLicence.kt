@@ -19,7 +19,9 @@ import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
+import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.toECKeyOrFail
+import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.EncodeAttributesInMdoc
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.domain.invoke
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
@@ -365,7 +367,7 @@ internal class IssueMobileDrivingLicence(
     override val configuration: MsoMdocCredentialConfiguration,
     private val clock: Clock,
     private val getAttestationAttributes: GetAttestationAttributes<MobileDrivingLicence>,
-    private val encodeMobileDrivingLicenceInCbor: EncodeMobileDrivingLicenceInCbor,
+    private val encodeAttributes: EncodeAttributesInMdoc<MobileDrivingLicence>,
     private val validateProof: ValidateProof,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
@@ -394,7 +396,7 @@ internal class IssueMobileDrivingLicence(
                         }
 
                     val encodedCredential =
-                        encodeMobileDrivingLicenceInCbor(
+                        encodeAttributes(
                             licence,
                             deviceKey,
                             issuedAt,
@@ -432,7 +434,7 @@ internal class IssueMobileDrivingLicence(
         operator fun invoke(
             clock: Clock,
             getAttestationAttributes: GetAttestationAttributes<MobileDrivingLicence>,
-            encodeMobileDrivingLicenceInCbor: EncodeMobileDrivingLicenceInCbor,
+            encodeAttributes: EncodeAttributesInMdoc<MobileDrivingLicence>,
             deviceBinding: DeviceBinding.Required,
             credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
             validity: Duration,
@@ -442,14 +444,42 @@ internal class IssueMobileDrivingLicence(
             storeIssuedCredential: StoreIssuedCredential,
             allocateStatus: AllocateStatus,
         ): IssueMobileDrivingLicence {
-            val credentialSigningAlgorithm = encodeMobileDrivingLicenceInCbor.signingAlgorithm
             val configuration =
-                mobileDrivingLicenceV1(credentialSigningAlgorithm, deviceBinding, credentialReusePolicy, validity)
+                mobileDrivingLicenceV1(encodeAttributes.signingAlgorithm, deviceBinding, credentialReusePolicy, validity)
             return IssueMobileDrivingLicence(
                 configuration,
                 clock,
                 getAttestationAttributes,
-                encodeMobileDrivingLicenceInCbor,
+                encodeAttributes,
+                validateProof,
+                notificationsEnabled,
+                generateNotificationId,
+                storeIssuedCredential,
+                allocateStatus,
+            )
+        }
+
+        operator fun invoke(
+            clock: Clock,
+            getAttestationAttributes: GetAttestationAttributes<MobileDrivingLicence>,
+            issuerSigningKey: IssuerSigningKey,
+            deviceBinding: DeviceBinding.Required,
+            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+            validity: Duration,
+            validateProof: ValidateProof,
+            notificationsEnabled: Boolean,
+            generateNotificationId: GenerateNotificationId,
+            storeIssuedCredential: StoreIssuedCredential,
+            allocateStatus: AllocateStatus,
+        ): IssueMobileDrivingLicence {
+            val encodeAttributes = encodeMdlInMdoc(MobileDrivingLicenceV1DocType, issuerSigningKey)
+            return invoke(
+                clock,
+                getAttestationAttributes,
+                encodeAttributes,
+                deviceBinding,
+                credentialReusePolicy,
+                validity,
                 validateProof,
                 notificationsEnabled,
                 generateNotificationId,
