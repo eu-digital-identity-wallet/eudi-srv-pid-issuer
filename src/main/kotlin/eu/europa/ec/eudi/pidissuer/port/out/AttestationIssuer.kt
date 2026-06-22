@@ -35,7 +35,6 @@ import kotlin.time.Instant
 
 interface AttestationIssuer {
     val configuration: CredentialConfiguration
-    val publicKey: JWK?
     val validity: Duration
 
     context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)

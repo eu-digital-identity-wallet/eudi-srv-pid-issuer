@@ -374,8 +374,6 @@ internal class IssueMobileDrivingLicence(
     private val allocateStatus: AllocateStatus,
     private val validateProof: ValidateProof,
 ) : AttestationIssuer {
-    override val publicKey: JWK? = null
-
     init {
         require(validity.isPositive())
     }

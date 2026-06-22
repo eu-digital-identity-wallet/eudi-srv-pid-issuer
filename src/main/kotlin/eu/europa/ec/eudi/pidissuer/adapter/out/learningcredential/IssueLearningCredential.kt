@@ -18,7 +18,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential
 import arrow.core.raise.Raise
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
-import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.Pid
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMetaData
@@ -43,7 +42,6 @@ private val log = LoggerFactory.getLogger(IssueLearningCredential::class.java)
 
 internal class IssueLearningCredential(
     override val configuration: SdJwtVcCredentialConfiguration,
-    override val publicKey: JWK,
     private val clock: Clock,
     private val getAttestationAttributes: GetAttestationAttributes<LearningCredential>,
     override val validity: Duration,
@@ -54,7 +52,6 @@ internal class IssueLearningCredential(
     private val validateProof: ValidateProof,
 ) : AttestationIssuer {
     init {
-        require(!publicKey.isPrivate)
         require(validity.isPositive())
     }
 
@@ -136,13 +133,13 @@ internal class IssueLearningCredential(
                     CredentialConfigurationId("urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt-compact"),
                     Scope("urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt"),
                     issuerSigningKey.signingAlgorithm,
+                    issuerSigningKey.key.toPublicJWK(),
                     CredentialDisplay(DisplayName("Learning Credential (SD-JWT VC Compact)", Locale.ENGLISH)),
                     deviceBinding,
                     credentialReusePolicy,
                 )
             return IssueLearningCredential(
                 credentialConfiguration,
-                issuerSigningKey.key.toPublicJWK(),
                 clock,
                 GetLearningCredentialMock(clock, getPidData),
                 validity,

@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.domain
 import arrow.core.NonEmptySet
 import arrow.core.nonEmptySetOf
 import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 
 const val SD_JWT_VC_FORMAT_VALUE = SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT
@@ -36,6 +37,7 @@ data class SdJwtVcCredentialConfiguration(
     val type: SdJwtVcType,
     override val scope: Scope,
     val credentialSigningAlgorithmsSupported: NonEmptySet<JWSAlgorithm>?,
+    val publicKey: JWK,
     override val display: List<CredentialDisplay>,
     val claims: List<ClaimDefinition>,
     override val deviceBinding: DeviceBinding,

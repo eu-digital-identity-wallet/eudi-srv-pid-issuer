@@ -193,6 +193,7 @@ private val EuropeanHealthInsuranceCardVct: SdJwtVcType = SdJwtVcType("urn:eudi:
 
 private fun europeanHealthInsuranceCardCredentialConfiguration(
     signingAlgorithm: JWSAlgorithm,
+    publicKey: JWK,
     credentialConfigurationId: CredentialConfigurationId,
     scope: Scope,
     credentialDisplay: CredentialDisplay,
@@ -204,6 +205,7 @@ private fun europeanHealthInsuranceCardCredentialConfiguration(
         type = EuropeanHealthInsuranceCardVct,
         scope = scope,
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
+        publicKey = publicKey,
         display = listOf(credentialDisplay),
         claims = EuropeanHealthInsuranceCardClaims.all(),
         deviceBinding = deviceBinding,
@@ -215,7 +217,6 @@ private val log = LoggerFactory.getLogger(IssueSdJwtVcEuropeanHealthInsuranceCar
 
 internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
     override val configuration: SdJwtVcCredentialConfiguration,
-    override val publicKey: JWK,
     private val encode: EncodeEuropeanHealthInsuranceCardInSdJwtVc,
     private val clock: Clock,
     override val validity: Duration,
@@ -233,10 +234,9 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
         log.info("Issuing DC4EU EHIC")
 
-        val now = clock.now()
-        val keyAttestation = context(validateProof) { keyAttestation(request, now) }
+        val issuedAt = clock.now()
+        val keyAttestation = context(validateProof) { keyAttestation(request, issuedAt) }
         val ehicAttributes = getAttestationAttributes()
-        val issuedAt = now
         val expiresAt = issuedAt + validity
         val notificationId = if (notificationsEnabled) generateNotificationId() else null
         val clientStatus = authorizationContext.clientStatus.status.statusList
@@ -299,6 +299,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             IssueSdJwtVcEuropeanHealthInsuranceCard(
                 europeanHealthInsuranceCardCredentialConfiguration(
                     issuerSigningKey.signingAlgorithm,
+                    issuerSigningKey.key.toPublicJWK(),
                     CredentialConfigurationId("urn:eudi:ehic:1:dc+sd-jwt-jws-json"),
                     EuropeanHealthInsuranceCardScope,
                     CredentialDisplay(
@@ -307,7 +308,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     deviceBinding,
                     credentialReusePolicy,
                 ),
-                issuerSigningKey.key.toPublicJWK(),
                 EncodeEuropeanHealthInsuranceCardInSdJwtVc.jwsJsonFlattened(
                     digestsHashAlgorithm,
                     issuerSigningKey,
@@ -340,6 +340,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             IssueSdJwtVcEuropeanHealthInsuranceCard(
                 europeanHealthInsuranceCardCredentialConfiguration(
                     issuerSigningKey.signingAlgorithm,
+                    issuerSigningKey.key.toPublicJWK(),
                     CredentialConfigurationId("urn:eudi:ehic:1:dc+sd-jwt-compact"),
                     EuropeanHealthInsuranceCardScope,
                     CredentialDisplay(
@@ -348,7 +349,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     deviceBinding,
                     credentialReusePolicy,
                 ),
-                issuerSigningKey.key.toPublicJWK(),
                 EncodeEuropeanHealthInsuranceCardInSdJwtVc.compact(
                     digestsHashAlgorithm,
                     issuerSigningKey,

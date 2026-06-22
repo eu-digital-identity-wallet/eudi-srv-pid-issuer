@@ -177,6 +177,7 @@ internal val SdJwtVcPidCredentialConfigurationId: CredentialConfigurationId =
 
 fun pidSdJwtVcV1(
     signingAlgorithm: JWSAlgorithm,
+    publicKey: JWK,
     deviceBinding: DeviceBinding.Required,
     credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
 ): SdJwtVcCredentialConfiguration =
@@ -191,6 +192,7 @@ fun pidSdJwtVcV1(
             ),
         claims = SdJwtVcPidClaims.all(),
         credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
+        publicKey = publicKey,
         scope = PidSdJwtVcScope,
         deviceBinding = deviceBinding,
         attestationCategory = AttestationCategory.Pid,
@@ -206,7 +208,6 @@ private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
  */
 class IssueSdJwtVcPid private constructor(
     override val configuration: SdJwtVcCredentialConfiguration,
-    override val publicKey: JWK,
     override val validity: Duration,
     private val clock: Clock,
     private val timeZone: TimeZone,
@@ -320,14 +321,14 @@ class IssueSdJwtVcPid private constructor(
             deviceBinding: DeviceBinding.Required,
             credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
         ): IssueSdJwtVcPid {
+            val publicKey = issuerSigningKey.key.toPublicJWK()
             val configuration =
-                pidSdJwtVcV1(issuerSigningKey.signingAlgorithm, deviceBinding, credentialReusePolicy)
+                pidSdJwtVcV1(issuerSigningKey.signingAlgorithm, publicKey, deviceBinding, credentialReusePolicy)
             val encodePidInSdJwt =
                 EncodePidInSdJwtVc(credentialIssuerId, hashAlgorithm, issuerSigningKey, configuration.type)
-            val publicKey = issuerSigningKey.key.toPublicJWK()
+
             return IssueSdJwtVcPid(
                 configuration,
-                publicKey,
                 validity,
                 clock,
                 timeZone,

@@ -17,6 +17,8 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import com.nimbusds.jose.jwk.JWKSet
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
+import eu.europa.ec.eudi.pidissuer.domain.MsoMdocCredentialConfiguration
+import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcCredentialConfiguration
 import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.port.input.GetProtectedResourceMetadata
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
@@ -131,7 +133,15 @@ class MetaDataApi(
 }
 
 private val CredentialIssuerMetaData.jwtVcIssuerJwks: JWKSet
-    get() = JWKSet(attestationIssuers.mapNotNull { it.publicKey })
+    get() =
+        JWKSet(
+            attestationIssuers.mapNotNull { attestationIssuer ->
+                when (val cfg = attestationIssuer.configuration) {
+                    is MsoMdocCredentialConfiguration -> null
+                    is SdJwtVcCredentialConfiguration -> cfg.publicKey
+                }
+            },
+        )
 
 private val ServerRequest.vct: Vct
     get() = Vct(pathVariable("vct"))

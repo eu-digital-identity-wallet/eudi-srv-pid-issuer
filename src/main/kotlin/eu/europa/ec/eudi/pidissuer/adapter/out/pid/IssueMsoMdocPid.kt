@@ -341,8 +341,6 @@ class IssueMsoMdocPid private constructor(
         require(validity.isPositive())
     }
 
-    override val publicKey: JWK? = null
-
     context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
         msoMdocPidLog.info("Handling issuance request ...")
