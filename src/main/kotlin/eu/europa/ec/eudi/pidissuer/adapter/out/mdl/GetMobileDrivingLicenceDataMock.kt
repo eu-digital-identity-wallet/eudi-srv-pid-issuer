@@ -22,6 +22,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.loadResource
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import eu.europa.ec.eudi.pidissuer.port.out.GetAttestationAttributes
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import org.slf4j.LoggerFactory
@@ -31,11 +32,11 @@ import java.time.Month
 private val log = LoggerFactory.getLogger(GetMobileDrivingLicenceDataMock::class.java)
 
 /**
- * Mock implementation for [GetMobileDrivingLicenceData].
+ * Mock implementation
  */
-class GetMobileDrivingLicenceDataMock : GetMobileDrivingLicenceData {
-    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>)
-    override suspend fun invoke(context: AuthorizationContext): MobileDrivingLicence =
+class GetMobileDrivingLicenceDataMock : GetAttestationAttributes<MobileDrivingLicence> {
+    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>, authorizationContext: AuthorizationContext)
+    override suspend fun invoke(): MobileDrivingLicence =
         coroutineScope {
             log.info("Getting mock data for Mobile Driving Licence")
 

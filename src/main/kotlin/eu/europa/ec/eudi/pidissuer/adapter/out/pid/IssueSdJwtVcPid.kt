@@ -27,6 +27,7 @@ import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.GetAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.keyAttestation
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
@@ -210,7 +211,7 @@ internal class IssueSdJwtVcPid(
     private val timeZone: TimeZone,
     hashAlgorithm: HashAlgorithm,
     issuerSigningKey: IssuerSigningKey,
-    private val getPidData: GetPidData,
+    private val getAttestationAttributes: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
     private val calculateNotUseBefore: TimeDependant<Instant>?,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
@@ -245,9 +246,9 @@ internal class IssueSdJwtVcPid(
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
         log.info("Handling issuance request ...")
         val issuedAt = clock.now()
-        val keyAttestation = keyAttestation(request, issuedAt, validateProof)
+        val keyAttestation = context(validateProof) { keyAttestation(request, issuedAt) }
         val deviceKeys = keyAttestation.credentialKeys.value
-        val (pid, pidMetaData) = getPidData(authorizationContext)
+        val (pid, pidMetaData) = getAttestationAttributes()
         val expiresAt = issuedAt + validity
         val notBefore = calculateNotUseBefore?.invoke(issuedAt)
 

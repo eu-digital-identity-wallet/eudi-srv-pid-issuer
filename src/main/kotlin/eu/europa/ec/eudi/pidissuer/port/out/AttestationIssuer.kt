@@ -39,17 +39,16 @@ interface AttestationIssuer {
     suspend operator fun invoke(request: AuthorizedCredentialRequest): CredentialResponse
 }
 
-context(_: Raise<IssueCredentialError>)
+context(_: Raise<IssueCredentialError>, validateProof: ValidateProof,)
 suspend fun AttestationIssuer.keyAttestation(
     request: AuthorizedCredentialRequest,
     at: Instant,
-    validateProof: ValidateProof,
 ): KeyAttestation {
     check(supportedCredential.deviceBinding is DeviceBinding.Required) {
         "Applicable only to credentials with device binding"
     }
     val proof =
-        context(validateProof, supportedCredential) {
+        context(supportedCredential) {
             validateProof(request.proof, at)
         }
     ensureNotNull(proof) {
@@ -108,4 +107,9 @@ private class DeferredIssuer(
         log.info("Repackaged $credentialResponse  as $deferred")
         return deferred
     }
+}
+
+fun interface GetAttestationAttributes<out Data> {
+    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>, authorizationContext: AuthorizationContext)
+    suspend operator fun invoke(): Data
 }

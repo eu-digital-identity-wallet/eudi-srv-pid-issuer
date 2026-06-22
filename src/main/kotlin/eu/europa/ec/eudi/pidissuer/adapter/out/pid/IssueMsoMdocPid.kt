@@ -26,6 +26,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.GetAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.keyAttestation
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
@@ -325,7 +326,7 @@ private val msoMdocPidLog = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
  * Service for issuing PID MsoMdoc credential
  */
 internal class IssueMsoMdocPid(
-    private val getPidData: GetPidData,
+    private val getAttestationAttributes: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
     private val encodePidInCbor: EncodePidInCbor,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
@@ -354,11 +355,11 @@ internal class IssueMsoMdocPid(
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
         msoMdocPidLog.info("Handling issuance request ...")
         val issuedAt = clock.now()
-        val keyAttestation = keyAttestation(request, issuedAt, validateProof)
+        val keyAttestation = context(validateProof) { keyAttestation(request, issuedAt) }
         val deviceKeys =
             keyAttestation.credentialKeys.value
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
-        val (pid, pidMetaData) = getPidData(authorizationContext)
+        val (pid, pidMetaData) = getAttestationAttributes()
         val expiresAt = issuedAt + validity
         val notificationId = if (notificationsEnabled) generateNotificationId() else null
         val clientStatus = authorizationContext.clientStatus.status.statusList

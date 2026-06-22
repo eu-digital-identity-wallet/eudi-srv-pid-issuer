@@ -19,6 +19,7 @@ import arrow.core.raise.Raise
 import eu.europa.ec.eudi.pidissuer.domain.toZonedDateTime
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import eu.europa.ec.eudi.pidissuer.port.out.GetAttestationAttributes
 import kotlinx.datetime.TimeZone
 import java.util.*
 import kotlin.time.Clock
@@ -28,9 +29,9 @@ class GetEuropeanHealthInsuranceCardDataMock(
     private val clock: Clock,
     private val timeZone: TimeZone,
     private val issuingCountry: IssuingCountry,
-) : GetEuropeanHealthInsuranceCardData {
-    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>)
-    override suspend fun invoke(authorizationContext: AuthorizationContext): EuropeanHealthInsuranceCard {
+) : GetAttestationAttributes<EuropeanHealthInsuranceCard> {
+    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>, authorizationContext: AuthorizationContext)
+    override suspend fun invoke(): EuropeanHealthInsuranceCard {
         val now = clock.now()
         val endingDate = now + 365.days
         val startingDate = endingDate - (5 * 31).days

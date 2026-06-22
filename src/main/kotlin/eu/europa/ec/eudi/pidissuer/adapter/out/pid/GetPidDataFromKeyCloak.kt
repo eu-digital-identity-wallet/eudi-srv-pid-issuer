@@ -22,8 +22,10 @@ import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.util.JSONObjectUtils
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAssurancePlaceOfBirth
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.loadResource
+import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.Username
+import eu.europa.ec.eudi.pidissuer.port.out.GetAttestationAttributes
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -80,7 +82,7 @@ class GetPidDataFromKeyCloak(
     private val keyCloak: Url,
     private val administrationClient: AdministrationClient,
     private val users: Realm,
-) : GetPidData {
+) : GetAttestationAttributes<Pair<Pid, PidMetaData>> {
     init {
         issuingJurisdiction?.let {
             require(it.startsWith(issuerCountry.value)) {
@@ -89,11 +91,11 @@ class GetPidDataFromKeyCloak(
         }
     }
 
-    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>)
-    override suspend fun invoke(username: Username): Pair<Pid, PidMetaData> {
+    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>, authorizationContext: AuthorizationContext)
+    override suspend fun invoke(): Pair<Pid, PidMetaData> {
         log.info("Trying to get PID Data from Keycloak ...")
         val userInfo =
-            userInfo(username)
+            userInfo(authorizationContext.username)
                 .also { if (log.isInfoEnabled) log.info(it.toString()) }
         return pid(userInfo)
     }

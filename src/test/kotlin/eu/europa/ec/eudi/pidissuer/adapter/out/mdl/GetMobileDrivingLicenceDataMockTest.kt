@@ -51,15 +51,16 @@ internal class GetMobileDrivingLicenceDataMockTest {
                     expiresAt = expiresAt,
                 )
 
-            either {
-                getMobileDrivingLicenceData(
-                    AuthorizationContext(
-                        "username",
-                        BearerAccessToken.parse("Bearer token"),
-                        nonEmptySetOf(Scope("test")),
-                        clientStatus = clientStatus,
-                    ),
+            val authorizationContext =
+                AuthorizationContext(
+                    "username",
+                    BearerAccessToken.parse("Bearer token"),
+                    nonEmptySetOf(Scope("test")),
+                    clientStatus = clientStatus,
                 )
-            }.getOrElse { fail() }
+
+            context(authorizationContext) {
+                either { getMobileDrivingLicenceData() }.getOrElse { fail() }
+            }
         }
 }

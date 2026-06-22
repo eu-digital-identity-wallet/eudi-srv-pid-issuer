@@ -26,6 +26,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.GetAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.keyAttestation
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
@@ -362,7 +363,7 @@ internal fun mobileDrivingLicenceV1(
  * Issuing service for Mobile Driving Licence.
  */
 internal class IssueMobileDrivingLicence(
-    private val getMobileDrivingLicenceData: GetMobileDrivingLicenceData,
+    private val getAttestationAttributes: GetAttestationAttributes<MobileDrivingLicence>,
     private val encodeMobileDrivingLicenceInCbor: EncodeMobileDrivingLicenceInCbor,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
@@ -391,11 +392,11 @@ internal class IssueMobileDrivingLicence(
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
         log.info("Issuing mDL")
         val issuedAt = clock.now()
-        val keyAttestation = keyAttestation(request, issuedAt, validateProof)
+        val keyAttestation = context(validateProof) { keyAttestation(request, issuedAt) }
         val deviceKeys =
             keyAttestation.credentialKeys.value
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
-        val licence = getMobileDrivingLicenceData(authorizationContext)
+        val licence = getAttestationAttributes()
         val expiresAt = issuedAt + validity
         val notificationId = if (notificationsEnabled) generateNotificationId() else null
         val clientStatus = authorizationContext.clientStatus.status.statusList

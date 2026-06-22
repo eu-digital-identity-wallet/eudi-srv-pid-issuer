@@ -154,7 +154,7 @@ class IssueCredential(
         return context(authorizationContext, credentialIssuerMetadata) {
             val validatedRequest = request.validate()
             val (authorizedRequest, issueAttestation) = validatedRequest.authorize()
-            val issued = issueAttestation(authorizedRequest)
+            val issued = issueAttestation.invoke(authorizedRequest)
             val responseEncryption = authorizedRequest.credentialResponseEncryption
             issued.successResponse(responseEncryption)
         }

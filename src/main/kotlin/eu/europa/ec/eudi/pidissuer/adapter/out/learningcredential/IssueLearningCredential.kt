@@ -20,12 +20,14 @@ import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.GetPidData
+import eu.europa.ec.eudi.pidissuer.adapter.out.pid.Pid
+import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMetaData
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.GetAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.keyAttestation
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
@@ -43,7 +45,7 @@ internal class IssueLearningCredential(
     override val supportedCredential: SdJwtVcCredentialConfiguration,
     override val publicKey: JWK,
     private val clock: Clock,
-    private val getLearningCredential: GetLearningCredential,
+    private val getAttestationAttributes: GetAttestationAttributes<LearningCredential>,
     override val validity: Duration,
     private val encodeLearningCredential: EncodeLearningCredential,
     private val notificationsEnabled: Boolean,
@@ -61,8 +63,8 @@ internal class IssueLearningCredential(
         log.info("Issuing Learning Credential")
 
         val issuedAt = clock.now()
-        val keyAttestation = keyAttestation(request, issuedAt, validateProof)
-        val learningCredentialAttributes = getLearningCredential(authorizationContext)
+        val keyAttestation = context(validateProof) { keyAttestation(request, issuedAt) }
+        val learningCredentialAttributes = getAttestationAttributes()
 
         val expiresAt =
             run {
@@ -120,7 +122,7 @@ internal class IssueLearningCredential(
             issuerSigningKey: IssuerSigningKey,
             deviceBinding: DeviceBinding.Required,
             clock: Clock,
-            getPidData: GetPidData,
+            getPidData: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
             validity: Duration,
             digestsHashAlgorithm: HashAlgorithm,
             notificationsEnabled: Boolean,
@@ -142,7 +144,7 @@ internal class IssueLearningCredential(
                 credentialConfiguration,
                 issuerSigningKey.key.toPublicJWK(),
                 clock,
-                GetLearningCredential.mock(clock, getPidData),
+                GetLearningCredentialMock(clock, getPidData),
                 validity,
                 EncodeLearningCredential.sdJwtVcCompact(
                     digestsHashAlgorithm,

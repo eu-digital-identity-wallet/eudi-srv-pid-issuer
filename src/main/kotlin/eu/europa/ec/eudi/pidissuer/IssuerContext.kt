@@ -662,7 +662,7 @@ fun beans(
                     val pidMsoMdocReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.pid.mso_mdoc")
                     val issueMsoMdocPid =
                         IssueMsoMdocPid(
-                            getPidData = bean(),
+                            getAttestationAttributes = bean(),
                             encodePidInCbor = bean(),
                             notificationsEnabled =
                                 env.getProperty<Boolean>("issuer.pid.mso_mdoc.notifications.enabled")
@@ -703,7 +703,7 @@ fun beans(
                         IssueSdJwtVcPid(
                             hashAlgorithm = digestsHashAlgorithm,
                             issuerSigningKey = getIssuerSigningKey("issuer.pid.sd_jwt_vc.signing-key"),
-                            getPidData = bean(),
+                            getAttestationAttributes = bean(),
                             clock = clock,
                             timeZone = timeZone,
                             credentialIssuerId = issuerPublicUrl,
@@ -738,7 +738,7 @@ fun beans(
                     val mdlIssuerReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.mdl")
                     val mdlIssuer =
                         IssueMobileDrivingLicence(
-                            getMobileDrivingLicenceData = bean(),
+                            getAttestationAttributes = bean(),
                             encodeMobileDrivingLicenceInCbor = bean(),
                             notificationsEnabled =
                                 env.getProperty<Boolean>("issuer.mdl.notifications.enabled")
@@ -799,7 +799,7 @@ fun beans(
                                 credentialIssuerId = issuerPublicUrl,
                                 clock = clock,
                                 validity = validity,
-                                getEuropeanHealthInsuranceCardData = getEuropeanHealthInsuranceCardData,
+                                getAttestationAttributes = getEuropeanHealthInsuranceCardData,
                                 notificationsEnabled = ehicNotificationsEnabled,
                                 generateNotificationId = bean(),
                                 storeIssuedCredential = bean(),
@@ -819,7 +819,7 @@ fun beans(
                                 credentialIssuerId = issuerPublicUrl,
                                 clock = bean(),
                                 validity = validity,
-                                getEuropeanHealthInsuranceCardData = getEuropeanHealthInsuranceCardData,
+                                getAttestationAttributes = getEuropeanHealthInsuranceCardData,
                                 notificationsEnabled = ehicNotificationsEnabled,
                                 generateNotificationId = bean(),
                                 storeIssuedCredential = bean(),
@@ -954,12 +954,12 @@ fun beans(
             requireNotNull(algorithms) { "DPoP is required but Authorization Server does not support DPoP." }
         }
 
-        algorithms?.let {
-            log.info("DPoP support will be enabled. Supported algorithms: $it")
+        algorithms?.let {algs->
+            log.info("DPoP support will be enabled. Supported algorithms: $algs")
 
             val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
 
-            registerBean { DPoPConfigurationProperties(it, realm) }
+            registerBean { DPoPConfigurationProperties(algs, realm) }
         }
     }
 
@@ -1425,7 +1425,7 @@ private fun KeyStore.loadJwk(
 }
 
 /**
- * Indicates whether a random key pairs should be generated, or a key pair should be loaded from a keystore.
+ * Indicates whether a random key pair should be generated, or a key pair should be loaded from a keystore.
  */
 private enum class KeyOption {
     GenerateRandom,

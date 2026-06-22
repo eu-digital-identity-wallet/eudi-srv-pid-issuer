@@ -39,6 +39,7 @@ import eu.europa.ec.eudi.pidissuer.jwtProof
 import eu.europa.ec.eudi.pidissuer.jwtProofWithKeyAttestation
 import eu.europa.ec.eudi.pidissuer.keyAttestationJWT
 import eu.europa.ec.eudi.pidissuer.port.input.*
+import eu.europa.ec.eudi.pidissuer.port.out.GetAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
 import kotlinx.coroutines.test.runTest
@@ -118,8 +119,8 @@ class BaseWalletApiTest {
         fun getPidData(
             clock: Clock,
             timeZone: TimeZone,
-        ): GetPidData =
-            GetPidData {
+        ): GetAttestationAttributes<Pair<Pid, PidMetaData>> =
+            GetAttestationAttributes {
                 val pid =
                     Pid(
                         familyName = FamilyName("Surname"),

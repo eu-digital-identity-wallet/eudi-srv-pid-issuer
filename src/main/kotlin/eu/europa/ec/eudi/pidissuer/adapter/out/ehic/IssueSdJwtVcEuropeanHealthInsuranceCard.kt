@@ -28,6 +28,7 @@ import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.GetAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.keyAttestation
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
@@ -218,7 +219,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
     private val encode: EncodeEuropeanHealthInsuranceCardInSdJwtVc,
     private val clock: Clock,
     override val validity: Duration,
-    private val getEuropeanHealthInsuranceCardData: GetEuropeanHealthInsuranceCardData,
+    private val getAttestationAttributes: GetAttestationAttributes<EuropeanHealthInsuranceCard>,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredential: StoreIssuedCredential,
@@ -233,8 +234,8 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
         log.info("Issuing DC4EU EHIC")
 
         val now = clock.now()
-        val keyAttestation = keyAttestation(request, now, validateProof)
-        val ehicAttributes = getEuropeanHealthInsuranceCardData(authorizationContext)
+        val keyAttestation = context(validateProof) { keyAttestation(request, now) }
+        val ehicAttributes = getAttestationAttributes()
         val issuedAt = now
         val expiresAt = issuedAt + validity
         val notificationId = if (notificationsEnabled) generateNotificationId() else null
@@ -287,7 +288,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             credentialIssuerId: CredentialIssuerId,
             clock: Clock,
             validity: Duration,
-            getEuropeanHealthInsuranceCardData: GetEuropeanHealthInsuranceCardData,
+            getAttestationAttributes: GetAttestationAttributes<EuropeanHealthInsuranceCard>,
             notificationsEnabled: Boolean,
             generateNotificationId: GenerateNotificationId,
             storeIssuedCredential: StoreIssuedCredential,
@@ -315,7 +316,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                 ),
                 clock,
                 validity,
-                getEuropeanHealthInsuranceCardData,
+                getAttestationAttributes,
                 notificationsEnabled,
                 generateNotificationId,
                 storeIssuedCredential,
@@ -328,7 +329,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
             credentialIssuerId: CredentialIssuerId,
             clock: Clock,
             validity: Duration,
-            getEuropeanHealthInsuranceCardData: GetEuropeanHealthInsuranceCardData,
+            getAttestationAttributes: GetAttestationAttributes<EuropeanHealthInsuranceCard>,
             notificationsEnabled: Boolean,
             generateNotificationId: GenerateNotificationId,
             storeIssuedCredential: StoreIssuedCredential,
@@ -356,7 +357,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                 ),
                 clock,
                 validity,
-                getEuropeanHealthInsuranceCardData,
+                getAttestationAttributes,
                 notificationsEnabled,
                 generateNotificationId,
                 storeIssuedCredential,
