@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid
 import arrow.core.nonEmptySetOf
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.IssueMdoc
+import eu.europa.ec.eudi.pidissuer.adapter.out.coseAlgorithm
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.EncodeAttributesInMdoc
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
@@ -356,9 +357,9 @@ fun IssueMsoMdocPid(
     allocateStatus: AllocateStatus,
     issuerSigningKey: IssuerSigningKey,
 ): IssueMdoc<PidAttributes> {
-    val encodeAttributes = encodePidInMdoc(PidMsoMdocV1DocType, issuerSigningKey)
     val configuration =
-        pidMsoMdocV1(encodeAttributes.signingAlgorithm, deviceBinding, credentialReusePolicy, validity)
+        pidMsoMdocV1(issuerSigningKey.coseAlgorithm, deviceBinding, credentialReusePolicy, validity)
+    val encodeAttributes = encodePidInMdoc(configuration.docType, issuerSigningKey)
     return IssueMdoc(
         configuration,
         clock,
