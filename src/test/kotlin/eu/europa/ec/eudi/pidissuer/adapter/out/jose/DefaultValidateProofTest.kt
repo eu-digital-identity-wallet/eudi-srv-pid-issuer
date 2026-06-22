@@ -22,7 +22,7 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidMsoMdocV1
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.pidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateAttestationProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateJwtProofWithKeyAttestation
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.VerifyKeyAttestation

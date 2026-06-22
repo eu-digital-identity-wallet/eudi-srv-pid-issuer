@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential
+package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.learningcredential
 
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT

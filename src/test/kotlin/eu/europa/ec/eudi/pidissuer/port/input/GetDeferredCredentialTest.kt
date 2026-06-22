@@ -26,7 +26,7 @@ import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.EncryptedJWT
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidMsoMdocV1
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.pidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptDeferredResponse

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.pid
+package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid
 
 import arrow.core.*
 import arrow.core.raise.Raise
@@ -21,7 +21,15 @@ import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcAddressClaim
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcAssuranceBirthFamilyName
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcAssuranceBirthGivenName
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcAssuranceNationalities
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcAssurancePlaceOfBirth
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcBirthDate
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcFamilyName
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcGivenName
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext

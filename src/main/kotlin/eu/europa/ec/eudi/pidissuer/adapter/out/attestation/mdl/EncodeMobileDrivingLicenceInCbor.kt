@@ -13,19 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.pid
+package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl
 
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.domain.CoseAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import kotlin.time.Instant
 
-interface EncodePidInCbor {
+/**
+ * Encodes a Mobile Driving Licence in CBOR format.
+ */
+interface EncodeMobileDrivingLicenceInCbor {
     val signingAlgorithm: CoseAlgorithm
 
     suspend operator fun invoke(
-        pid: Pid,
-        pidMetaData: PidMetaData,
+        licence: MobileDrivingLicence,
         deviceKey: ECKey,
         issuedAt: Instant,
         expiresAt: Instant,

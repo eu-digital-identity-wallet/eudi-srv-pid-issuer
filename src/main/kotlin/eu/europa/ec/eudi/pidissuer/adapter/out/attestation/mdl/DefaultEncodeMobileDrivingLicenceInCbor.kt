@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
+package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl
 
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.DrivingPrivilege.Restriction.GenericRestriction
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.DrivingPrivilege.Restriction.ParameterizedRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.coseAlgorithm
-import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.GenericRestriction
-import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.ParameterizedRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.MsoMdocSigner
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.toTDate
 import eu.europa.ec.eudi.pidissuer.domain.ClaimDefinition

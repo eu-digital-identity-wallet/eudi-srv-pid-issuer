@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
+package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl
 
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
@@ -21,6 +21,7 @@ import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.toECKeyOrFail
 import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.domain.invoke
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof

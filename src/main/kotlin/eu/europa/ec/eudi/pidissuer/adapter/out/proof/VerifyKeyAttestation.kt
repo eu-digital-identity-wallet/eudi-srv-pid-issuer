@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.proof
 
 import arrow.core.NonEmptyList
 import arrow.core.NonEmptySet
+import arrow.core.getOrElse
 import arrow.core.raise.Raise
 import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
@@ -35,7 +36,6 @@ import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
-import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationJWT
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
@@ -95,7 +95,7 @@ class VerifyKeyAttestation(
         return when {
             kid != null && x5c.isNullOrEmpty() -> {
                 val didUrl = URI.create(kid)
-                val jwk = resolveDidUrl(didUrl).getOrThrow()
+                val jwk = resolveDidUrl(didUrl).getOrElse { throw it }
                 WalletProviderSigningKey.DIDUrl(jwk, didUrl)
             }
 

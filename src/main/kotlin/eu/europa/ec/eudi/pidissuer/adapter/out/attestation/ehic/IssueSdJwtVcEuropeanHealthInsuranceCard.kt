@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.ehic
+package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.ehic
 
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
@@ -22,7 +22,7 @@ import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.IsAttribute
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.IsAttribute
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext

@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.pid
+package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid
 
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAddressClaim
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcAddressClaim
 import eu.europa.ec.eudi.pidissuer.adapter.out.sdJwtVcIssuer
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType

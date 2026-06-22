@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential
+package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.learningcredential
 
 import arrow.core.nonEmptyListOf
 import arrow.core.nonEmptySetOf
@@ -21,8 +21,8 @@ import arrow.core.raise.Raise
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.Pid
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMetaData
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.Pid
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidMetaData
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.domain.AttestationCategory

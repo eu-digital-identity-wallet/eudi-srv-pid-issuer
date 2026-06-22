@@ -13,9 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.util
+package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid
 
-import arrow.core.Either
-import arrow.core.getOrElse
+import com.nimbusds.jose.jwk.ECKey
+import eu.europa.ec.eudi.pidissuer.domain.CoseAlgorithm
+import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
+import kotlin.time.Instant
 
-internal fun <T> Either<Throwable, T>.getOrThrow(): T = getOrElse { throw it }
+interface EncodePidInCbor {
+    val signingAlgorithm: CoseAlgorithm
+
+    suspend operator fun invoke(
+        pid: Pid,
+        pidMetaData: PidMetaData,
+        deviceKey: ECKey,
+        issuedAt: Instant,
+        expiresAt: Instant,
+        statusListToken: StatusListToken?,
+    ): String
+}

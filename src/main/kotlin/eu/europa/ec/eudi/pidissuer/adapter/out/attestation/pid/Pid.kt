@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.pid
+package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid
 
 import arrow.core.NonEmptyList
 import kotlinx.datetime.LocalDate

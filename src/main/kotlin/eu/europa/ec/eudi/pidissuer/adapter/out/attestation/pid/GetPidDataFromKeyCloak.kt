@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.pid
+package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid
 
 import arrow.core.nonEmptyListOf
 import arrow.core.raise.Raise
 import arrow.core.raise.context.ensure
 import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.util.JSONObjectUtils
-import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.OidcAssurancePlaceOfBirth
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcAssurancePlaceOfBirth
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.loadResource
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError

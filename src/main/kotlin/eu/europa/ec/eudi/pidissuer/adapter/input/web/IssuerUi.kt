@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.getOrElse
-import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.appendPath
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfigurationId
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
@@ -102,7 +101,7 @@ class IssuerUi(
                 log.info("Successfully generated Credentials Offer. URI: '{}'", credentialsOffer)
 
                 val qrCode =
-                    generateQrCode(credentialsOffer, Format.PNG, Dimensions(Pixels(300u), Pixels(300u))).getOrThrow()
+                    generateQrCode(credentialsOffer, Format.PNG, Dimensions(Pixels(300u), Pixels(300u))).getOrElse { throw it }
                 log.info("Successfully generated QR Code. Displaying generated Credentials Offer.")
                 ServerResponse
                     .ok()

@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential
+package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.learningcredential
 
 import arrow.core.nonEmptyListOf
 import arrow.core.raise.Raise
-import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.IsoAlpha2CountryCode
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.Pid
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMetaData
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.IsoAlpha2CountryCode
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.Pid
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidMetaData
 import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError

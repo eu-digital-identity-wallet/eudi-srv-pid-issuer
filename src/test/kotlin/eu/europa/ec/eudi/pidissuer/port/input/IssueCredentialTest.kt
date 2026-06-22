@@ -23,9 +23,9 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMsoMdocScope
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMsoMdocV1CredentialConfigurationId
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidMsoMdocV1
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidMsoMdocScope
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidMsoMdocV1CredentialConfigurationId
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.pidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.jwtProof
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.AttestationIssuer
