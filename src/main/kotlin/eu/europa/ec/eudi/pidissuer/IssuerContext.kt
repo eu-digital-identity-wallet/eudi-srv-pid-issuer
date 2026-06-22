@@ -687,10 +687,13 @@ fun beans(
                             credentialReusePolicy = pidMsoMdocReusePolicy,
                             validity = duration,
                             validateProof = bean(),
-                            notificationsEnabled =
-                                env.getProperty<Boolean>("issuer.pid.mso_mdoc.notifications.enabled")
-                                    ?: true,
-                            generateNotificationId = bean(),
+                            generateNotificationId =
+                                run {
+                                    val enabled =
+                                        env.getProperty<Boolean>("issuer.pid.mso_mdoc.notifications.enabled")
+                                            ?: true
+                                    if (enabled) bean<GenerateNotificationId>() else null
+                                },
                             storeIssuedCredential = bean(),
                             allocateStatus = bean(),
                         )

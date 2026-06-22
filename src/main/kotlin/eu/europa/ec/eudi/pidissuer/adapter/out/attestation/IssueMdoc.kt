@@ -38,8 +38,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import kotlin.time.Clock
+import kotlin.time.Instant
 
-class MdocIssuer<Data>(
+class IssueMdoc<Data>(
     override val configuration: MsoMdocCredentialConfiguration,
     private val clock: Clock,
     private val validateProof: ValidateProof,
@@ -61,20 +62,14 @@ class MdocIssuer<Data>(
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
         val attributes = getAttestationAttributes()
         val expiresAt = issuedAt + configuration.validity
-        val notificationId = if (generateNotificationId != null) generateNotificationId() else null
+        val notificationId = notificationId()
         val clientStatus = authorizationContext.clientStatus.status.statusList
         val keyStorageStatus = keyAttestation.keyStorageStatus.status.statusList
 
         val issuedCredentials =
             deviceKeys
                 .parMap(Dispatchers.Default, 4) { deviceKey ->
-                    val statusListToken =
-                        if (allocateStatus == null)
-                            null
-                        else
-                            context(allocateStatus) {
-                                allocateStatusWithPolicy(expiresAt)
-                            }
+                    val statusListToken = statusListToken(expiresAt)
                     val encodedCredential =
                         encodeAttributes(
                             attributes,
@@ -108,6 +103,15 @@ class MdocIssuer<Data>(
             .Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
     }
 
+    private suspend fun statusListToken(expiresAt: Instant): StatusListToken? =
+        allocateStatus?.let {
+            context(it) {
+                allocateStatusWithPolicy(expiresAt)
+            }
+        }
+
+    private suspend fun notificationId(): NotificationId? = generateNotificationId?.let { it() }
+
     companion object {
         operator fun <Data> invoke(
             configuration: MsoMdocCredentialConfiguration,
@@ -119,8 +123,8 @@ class MdocIssuer<Data>(
             allocateStatus: AllocateStatus?,
             issuerSigningKey: IssuerSigningKey,
             usage: MDocBuilder.(Data) -> Unit,
-        ): MdocIssuer<Data> =
-            MdocIssuer(
+        ): IssueMdoc<Data> =
+            IssueMdoc(
                 configuration,
                 clock,
                 validateProof,

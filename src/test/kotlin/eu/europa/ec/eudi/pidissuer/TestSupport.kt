@@ -45,7 +45,7 @@ import kotlin.time.Clock
         "spring.sql.init.mode=embedded",
     ],
 )
-@ContextConfiguration(initializers = [BeansDslApplicationContextInitializer::class])
+@ContextConfiguration
 internal annotation class PidIssuerApplicationTest(
     /**
      * [Configuration] classes that contain extra bean definitions.
@@ -53,6 +53,15 @@ internal annotation class PidIssuerApplicationTest(
      */
     @get:AliasFor(annotation = ContextConfiguration::class)
     val classes: Array<KClass<*>> = [],
+    /**
+     * Custom [ApplicationContextInitializer] classes.
+     * Defaults to [BeansDslApplicationContextInitializer] for production beans.
+     * When overriding, the custom initializer MUST invoke [BeansDslApplicationContextInitializer]
+     * internally (e.g. test mocks).
+     */
+    @get:AliasFor(annotation = ContextConfiguration::class)
+    val initializers: Array<KClass<out ApplicationContextInitializer<*>>> =
+        [BeansDslApplicationContextInitializer::class],
 )
 
 /**
