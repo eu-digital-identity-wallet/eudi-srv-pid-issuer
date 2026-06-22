@@ -27,12 +27,12 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.GetAttestationAttributes
+import eu.europa.ec.eudi.pidissuer.port.out.allocateStatusWithPolicy
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.keyAttestation
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
-import eu.europa.ec.eudi.pidissuer.port.out.status.withPolicy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
@@ -363,6 +363,7 @@ internal fun mobileDrivingLicenceV1(
  * Issuing service for Mobile Driving Licence.
  */
 internal class IssueMobileDrivingLicence(
+    override val configuration: MsoMdocCredentialConfiguration,
     private val getAttestationAttributes: GetAttestationAttributes<MobileDrivingLicence>,
     private val encodeMobileDrivingLicenceInCbor: EncodeMobileDrivingLicenceInCbor,
     private val notificationsEnabled: Boolean,
@@ -370,18 +371,9 @@ internal class IssueMobileDrivingLicence(
     private val clock: Clock,
     override val validity: Duration,
     private val storeIssuedCredential: StoreIssuedCredential,
-    private val generateStatusListToken: AllocateStatus,
-    private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+    private val allocateStatus: AllocateStatus,
     private val validateProof: ValidateProof,
-    deviceBinding: DeviceBinding.Required,
 ) : AttestationIssuer {
-    override val supportedCredential: MsoMdocCredentialConfiguration =
-        mobileDrivingLicenceV1(
-            encodeMobileDrivingLicenceInCbor.signingAlgorithm,
-            deviceBinding,
-            credentialReusePolicy,
-        )
-
     override val publicKey: JWK? = null
 
     init {
@@ -405,8 +397,8 @@ internal class IssueMobileDrivingLicence(
             deviceKeys
                 .parMap(Dispatchers.Default, 4) { deviceKey ->
                     val statusListToken =
-                        context(credentialReusePolicy) {
-                            generateStatusListToken.withPolicy(supportedCredential.docType, expiresAt)
+                        context(allocateStatus) {
+                            allocateStatusWithPolicy(expiresAt)
                         }
 
                     val encodedCredential =
@@ -421,7 +413,7 @@ internal class IssueMobileDrivingLicence(
                     storeIssuedCredential(
                         IssuedCredential(
                             format = MSO_MDOC_FORMAT,
-                            type = supportedCredential.docType,
+                            type = configuration.docType,
                             issuedAt = issuedAt,
                             expiresAt = expiresAt,
                             notificationId = notificationId,
@@ -442,5 +434,36 @@ internal class IssueMobileDrivingLicence(
                 log.info("Successfully issued mDL(s)")
                 log.debug("Issued mDL(s) data {}", it)
             }
+    }
+
+    companion object {
+        operator fun invoke(
+            getAttestationAttributes: GetAttestationAttributes<MobileDrivingLicence>,
+            encodeMobileDrivingLicenceInCbor: EncodeMobileDrivingLicenceInCbor,
+            notificationsEnabled: Boolean,
+            generateNotificationId: GenerateNotificationId,
+            clock: Clock,
+            validity: Duration,
+            storeIssuedCredential: StoreIssuedCredential,
+            allocateStatus: AllocateStatus,
+            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+            validateProof: ValidateProof,
+            deviceBinding: DeviceBinding.Required,
+        ): IssueMobileDrivingLicence {
+            val credentialSigningAlgorithm = encodeMobileDrivingLicenceInCbor.signingAlgorithm
+            val configuration = mobileDrivingLicenceV1(credentialSigningAlgorithm, deviceBinding, credentialReusePolicy)
+            return IssueMobileDrivingLicence(
+                configuration,
+                getAttestationAttributes,
+                encodeMobileDrivingLicenceInCbor,
+                notificationsEnabled,
+                generateNotificationId,
+                clock,
+                validity,
+                storeIssuedCredential,
+                allocateStatus,
+                validateProof,
+            )
+        }
     }
 }

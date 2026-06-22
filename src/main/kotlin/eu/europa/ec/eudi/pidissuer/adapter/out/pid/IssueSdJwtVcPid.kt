@@ -28,12 +28,12 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.GetAttestationAttributes
+import eu.europa.ec.eudi.pidissuer.port.out.allocateStatusWithPolicy
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.keyAttestation
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
-import eu.europa.ec.eudi.pidissuer.port.out.status.withPolicy
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.coroutines.Dispatchers
 import kotlinx.datetime.TimeZone
@@ -205,7 +205,8 @@ private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
  * Service for issuing PID SD JWT credential
  */
 class IssueSdJwtVcPid private constructor(
-    override val supportedCredential: SdJwtVcCredentialConfiguration,
+    override val configuration: SdJwtVcCredentialConfiguration,
+    override val publicKey: JWK,
     override val validity: Duration,
     private val clock: Clock,
     private val timeZone: TimeZone,
@@ -214,13 +215,10 @@ class IssueSdJwtVcPid private constructor(
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredential: StoreIssuedCredential,
-    private val generateStatusListToken: AllocateStatus,
-    private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+    private val allocateStatus: AllocateStatus,
     private val validateProof: ValidateProof,
     private val encodePidInSdJwt: EncodePidInSdJwtVc,
 ) : AttestationIssuer {
-    override val publicKey: JWK = encodePidInSdJwt.issuerSigningKey.key.toPublicJWK()
-
     init {
         require(validity.isPositive())
     }
@@ -261,8 +259,8 @@ class IssueSdJwtVcPid private constructor(
             deviceKeys
                 .parMap(Dispatchers.Default, 4) { deviceKey ->
                     val statusListToken =
-                        context(credentialReusePolicy) {
-                            generateStatusListToken.withPolicy(supportedCredential.type.value, expiresAt)
+                        context(allocateStatus) {
+                            allocateStatusWithPolicy(expiresAt)
                         }
                     val encodedCredential =
                         encodePidInSdJwt(
@@ -278,7 +276,7 @@ class IssueSdJwtVcPid private constructor(
                     storeIssuedCredential(
                         IssuedCredential(
                             format = SD_JWT_VC_FORMAT,
-                            type = supportedCredential.type.value,
+                            type = configuration.type.value,
                             issuedAt = issuedAt,
                             expiresAt = expiresAt,
                             notificationId = notificationId,
@@ -317,27 +315,19 @@ class IssueSdJwtVcPid private constructor(
             notificationsEnabled: Boolean,
             generateNotificationId: GenerateNotificationId,
             storeIssuedCredential: StoreIssuedCredential,
-            generateStatusListToken: AllocateStatus,
-            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+            allocateStatus: AllocateStatus,
             validateProof: ValidateProof,
             deviceBinding: DeviceBinding.Required,
+            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
         ): IssueSdJwtVcPid {
-            val supportedCredential: SdJwtVcCredentialConfiguration =
-                pidSdJwtVcV1(
-                    issuerSigningKey.signingAlgorithm,
-                    deviceBinding,
-                    credentialReusePolicy,
-                )
+            val configuration =
+                pidSdJwtVcV1(issuerSigningKey.signingAlgorithm, deviceBinding, credentialReusePolicy)
             val encodePidInSdJwt =
-                EncodePidInSdJwtVc(
-                    credentialIssuerId,
-                    hashAlgorithm,
-                    issuerSigningKey,
-                    supportedCredential.type,
-                )
-
+                EncodePidInSdJwtVc(credentialIssuerId, hashAlgorithm, issuerSigningKey, configuration.type)
+            val publicKey = issuerSigningKey.key.toPublicJWK()
             return IssueSdJwtVcPid(
-                supportedCredential,
+                configuration,
+                publicKey,
                 validity,
                 clock,
                 timeZone,
@@ -346,8 +336,7 @@ class IssueSdJwtVcPid private constructor(
                 notificationsEnabled,
                 generateNotificationId,
                 storeIssuedCredential,
-                generateStatusListToken,
-                credentialReusePolicy,
+                allocateStatus,
                 validateProof,
                 encodePidInSdJwt,
             )

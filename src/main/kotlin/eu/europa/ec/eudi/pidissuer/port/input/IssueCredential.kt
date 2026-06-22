@@ -221,13 +221,13 @@ private fun ValidatedRequest.authorize(): Pair<AuthorizedCredentialRequest, Atte
         ifRight = { credentialConfigurationId ->
             val attestationIssuer =
                 metadata.attestationIssuers
-                    .firstOrNull { iss -> iss.supportedCredential.id == credentialConfigurationId }
+                    .firstOrNull { iss -> iss.configuration.id == credentialConfigurationId }
             ensureNotNull(attestationIssuer) {
                 UnsupportedCredentialConfigurationId(credentialConfigurationId)
             }
 
             val authorizedScopes = authorizationContext.scopes
-            val requiredScopes = attestationIssuer.supportedCredential.scope
+            val requiredScopes = attestationIssuer.configuration.scope
             ensure(requiredScopes in authorizedScopes) {
                 WrongScope(requiredScopes)
             }

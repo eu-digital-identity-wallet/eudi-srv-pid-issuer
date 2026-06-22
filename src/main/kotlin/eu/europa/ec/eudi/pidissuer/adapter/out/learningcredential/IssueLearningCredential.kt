@@ -42,7 +42,7 @@ import kotlin.time.Duration
 private val log = LoggerFactory.getLogger(IssueLearningCredential::class.java)
 
 internal class IssueLearningCredential(
-    override val supportedCredential: SdJwtVcCredentialConfiguration,
+    override val configuration: SdJwtVcCredentialConfiguration,
     override val publicKey: JWK,
     private val clock: Clock,
     private val getAttestationAttributes: GetAttestationAttributes<LearningCredential>,

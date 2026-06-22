@@ -68,7 +68,7 @@ class GetProtectedResourceMetadata(
             scopesSupported =
                 credentialIssuerMetadata.attestationIssuers
                     .map {
-                        it.supportedCredential.scope.value
+                        it.configuration.scope.value
                     }.distinct()
                     .toNonEmptyListOrNull(),
             bearerMethodsSupported = bearerMethodsSupported,

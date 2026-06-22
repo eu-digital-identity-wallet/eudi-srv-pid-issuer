@@ -676,7 +676,7 @@ fun beans(
                                     jwtProofsSupportedSigningAlgorithms,
                                     PreferredKeyStorageStatusPeriod(duration),
                                 ),
-                            generateStatusListToken = bean(),
+                            allocateStatus = bean(),
                             credentialReusePolicy = pidMsoMdocReusePolicy,
                             validateProof = bean(),
                         )
@@ -713,15 +713,15 @@ fun beans(
                                     ?: true,
                             generateNotificationId = bean(),
                             storeIssuedCredential = bean(),
-                            generateStatusListToken = bean(),
+                            allocateStatus = bean(),
                             deviceBinding =
                                 DeviceBinding.ts3(
                                     jwtProofsSupportedSigningAlgorithms,
                                     PreferredKeyStorageStatusPeriod(expiresIn),
                                 ),
-                            credentialReusePolicy = pidSdJwtVcReusePolicy,
                             validity = expiresIn,
                             validateProof = bean(),
+                            credentialReusePolicy = pidSdJwtVcReusePolicy,
                         )
 
                     add(issueSdJwtVcPid)
@@ -752,7 +752,7 @@ fun beans(
                                     jwtProofsSupportedSigningAlgorithms,
                                     PreferredKeyStorageStatusPeriod(duration),
                                 ),
-                            generateStatusListToken = bean(),
+                            allocateStatus = bean(),
                             credentialReusePolicy = mdlIssuerReusePolicy,
                             validateProof = bean(),
                         )

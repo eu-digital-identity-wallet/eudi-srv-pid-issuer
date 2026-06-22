@@ -27,12 +27,12 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.GetAttestationAttributes
+import eu.europa.ec.eudi.pidissuer.port.out.allocateStatusWithPolicy
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.keyAttestation
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
-import eu.europa.ec.eudi.pidissuer.port.out.status.withPolicy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
@@ -326,7 +326,7 @@ private val msoMdocPidLog = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
  * Service for issuing PID MsoMdoc credential
  */
 class IssueMsoMdocPid private constructor(
-    override val supportedCredential: MsoMdocCredentialConfiguration,
+    override val configuration: MsoMdocCredentialConfiguration,
     private val getAttestationAttributes: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
     private val encodePidInCbor: EncodePidInCbor,
     private val notificationsEnabled: Boolean,
@@ -334,8 +334,7 @@ class IssueMsoMdocPid private constructor(
     private val clock: Clock,
     override val validity: Duration,
     private val storeIssuedCredential: StoreIssuedCredential,
-    private val generateStatusListToken: AllocateStatus,
-    private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+    private val allocateStatus: AllocateStatus,
     private val validateProof: ValidateProof,
 ) : AttestationIssuer {
     init {
@@ -362,8 +361,8 @@ class IssueMsoMdocPid private constructor(
             deviceKeys
                 .parMap(Dispatchers.Default, 4) { deviceKey ->
                     val statusListToken =
-                        context(credentialReusePolicy) {
-                            generateStatusListToken.withPolicy(supportedCredential.docType, expiresAt)
+                        context(allocateStatus) {
+                            allocateStatusWithPolicy(expiresAt)
                         }
                     val encodedCredential =
                         encodePidInCbor(
@@ -380,7 +379,7 @@ class IssueMsoMdocPid private constructor(
                     storeIssuedCredential(
                         IssuedCredential(
                             format = MSO_MDOC_FORMAT,
-                            type = supportedCredential.docType,
+                            type = configuration.docType,
                             issuedAt = issuedAt,
                             expiresAt = expiresAt,
                             notificationId = notificationId,
@@ -412,19 +411,15 @@ class IssueMsoMdocPid private constructor(
             clock: Clock,
             validity: Duration,
             storeIssuedCredential: StoreIssuedCredential,
-            generateStatusListToken: AllocateStatus,
-            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+            allocateStatus: AllocateStatus,
             validateProof: ValidateProof,
             deviceBinding: DeviceBinding.Required,
+            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
         ): IssueMsoMdocPid {
-            val supportedCredential: MsoMdocCredentialConfiguration =
-                pidMsoMdocV1(
-                    encodePidInCbor.signingAlgorithm,
-                    deviceBinding,
-                    credentialReusePolicy,
-                )
+            val configuration =
+                pidMsoMdocV1(encodePidInCbor.signingAlgorithm, deviceBinding, credentialReusePolicy)
             return IssueMsoMdocPid(
-                supportedCredential,
+                configuration,
                 getAttestationAttributes,
                 encodePidInCbor,
                 notificationsEnabled,
@@ -432,8 +427,7 @@ class IssueMsoMdocPid private constructor(
                 clock,
                 validity,
                 storeIssuedCredential,
-                generateStatusListToken,
-                credentialReusePolicy,
+                allocateStatus,
                 validateProof,
             )
         }

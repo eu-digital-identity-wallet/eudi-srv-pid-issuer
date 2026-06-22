@@ -15,8 +15,10 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out
 
+import arrow.core.getOrElse
 import arrow.core.raise.Raise
 import arrow.core.raise.context.ensureNotNull
+import arrow.core.raise.either
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
@@ -24,6 +26,7 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreDeferredCredential
+import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
 import org.slf4j.LoggerFactory
 import kotlin.time.Clock
 import kotlin.time.Duration
@@ -31,30 +34,54 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 
 interface AttestationIssuer {
-    val supportedCredential: CredentialConfiguration
+    val configuration: CredentialConfiguration
     val publicKey: JWK?
     val validity: Duration
 
-    context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext,)
+    context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
     suspend operator fun invoke(request: AuthorizedCredentialRequest): CredentialResponse
 }
 
-context(_: Raise<IssueCredentialError>, validateProof: ValidateProof,)
+context(_: Raise<IssueCredentialError>, validateProof: ValidateProof)
 suspend fun AttestationIssuer.keyAttestation(
     request: AuthorizedCredentialRequest,
     at: Instant,
 ): KeyAttestation {
-    check(supportedCredential.deviceBinding is DeviceBinding.Required) {
+    check(configuration.deviceBinding is DeviceBinding.Required) {
         "Applicable only to credentials with device binding"
     }
     val proof =
-        context(supportedCredential) {
+        context(configuration) {
             validateProof(request.proof, at)
         }
     ensureNotNull(proof) {
         IssueCredentialError.MissingProof
     }
     return proof
+}
+
+context(allocateStatus: AllocateStatus)
+suspend fun AttestationIssuer.allocateStatusWithPolicy(expiration: Instant): StatusListToken? {
+    val cfg = configuration
+    val type =
+        when (cfg) {
+            is MsoMdocCredentialConfiguration -> cfg.docType
+            is SdJwtVcCredentialConfiguration -> cfg.type.value
+        }
+
+    return when (val reusePolicy = cfg.credentialReusePolicy) {
+        is CredentialReusePolicy.EUDI if reusePolicy.shouldIncludeStatusList -> {
+            either { allocateStatus(type, expiration) }.getOrElse { throw it.value }
+        }
+
+        CredentialReusePolicy.None -> {
+            null
+        }
+
+        is CredentialReusePolicy.EUDI -> {
+            null
+        }
+    }
 }
 
 fun AttestationIssuer.asDeferred(
@@ -71,9 +98,9 @@ private class DeferredIssuer(
     val clock: Clock,
     val interval: Duration,
 ) : AttestationIssuer by issuer {
-    override val supportedCredential: CredentialConfiguration
+    override val configuration: CredentialConfiguration
         get() =
-            when (val cfg = issuer.supportedCredential) {
+            when (val cfg = issuer.configuration) {
 
                 is MsoMdocCredentialConfiguration -> {
                     cfg.copy(
@@ -92,7 +119,7 @@ private class DeferredIssuer(
 
     private val log = LoggerFactory.getLogger(DeferredIssuer::class.java)
 
-    context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext,)
+    context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
         val credentialResponse = issuer.invoke(request)
 

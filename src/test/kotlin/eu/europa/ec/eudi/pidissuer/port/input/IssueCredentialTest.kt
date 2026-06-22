@@ -58,7 +58,7 @@ class IssueCredentialTest {
 
     private val attestationIssuer =
         object : AttestationIssuer {
-            override val supportedCredential: CredentialConfiguration = msoMdocConfig
+            override val configuration: CredentialConfiguration = msoMdocConfig
             override val publicKey = null
             override val validity = 365.days
 

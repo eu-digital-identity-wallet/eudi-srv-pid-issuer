@@ -214,7 +214,7 @@ private fun europeanHealthInsuranceCardCredentialConfiguration(
 private val log = LoggerFactory.getLogger(IssueSdJwtVcEuropeanHealthInsuranceCard::class.java)
 
 internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
-    override val supportedCredential: SdJwtVcCredentialConfiguration,
+    override val configuration: SdJwtVcCredentialConfiguration,
     override val publicKey: JWK,
     private val encode: EncodeEuropeanHealthInsuranceCardInSdJwtVc,
     private val clock: Clock,

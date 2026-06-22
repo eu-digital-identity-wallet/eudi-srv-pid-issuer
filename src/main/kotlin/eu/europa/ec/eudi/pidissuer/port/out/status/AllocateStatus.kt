@@ -42,22 +42,3 @@ fun interface AllocateStatus {
         val value: Throwable,
     )
 }
-
-context(reusePolicy: CredentialReusePolicy)
-suspend fun AllocateStatus.withPolicy(
-    type: String,
-    expiration: Instant,
-): StatusListToken? =
-    when (reusePolicy) {
-        is CredentialReusePolicy.EUDI if reusePolicy.shouldIncludeStatusList -> {
-            either { invoke(type, expiration) }.getOrElse { throw it.value }
-        }
-
-        CredentialReusePolicy.None -> {
-            null
-        }
-
-        is CredentialReusePolicy.EUDI -> {
-            null
-        }
-    }

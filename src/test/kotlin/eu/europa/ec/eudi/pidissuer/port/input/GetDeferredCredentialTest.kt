@@ -56,7 +56,7 @@ class GetDeferredCredentialTest {
 
     private val attestationIssuer =
         object : AttestationIssuer {
-            override val supportedCredential: CredentialConfiguration = credentialConfiguration
+            override val configuration: CredentialConfiguration = credentialConfiguration
             override val publicKey = null
             override val validity = 365.days
 
