@@ -15,12 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.status
 
-import arrow.core.getOrElse
 import arrow.core.raise.Raise
-import arrow.core.raise.either
-import eu.europa.ec.eudi.pidissuer.domain.CredentialReusePolicy
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
-import eu.europa.ec.eudi.pidissuer.domain.shouldIncludeStatusList
 import kotlin.time.Instant
 
 fun interface AllocateStatus {

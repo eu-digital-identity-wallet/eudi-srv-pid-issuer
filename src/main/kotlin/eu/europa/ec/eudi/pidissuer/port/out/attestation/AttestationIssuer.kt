@@ -19,26 +19,10 @@ import arrow.core.getOrElse
 import arrow.core.raise.Raise
 import arrow.core.raise.context.ensureNotNull
 import arrow.core.raise.either
-import eu.europa.ec.eudi.pidissuer.domain.AuthorizedCredentialRequest
-import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
-import eu.europa.ec.eudi.pidissuer.domain.CredentialConfigurationId
-import eu.europa.ec.eudi.pidissuer.domain.CredentialResponse
-import eu.europa.ec.eudi.pidissuer.domain.CredentialReusePolicy
-import eu.europa.ec.eudi.pidissuer.domain.DeviceBinding
-import eu.europa.ec.eudi.pidissuer.domain.KeyAttestation
-import eu.europa.ec.eudi.pidissuer.domain.MsoMdocCredentialConfiguration
-import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcCredentialConfiguration
-import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
-import eu.europa.ec.eudi.pidissuer.domain.shouldIncludeStatusList
+import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
-import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreDeferredCredential
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
-import org.slf4j.LoggerFactory
-import kotlin.time.Clock
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 
 interface AttestationIssuer {
