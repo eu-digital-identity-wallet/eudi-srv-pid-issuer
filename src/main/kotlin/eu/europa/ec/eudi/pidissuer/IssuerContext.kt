@@ -954,7 +954,7 @@ fun beans(
             requireNotNull(algorithms) { "DPoP is required but Authorization Server does not support DPoP." }
         }
 
-        algorithms?.let {algs->
+        algorithms?.let { algs ->
             log.info("DPoP support will be enabled. Supported algorithms: $algs")
 
             val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
