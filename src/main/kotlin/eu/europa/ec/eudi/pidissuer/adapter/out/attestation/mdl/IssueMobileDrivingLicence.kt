@@ -401,7 +401,6 @@ fun IssueMobileDrivingLicence(
 ): IssueMdoc<MobileDrivingLicence> {
     val configuration =
         mobileDrivingLicenceV1(issuerSigningKey.coseAlgorithm, deviceBinding, credentialReusePolicy, validity)
-    val encodeAttributes = encodeMdlInMdoc(configuration.docType, issuerSigningKey)
     return IssueMdoc(
         configuration,
         clock,
@@ -410,17 +409,13 @@ fun IssueMobileDrivingLicence(
         storeIssuedCredential,
         getAttestationAttributes,
         allocateStatus,
-        encodeAttributes,
+        EncodeAttributesInMdoc(
+            configuration.docType,
+            issuerSigningKey,
+            usage = MDocBuilder::addItemsToSign,
+        ),
     )
 }
-
-private fun encodeMdlInMdoc(
-    docType: MsoDocType = MobileDrivingLicenceV1DocType,
-    issuerSigningKey: IssuerSigningKey,
-): EncodeAttributesInMdoc<MobileDrivingLicence> =
-    EncodeAttributesInMdoc(docType, issuerSigningKey) { licence ->
-        addItemsToSign(licence)
-    }
 
 private fun MDocBuilder.addItemsToSign(licence: MobileDrivingLicence) {
     addItemsToSign(licence.driver)
