@@ -204,13 +204,11 @@ private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
 /**
  * Service for issuing PID SD JWT credential
  */
-internal class IssueSdJwtVcPid(
+class IssueSdJwtVcPid private constructor(
+    override val supportedCredential: SdJwtVcCredentialConfiguration,
     override val validity: Duration,
-    credentialIssuerId: CredentialIssuerId,
     private val clock: Clock,
     private val timeZone: TimeZone,
-    hashAlgorithm: HashAlgorithm,
-    issuerSigningKey: IssuerSigningKey,
     private val getAttestationAttributes: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
     private val calculateNotUseBefore: TimeDependant<Instant>?,
     private val notificationsEnabled: Boolean,
@@ -219,28 +217,13 @@ internal class IssueSdJwtVcPid(
     private val generateStatusListToken: AllocateStatus,
     private val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
     private val validateProof: ValidateProof,
-    deviceBinding: DeviceBinding.Required,
+    private val encodePidInSdJwt: EncodePidInSdJwtVc,
 ) : AttestationIssuer {
-    override val supportedCredential: SdJwtVcCredentialConfiguration =
-        pidSdJwtVcV1(
-            issuerSigningKey.signingAlgorithm,
-            deviceBinding,
-            credentialReusePolicy,
-        )
-
-    override val publicKey: JWK = issuerSigningKey.key.toPublicJWK()
+    override val publicKey: JWK = encodePidInSdJwt.issuerSigningKey.key.toPublicJWK()
 
     init {
         require(validity.isPositive())
     }
-
-    private val encodePidInSdJwt =
-        EncodePidInSdJwtVc(
-            credentialIssuerId,
-            hashAlgorithm,
-            issuerSigningKey,
-            supportedCredential.type,
-        )
 
     context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
@@ -319,5 +302,55 @@ internal class IssueSdJwtVcPid(
                 log.info("Successfully issued PIDs")
                 log.debug("Issued PIDs data {}", it)
             }
+    }
+
+    companion object {
+        operator fun invoke(
+            validity: Duration,
+            credentialIssuerId: CredentialIssuerId,
+            clock: Clock,
+            timeZone: TimeZone,
+            hashAlgorithm: HashAlgorithm,
+            issuerSigningKey: IssuerSigningKey,
+            getAttestationAttributes: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
+            calculateNotUseBefore: TimeDependant<Instant>?,
+            notificationsEnabled: Boolean,
+            generateNotificationId: GenerateNotificationId,
+            storeIssuedCredential: StoreIssuedCredential,
+            generateStatusListToken: AllocateStatus,
+            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+            validateProof: ValidateProof,
+            deviceBinding: DeviceBinding.Required,
+        ): IssueSdJwtVcPid {
+            val supportedCredential: SdJwtVcCredentialConfiguration =
+                pidSdJwtVcV1(
+                    issuerSigningKey.signingAlgorithm,
+                    deviceBinding,
+                    credentialReusePolicy,
+                )
+            val encodePidInSdJwt =
+                EncodePidInSdJwtVc(
+                    credentialIssuerId,
+                    hashAlgorithm,
+                    issuerSigningKey,
+                    supportedCredential.type,
+                )
+
+            return IssueSdJwtVcPid(
+                supportedCredential,
+                validity,
+                clock,
+                timeZone,
+                getAttestationAttributes,
+                calculateNotUseBefore,
+                notificationsEnabled,
+                generateNotificationId,
+                storeIssuedCredential,
+                generateStatusListToken,
+                credentialReusePolicy,
+                validateProof,
+                encodePidInSdJwt,
+            )
+        }
     }
 }

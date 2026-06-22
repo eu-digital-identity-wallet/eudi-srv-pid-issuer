@@ -39,7 +39,7 @@ private val log = LoggerFactory.getLogger(EncodePidInSdJwtVc::class.java)
 class EncodePidInSdJwtVc(
     private val credentialIssuerId: CredentialIssuerId,
     private val hashAlgorithm: HashAlgorithm,
-    private val issuerSigningKey: IssuerSigningKey,
+    val issuerSigningKey: IssuerSigningKey,
     private val vct: SdJwtVcType,
 ) {
     /**
