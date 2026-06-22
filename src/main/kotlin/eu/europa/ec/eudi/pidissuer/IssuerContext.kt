@@ -536,9 +536,6 @@ fun beans(
     registerBean {
         GetMobileDrivingLicenceDataMock()
     }
-    registerBean<EncodeAttributesInMdoc<MobileDrivingLicence>>(lazyInit = true) {
-        encodeMdlInMdoc(issuerSigningKey = getIssuerSigningKey("issuer.mdl.signing-key"))
-    }
 
     registerBean { DefaultGenerateQrCode() }
     registerBean { HandleNotificationRequest(bean()) }
@@ -757,7 +754,7 @@ fun beans(
                         IssueMobileDrivingLicence(
                             clock = clock,
                             getAttestationAttributes = bean(),
-                            encodeAttributes = bean(),
+                            issuerSigningKey = getIssuerSigningKey("issuer.mdl.signing-key"),
                             deviceBinding =
                                 DeviceBinding.ts3(
                                     jwtProofsSupportedSigningAlgorithms,

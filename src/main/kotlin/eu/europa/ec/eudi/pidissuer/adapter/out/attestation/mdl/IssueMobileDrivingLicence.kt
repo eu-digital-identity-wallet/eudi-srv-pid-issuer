@@ -20,6 +20,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.IssueMdoc
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.DrivingPrivilege.Restriction.GenericRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.DrivingPrivilege.Restriction.ParameterizedRestriction
+import eu.europa.ec.eudi.pidissuer.adapter.out.coseAlgorithm
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.EncodeAttributesInMdoc
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.toTDate
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -398,9 +399,9 @@ fun IssueMobileDrivingLicence(
     allocateStatus: AllocateStatus,
     issuerSigningKey: IssuerSigningKey,
 ): IssueMdoc<MobileDrivingLicence> {
-    val encodeAttributes = encodeMdlInMdoc(MobileDrivingLicenceV1DocType, issuerSigningKey)
     val configuration =
-        mobileDrivingLicenceV1(encodeAttributes.signingAlgorithm, deviceBinding, credentialReusePolicy, validity)
+        mobileDrivingLicenceV1(issuerSigningKey.coseAlgorithm, deviceBinding, credentialReusePolicy, validity)
+    val encodeAttributes = encodeMdlInMdoc(configuration.docType, issuerSigningKey)
     return IssueMdoc(
         configuration,
         clock,
@@ -413,7 +414,7 @@ fun IssueMobileDrivingLicence(
     )
 }
 
-fun encodeMdlInMdoc(
+private fun encodeMdlInMdoc(
     docType: MsoDocType = MobileDrivingLicenceV1DocType,
     issuerSigningKey: IssuerSigningKey,
 ): EncodeAttributesInMdoc<MobileDrivingLicence> =
