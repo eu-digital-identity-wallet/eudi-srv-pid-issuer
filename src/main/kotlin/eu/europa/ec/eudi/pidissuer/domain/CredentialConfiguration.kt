@@ -20,6 +20,7 @@ import arrow.core.nonEmptySetOf
 import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.DeviceBinding.Required.ProofOption
 import kotlinx.serialization.Serializable
+import kotlin.time.Duration
 
 /**
  * The unique identifier of an offered Credential.
@@ -79,17 +80,6 @@ sealed interface ProofType {
     ) : ProofType
 }
 
-fun ProofType.type(): ProofTypeEnum =
-    when (this) {
-        is ProofType.Jwt -> ProofTypeEnum.JWT
-        is ProofType.Attestation -> ProofTypeEnum.ATTESTATION
-    }
-
-enum class ProofTypeEnum {
-    JWT,
-    ATTESTATION,
-}
-
 sealed interface DeviceBinding {
     data object None : DeviceBinding
 
@@ -147,4 +137,6 @@ sealed interface CredentialConfiguration {
     val deviceBinding: DeviceBinding
     val attestationCategory: AttestationCategory
     val credentialReusePolicy: CredentialReusePolicy
+
+    val validity: Duration
 }

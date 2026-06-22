@@ -19,17 +19,16 @@ import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
-import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.toECKeyOrFail
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
-import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
-import eu.europa.ec.eudi.pidissuer.port.out.GetAttestationAttributes
-import eu.europa.ec.eudi.pidissuer.port.out.allocateStatusWithPolicy
-import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
-import eu.europa.ec.eudi.pidissuer.port.out.keyAttestation
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.AttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.ValidateProof
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.allocateStatusWithPolicy
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.keyAttestation
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
@@ -302,6 +301,7 @@ internal fun pidMsoMdocV1(
     credentialSigningAlgorithm: CoseAlgorithm,
     deviceBinding: DeviceBinding.Required,
     credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+    validity: Duration,
 ): MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
         id = PidMsoMdocV1CredentialConfigurationId,
@@ -318,6 +318,7 @@ internal fun pidMsoMdocV1(
         deviceBinding = deviceBinding,
         attestationCategory = AttestationCategory.Pid,
         credentialReusePolicy = credentialReusePolicy,
+        validity = validity,
     )
 
 private val msoMdocPidLog = LoggerFactory.getLogger(IssueMsoMdocPid::class.java)
@@ -332,15 +333,10 @@ class IssueMsoMdocPid private constructor(
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val clock: Clock,
-    override val validity: Duration,
     private val storeIssuedCredential: StoreIssuedCredential,
     private val allocateStatus: AllocateStatus,
     private val validateProof: ValidateProof,
 ) : AttestationIssuer {
-    init {
-        require(validity.isPositive())
-    }
-
     context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
         msoMdocPidLog.info("Handling issuance request ...")
@@ -350,7 +346,7 @@ class IssueMsoMdocPid private constructor(
             keyAttestation.credentialKeys.value
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
         val (pid, pidMetaData) = getAttestationAttributes()
-        val expiresAt = issuedAt + validity
+        val expiresAt = issuedAt + configuration.validity
         val notificationId = if (notificationsEnabled) generateNotificationId() else null
         val clientStatus = authorizationContext.clientStatus.status.statusList
         val keyStorageStatus = keyAttestation.keyStorageStatus.status.statusList
@@ -415,7 +411,7 @@ class IssueMsoMdocPid private constructor(
             credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
         ): IssueMsoMdocPid {
             val configuration =
-                pidMsoMdocV1(encodePidInCbor.signingAlgorithm, deviceBinding, credentialReusePolicy)
+                pidMsoMdocV1(encodePidInCbor.signingAlgorithm, deviceBinding, credentialReusePolicy, validity)
             return IssueMsoMdocPid(
                 configuration,
                 getAttestationAttributes,
@@ -423,7 +419,6 @@ class IssueMsoMdocPid private constructor(
                 notificationsEnabled,
                 generateNotificationId,
                 clock,
-                validity,
                 storeIssuedCredential,
                 allocateStatus,
                 validateProof,

@@ -27,10 +27,10 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
-import eu.europa.ec.eudi.pidissuer.port.out.GetAttestationAttributes
-import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
-import eu.europa.ec.eudi.pidissuer.port.out.keyAttestation
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.AttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.ValidateProof
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.keyAttestation
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
@@ -199,18 +199,20 @@ private fun europeanHealthInsuranceCardCredentialConfiguration(
     credentialDisplay: CredentialDisplay,
     deviceBinding: DeviceBinding.Required,
     credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+    validity: Duration,
 ): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(
-        id = credentialConfigurationId,
-        type = EuropeanHealthInsuranceCardVct,
-        scope = scope,
-        credentialSigningAlgorithmsSupported = nonEmptySetOf(signingAlgorithm),
-        publicKey = publicKey,
-        display = listOf(credentialDisplay),
-        claims = EuropeanHealthInsuranceCardClaims.all(),
-        deviceBinding = deviceBinding,
-        attestationCategory = AttestationCategory.EuPubEaa,
-        credentialReusePolicy = credentialReusePolicy,
+        credentialConfigurationId,
+        scope,
+        listOf(credentialDisplay),
+        deviceBinding,
+        AttestationCategory.EuPubEaa,
+        credentialReusePolicy,
+        validity,
+        EuropeanHealthInsuranceCardVct,
+        nonEmptySetOf(signingAlgorithm),
+        publicKey,
+        EuropeanHealthInsuranceCardClaims.all(),
     )
 
 private val log = LoggerFactory.getLogger(IssueSdJwtVcEuropeanHealthInsuranceCard::class.java)
@@ -219,17 +221,12 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
     override val configuration: SdJwtVcCredentialConfiguration,
     private val encode: EncodeEuropeanHealthInsuranceCardInSdJwtVc,
     private val clock: Clock,
-    override val validity: Duration,
     private val getAttestationAttributes: GetAttestationAttributes<EuropeanHealthInsuranceCard>,
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val storeIssuedCredential: StoreIssuedCredential,
     private val validateProof: ValidateProof,
 ) : AttestationIssuer {
-    init {
-        require(validity.isPositive())
-    }
-
     context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
         log.info("Issuing DC4EU EHIC")
@@ -237,7 +234,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
         val issuedAt = clock.now()
         val keyAttestation = context(validateProof) { keyAttestation(request, issuedAt) }
         val ehicAttributes = getAttestationAttributes()
-        val expiresAt = issuedAt + validity
+        val expiresAt = issuedAt + configuration.validity
         val notificationId = if (notificationsEnabled) generateNotificationId() else null
         val clientStatus = authorizationContext.clientStatus.status.statusList
         val keyStorageStatus = keyAttestation.keyStorageStatus.status.statusList
@@ -307,6 +304,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     ),
                     deviceBinding,
                     credentialReusePolicy,
+                    validity,
                 ),
                 EncodeEuropeanHealthInsuranceCardInSdJwtVc.jwsJsonFlattened(
                     digestsHashAlgorithm,
@@ -315,7 +313,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     credentialIssuerId,
                 ),
                 clock,
-                validity,
                 getAttestationAttributes,
                 notificationsEnabled,
                 generateNotificationId,
@@ -348,6 +345,7 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     ),
                     deviceBinding,
                     credentialReusePolicy,
+                    validity,
                 ),
                 EncodeEuropeanHealthInsuranceCardInSdJwtVc.compact(
                     digestsHashAlgorithm,
@@ -356,7 +354,6 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
                     credentialIssuerId,
                 ),
                 clock,
-                validity,
                 getAttestationAttributes,
                 notificationsEnabled,
                 generateNotificationId,

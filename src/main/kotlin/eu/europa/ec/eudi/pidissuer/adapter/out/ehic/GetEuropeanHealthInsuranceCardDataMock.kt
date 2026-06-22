@@ -19,7 +19,7 @@ import arrow.core.raise.Raise
 import eu.europa.ec.eudi.pidissuer.domain.toZonedDateTime
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.out.GetAttestationAttributes
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
 import kotlinx.datetime.TimeZone
 import java.util.*
 import kotlin.time.Clock

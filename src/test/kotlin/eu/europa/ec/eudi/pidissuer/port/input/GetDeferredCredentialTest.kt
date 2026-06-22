@@ -28,7 +28,7 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.EncryptedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptDeferredResponse
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadDeferredCredentialByTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadDeferredCredentialResult
@@ -39,6 +39,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
 
 class GetDeferredCredentialTest {
@@ -52,12 +53,12 @@ class GetDeferredCredentialTest {
                         PreferredKeyStorageStatusPeriod(60.days),
                     ),
                 ),
+            validity = 24.hours,
         )
 
     private val attestationIssuer =
         object : AttestationIssuer {
             override val configuration: CredentialConfiguration = credentialConfiguration
-            override val validity = 365.days
 
             context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
             override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse =

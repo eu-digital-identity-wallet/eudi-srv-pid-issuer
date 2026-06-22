@@ -13,19 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.out.credential
+package eu.europa.ec.eudi.pidissuer.port.out.attestation
 
-import arrow.core.raise.Raise
-import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
-import eu.europa.ec.eudi.pidissuer.domain.KeyAttestation
-import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import kotlin.time.Duration
 import kotlin.time.Instant
 
-fun interface ValidateProof {
-    context(_: Raise<IssueCredentialError>, cfg: CredentialConfiguration)
+/**
+ * Generates a new Nonce that expires after a specific [Duration].
+ */
+fun interface GenerateNonce {
     suspend operator fun invoke(
-        unvalidatedProof: UnvalidatedProof?,
-        at: Instant,
-    ): KeyAttestation?
+        generatedAt: Instant,
+        expiresIn: Duration,
+    ): String
 }

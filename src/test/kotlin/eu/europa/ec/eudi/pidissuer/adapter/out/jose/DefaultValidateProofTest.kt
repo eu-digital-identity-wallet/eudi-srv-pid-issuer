@@ -121,6 +121,7 @@ class DefaultValidateProofTest {
                         ),
                     ),
                 credentialReusePolicy = policy,
+                validity = 365.days,
             )
 
         return context(configuration) {

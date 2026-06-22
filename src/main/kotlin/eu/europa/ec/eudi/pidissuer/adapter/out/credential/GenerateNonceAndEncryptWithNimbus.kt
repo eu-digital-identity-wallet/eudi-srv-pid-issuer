@@ -23,7 +23,7 @@ import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.openid.connect.sdk.Nonce
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.toJavaDate
-import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.GenerateNonce
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.bouncycastle.jce.provider.BouncyCastleProvider

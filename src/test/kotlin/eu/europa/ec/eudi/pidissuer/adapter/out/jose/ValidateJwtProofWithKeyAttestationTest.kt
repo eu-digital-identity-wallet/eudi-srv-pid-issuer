@@ -43,6 +43,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.fail
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
 
 internal class ValidateJwtProofWithKeyAttestationTest {
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
@@ -58,6 +59,7 @@ internal class ValidateJwtProofWithKeyAttestationTest {
                     checkNotNull(ECDSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
                     KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(60.days)),
                 ),
+            validity = 24.hours,
         )
 
     private val supported =
@@ -188,6 +190,7 @@ internal class ValidateJwtProofWithKeyAttestationTest {
                         nonEmptySetOf(JWSAlgorithm.ES512),
                         KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(60.days)),
                     ),
+                    validity = 24.hours,
                 )
 
             val supported =

@@ -13,17 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.out.credential
+package eu.europa.ec.eudi.pidissuer.port.out.attestation
 
-import kotlin.time.Duration
-import kotlin.time.Instant
+import arrow.core.raise.Raise
+import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 
-/**
- * Generates a new Nonce that expires after a specific [Duration].
- */
-fun interface GenerateNonce {
-    suspend operator fun invoke(
-        generatedAt: Instant,
-        expiresIn: Duration,
-    ): String
+fun interface GetAttestationAttributes<out Data> {
+    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>, authorizationContext: AuthorizationContext)
+    suspend operator fun invoke(): Data
 }

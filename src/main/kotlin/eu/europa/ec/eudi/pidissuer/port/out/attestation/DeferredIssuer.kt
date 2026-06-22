@@ -13,75 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.out
+package eu.europa.ec.eudi.pidissuer.port.out.attestation
 
-import arrow.core.getOrElse
 import arrow.core.raise.Raise
-import arrow.core.raise.context.ensureNotNull
-import arrow.core.raise.either
-import com.nimbusds.jose.jwk.JWK
-import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.domain.AuthorizedCredentialRequest
+import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
+import eu.europa.ec.eudi.pidissuer.domain.CredentialConfigurationId
+import eu.europa.ec.eudi.pidissuer.domain.CredentialResponse
+import eu.europa.ec.eudi.pidissuer.domain.MsoMdocCredentialConfiguration
+import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcCredentialConfiguration
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreDeferredCredential
-import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
 import org.slf4j.LoggerFactory
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Instant
-
-interface AttestationIssuer {
-    val configuration: CredentialConfiguration
-    val validity: Duration
-
-    context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
-    suspend operator fun invoke(request: AuthorizedCredentialRequest): CredentialResponse
-}
-
-context(_: Raise<IssueCredentialError>, validateProof: ValidateProof)
-suspend fun AttestationIssuer.keyAttestation(
-    request: AuthorizedCredentialRequest,
-    at: Instant,
-): KeyAttestation {
-    check(configuration.deviceBinding is DeviceBinding.Required) {
-        "Applicable only to credentials with device binding"
-    }
-    val proof =
-        context(configuration) {
-            validateProof(request.proof, at)
-        }
-    ensureNotNull(proof) {
-        IssueCredentialError.MissingProof
-    }
-    return proof
-}
-
-context(allocateStatus: AllocateStatus)
-suspend fun AttestationIssuer.allocateStatusWithPolicy(expiration: Instant): StatusListToken? {
-    val cfg = configuration
-    val type =
-        when (cfg) {
-            is MsoMdocCredentialConfiguration -> cfg.docType
-            is SdJwtVcCredentialConfiguration -> cfg.type.value
-        }
-
-    return when (val reusePolicy = cfg.credentialReusePolicy) {
-        is CredentialReusePolicy.EUDI if reusePolicy.shouldIncludeStatusList -> {
-            either { allocateStatus(type, expiration) }.getOrElse { throw it.value }
-        }
-
-        CredentialReusePolicy.None -> {
-            null
-        }
-
-        is CredentialReusePolicy.EUDI -> {
-            null
-        }
-    }
-}
 
 fun AttestationIssuer.asDeferred(
     generateTransactionId: GenerateTransactionId,
@@ -133,9 +81,4 @@ private class DeferredIssuer(
         log.info("Repackaged $credentialResponse  as $deferred")
         return deferred
     }
-}
-
-fun interface GetAttestationAttributes<out Data> {
-    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>, authorizationContext: AuthorizationContext)
-    suspend operator fun invoke(): Data
 }

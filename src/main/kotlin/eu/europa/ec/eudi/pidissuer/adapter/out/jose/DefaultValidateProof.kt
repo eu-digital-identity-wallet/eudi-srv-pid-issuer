@@ -20,8 +20,8 @@ import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
-import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.ValidateProof
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.VerifyNonce
 import kotlin.time.Instant
 
 /**

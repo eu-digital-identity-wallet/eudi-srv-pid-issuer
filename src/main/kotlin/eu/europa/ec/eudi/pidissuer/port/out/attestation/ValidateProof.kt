@@ -13,19 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.input
+package eu.europa.ec.eudi.pidissuer.port.out.attestation
 
-import eu.europa.ec.eudi.pidissuer.port.out.attestation.GenerateNonce
-import kotlin.time.Clock
-import kotlin.time.Duration
+import arrow.core.raise.Raise
+import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
+import eu.europa.ec.eudi.pidissuer.domain.KeyAttestation
+import eu.europa.ec.eudi.pidissuer.domain.UnvalidatedProof
+import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import kotlin.time.Instant
 
-/**
- * Handles a CNonce Request.
- */
-internal class HandleNonceRequest(
-    private val clock: Clock,
-    private val cNonceExpiresIn: Duration,
-    private val generateNonce: GenerateNonce,
-) {
-    suspend operator fun invoke(): NonceResponseTO = NonceResponseTO(generateNonce(clock.now(), cNonceExpiresIn))
+fun interface ValidateProof {
+    context(_: Raise<IssueCredentialError>, cfg: CredentialConfiguration)
+    suspend operator fun invoke(
+        unvalidatedProof: UnvalidatedProof?,
+        at: Instant,
+    ): KeyAttestation?
 }

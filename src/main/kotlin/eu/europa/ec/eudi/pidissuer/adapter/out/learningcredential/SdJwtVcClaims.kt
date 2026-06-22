@@ -17,9 +17,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential
 
 import arrow.core.NonEmptyList
 import arrow.core.nonEmptyListOf
-import arrow.core.nonEmptySetOf
-import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.*
 import java.util.*
 
@@ -199,24 +196,3 @@ object SdJwtVcClaims {
             IntegrationStackabilityOptions,
         )
 }
-
-fun LearningCredential.Companion.sdJwtVcCredentialConfiguration(
-    id: CredentialConfigurationId,
-    scope: Scope,
-    credentialSigningAlgorithm: JWSAlgorithm,
-    publicKey: JWK,
-    display: CredentialDisplay,
-    deviceBinding: DeviceBinding.Required,
-    credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
-) = SdJwtVcCredentialConfiguration(
-    id,
-    SdJwtVcType("urn:eu.europa.ec.eudi:learning:credential:1"),
-    scope,
-    nonEmptySetOf(credentialSigningAlgorithm),
-    publicKey,
-    nonEmptyListOf(display),
-    SdJwtVcClaims.all(),
-    deviceBinding = deviceBinding,
-    attestationCategory = AttestationCategory.Eaa,
-    credentialReusePolicy = credentialReusePolicy,
-)

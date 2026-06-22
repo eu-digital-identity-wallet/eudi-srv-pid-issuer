@@ -19,17 +19,12 @@ import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
-import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.toECKeyOrFail
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
-import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
-import eu.europa.ec.eudi.pidissuer.port.out.GetAttestationAttributes
-import eu.europa.ec.eudi.pidissuer.port.out.allocateStatusWithPolicy
-import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
-import eu.europa.ec.eudi.pidissuer.port.out.keyAttestation
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.*
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
@@ -341,6 +336,7 @@ internal fun mobileDrivingLicenceV1(
     credentialSigningAlgorithm: CoseAlgorithm,
     deviceBinding: DeviceBinding.Required,
     credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+    validity: Duration,
 ): MsoMdocCredentialConfiguration =
     MsoMdocCredentialConfiguration(
         id = MobileDrivingLicenceV1CredentialConfigurationId,
@@ -357,6 +353,7 @@ internal fun mobileDrivingLicenceV1(
         deviceBinding = deviceBinding,
         attestationCategory = AttestationCategory.Eaa,
         credentialReusePolicy = credentialReusePolicy,
+        validity = validity,
     )
 
 /**
@@ -369,15 +366,10 @@ internal class IssueMobileDrivingLicence(
     private val notificationsEnabled: Boolean,
     private val generateNotificationId: GenerateNotificationId,
     private val clock: Clock,
-    override val validity: Duration,
     private val storeIssuedCredential: StoreIssuedCredential,
     private val allocateStatus: AllocateStatus,
     private val validateProof: ValidateProof,
 ) : AttestationIssuer {
-    init {
-        require(validity.isPositive())
-    }
-
     context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
         log.info("Issuing mDL")
@@ -387,7 +379,7 @@ internal class IssueMobileDrivingLicence(
             keyAttestation.credentialKeys.value
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
         val licence = getAttestationAttributes()
-        val expiresAt = issuedAt + validity
+        val expiresAt = issuedAt + configuration.validity
         val notificationId = if (notificationsEnabled) generateNotificationId() else null
         val clientStatus = authorizationContext.clientStatus.status.statusList
         val keyStorageStatus = keyAttestation.keyStorageStatus.status.statusList
@@ -449,7 +441,8 @@ internal class IssueMobileDrivingLicence(
             deviceBinding: DeviceBinding.Required,
         ): IssueMobileDrivingLicence {
             val credentialSigningAlgorithm = encodeMobileDrivingLicenceInCbor.signingAlgorithm
-            val configuration = mobileDrivingLicenceV1(credentialSigningAlgorithm, deviceBinding, credentialReusePolicy)
+            val configuration =
+                mobileDrivingLicenceV1(credentialSigningAlgorithm, deviceBinding, credentialReusePolicy, validity)
             return IssueMobileDrivingLicence(
                 configuration,
                 getAttestationAttributes,
@@ -457,7 +450,6 @@ internal class IssueMobileDrivingLicence(
                 notificationsEnabled,
                 generateNotificationId,
                 clock,
-                validity,
                 storeIssuedCredential,
                 allocateStatus,
                 validateProof,

@@ -28,7 +28,7 @@ import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
-import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
 import eu.europa.ec.eudi.pidissuer.port.out.jose.RequestEncryptionError
 import eu.europa.ec.eudi.pidissuer.port.out.jose.RequestEncryptionError.*

@@ -25,7 +25,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.util.loadResource
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.Username
-import eu.europa.ec.eudi.pidissuer.port.out.GetAttestationAttributes
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

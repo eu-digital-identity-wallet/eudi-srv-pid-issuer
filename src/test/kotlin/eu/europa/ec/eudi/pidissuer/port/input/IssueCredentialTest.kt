@@ -28,7 +28,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMsoMdocV1CredentialConfigu
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.jwtProof
-import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonPrimitive
@@ -54,14 +54,14 @@ class IssueCredentialTest {
                         PreferredKeyStorageStatusPeriod(60.days),
                     ),
                 ),
+            validity = 60.days,
         )
 
     private val attestationIssuer =
         object : AttestationIssuer {
             override val configuration: CredentialConfiguration = msoMdocConfig
-            override val validity = 365.days
 
-            context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext,)
+            context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
             override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse =
                 CredentialResponse.Issued(nonEmptyListOf(JsonPrimitive("test-credential")))
         }

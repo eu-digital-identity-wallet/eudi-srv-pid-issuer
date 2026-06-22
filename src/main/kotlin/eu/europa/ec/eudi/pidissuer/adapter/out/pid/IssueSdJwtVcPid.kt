@@ -26,11 +26,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
-import eu.europa.ec.eudi.pidissuer.port.out.GetAttestationAttributes
-import eu.europa.ec.eudi.pidissuer.port.out.allocateStatusWithPolicy
-import eu.europa.ec.eudi.pidissuer.port.out.credential.ValidateProof
-import eu.europa.ec.eudi.pidissuer.port.out.keyAttestation
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.*
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
@@ -180,6 +176,7 @@ fun pidSdJwtVcV1(
     publicKey: JWK,
     deviceBinding: DeviceBinding.Required,
     credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+    validity: Duration,
 ): SdJwtVcCredentialConfiguration =
     SdJwtVcCredentialConfiguration(
         id = SdJwtVcPidCredentialConfigurationId,
@@ -197,6 +194,7 @@ fun pidSdJwtVcV1(
         deviceBinding = deviceBinding,
         attestationCategory = AttestationCategory.Pid,
         credentialReusePolicy = credentialReusePolicy,
+        validity = validity,
     )
 
 typealias TimeDependant<F> = (Instant) -> F
@@ -208,7 +206,6 @@ private val log = LoggerFactory.getLogger(IssueSdJwtVcPid::class.java)
  */
 class IssueSdJwtVcPid private constructor(
     override val configuration: SdJwtVcCredentialConfiguration,
-    override val validity: Duration,
     private val clock: Clock,
     private val timeZone: TimeZone,
     private val getAttestationAttributes: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
@@ -220,10 +217,6 @@ class IssueSdJwtVcPid private constructor(
     private val validateProof: ValidateProof,
     private val encodePidInSdJwt: EncodePidInSdJwtVc,
 ) : AttestationIssuer {
-    init {
-        require(validity.isPositive())
-    }
-
     context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
         log.info("Handling issuance request ...")
@@ -231,7 +224,7 @@ class IssueSdJwtVcPid private constructor(
         val keyAttestation = context(validateProof) { keyAttestation(request, issuedAt) }
         val deviceKeys = keyAttestation.credentialKeys.value
         val (pid, pidMetaData) = getAttestationAttributes()
-        val expiresAt = issuedAt + validity
+        val expiresAt = issuedAt + configuration.validity
         val notBefore = calculateNotUseBefore?.invoke(issuedAt)
 
         check(expiresAt > issuedAt) {
@@ -323,13 +316,18 @@ class IssueSdJwtVcPid private constructor(
         ): IssueSdJwtVcPid {
             val publicKey = issuerSigningKey.key.toPublicJWK()
             val configuration =
-                pidSdJwtVcV1(issuerSigningKey.signingAlgorithm, publicKey, deviceBinding, credentialReusePolicy)
+                pidSdJwtVcV1(
+                    issuerSigningKey.signingAlgorithm,
+                    publicKey,
+                    deviceBinding,
+                    credentialReusePolicy,
+                    validity,
+                )
             val encodePidInSdJwt =
                 EncodePidInSdJwtVc(credentialIssuerId, hashAlgorithm, issuerSigningKey, configuration.type)
 
             return IssueSdJwtVcPid(
                 configuration,
-                validity,
                 clock,
                 timeZone,
                 getAttestationAttributes,

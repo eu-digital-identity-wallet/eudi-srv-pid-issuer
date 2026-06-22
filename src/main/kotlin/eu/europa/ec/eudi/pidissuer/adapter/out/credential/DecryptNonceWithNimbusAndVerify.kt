@@ -29,7 +29,7 @@ import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.toKotlinInstant
-import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.VerifyNonce
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.bouncycastle.jce.provider.BouncyCastleProvider

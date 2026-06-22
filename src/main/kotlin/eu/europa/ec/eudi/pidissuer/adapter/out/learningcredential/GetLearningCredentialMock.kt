@@ -23,7 +23,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMetaData
 import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.out.GetAttestationAttributes
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days

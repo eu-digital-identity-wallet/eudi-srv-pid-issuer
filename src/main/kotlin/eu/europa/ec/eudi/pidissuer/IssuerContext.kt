@@ -52,7 +52,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.usingTrustValidatorService
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.*
-import eu.europa.ec.eudi.pidissuer.port.out.asDeferred
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.asDeferred
 import eu.europa.ec.eudi.pidissuer.port.out.jose.GenerateSignedMetadata
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.out.credential
+package eu.europa.ec.eudi.pidissuer.port.out.attestation
 
 import kotlin.time.Instant
 
@@ -34,11 +34,4 @@ fun interface VerifyNonce {
             1 -> this(values.first(), at)
             else -> false
         }
-
-    companion object {
-        /**
-         * Gets a [VerifyNonce] that perform no verification.
-         */
-        fun noCNonceRequired(): VerifyNonce = VerifyNonce { _, _ -> true }
-    }
 }
