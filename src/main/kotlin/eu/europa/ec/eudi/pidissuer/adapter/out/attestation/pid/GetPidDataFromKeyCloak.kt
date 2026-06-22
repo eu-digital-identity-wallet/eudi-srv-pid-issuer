@@ -82,7 +82,7 @@ class GetPidDataFromKeyCloak(
     private val keyCloak: Url,
     private val administrationClient: AdministrationClient,
     private val users: Realm,
-) : GetAttestationAttributes<Pair<Pid, PidMetaData>> {
+) : GetAttestationAttributes<PidAttributes> {
     init {
         issuingJurisdiction?.let {
             require(it.startsWith(issuerCountry.value)) {
@@ -92,7 +92,7 @@ class GetPidDataFromKeyCloak(
     }
 
     context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>, authorizationContext: AuthorizationContext)
-    override suspend fun invoke(): Pair<Pid, PidMetaData> {
+    override suspend fun invoke(): PidAttributes {
         log.info("Trying to get PID Data from Keycloak ...")
         val userInfo =
             userInfo(authorizationContext.username)
@@ -248,7 +248,7 @@ class GetPidDataFromKeyCloak(
         )
     }
 
-    private suspend fun pid(userInfo: UserInfo): Pair<Pid, PidMetaData> {
+    private suspend fun pid(userInfo: UserInfo): PidAttributes {
         val birthDate =
             requireNotNull(userInfo.birthDate) {
                 "missing required attribute 'birthDate'"
@@ -299,8 +299,7 @@ class GetPidDataFromKeyCloak(
             )
 
         val pidMetaData = genPidMetaData()
-
-        return pid to pidMetaData
+        return PidAttributes(pid, pidMetaData)
     }
 }
 

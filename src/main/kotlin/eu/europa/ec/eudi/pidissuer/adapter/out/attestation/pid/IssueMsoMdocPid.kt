@@ -320,10 +320,10 @@ fun IssueMsoMdocPid(
     validateProof: ValidateProof,
     generateNotificationId: GenerateNotificationId?,
     storeIssuedCredential: StoreIssuedCredential,
-    getAttestationAttributes: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
+    getAttestationAttributes: GetAttestationAttributes<PidAttributes>,
     allocateStatus: AllocateStatus,
     issuerSigningKey: IssuerSigningKey,
-): IssueMdoc<Pair<Pid, PidMetaData>> {
+): IssueMdoc<PidAttributes> {
     val encodeAttributes = encodePidInMdoc(PidMsoMdocV1DocType, issuerSigningKey)
     val configuration =
         pidMsoMdocV1(encodeAttributes.signingAlgorithm, deviceBinding, credentialReusePolicy, validity)
@@ -348,10 +348,10 @@ fun IssueMsoMdocPid(
     validateProof: ValidateProof,
     generateNotificationId: GenerateNotificationId?,
     storeIssuedCredential: StoreIssuedCredential,
-    getAttestationAttributes: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
+    getAttestationAttributes: GetAttestationAttributes<PidAttributes>,
     allocateStatus: AllocateStatus,
-    encodeAttributes: EncodeAttributesInMdoc<Pair<Pid, PidMetaData>>,
-): IssueMdoc<Pair<Pid, PidMetaData>> {
+    encodeAttributes: EncodeAttributesInMdoc<PidAttributes>,
+): IssueMdoc<PidAttributes> {
     val configuration =
         pidMsoMdocV1(encodeAttributes.signingAlgorithm, deviceBinding, credentialReusePolicy, validity)
     return IssueMdoc(

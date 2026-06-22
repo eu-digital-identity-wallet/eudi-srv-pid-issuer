@@ -27,7 +27,7 @@ import id.walt.mdoc.doc.MDocBuilder
 fun encodePidInMdoc(
     docType: MsoDocType = PidMsoMdocV1DocType,
     issuerSigningKey: IssuerSigningKey,
-): EncodeAttributesInMdoc<Pair<Pid, PidMetaData>> =
+): EncodeAttributesInMdoc<PidAttributes> =
     EncodeAttributesInMdoc(docType, issuerSigningKey) { (pid, pidMetaData) ->
         addItemsToSign(pid)
         addItemsToSign(pidMetaData)

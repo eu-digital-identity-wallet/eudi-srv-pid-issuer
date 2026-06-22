@@ -127,7 +127,7 @@ class BaseWalletApiTest {
         fun getPidData(
             clock: Clock,
             timeZone: TimeZone,
-        ): GetAttestationAttributes<Pair<Pid, PidMetaData>> =
+        ): GetAttestationAttributes<PidAttributes> =
             GetAttestationAttributes {
                 val pid =
                     Pid(
@@ -153,7 +153,7 @@ class BaseWalletApiTest {
                         issuingCountry = issuingCountry,
                         issuingJurisdiction = null,
                     )
-                pid to pidMetaData
+                PidAttributes(pid, pidMetaData)
             }
 
         @Bean
@@ -177,12 +177,12 @@ internal class TestMocksInitializer : ApplicationContextInitializer<GenericAppli
 
 internal class EncodePidMock :
     BeanRegistrarDsl({
-        registerBean<EncodeAttributesInMdoc<Pair<Pid, PidMetaData>>>(primary = true) {
-            object : EncodeAttributesInMdoc<Pair<Pid, PidMetaData>> {
+        registerBean<EncodeAttributesInMdoc<PidAttributes>>(primary = true) {
+            object : EncodeAttributesInMdoc<PidAttributes> {
                 override val signingAlgorithm: CoseAlgorithm = CoseAlgorithm(-7)
 
                 override suspend fun invoke(
-                    attributes: Pair<Pid, PidMetaData>,
+                    attributes: PidAttributes,
                     deviceKey: ECKey,
                     issuedAt: Instant,
                     expiresAt: Instant,

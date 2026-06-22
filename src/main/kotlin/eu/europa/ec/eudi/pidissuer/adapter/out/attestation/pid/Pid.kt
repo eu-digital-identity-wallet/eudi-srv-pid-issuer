@@ -255,3 +255,8 @@ data class PidMetaData(
         }
     }
 }
+
+data class PidAttributes(
+    val pid: Pid,
+    val metaData: PidMetaData,
+)

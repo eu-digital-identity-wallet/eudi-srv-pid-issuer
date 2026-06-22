@@ -16,25 +16,15 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl
 
 import arrow.core.nonEmptySetOf
-import arrow.core.raise.Raise
-import arrow.core.toNonEmptyListOrNull
-import arrow.fx.coroutines.parMap
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.toECKeyOrFail
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.IssueMdoc
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.EncodeAttributesInMdoc
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.domain.invoke
-import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
-import eu.europa.ec.eudi.pidissuer.port.out.attestation.*
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.proof.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
-import kotlinx.coroutines.Dispatchers
-import kotlinx.serialization.json.JsonPrimitive
-import org.slf4j.LoggerFactory
 import java.util.*
 import kotlin.time.Clock
 import kotlin.time.Duration
@@ -334,8 +324,6 @@ val MobileDrivingLicenceV1CredentialConfigurationId: CredentialConfigurationId =
 
 val MobileDrivingLicenceV1DocType: MsoDocType = mdlDocType(1u)
 
-private val log = LoggerFactory.getLogger(IssueMobileDrivingLicence::class.java)
-
 internal fun mobileDrivingLicenceV1(
     credentialSigningAlgorithm: CoseAlgorithm,
     deviceBinding: DeviceBinding.Required,
@@ -360,132 +348,57 @@ internal fun mobileDrivingLicenceV1(
         validity = validity,
     )
 
-/**
- * Issuing service for Mobile Driving Licence.
- */
-internal class IssueMobileDrivingLicence(
-    override val configuration: MsoMdocCredentialConfiguration,
-    private val clock: Clock,
-    private val getAttestationAttributes: GetAttestationAttributes<MobileDrivingLicence>,
-    private val encodeAttributes: EncodeAttributesInMdoc<MobileDrivingLicence>,
-    private val validateProof: ValidateProof,
-    private val notificationsEnabled: Boolean,
-    private val generateNotificationId: GenerateNotificationId,
-    private val storeIssuedCredential: StoreIssuedCredential,
-    private val allocateStatus: AllocateStatus,
-) : AttestationIssuer {
-    context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
-    override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
-        log.info("Issuing mDL")
-        val issuedAt = clock.now()
-        val keyAttestation = context(validateProof) { keyAttestation(request, issuedAt) }
-        val deviceKeys =
-            keyAttestation.credentialKeys.value
-                .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
-        val licence = getAttestationAttributes()
-        val expiresAt = issuedAt + configuration.validity
-        val notificationId = if (notificationsEnabled) generateNotificationId() else null
-        val clientStatus = authorizationContext.clientStatus.status.statusList
-        val keyStorageStatus = keyAttestation.keyStorageStatus.status.statusList
-        val issuedCredentials =
-            deviceKeys
-                .parMap(Dispatchers.Default, 4) { deviceKey ->
-                    val statusListToken =
-                        context(allocateStatus) {
-                            allocateStatusWithPolicy(expiresAt)
-                        }
+@Suppress("FunctionName")
+fun IssueMobileDrivingLicence(
+    credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+    deviceBinding: DeviceBinding.Required,
+    validity: Duration,
+    clock: Clock,
+    validateProof: ValidateProof,
+    generateNotificationId: GenerateNotificationId?,
+    storeIssuedCredential: StoreIssuedCredential,
+    getAttestationAttributes: GetAttestationAttributes<MobileDrivingLicence>,
+    allocateStatus: AllocateStatus,
+    encodeAttributes: EncodeAttributesInMdoc<MobileDrivingLicence>,
+): IssueMdoc<MobileDrivingLicence> {
+    val configuration =
+        mobileDrivingLicenceV1(encodeAttributes.signingAlgorithm, deviceBinding, credentialReusePolicy, validity)
+    return IssueMdoc(
+        configuration,
+        clock,
+        validateProof,
+        generateNotificationId,
+        storeIssuedCredential,
+        getAttestationAttributes,
+        allocateStatus,
+        encodeAttributes,
+    )
+}
 
-                    val encodedCredential =
-                        encodeAttributes(
-                            licence,
-                            deviceKey,
-                            issuedAt,
-                            expiresAt,
-                            statusListToken,
-                        )
-
-                    storeIssuedCredential(
-                        IssuedCredential(
-                            format = MSO_MDOC_FORMAT,
-                            type = configuration.docType,
-                            issuedAt = issuedAt,
-                            expiresAt = expiresAt,
-                            notificationId = notificationId,
-                            status = statusListToken,
-                            clientStatus = clientStatus,
-                            keyStorageStatus = keyStorageStatus,
-                        ),
-                    )
-
-                    encodedCredential
-                }.toNonEmptyListOrNull()
-
-        checkNotNull(issuedCredentials) { "Cannot happen" }
-
-        return CredentialResponse
-            .Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
-            .also {
-                log.info("Successfully issued mDL(s)")
-                log.debug("Issued mDL(s) data {}", it)
-            }
-    }
-
-    companion object {
-        operator fun invoke(
-            clock: Clock,
-            getAttestationAttributes: GetAttestationAttributes<MobileDrivingLicence>,
-            encodeAttributes: EncodeAttributesInMdoc<MobileDrivingLicence>,
-            deviceBinding: DeviceBinding.Required,
-            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
-            validity: Duration,
-            validateProof: ValidateProof,
-            notificationsEnabled: Boolean,
-            generateNotificationId: GenerateNotificationId,
-            storeIssuedCredential: StoreIssuedCredential,
-            allocateStatus: AllocateStatus,
-        ): IssueMobileDrivingLicence {
-            val configuration =
-                mobileDrivingLicenceV1(encodeAttributes.signingAlgorithm, deviceBinding, credentialReusePolicy, validity)
-            return IssueMobileDrivingLicence(
-                configuration,
-                clock,
-                getAttestationAttributes,
-                encodeAttributes,
-                validateProof,
-                notificationsEnabled,
-                generateNotificationId,
-                storeIssuedCredential,
-                allocateStatus,
-            )
-        }
-
-        operator fun invoke(
-            clock: Clock,
-            getAttestationAttributes: GetAttestationAttributes<MobileDrivingLicence>,
-            issuerSigningKey: IssuerSigningKey,
-            deviceBinding: DeviceBinding.Required,
-            credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
-            validity: Duration,
-            validateProof: ValidateProof,
-            notificationsEnabled: Boolean,
-            generateNotificationId: GenerateNotificationId,
-            storeIssuedCredential: StoreIssuedCredential,
-            allocateStatus: AllocateStatus,
-        ): IssueMobileDrivingLicence {
-            val encodeAttributes = encodeMdlInMdoc(MobileDrivingLicenceV1DocType, issuerSigningKey)
-            return invoke(
-                clock,
-                getAttestationAttributes,
-                encodeAttributes,
-                deviceBinding,
-                credentialReusePolicy,
-                validity,
-                validateProof,
-                notificationsEnabled,
-                generateNotificationId,
-                storeIssuedCredential,
-                allocateStatus,
-            )
-        }
-    }
+@Suppress("FunctionName")
+fun IssueMobileDrivingLicence(
+    credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+    deviceBinding: DeviceBinding.Required,
+    validity: Duration,
+    clock: Clock,
+    validateProof: ValidateProof,
+    generateNotificationId: GenerateNotificationId?,
+    storeIssuedCredential: StoreIssuedCredential,
+    getAttestationAttributes: GetAttestationAttributes<MobileDrivingLicence>,
+    allocateStatus: AllocateStatus,
+    issuerSigningKey: IssuerSigningKey,
+): IssueMdoc<MobileDrivingLicence> {
+    val encodeAttributes = encodeMdlInMdoc(MobileDrivingLicenceV1DocType, issuerSigningKey)
+    val configuration =
+        mobileDrivingLicenceV1(encodeAttributes.signingAlgorithm, deviceBinding, credentialReusePolicy, validity)
+    return IssueMdoc(
+        configuration,
+        clock,
+        validateProof,
+        generateNotificationId,
+        storeIssuedCredential,
+        getAttestationAttributes,
+        allocateStatus,
+        encodeAttributes,
+    )
 }

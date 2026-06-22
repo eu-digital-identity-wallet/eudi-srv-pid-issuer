@@ -19,6 +19,7 @@ import arrow.core.nonEmptyListOf
 import arrow.core.raise.Raise
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.IsoAlpha2CountryCode
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.Pid
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidMetaData
 import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
@@ -31,7 +32,7 @@ import kotlin.time.Instant
 
 class GetLearningCredentialMock(
     private val clock: Clock,
-    private val getPidData: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
+    private val getPidData: GetAttestationAttributes<PidAttributes>,
     private val random: Random = Random,
 ) : GetAttestationAttributes<LearningCredential> {
     context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>, authorizationContext: AuthorizationContext)

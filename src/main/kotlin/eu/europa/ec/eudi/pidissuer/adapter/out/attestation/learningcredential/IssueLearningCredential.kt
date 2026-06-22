@@ -22,6 +22,7 @@ import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.Pid
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidMetaData
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -117,7 +118,7 @@ internal class IssueLearningCredential(
     companion object {
         fun sdJwtVcCompact(
             clock: Clock,
-            getPidData: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
+            getPidData: GetAttestationAttributes<PidAttributes>,
             issuerSigningKey: IssuerSigningKey,
             digestsHashAlgorithm: HashAlgorithm,
             deviceBinding: DeviceBinding.Required,

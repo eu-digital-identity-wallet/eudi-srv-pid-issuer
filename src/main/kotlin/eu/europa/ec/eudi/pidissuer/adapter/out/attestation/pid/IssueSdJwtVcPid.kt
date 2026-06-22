@@ -217,7 +217,7 @@ class IssueSdJwtVcPid private constructor(
     override val configuration: SdJwtVcCredentialConfiguration,
     private val clock: Clock,
     private val timeZone: TimeZone,
-    private val getAttestationAttributes: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
+    private val getAttestationAttributes: GetAttestationAttributes<PidAttributes>,
     private val encodePidInSdJwt: EncodePidInSdJwtVc,
     private val validateProof: ValidateProof,
     private val notificationsEnabled: Boolean,
@@ -309,7 +309,7 @@ class IssueSdJwtVcPid private constructor(
         operator fun invoke(
             clock: Clock,
             timeZone: TimeZone,
-            getAttestationAttributes: GetAttestationAttributes<Pair<Pid, PidMetaData>>,
+            getAttestationAttributes: GetAttestationAttributes<PidAttributes>,
             issuerSigningKey: IssuerSigningKey,
             credentialIssuerId: CredentialIssuerId,
             hashAlgorithm: HashAlgorithm,

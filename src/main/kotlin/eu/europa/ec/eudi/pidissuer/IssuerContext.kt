@@ -529,7 +529,7 @@ fun beans(
             users = Realm(keycloakProperties.userRealm),
         )
     }
-    registerBean<EncodeAttributesInMdoc<Pair<Pid, PidMetaData>>>(lazyInit = true) {
+    registerBean<EncodeAttributesInMdoc<PidAttributes>>(lazyInit = true) {
         encodePidInMdoc(issuerSigningKey = getIssuerSigningKey("issuer.pid.mso_mdoc.signing-key"))
     }
 
@@ -766,10 +766,13 @@ fun beans(
                             credentialReusePolicy = mdlIssuerReusePolicy,
                             validity = duration,
                             validateProof = bean(),
-                            notificationsEnabled =
-                                env.getProperty<Boolean>("issuer.mdl.notifications.enabled")
-                                    ?: true,
-                            generateNotificationId = bean(),
+                            generateNotificationId =
+                                run {
+                                    val enabled =
+                                        env.getProperty<Boolean>("issuer.mdl.notifications.enabled")
+                                            ?: true
+                                    if (enabled) bean() else null
+                                },
                             storeIssuedCredential = bean(),
                             allocateStatus = bean(),
                         )
