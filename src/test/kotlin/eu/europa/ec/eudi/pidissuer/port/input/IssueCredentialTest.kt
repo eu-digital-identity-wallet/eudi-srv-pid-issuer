@@ -59,7 +59,6 @@ class IssueCredentialTest {
     private val attestationIssuer =
         object : AttestationIssuer {
             override val configuration: CredentialConfiguration = msoMdocConfig
-            override val publicKey = null
             override val validity = 365.days
 
             context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext,)
