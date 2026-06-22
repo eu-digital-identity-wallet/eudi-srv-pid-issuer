@@ -57,7 +57,6 @@ class GetDeferredCredentialTest {
     private val attestationIssuer =
         object : AttestationIssuer {
             override val configuration: CredentialConfiguration = credentialConfiguration
-            override val publicKey = null
             override val validity = 365.days
 
             context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
