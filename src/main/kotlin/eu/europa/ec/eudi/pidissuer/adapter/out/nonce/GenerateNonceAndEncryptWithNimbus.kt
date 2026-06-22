@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.credential
+package eu.europa.ec.eudi.pidissuer.adapter.out.nonce
 
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWEHeader
@@ -23,7 +23,7 @@ import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.openid.connect.sdk.Nonce
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.toJavaDate
-import eu.europa.ec.eudi.pidissuer.port.out.attestation.GenerateNonce
+import eu.europa.ec.eudi.pidissuer.port.out.nonce.GenerateNonce
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.bouncycastle.jce.provider.BouncyCastleProvider

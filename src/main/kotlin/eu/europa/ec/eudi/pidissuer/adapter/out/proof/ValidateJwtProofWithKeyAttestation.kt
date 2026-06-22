@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.jose
+package eu.europa.ec.eudi.pidissuer.adapter.out.proof
 
 import arrow.core.raise.Raise
 import arrow.core.raise.context.ensure
@@ -36,6 +36,7 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import com.nimbusds.jwt.proc.JWTProcessor
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
+import eu.europa.ec.eudi.pidissuer.port.out.proof.ValidateProof
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.seconds
@@ -45,12 +46,12 @@ import kotlin.time.Instant
 /**
  * Validator for JWT Proofs.
  */
-internal class ValidateJwtProofWithKeyAttestation(
+class ValidateJwtProofWithKeyAttestation(
     private val credentialIssuerId: CredentialIssuerId,
     private val verifyKeyAttestation: VerifyKeyAttestation,
-) {
-    context(_: Raise<IssueCredentialError.InvalidProof>, _: ProofType.Jwt)
-    suspend operator fun invoke(
+) : ValidateProof.Validator<UnvalidatedProof.Jwt, ProofType.Jwt> {
+    context(_: Raise<IssueCredentialError.InvalidProof>, proofType: ProofType.Jwt)
+    override suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof.Jwt,
         at: Instant,
     ): KeyAttestation =

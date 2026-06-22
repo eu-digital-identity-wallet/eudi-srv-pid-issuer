@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.jose
+package eu.europa.ec.eudi.pidissuer.adapter.out.proof
 
 import arrow.core.Either
 import arrow.core.NonEmptyList

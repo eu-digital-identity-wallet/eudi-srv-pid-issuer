@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.credential
+package eu.europa.ec.eudi.pidissuer.adapter.out.nonce
 
 import arrow.core.raise.result
 import com.nimbusds.jose.JOSEObjectType
@@ -29,7 +29,7 @@ import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.toKotlinInstant
-import eu.europa.ec.eudi.pidissuer.port.out.attestation.VerifyNonce
+import eu.europa.ec.eudi.pidissuer.port.out.nonce.VerifyNonce
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.bouncycastle.jce.provider.BouncyCastleProvider

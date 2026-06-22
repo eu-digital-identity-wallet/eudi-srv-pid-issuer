@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.jose
+package eu.europa.ec.eudi.pidissuer.adapter.out.proof
 
 import arrow.core.NonEmptyList
 import arrow.core.NonEmptySet
@@ -48,7 +48,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 import kotlin.time.Instant
 
-internal class VerifyKeyAttestation(
+class VerifyKeyAttestation(
     private val verifyAttestedKey: VerifyAttestedKey? = null,
     private val maxSkew: Duration = 30.seconds,
     private val isTrustedKeyAttestationIssuer: IsTrustedKeyAttestationIssuer,

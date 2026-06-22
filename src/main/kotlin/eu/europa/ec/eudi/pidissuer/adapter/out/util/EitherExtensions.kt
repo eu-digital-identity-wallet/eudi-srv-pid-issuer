@@ -19,9 +19,3 @@ import arrow.core.Either
 import arrow.core.getOrElse
 
 internal fun <T> Either<Throwable, T>.getOrThrow(): T = getOrElse { throw it }
-
-internal fun <T, E : Exception> Either<Throwable, T>.getOrThrow(convert: (Throwable) -> E): T =
-    fold(
-        ifLeft = { throw convert(it) },
-        ifRight = { it },
-    )

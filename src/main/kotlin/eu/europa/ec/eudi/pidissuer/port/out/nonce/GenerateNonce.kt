@@ -13,25 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.port.out.attestation
+package eu.europa.ec.eudi.pidissuer.port.out.nonce
 
+import kotlin.time.Duration
 import kotlin.time.Instant
 
 /**
- * Verifies a Nonce value is valid at a specific [Instant].
+ * Generates a new Nonce that expires after a specific [kotlin.time.Duration].
  */
-fun interface VerifyNonce {
+fun interface GenerateNonce {
     suspend operator fun invoke(
-        value: String,
-        at: Instant,
-    ): Boolean
-
-    suspend operator fun invoke(
-        values: List<String>,
-        at: Instant,
-    ): Boolean =
-        when (values.distinct().size) {
-            1 -> this(values.first(), at)
-            else -> false
-        }
+        generatedAt: Instant,
+        expiresIn: Duration,
+    ): String
 }

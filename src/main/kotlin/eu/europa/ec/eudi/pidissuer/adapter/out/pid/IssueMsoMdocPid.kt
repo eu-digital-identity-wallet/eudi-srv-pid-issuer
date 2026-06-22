@@ -26,11 +26,11 @@ import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
-import eu.europa.ec.eudi.pidissuer.port.out.attestation.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.allocateStatusWithPolicy
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.keyAttestation
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
+import eu.europa.ec.eudi.pidissuer.port.out.proof.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
