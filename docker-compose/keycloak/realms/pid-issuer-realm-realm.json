@@ -1111,7 +1111,10 @@
         "require.pushed.authorization.requests": "true",
         "pkce.code.challenge.method": "S256",
         "dpop.bound.access.tokens": "true",
-        "serviceUrl": "https://dev.trust-validator.eudiw.dev/trust"
+        "trustValidator.serviceUrl": "https://dev.trust-validator.eudiw.dev/trust",
+        "clock.skew": "5",
+        "clientAttestation.maxAge": "86400",
+        "clientAttestationPoP.maxAge": "15"
       },
       "authenticationFlowBindingOverrides": {
       },
