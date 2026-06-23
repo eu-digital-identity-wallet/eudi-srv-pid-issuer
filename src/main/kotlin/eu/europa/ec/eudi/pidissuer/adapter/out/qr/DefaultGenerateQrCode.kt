@@ -15,16 +15,19 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.qr
 
-import arrow.core.Either
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.client.j2se.MatrixToImageConfig
 import com.google.zxing.client.j2se.MatrixToImageWriter
+import com.google.zxing.common.BitMatrix
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import eu.europa.ec.eudi.pidissuer.port.out.qr.Dimensions
 import eu.europa.ec.eudi.pidissuer.port.out.qr.Format
 import eu.europa.ec.eudi.pidissuer.port.out.qr.GenerateQqCode
+import eu.europa.ec.eudi.pidissuer.port.out.qr.Pixels
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.net.URI
 
@@ -32,26 +35,37 @@ import java.net.URI
  * [GenerateQqCode] implementation using QRGen.
  */
 class DefaultGenerateQrCode : GenerateQqCode {
-    override fun invoke(
+    private val config = MatrixToImageConfig()
+
+    private fun Pixels.toInt() = value.toInt()
+
+    private val hints =
+        mapOf(
+            EncodeHintType.CHARACTER_SET to Charsets.UTF_8.name(),
+            EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.H,
+        )
+
+    private fun matrix(
+        content: URI,
+        dimensions: Dimensions,
+    ): BitMatrix =
+        QRCodeWriter().encode(
+            content.toString(),
+            BarcodeFormat.QR_CODE,
+            dimensions.width.toInt(),
+            dimensions.height.toInt(),
+            hints,
+        )
+
+    override suspend fun invoke(
         content: URI,
         format: Format,
         dimensions: Dimensions,
-    ): Either<Throwable, ByteArray> =
-        Either.catch {
-            val writer = QRCodeWriter()
-            val matrix =
-                writer.encode(
-                    content.toString(),
-                    BarcodeFormat.QR_CODE,
-                    dimensions.width.value.toInt(),
-                    dimensions.height.value.toInt(),
-                    mapOf(
-                        EncodeHintType.CHARACTER_SET to Charsets.UTF_8.name(),
-                        EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.H,
-                    ),
-                )
+    ): ByteArray =
+        withContext(Dispatchers.IO) {
+            val matrix = matrix(content, dimensions)
             ByteArrayOutputStream().use {
-                MatrixToImageWriter.writeToStream(matrix, format.name, it, MatrixToImageConfig())
+                MatrixToImageWriter.writeToStream(matrix, format.name, it, config)
                 it.toByteArray()
             }
         }

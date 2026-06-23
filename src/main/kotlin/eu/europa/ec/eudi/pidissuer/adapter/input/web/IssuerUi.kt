@@ -15,23 +15,21 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
-import arrow.core.getOrElse
+import arrow.core.raise.effect
+import arrow.core.raise.fold
 import eu.europa.ec.eudi.pidissuer.appendPath
-import eu.europa.ec.eudi.pidissuer.domain.CredentialConfigurationId
-import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
-import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
-import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
-import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
+import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOffer
 import eu.europa.ec.eudi.pidissuer.port.out.qr.Dimensions
 import eu.europa.ec.eudi.pidissuer.port.out.qr.Format
 import eu.europa.ec.eudi.pidissuer.port.out.qr.GenerateQqCode
 import eu.europa.ec.eudi.pidissuer.port.out.qr.Pixels
-import io.ktor.http.URLBuilder
+import io.ktor.http.*
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.server.*
+import java.net.URI
 import kotlin.io.encoding.Base64
 
 class IssuerUi(
@@ -86,49 +84,20 @@ class IssuerUi(
             )
     }
 
-    private suspend fun handleGenerateCredentialsOffer(request: ServerRequest): ServerResponse {
-        log.info("Generating Credentials Offer")
-        val formData = request.awaitFormData()
-        val credentialIds =
-            formData["credentialIds"]
-                .orEmpty()
-                .map(::CredentialConfigurationId)
-                .toSet()
-        val credentialsOfferUri = formData["credentialsOfferUri"]?.firstOrNull { it.isNotBlank() }
-
-        return createCredentialsOffer(credentialIds, credentialsOfferUri)
-            .map { credentialsOffer ->
-                log.info("Successfully generated Credentials Offer. URI: '{}'", credentialsOffer)
-
-                val qrCode =
-                    generateQrCode(credentialsOffer, Format.PNG, Dimensions(Pixels(300u), Pixels(300u))).getOrElse { throw it }
-                log.info("Successfully generated QR Code. Displaying generated Credentials Offer.")
-                ServerResponse
-                    .ok()
-                    .contentType(MediaType.TEXT_HTML)
-                    .renderAndAwait(
-                        "display-credentials-offer",
-                        mapOf(
-                            "uri" to credentialsOffer.toString(),
-                            "qrCode" to Base64.encode(qrCode),
-                            "qrCodeMediaType" to "image/png",
-                            "openid4VciVersion" to OpenId4VciSpec.VERSION,
-                        ),
-                    )
-            }.getOrElse { error ->
+    private suspend fun handleGenerateCredentialsOffer(request: ServerRequest): ServerResponse =
+        effect {
+            log.debug("Generating Credentials Offer")
+            val createCredentialOfferRequest = request.createCredentialOfferRequest()
+            createCredentialsOffer(createCredentialOfferRequest)
+        }.fold(
+            transform = { credentialsOfferUri ->
+                context(generateQrCode) { credentialsOfferUri.credentialOfferSuccessResponse() }
+            },
+            recover = { error ->
                 log.warn("Unable to generated Credentials Offer. Error: {}", error)
-                ServerResponse
-                    .badRequest()
-                    .contentType(MediaType.TEXT_HTML)
-                    .renderAndAwait(
-                        "generate-credentials-offer-error",
-                        mapOf(
-                            "error" to error::class.java.canonicalName,
-                            "openid4VciVersion" to OpenId4VciSpec.VERSION,
-                        ),
-                    )
-            }
-    }
+                error.credentialOfferErrorResponse()
+            },
+        )
 
     private fun createUsefulLinks(
         credentialIssuer: CredentialIssuerId,
@@ -167,3 +136,39 @@ class IssuerUi(
         private val log = LoggerFactory.getLogger(IssuerUi::class.java)
     }
 }
+
+private suspend fun ServerRequest.createCredentialOfferRequest(): CreateCredentialsOffer.Request {
+    val formData = awaitFormData()
+    val credentialIds = formData["credentialIds"].orEmpty().map(::CredentialConfigurationId).toSet()
+    val credentialsOfferUri = formData["credentialsOfferUri"]?.firstOrNull { it.isNotBlank() }
+    return CreateCredentialsOffer.Request(credentialIds, credentialsOfferUri)
+}
+
+context(generateQrCode: GenerateQqCode)
+private suspend fun URI.credentialOfferSuccessResponse(): ServerResponse {
+    val uri = this
+    val qrCode = generateQrCode(uri, Format.PNG, Dimensions(Pixels(300u), Pixels(300u)))
+    return ServerResponse
+        .ok()
+        .contentType(MediaType.TEXT_HTML)
+        .renderAndAwait(
+            "display-credentials-offer",
+            mapOf(
+                "uri" to uri.toString(),
+                "qrCode" to Base64.encode(qrCode),
+                "qrCodeMediaType" to "image/png",
+            ),
+        )
+}
+
+private suspend fun CreateCredentialsOffer.Error.credentialOfferErrorResponse(): ServerResponse =
+    ServerResponse
+        .badRequest()
+        .contentType(MediaType.TEXT_HTML)
+        .renderAndAwait(
+            "generate-credentials-offer-error",
+            mapOf(
+                "error" to this::class.java.canonicalName,
+                "openid4VciVersion" to OpenId4VciSpec.VERSION,
+            ),
+        )
