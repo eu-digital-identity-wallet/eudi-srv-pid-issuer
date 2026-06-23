@@ -298,12 +298,9 @@ internal fun MsoMdocCredentialConfiguration.toTransferObject(): JsonObjectBuilde
 
 internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilder.() -> Unit =
     {
-        credentialSigningAlgorithmsSupported
-            ?.let { credentialSigningAlgorithmsSupported ->
-                putJsonArray("credential_signing_alg_values_supported") {
-                    addAll(credentialSigningAlgorithmsSupported.map { it.name })
-                }
-            }
+        putJsonArray("credential_signing_alg_values_supported") {
+            addAll(credentialSigningAlgorithmsSupported.map { it.name })
+        }
         put("vct", type.value)
         putCredentialMetadata(display, claims, reusePolicy)
     }

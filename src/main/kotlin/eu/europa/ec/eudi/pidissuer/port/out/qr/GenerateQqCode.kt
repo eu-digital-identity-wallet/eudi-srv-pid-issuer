@@ -46,9 +46,9 @@ fun interface GenerateQqCode {
      * @param format the image format to use
      * @param dimensions the dimensions of the generated QR Code
      */
-    operator fun invoke(
+    suspend operator fun invoke(
         content: URI,
         format: Format,
         dimensions: Dimensions,
-    ): Either<Throwable, ByteArray>
+    ): ByteArray
 }

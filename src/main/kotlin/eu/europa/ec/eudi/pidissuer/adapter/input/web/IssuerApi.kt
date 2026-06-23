@@ -15,9 +15,10 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
+import arrow.core.raise.effect
+import arrow.core.raise.fold
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfigurationId
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOffer
-import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
@@ -37,29 +38,15 @@ class IssuerApi(
             )
         }
 
-    private suspend fun handleCreateCredentialsOffer(request: ServerRequest): ServerResponse {
-        log.info("Generating Credentials Offer")
-        val credentialIds =
-            request
-                .awaitBodyOrNull<CreateCredentialsOfferRequestTO>()
-                ?.credentialIds
-                .orEmpty()
-                .map(::CredentialConfigurationId)
-                .toSet()
-
-        return createCredentialsOffer(credentialIds).fold(
-            ifRight = { credentialsOffer ->
-                ServerResponse
-                    .ok()
-                    .json()
-                    .bodyValueAndAwait(CreateCredentialsOfferResponseTO.success(credentialsOffer))
-                    .also { log.info("Successfully generated Credentials Offer. URI: '{}'", credentialsOffer) }
-            },
-            ifLeft = { error ->
-                ServerResponse.badRequest().json().bodyValueAndAwait(CreateCredentialsOfferResponseTO.error(error))
-            },
+    private suspend fun handleCreateCredentialsOffer(request: ServerRequest): ServerResponse =
+        effect {
+            log.info("Generating Credentials Offer")
+            val createCredentialsOfferRequest = request.createCredentialOfferRequest()
+            createCredentialsOffer(createCredentialsOfferRequest)
+        }.fold(
+            transform = { createCredentialsOfferUri -> createCredentialsOfferUri.credentialOfferSuccessResponse() },
+            recover = { error -> error.credentialOfferErrorResponse() },
         )
-    }
 
     companion object {
         const val CREATE_CREDENTIALS_OFFER: String = "/issuer/credentialsOffer/create"
@@ -67,10 +54,28 @@ class IssuerApi(
     }
 }
 
-@Serializable
-private data class CreateCredentialsOfferRequestTO(
-    @SerialName("credentialIds") val credentialIds: Set<String>? = null,
-)
+private suspend fun ServerRequest.createCredentialOfferRequest(): CreateCredentialsOffer.Request {
+    @Serializable
+    data class CreateCredentialsOfferRequestTO(
+        @SerialName("credentialIds") val credentialIds: Set<String>? = null,
+    ) {
+        fun asRequest() = CreateCredentialsOffer.Request(credentialIds.orEmpty().map(::CredentialConfigurationId).toSet())
+    }
+    return awaitBody<CreateCredentialsOfferRequestTO>().asRequest()
+}
+
+private suspend fun URI.credentialOfferSuccessResponse(): ServerResponse {
+    val dto = CreateCredentialsOfferResponseTO.success(this)
+    return ServerResponse
+        .ok()
+        .json()
+        .bodyValueAndAwait(dto)
+}
+
+private suspend fun CreateCredentialsOffer.Error.credentialOfferErrorResponse(): ServerResponse {
+    val dto = CreateCredentialsOfferResponseTO.error(this)
+    return ServerResponse.badRequest().json().bodyValueAndAwait(dto)
+}
 
 @Serializable
 private data class CreateCredentialsOfferResponseTO(
@@ -80,6 +85,6 @@ private data class CreateCredentialsOfferResponseTO(
     companion object {
         fun success(credentialsOffer: URI) = CreateCredentialsOfferResponseTO(credentialsOffer = credentialsOffer.toString())
 
-        fun error(error: CreateCredentialsOfferError) = CreateCredentialsOfferResponseTO(error = error::class.java.simpleName)
+        fun error(error: CreateCredentialsOffer.Error) = CreateCredentialsOfferResponseTO(error = error::class.java.simpleName)
     }
 }
