@@ -15,52 +15,20 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
-import arrow.core.Either
 import arrow.core.NonEmptySet
-import arrow.core.getOrElse
 import arrow.core.raise.Raise
-import arrow.core.raise.either
-import arrow.core.raise.ensure
-import arrow.core.raise.ensureNotNull
+import arrow.core.raise.catch
+import arrow.core.raise.context.ensure
+import arrow.core.raise.context.ensureNotNull
+import arrow.core.raise.context.raise
 import arrow.core.toNonEmptySetOrNull
 import com.eygraber.uri.Uri
 import com.eygraber.uri.toURI
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfigurationId
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
-import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError.InvalidCredentialConfigurationId
-import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError.MissingCredentialConfigurationIds
 import kotlinx.serialization.json.Json
 import java.net.URI
-
-/**
- * Errors that might be returned by [CreateCredentialsOffer].
- */
-sealed interface CreateCredentialsOfferError {
-    /**
-     * No Credentials Unique Ids have been provided.
-     */
-    data object MissingCredentialConfigurationIds : CreateCredentialsOfferError
-
-    /**
-     * The provided Credential Unique Ids are not valid.
-     */
-    data class InvalidCredentialConfigurationId(
-        val id: CredentialConfigurationId,
-    ) : CreateCredentialsOfferError
-
-    /**
-     * Selected credential configuration ids contain mixing attestation categories.
-     */
-    data object MultipleAttestationCategories : CreateCredentialsOfferError
-
-    /**
-     * Indicates the Credentials Offer URI cannot be generated.
-     */
-    data class InvalidCredentialsOfferUri(
-        val cause: Throwable,
-    ) : CreateCredentialsOfferError
-}
 
 /**
  * Generates a Credential Offer and a QR Code in PNG format.
@@ -69,49 +37,59 @@ class CreateCredentialsOffer(
     private val metadata: CredentialIssuerMetaData,
     private val credentialsOfferUri: String,
 ) {
-    operator fun invoke(
-        unvalidatedCredentialConfigurationIds: Set<CredentialConfigurationId>,
-        customCredentialsOfferUri: String? = null,
-    ): Either<CreateCredentialsOfferError, URI> =
-        either {
-            val offer =
-                run {
-                    val credentialConfigurationIds =
-                        validate(metadata, unvalidatedCredentialConfigurationIds)
-                    authorizationCodeGrantOffer(metadata, credentialConfigurationIds)
-                }
-
-            Either
-                .catch {
-                    Uri
-                        .parse(customCredentialsOfferUri ?: credentialsOfferUri)
-                        .buildUpon()
-                        .appendQueryParameter("credential_offer", Json.encodeToString(offer))
-                        .build()
-                        .toURI()
-                }.getOrElse { raise(CreateCredentialsOfferError.InvalidCredentialsOfferUri(it)) }
+    context(_: Raise<Error>)
+    operator fun invoke(request: Request): URI =
+        context(metadata, credentialsOfferUri) {
+            validate(request.credentialConfigurationIds)
+                .authorizationCodeGrantOffer()
+                .toUri(request.customCredentialsOfferUri ?: credentialsOfferUri)
         }
+
+    data class Request(
+        val credentialConfigurationIds: Set<CredentialConfigurationId>,
+        val customCredentialsOfferUri: String? = null,
+    )
+
+    /**
+     * Errors that might be returned by [CreateCredentialsOffer].
+     */
+    sealed interface Error {
+        /**
+         * No Credentials Unique Ids have been provided.
+         */
+        data object MissingCredentialConfigurationIds : Error
+
+        /**
+         * The provided Credential Unique Ids are not valid.
+         */
+        data class InvalidCredentialConfigurationIds(
+            val ids: NonEmptySet<CredentialConfigurationId>,
+        ) : Error
+
+        /**
+         * Selected credential configuration ids contain mixing attestation categories.
+         */
+        data object MultipleAttestationCategories : Error
+
+        /**
+         * Indicates the Credentials Offer URI cannot be generated.
+         */
+        data class InvalidCredentialsOfferUri(
+            val cause: Throwable,
+        ) : Error
+    }
 }
 
-private fun Raise<CreateCredentialsOfferError>.validate(
-    metadata: CredentialIssuerMetaData,
-    unvalidatedIds: Set<CredentialConfigurationId>,
-): NonEmptySet<CredentialConfigurationId> {
+context(_: Raise<CreateCredentialsOffer.Error>, metadata: CredentialIssuerMetaData)
+private fun validate(unvalidatedIds: Set<CredentialConfigurationId>): NonEmptySet<CredentialConfigurationId> {
     val nonEmptyIds = unvalidatedIds.toNonEmptySetOrNull()
-    ensureNotNull(nonEmptyIds) { MissingCredentialConfigurationIds }
+    ensureNotNull(nonEmptyIds) { CreateCredentialsOffer.Error.MissingCredentialConfigurationIds }
     val supportedIds = metadata.credentialConfigurationsSupported.map(CredentialConfiguration::id)
-    nonEmptyIds.forEach { id ->
-        ensure(id in supportedIds) { InvalidCredentialConfigurationId(id) }
-    }
-
+    val unknownIds = nonEmptyIds.filter { it !in supportedIds }.toNonEmptySetOrNull()
+    if (unknownIds != null) raise(CreateCredentialsOffer.Error.InvalidCredentialConfigurationIds(unknownIds))
     val supported = metadata.credentialConfigurationsSupported
-    val selectedCategories =
-        nonEmptyIds
-            .map { id -> supported.first { it.id == id }.category }
-            .toSet()
-
-    ensure(selectedCategories.size == 1) { CreateCredentialsOfferError.MultipleAttestationCategories }
-
+    val selectedCategories = nonEmptyIds.map { id -> supported.first { it.id == id }.category }.toSet()
+    ensure(selectedCategories.size == 1) { CreateCredentialsOffer.Error.MultipleAttestationCategories }
     return nonEmptyIds
 }
 
@@ -121,20 +99,34 @@ private fun Raise<CreateCredentialsOfferError>.validate(
  * [CredentialsOfferTO] as per
  * [OpenId4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-4.1.1-4.1.2.2).
  *
- * @param credentialConfigurationIds the Ids of the Credentials to include in the generated request
+ * @param this@authorizationCodeGrantOffer the Ids of the Credentials to include in the generated request
  * @return the resulting TO
  */
-private fun authorizationCodeGrantOffer(
-    metadata: CredentialIssuerMetaData,
-    credentialConfigurationIds: NonEmptySet<CredentialConfigurationId>,
-): CredentialsOfferTO {
+context(metadata: CredentialIssuerMetaData)
+private fun NonEmptySet<CredentialConfigurationId>.authorizationCodeGrantOffer(): CredentialsOfferTO {
     val authorizationCode =
         AuthorizationCodeTO(
             authorizationServer = metadata.authorizationServers.firstOrNull()?.externalForm,
         )
     return CredentialsOfferTO(
         metadata.id.externalForm,
-        credentialConfigurationIds.map(CredentialConfigurationId::value).toSet(),
+        map(CredentialConfigurationId::value).toSet(),
         GrantsTO(authorizationCode),
     )
 }
+
+context(_: Raise<CreateCredentialsOffer.Error.InvalidCredentialsOfferUri>)
+private fun CredentialsOfferTO.toUri(credentialsOfferUri: String): URI =
+    catch(
+        block = {
+            Uri
+                .parse(credentialsOfferUri)
+                .buildUpon()
+                .appendQueryParameter("credential_offer", Json.encodeToString(this))
+                .build()
+                .toURI()
+        },
+        catch = {
+            raise(CreateCredentialsOffer.Error.InvalidCredentialsOfferUri(it))
+        },
+    )
