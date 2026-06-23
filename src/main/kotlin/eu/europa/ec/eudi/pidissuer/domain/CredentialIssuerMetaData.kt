@@ -25,7 +25,7 @@ import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.RSAKey
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec.ZIP_ALGORITHMS
-import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.AttestationIssuer
 import java.util.*
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
@@ -245,12 +245,12 @@ data class CredentialIssuerMetaData(
             "only one display object can be configured per locale"
         }
 
-        val credentialConfigurationIds = attestationIssuers.map { it.supportedCredential.id }
+        val credentialConfigurationIds = attestationIssuers.map { it.configuration.id }
         require(credentialConfigurationIds.size == credentialConfigurationIds.distinct().size) {
             "credential configuration ids must be unique"
         }
 
-        val maxValidityOfIssuedCredentials = attestationIssuers.maxOf { it.validity }
+        val maxValidityOfIssuedCredentials = attestationIssuers.maxOf { it.configuration.validity }
 
         require(preferredClientStatusPeriod.value >= maxValidityOfIssuedCredentials) {
             "preferredClientStatusPeriod must be greater than or equal to the max validity of issued credentials configured"
@@ -258,7 +258,7 @@ data class CredentialIssuerMetaData(
     }
 
     val credentialConfigurationsSupported: List<CredentialConfiguration>
-        get() = attestationIssuers.map { it.supportedCredential }
+        get() = attestationIssuers.map { it.configuration }
 }
 
 /**

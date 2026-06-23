@@ -1,0 +1,214 @@
+/*
+ * Copyright (c) 2023-2026 European Commission
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package eu.europa.ec.eudi.pidissuer.adapter.out.proof
+
+import arrow.core.NonEmptyList
+import arrow.core.NonEmptySet
+import arrow.core.getOrElse
+import arrow.core.raise.Raise
+import arrow.core.raise.context.ensure
+import arrow.core.raise.context.raise
+import arrow.core.toNonEmptyListOrNull
+import com.nimbusds.jose.JOSEObjectType
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.jwk.AsymmetricJWK
+import com.nimbusds.jose.jwk.ECKey
+import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
+import com.nimbusds.jose.proc.SecurityContext
+import com.nimbusds.jose.proc.SingleKeyJWSKeySelector
+import com.nimbusds.jose.util.Base64
+import com.nimbusds.jose.util.X509CertChainUtils
+import com.nimbusds.jwt.JWTClaimsSet
+import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
+import com.nimbusds.jwt.proc.DefaultJWTProcessor
+import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationJWT
+import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement
+import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
+import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.trust.TrustResult
+import java.net.URI
+import java.security.cert.X509Certificate
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.DurationUnit
+import kotlin.time.Instant
+
+class VerifyKeyAttestation(
+    private val verifyAttestedKey: VerifyAttestedKey? = null,
+    private val maxSkew: Duration = 30.seconds,
+    private val isTrustedKeyAttestationIssuer: IsTrustedKeyAttestationIssuer,
+) {
+    context(_: Raise<String>)
+    suspend operator fun invoke(
+        keyAttestation: KeyAttestationJWT,
+        signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
+        keyAttestationRequirement: KeyAttestationRequirement,
+        expectExpirationClaim: Boolean,
+        at: Instant,
+    ): Pair<NonEmptyList<JWK>, String?> =
+        with(keyAttestation) {
+            val nonce = claims.nonce
+            val algorithm = extractSupportedAlgorithm(signingAlgorithmsSupported)
+            val walletProviderSigningKey = extractSigningKey()
+            val key =
+                walletProviderSigningKey.key
+                    .ensureCompatibleWith(algorithm)
+                    .ensureIsPublicAsymmetricKey()
+            verifySignature(key, algorithm, expectExpirationClaim)
+            ensureMeetsKeyAttestationRequirements(keyAttestationRequirement, nonce)
+            if (walletProviderSigningKey is WalletProviderSigningKey.X5C) {
+                walletProviderSigningKey.ensureTrustWalletProvider()
+            }
+
+            keyAttestation.claims.attestedKeys.value to nonce
+        }
+
+    context(_: Raise<String>)
+    private suspend fun WalletProviderSigningKey.X5C.ensureTrustWalletProvider() {
+        val result = isTrustedKeyAttestationIssuer(x5c)
+        ensure(result is TrustResult.IsTrusted) {
+            "Key attestation is not issued by a trusted wallet provider"
+        }
+    }
+
+    context(_: Raise<String>)
+    private fun KeyAttestationJWT.extractSigningKey(): WalletProviderSigningKey {
+        val header = jwt.header
+        val kid: String? = header.keyID
+        val x5c: List<Base64>? = header.x509CertChain
+
+        return when {
+            kid != null && x5c.isNullOrEmpty() -> {
+                val didUrl = URI.create(kid)
+                val jwk = resolveDidUrl(didUrl).getOrElse { throw it }
+                WalletProviderSigningKey.DIDUrl(jwk, didUrl)
+            }
+
+            kid == null && !x5c.isNullOrEmpty() -> {
+                val chain = X509CertChainUtils.parse(x5c).toNonEmptyListOrNull()
+                requireNotNull(chain) { "x5c chain cannot be empty" }
+                val jwk = JWK.parse(chain.head)
+                WalletProviderSigningKey.X5C(jwk, chain)
+            }
+
+            else -> {
+                raise("Invalid Key attestation : No signing key found in one of 'kid' or 'x5c'. 'trust_chain not yet supported'")
+            }
+        }
+    }
+
+    private fun KeyAttestationJWT.verifySignature(
+        key: AsymmetricJWK,
+        algorithm: JWSAlgorithm,
+        expectExpirationClaim: Boolean,
+    ) {
+        val expectedType = JOSEObjectType(OpenId4VciSpec.KEY_ATTESTATION_JWT_TYPE)
+        val keySelector = SingleKeyJWSKeySelector<SecurityContext>(algorithm, key.toPublicKey())
+        val requiredClaims =
+            if (expectExpirationClaim) {
+                setOf("iat", "attested_keys", "exp")
+            } else {
+                setOf("iat", "attested_keys")
+            }
+        val processor =
+            DefaultJWTProcessor<SecurityContext>()
+                .apply {
+                    jwsTypeVerifier = DefaultJOSEObjectTypeVerifier(expectedType)
+                    jwsKeySelector = keySelector
+                    jwtClaimsSetVerifier =
+                        DefaultJWTClaimsVerifier<SecurityContext?>(
+                            JWTClaimsSet.Builder().build(),
+                            requiredClaims,
+                        ).apply {
+                            maxClockSkew = maxSkew.toInt(DurationUnit.SECONDS)
+                        }
+                }
+        processor.process(jwt, null)
+    }
+
+    context(_: Raise<String>)
+    private suspend fun KeyAttestationJWT.ensureMeetsKeyAttestationRequirements(
+        keyAttestationRequirement: KeyAttestationRequirement,
+        nonce: String?,
+    ) {
+        // if key storage constraints are expected, the passed key attestation must meet these constraints
+        keyAttestationRequirement.keyStorage?.let {
+            val keyStorage = claims.keyStorage
+            ensure(keyAttestationRequirement.keyStorage.containsAll(keyStorage)) {
+                "The provided key storage's attack resistance does not match the expected one."
+            }
+        }
+        // if user authentication constraints are expected, the passed key attestation must meet these constraints
+        keyAttestationRequirement.userAuthentication?.let {
+            val userAuthentication = claims.userAuthentication
+            ensure(keyAttestationRequirement.userAuthentication.containsAll(userAuthentication)) {
+                "The provided user authentication's attack resistance does not match the expected one."
+            }
+        }
+        val attestedKeys = claims.attestedKeys
+        verifyAttestedKey
+            ?.verify(attestedKeys.value, keyAttestationRequirement, nonce)
+            ?.mapLeft {
+                raise("${it.size} of the total ${attestedKeys.value.size} attested keys failed to pass verification")
+            }
+    }
+}
+
+context(_: Raise<String>)
+private fun KeyAttestationJWT.extractSupportedAlgorithm(signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>): JWSAlgorithm =
+    jwt.header.algorithm
+        .takeIf(JWSAlgorithm.Family.EC::contains)
+        ?.takeIf(signingAlgorithmsSupported::contains)
+        ?: raise("signing algorithm of key attestation '${jwt.header.algorithm.name}' is not supported")
+
+context(_: Raise<String>)
+private fun JWK.ensureCompatibleWith(signingAlgorithm: JWSAlgorithm): JWK {
+    val keySupportedAlgorithms =
+        when (this) {
+            is ECKey -> ECDSASigner.SUPPORTED_ALGORITHMS
+            else -> raise("unsupported key type '${keyType.value}'")
+        }
+    ensure(signingAlgorithm in keySupportedAlgorithms) {
+        "key type '${keyType.value}' is not compatible with signing algorithm '${algorithm.name}'"
+    }
+    return this
+}
+
+private fun JWK.ensureIsPublicAsymmetricKey(): AsymmetricJWK {
+    require(!isPrivate) {
+        "Private key provided in key attestation. Must be a public key."
+    }
+    require(this is AsymmetricJWK) {
+        "Symmetric key provided in key attestation. Must be an asymmetric key."
+    }
+    return this
+}
+
+private sealed interface WalletProviderSigningKey {
+    val key: JWK
+
+    data class DIDUrl(
+        override val key: JWK,
+        val didUrl: URI,
+    ) : WalletProviderSigningKey
+
+    data class X5C(
+        override val key: JWK,
+        val x5c: NonEmptyList<X509Certificate>,
+    ) : WalletProviderSigningKey
+}

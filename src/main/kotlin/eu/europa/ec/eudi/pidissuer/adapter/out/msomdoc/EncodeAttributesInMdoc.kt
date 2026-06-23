@@ -1,0 +1,164 @@
+/*
+ * Copyright (c) 2023-2026 European Commission
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc
+
+import COSE.OneKey
+import com.nimbusds.jose.jwk.ECKey
+import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
+import eu.europa.ec.eudi.pidissuer.adapter.out.coseAlgorithm
+import eu.europa.ec.eudi.pidissuer.adapter.out.cryptoProvider
+import eu.europa.ec.eudi.pidissuer.domain.CoseAlgorithm
+import eu.europa.ec.eudi.pidissuer.domain.MsoDocType
+import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
+import eu.europa.ec.eudi.pidissuer.domain.TokenStatusListSpec
+import id.walt.mdoc.SimpleCOSECryptoProvider
+import id.walt.mdoc.cose.COSECryptoProvider
+import id.walt.mdoc.dataelement.DataElement
+import id.walt.mdoc.dataelement.MapElement
+import id.walt.mdoc.dataelement.MapKey
+import id.walt.mdoc.dataelement.toDataElement
+import id.walt.mdoc.doc.MDoc
+import id.walt.mdoc.doc.MDocBuilder
+import id.walt.mdoc.mso.DeviceKeyInfo
+import id.walt.mdoc.mso.MSO
+import id.walt.mdoc.mso.ValidityInfo
+import kotlinx.datetime.toDeprecatedInstant
+import kotlin.io.encoding.Base64
+import kotlin.time.Instant
+
+interface EncodeAttributesInMdoc<in Data> {
+    val signingAlgorithm: CoseAlgorithm
+
+    suspend operator fun invoke(
+        attributes: Data,
+        deviceKey: ECKey,
+        issuedAt: Instant,
+        expiresAt: Instant,
+        statusListToken: StatusListToken?,
+    ): String
+
+    companion object {
+        operator fun <Data> invoke(
+            docType: MsoDocType,
+            issuerSigningKey: IssuerSigningKey,
+            usage: MDocBuilder.(Data) -> Unit,
+        ): EncodeAttributesInMdoc<Data> =
+            object : EncodeAttributesInMdoc<Data> {
+                override val signingAlgorithm: CoseAlgorithm
+                    get() = issuerSigningKey.coseAlgorithm
+
+                override suspend fun invoke(
+                    attributes: Data,
+                    deviceKey: ECKey,
+                    issuedAt: Instant,
+                    expiresAt: Instant,
+                    statusListToken: StatusListToken?,
+                ): String {
+                    val signer = MsoMdocSigner(issuerSigningKey, docType, usage)
+                    return signer.sign(attributes, deviceKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
+                }
+            }
+    }
+}
+
+private val base64UrlSafeNoPadding = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
+
+private class MsoMdocSigner<in Data>(
+    private val issuerSigningKey: IssuerSigningKey,
+    private val docType: MsoDocType,
+    private val usage: MDocBuilder.(Data) -> Unit,
+) {
+    private val issuerCryptoProvider: SimpleCOSECryptoProvider by lazy {
+        issuerSigningKey.cryptoProvider(includeRootCA = false)
+    }
+
+    fun sign(
+        credential: Data,
+        deviceKey: ECKey,
+        issuedAt: Instant,
+        expiresAt: Instant,
+        statusListToken: StatusListToken?,
+    ): String {
+        require(expiresAt >= issuedAt) { "expiresAt must greater or equal to issuedAt" }
+        val validityInfo =
+            ValidityInfo(
+                signed = issuedAt.dropFractionOfSeconds().toDeprecatedInstant(),
+                validFrom = issuedAt.dropFractionOfSeconds().toDeprecatedInstant(),
+                validUntil = expiresAt.dropFractionOfSeconds().toDeprecatedInstant(),
+                expectedUpdate = null,
+            )
+        val deviceKeyInfo = deviceKeyInfo(deviceKey)
+        val mdoc =
+            MDocBuilder(docType)
+                .apply { usage(credential) }
+                .sign(validityInfo, deviceKeyInfo, statusListToken, issuerCryptoProvider, issuerSigningKey.key.keyID)
+        return base64UrlSafeNoPadding.encode(mdoc.issuerSigned.toMapElement().toCBOR())
+    }
+}
+
+private fun deviceKeyInfo(deviceKey: ECKey): DeviceKeyInfo {
+    val key = OneKey(deviceKey.toECPublicKey(), null)
+    val deviceKeyDataElement: MapElement = DataElement.fromCBOR(key.AsCBOR().EncodeToBytes())
+    return DeviceKeyInfo(deviceKeyDataElement, null, null)
+}
+
+/**
+ * Build and sign the mdoc document
+ * @param validityInfo Validity information of this issued document
+ * @param deviceKeyInfo Info of device key, to which this document is bound (holder key)
+ * @param statusListToken Status List Token to include in the document
+ * @param cryptoProvider COSE crypto provider impl to use for signing this document
+ * @param keyID ID of the key to use for signing, if required by crypto provider
+ */
+private fun MDocBuilder.sign(
+    validityInfo: ValidityInfo,
+    deviceKeyInfo: DeviceKeyInfo,
+    statusListToken: StatusListToken?,
+    cryptoProvider: COSECryptoProvider,
+    keyID: String? = null,
+): MDoc {
+    val mso = MSO.createFor(nameSpacesMap, deviceKeyInfo, docType, validityInfo)
+    val payload =
+        if (null != statusListToken) {
+            buildMap {
+                mso
+                    .toMapElement()
+                    .value.entries
+                    .forEach { put(it.key, it.value) }
+                put(MapKey(TokenStatusListSpec.STATUS), statusListToken.toMsoStatus())
+            }.toDataElement()
+        } else {
+            mso.toMapElement()
+        }
+    val issuerAuth = cryptoProvider.sign1(payload.toEncodedCBORElement().toCBOR(), null, null, keyID)
+    return build(issuerAuth)
+}
+
+/**
+ * Converts this [StatusListToken] to a `Status` Map Element as defined in
+ * [12.3.4 Signing method and structure for MSO](https://github.com/ISOWG10/ISO-18013/blob/main/Working%20Documents/Working%20Draft%20ISO_IEC_18013-5_second-edition_CD_ballot_resolution_v3.pdf)
+ */
+private fun StatusListToken.toMsoStatus(): MapElement {
+    fun StatusListToken.toDE(): MapElement =
+        buildMap {
+            put(MapKey(TokenStatusListSpec.IDX), index.toDataElement())
+            put(MapKey(TokenStatusListSpec.URI), statusList.toString().toDataElement())
+        }.toDataElement()
+
+    return buildMap {
+        put(MapKey(TokenStatusListSpec.STATUS_LIST), toDE())
+    }.toDataElement()
+}

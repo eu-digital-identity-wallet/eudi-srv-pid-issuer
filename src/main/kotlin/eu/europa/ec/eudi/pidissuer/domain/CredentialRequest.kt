@@ -26,7 +26,7 @@ import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.AsymmetricJWK
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidNonce
-import eu.europa.ec.eudi.pidissuer.port.out.credential.VerifyNonce
+import eu.europa.ec.eudi.pidissuer.port.out.nonce.VerifyNonce
 import kotlin.time.Instant
 
 /**

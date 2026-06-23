@@ -23,12 +23,12 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMsoMdocScope
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.PidMsoMdocV1CredentialConfigurationId
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidMsoMdocV1
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidMsoMdocScope
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidMsoMdocV1CredentialConfigurationId
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.pidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.jwtProof
-import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonPrimitive
@@ -54,15 +54,14 @@ class IssueCredentialTest {
                         PreferredKeyStorageStatusPeriod(60.days),
                     ),
                 ),
+            validity = 60.days,
         )
 
     private val attestationIssuer =
         object : AttestationIssuer {
-            override val supportedCredential: CredentialConfiguration = msoMdocConfig
-            override val publicKey = null
-            override val validity = 365.days
+            override val configuration: CredentialConfiguration = msoMdocConfig
 
-            context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext,)
+            context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
             override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse =
                 CredentialResponse.Issued(nonEmptyListOf(JsonPrimitive("test-credential")))
         }

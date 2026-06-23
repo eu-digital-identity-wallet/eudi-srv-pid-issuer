@@ -28,7 +28,7 @@ import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.*
-import eu.europa.ec.eudi.pidissuer.port.out.AttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
 import eu.europa.ec.eudi.pidissuer.port.out.jose.RequestEncryptionError
 import eu.europa.ec.eudi.pidissuer.port.out.jose.RequestEncryptionError.*
@@ -154,7 +154,7 @@ class IssueCredential(
         return context(authorizationContext, credentialIssuerMetadata) {
             val validatedRequest = request.validate()
             val (authorizedRequest, issueAttestation) = validatedRequest.authorize()
-            val issued = issueAttestation(authorizedRequest)
+            val issued = issueAttestation.invoke(authorizedRequest)
             val responseEncryption = authorizedRequest.credentialResponseEncryption
             issued.successResponse(responseEncryption)
         }
@@ -221,13 +221,13 @@ private fun ValidatedRequest.authorize(): Pair<AuthorizedCredentialRequest, Atte
         ifRight = { credentialConfigurationId ->
             val attestationIssuer =
                 metadata.attestationIssuers
-                    .firstOrNull { iss -> iss.supportedCredential.id == credentialConfigurationId }
+                    .firstOrNull { iss -> iss.configuration.id == credentialConfigurationId }
             ensureNotNull(attestationIssuer) {
                 UnsupportedCredentialConfigurationId(credentialConfigurationId)
             }
 
             val authorizedScopes = authorizationContext.scopes
-            val requiredScopes = attestationIssuer.supportedCredential.scope
+            val requiredScopes = attestationIssuer.configuration.scope
             ensure(requiredScopes in authorizedScopes) {
                 WrongScope(requiredScopes)
             }
