@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptySet
 import arrow.core.nonEmptySetOf
+import kotlin.time.Duration
 
 //
 // Credential MetaData
@@ -48,19 +49,21 @@ operator fun ClaimDefinition.Companion.invoke(
  */
 data class MsoMdocCredentialConfiguration(
     override val id: CredentialConfigurationId,
-    val docType: MsoDocType,
-    val credentialSigningAlgorithmsSupported: NonEmptySet<CoseAlgorithm>?,
     override val scope: Scope,
     override val display: List<CredentialDisplay> = emptyList(),
-    val claims: List<ClaimDefinition> = emptyList(),
     override val deviceBinding: DeviceBinding.Required,
-    override val attestationCategory: AttestationCategory,
-    override val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+    override val category: AttestationCategory,
+    override val reusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+    override val validity: Duration,
+    val docType: MsoDocType,
+    val credentialSigningAlgorithmsSupported: NonEmptySet<CoseAlgorithm>?,
+    val claims: List<ClaimDefinition> = emptyList(),
 ) : CredentialConfiguration {
     init {
         require(claims.all { it.isMsoMDoc() }) {
             "'claims' does not contain valid MSO MDoc ClaimDefinitions"
         }
+        require(validity.isPositive()) { "'validity' must be a positive duration" }
     }
 
     override val cryptographicBindingMethodsSupported: NonEmptySet<CryptographicBindingMethod>

@@ -22,11 +22,15 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidMsoMdocV1
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.pidMsoMdocV1
+import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateAttestationProof
+import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateJwtProofWithKeyAttestation
+import eu.europa.ec.eudi.pidissuer.adapter.out.proof.VerifyKeyAttestation
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.jwtProof
 import eu.europa.ec.eudi.pidissuer.keyAttestationJWT
+import eu.europa.ec.eudi.pidissuer.port.out.proof.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -102,7 +106,7 @@ class DefaultValidateProofTest {
         val (unvalidatedProof, _) = proof
 
         val validator =
-            DefaultValidateProof(
+            ValidateProof(
                 validateJwtProofWithKeyAttestation = ValidateJwtProofWithKeyAttestation(issuer, verifyKeyAttestation),
                 validateAttestationProof = ValidateAttestationProof(verifyKeyAttestation),
                 verifyNonce = { _, _ -> true },
@@ -121,6 +125,7 @@ class DefaultValidateProofTest {
                         ),
                     ),
                 credentialReusePolicy = policy,
+                validity = 365.days,
             )
 
         return context(configuration) {

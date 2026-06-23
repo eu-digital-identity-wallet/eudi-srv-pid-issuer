@@ -31,15 +31,18 @@ import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
+import eu.europa.ec.eudi.pidissuer.BeansDslApplicationContextInitializer
 import eu.europa.ec.eudi.pidissuer.PidIssuerApplicationTest
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
-import eu.europa.ec.eudi.pidissuer.adapter.out.pid.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.EncodeAttributesInMdoc
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.jwtProof
 import eu.europa.ec.eudi.pidissuer.jwtProofWithKeyAttestation
 import eu.europa.ec.eudi.pidissuer.keyAttestationJWT
 import eu.europa.ec.eudi.pidissuer.port.input.*
-import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
+import eu.europa.ec.eudi.pidissuer.port.out.nonce.GenerateNonce
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
@@ -48,11 +51,14 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
+import org.springframework.beans.factory.BeanRegistrarDsl
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.ApplicationContext
+import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
+import org.springframework.context.support.GenericApplicationContext
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -79,7 +85,10 @@ import kotlin.time.Instant
  * Base class for [WalletApi] tests.
  */
 @Suppress("SpringJavaInjectionPointsAutowiringInspection", "ProtectedInFinal")
-@PidIssuerApplicationTest(classes = [BaseWalletApiTest.WalletApiTestConfig::class])
+@PidIssuerApplicationTest(
+    classes = [BaseWalletApiTest.WalletApiTestConfig::class],
+    initializers = [TestMocksInitializer::class],
+)
 class BaseWalletApiTest {
     @Autowired
     protected lateinit var applicationContext: ApplicationContext
@@ -118,8 +127,8 @@ class BaseWalletApiTest {
         fun getPidData(
             clock: Clock,
             timeZone: TimeZone,
-        ): GetPidData =
-            GetPidData {
+        ): GetAttestationAttributes<PidAttributes> =
+            GetAttestationAttributes {
                 val pid =
                     Pid(
                         familyName = FamilyName("Surname"),
@@ -144,7 +153,7 @@ class BaseWalletApiTest {
                         issuingCountry = issuingCountry,
                         issuingJurisdiction = null,
                     )
-                pid to pidMetaData
+                PidAttributes(pid, pidMetaData)
             }
 
         @Bean
@@ -156,27 +165,32 @@ class BaseWalletApiTest {
                     index = 0u,
                 )
             }
+    }
+}
 
-        @Bean
-        @Primary
-        fun encodePidInCbor(): EncodePidInCbor =
-            object : EncodePidInCbor {
+internal class TestMocksInitializer : ApplicationContextInitializer<GenericApplicationContext> {
+    override fun initialize(applicationContext: GenericApplicationContext) {
+        BeansDslApplicationContextInitializer().initialize(applicationContext)
+        applicationContext.register(EncodePidMock())
+    }
+}
+
+internal class EncodePidMock :
+    BeanRegistrarDsl({
+        registerBean<EncodeAttributesInMdoc<PidAttributes>>(primary = true) {
+            object : EncodeAttributesInMdoc<PidAttributes> {
                 override val signingAlgorithm: CoseAlgorithm = CoseAlgorithm(-7)
 
                 override suspend fun invoke(
-                    pid: Pid,
-                    pidMetaData: PidMetaData,
+                    attributes: PidAttributes,
                     deviceKey: ECKey,
                     issuedAt: Instant,
                     expiresAt: Instant,
                     statusListToken: StatusListToken?,
-                ): String {
-                    println(deviceKey)
-                    return "PID"
-                }
+                ): String = "PID"
             }
-    }
-}
+        }
+    })
 
 /**
  * Test cases for [WalletApi] when encryption is optional. Key Attestations are **NOT** required.
@@ -1317,8 +1331,12 @@ internal class WalletApiResponseEncryptionRequiredTest : BaseWalletApiTest() {
                     .post()
                     .uri(WalletApi.CREDENTIAL_ENDPOINT)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(requestByCredentialConfigurationId(proofs = proofs, credentialResponseEncryption = encryptionParameters))
-                    .accept(MediaType.parseMediaType("application/jwt"))
+                    .bodyValue(
+                        requestByCredentialConfigurationId(
+                            proofs = proofs,
+                            credentialResponseEncryption = encryptionParameters,
+                        ),
+                    ).accept(MediaType.parseMediaType("application/jwt"))
                     .exchange()
                     .expectStatus()
                     .isBadRequest()

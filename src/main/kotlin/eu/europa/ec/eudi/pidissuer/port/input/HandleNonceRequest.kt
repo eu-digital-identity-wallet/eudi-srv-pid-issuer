@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
-import eu.europa.ec.eudi.pidissuer.port.out.credential.GenerateNonce
+import eu.europa.ec.eudi.pidissuer.port.out.nonce.GenerateNonce
 import kotlin.time.Clock
 import kotlin.time.Duration
 

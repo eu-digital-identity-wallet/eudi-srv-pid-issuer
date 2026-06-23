@@ -293,7 +293,7 @@ internal fun MsoMdocCredentialConfiguration.toTransferObject(): JsonObjectBuilde
                 }
             }
         put("doctype", docType)
-        putCredentialMetadata(display, claims, credentialReusePolicy)
+        putCredentialMetadata(display, claims, reusePolicy)
     }
 
 internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilder.() -> Unit =
@@ -305,7 +305,7 @@ internal fun SdJwtVcCredentialConfiguration.toTransferObject(): JsonObjectBuilde
                 }
             }
         put("vct", type.value)
-        putCredentialMetadata(display, claims, credentialReusePolicy)
+        putCredentialMetadata(display, claims, reusePolicy)
     }
 
 private fun JsonObjectBuilder.putCredentialMetadata(

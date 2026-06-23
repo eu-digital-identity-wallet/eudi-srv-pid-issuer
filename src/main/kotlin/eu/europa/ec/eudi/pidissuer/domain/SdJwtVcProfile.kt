@@ -18,7 +18,9 @@ package eu.europa.ec.eudi.pidissuer.domain
 import arrow.core.NonEmptySet
 import arrow.core.nonEmptySetOf
 import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
+import kotlin.time.Duration
 
 const val SD_JWT_VC_FORMAT_VALUE = SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT
 val SD_JWT_VC_FORMAT = Format(SD_JWT_VC_FORMAT_VALUE)
@@ -28,20 +30,29 @@ value class SdJwtVcType(
     val value: String,
 )
 
-/**
- * @param type As defined in https://datatracker.ietf.org/doc/html/draft-ietf-oauth-sd-jwt-vc-00#type-claim
- */
 data class SdJwtVcCredentialConfiguration(
     override val id: CredentialConfigurationId,
-    val type: SdJwtVcType,
     override val scope: Scope,
-    val credentialSigningAlgorithmsSupported: NonEmptySet<JWSAlgorithm>?,
     override val display: List<CredentialDisplay>,
-    val claims: List<ClaimDefinition>,
     override val deviceBinding: DeviceBinding,
-    override val attestationCategory: AttestationCategory,
-    override val credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+    override val category: AttestationCategory,
+    override val reusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
+    override val validity: Duration,
+    val type: SdJwtVcType,
+    val credentialSigningAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
+    val publicKey: JWK,
+    val claims: List<ClaimDefinition>,
 ) : CredentialConfiguration {
+    init {
+        require(validity.isPositive()) { "'validity' must be a positive duration" }
+        if (deviceBinding is DeviceBinding.Required) {
+            val preferredKeyStorageStatusPeriod = deviceBinding.keyStorageRequirement.preferredKeyStorageStatusPeriod
+            require(validity <= preferredKeyStorageStatusPeriod.value) {
+                "'validity' must be less than or equal to the preferred key storage status period"
+            }
+        }
+    }
+
     override val cryptographicBindingMethodsSupported: NonEmptySet<CryptographicBindingMethod>?
         get() =
             when (deviceBinding) {

@@ -15,12 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.status
 
-import arrow.core.getOrElse
 import arrow.core.raise.Raise
-import arrow.core.raise.either
-import eu.europa.ec.eudi.pidissuer.domain.CredentialReusePolicy
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
-import eu.europa.ec.eudi.pidissuer.domain.shouldIncludeStatusList
 import kotlin.time.Instant
 
 fun interface AllocateStatus {
@@ -42,22 +38,3 @@ fun interface AllocateStatus {
         val value: Throwable,
     )
 }
-
-context(reusePolicy: CredentialReusePolicy)
-suspend fun AllocateStatus.withPolicy(
-    type: String,
-    expiration: Instant,
-): StatusListToken? =
-    when (reusePolicy) {
-        is CredentialReusePolicy.EUDI if reusePolicy.shouldIncludeStatusList -> {
-            either { invoke(type, expiration) }.getOrElse { throw it.value }
-        }
-
-        CredentialReusePolicy.None -> {
-            null
-        }
-
-        is CredentialReusePolicy.EUDI -> {
-            null
-        }
-    }
