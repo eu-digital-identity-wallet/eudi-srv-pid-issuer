@@ -22,14 +22,10 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.*
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcAddressClaim
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcAssuranceBirthFamilyName
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcAssuranceBirthGivenName
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcAssuranceNationalities
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcAssurancePlaceOfBirth
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcBirthDate
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcFamilyName
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcGivenName
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestationAttributes
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.SdJwtVcSerialization
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.encodeAttestationAttributesInSdJwtVc
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
@@ -43,7 +39,6 @@ import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.coroutines.Dispatchers
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
-import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import java.util.*
 import kotlin.time.Clock
@@ -218,10 +213,9 @@ class IssueSdJwtVcPid private constructor(
     private val clock: Clock,
     private val timeZone: TimeZone,
     private val getAttestationAttributes: GetAttestationAttributes<PidAttributes>,
-    private val encodePidInSdJwt: EncodePidInSdJwtVc,
+    private val encodeAttestationAttributes: EncodeAttestationAttributes<PidAttributes>,
     private val validateProof: ValidateProof,
-    private val notificationsEnabled: Boolean,
-    private val generateNotificationId: GenerateNotificationId,
+    private val generateNotificationId: GenerateNotificationId?,
     private val storeIssuedCredential: StoreIssuedCredential,
     private val allocateStatus: AllocateStatus,
     private val calculateNotUseBefore: TimeDependant<Instant>?,
@@ -232,64 +226,57 @@ class IssueSdJwtVcPid private constructor(
         val issuedAt = clock.now()
         val keyAttestation = context(validateProof) { keyAttestation(request, issuedAt) }
         val deviceKeys = keyAttestation.credentialKeys.value
-        val (pid, pidMetaData) = getAttestationAttributes()
+        val attributes = getAttestationAttributes()
         val expiresAt = issuedAt + configuration.validity
-        val notBefore = calculateNotUseBefore?.invoke(issuedAt)
-
-        check(expiresAt > issuedAt) {
-            // Runtime error, not a business error
-            "exp should be after iat"
-        }
-        notBefore?.let {
-            check(it > issuedAt) {
-                // Runtime error, not a business error
-                "nbf should be after iat"
-            }
-        }
-        if (null != pidMetaData.issuanceDate && null != notBefore) {
-            val issuanceDateAtStartOfDay = pidMetaData.issuanceDate.atStartOfDayIn(timeZone)
+        val notBefore =
+            calculateNotUseBefore
+                ?.invoke(issuedAt)
+                ?.also { nbf -> check(nbf > issuedAt) { "nbf should be after iat" } }
+        if (null != attributes.metaData.issuanceDate && null != notBefore) {
+            val issuanceDateAtStartOfDay = attributes.metaData.issuanceDate.atStartOfDayIn(timeZone)
             check(issuanceDateAtStartOfDay <= notBefore) {
                 // Runtime error, not a business error
                 "date_of_issuance must not be after nbf"
             }
         }
 
-        val notificationId = if (notificationsEnabled) generateNotificationId() else null
+        val notificationId = generateNotificationId?.invoke()
         val clientStatus = authorizationContext.clientStatus.status.statusList
         val keyStorageStatus = keyAttestation.keyStorageStatus.status.statusList
-
         val issuedCredentials =
             deviceKeys
                 .parMap(Dispatchers.Default, 4) { deviceKey ->
-                    val statusListToken =
+                    val status =
                         context(allocateStatus) {
                             allocateStatusWithPolicy(expiresAt)
                         }
-                    val encodedCredential =
-                        encodePidInSdJwt(
-                            pid,
-                            pidMetaData,
-                            deviceKey,
-                            issuedAt = issuedAt,
-                            expiresAt = expiresAt,
+                    val attestationAttributes =
+                        AttestationAttributes(
+                            attributes,
+                            issuedAt,
+                            expiresAt,
                             notBefore = notBefore,
-                            statusListToken,
+                            deviceKey,
+                            status,
+                            jwtId = null,
                         )
+                    val attestation =
+                        encodeAttestationAttributes(attestationAttributes)
 
                     storeIssuedCredential(
                         IssuedCredential(
                             format = SD_JWT_VC_FORMAT,
                             type = configuration.type.value,
-                            issuedAt = issuedAt,
-                            expiresAt = expiresAt,
+                            issuedAt = attestationAttributes.issuedAt,
+                            expiresAt = attestationAttributes.expiresAt,
                             notificationId = notificationId,
-                            status = statusListToken,
+                            status = attestationAttributes.status,
                             clientStatus = clientStatus,
                             keyStorageStatus = keyStorageStatus,
                         ),
                     )
 
-                    encodedCredential
+                    attestation
                 }.toNonEmptyListOrNull()
 
         checkNotNull(issuedCredentials) {
@@ -298,10 +285,9 @@ class IssueSdJwtVcPid private constructor(
         }
 
         return CredentialResponse
-            .Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
-            .also {
-                log.info("Successfully issued PIDs")
-                log.debug("Issued PIDs data {}", it)
+            .Issued(issuedCredentials, notificationId)
+            .also { issued ->
+                log.info("Issued PID {}", issued)
             }
     }
 
@@ -312,13 +298,12 @@ class IssueSdJwtVcPid private constructor(
             getAttestationAttributes: GetAttestationAttributes<PidAttributes>,
             issuerSigningKey: IssuerSigningKey,
             credentialIssuerId: CredentialIssuerId,
-            hashAlgorithm: HashAlgorithm,
+            digestsHashAlgorithm: HashAlgorithm,
             deviceBinding: DeviceBinding.Required,
             credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
             validity: Duration,
             validateProof: ValidateProof,
-            notificationsEnabled: Boolean,
-            generateNotificationId: GenerateNotificationId,
+            generateNotificationId: GenerateNotificationId?,
             storeIssuedCredential: StoreIssuedCredential,
             allocateStatus: AllocateStatus,
             calculateNotUseBefore: TimeDependant<Instant>?,
@@ -332,17 +317,20 @@ class IssueSdJwtVcPid private constructor(
                     credentialReusePolicy,
                     validity,
                 )
-            val encodePidInSdJwt =
-                EncodePidInSdJwtVc(credentialIssuerId, hashAlgorithm, issuerSigningKey, configuration.type)
-
             return IssueSdJwtVcPid(
                 configuration,
                 clock,
                 timeZone,
                 getAttestationAttributes,
-                encodePidInSdJwt,
+                encodeAttestationAttributesInSdJwtVc(
+                    SdJwtVcSerialization.Compact,
+                    digestsHashAlgorithm,
+                    issuerSigningKey,
+                    vct = configuration.type,
+                    issuer = credentialIssuerId,
+                    build = { sdJwtSpec(it) },
+                ),
                 validateProof,
-                notificationsEnabled,
                 generateNotificationId,
                 storeIssuedCredential,
                 allocateStatus,

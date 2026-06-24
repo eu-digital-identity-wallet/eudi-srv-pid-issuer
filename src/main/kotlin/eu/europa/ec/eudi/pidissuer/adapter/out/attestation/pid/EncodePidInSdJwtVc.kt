@@ -15,157 +15,93 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid
 
-import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcAddressClaim
-import eu.europa.ec.eudi.pidissuer.adapter.out.sdJwtVcIssuer
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.SdJwtVcSerialization
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.encodeAttestationAttributesInSdJwtVc
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObject
+import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObjectBuilder
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-import org.slf4j.LoggerFactory
 import kotlin.io.encoding.Base64
 import kotlin.time.Instant
 
-private val log = LoggerFactory.getLogger(EncodePidInSdJwtVc::class.java)
-
-class EncodePidInSdJwtVc(
-    private val credentialIssuerId: CredentialIssuerId,
-    private val hashAlgorithm: HashAlgorithm,
-    val issuerSigningKey: IssuerSigningKey,
-    private val vct: SdJwtVcType,
-) {
-    /**
-     * Creates a Nimbus-based SD-JWT issuer
-     * according to the requirements of SD-JWT VC
-     * - No decoys
-     * - JWS header kid should contain the id of issuer's key
-     * - JWS header typ should contain value "vs+sd-jwt,"
-     * In addition, the issuer will use the config to select
-     * [HashAlgorithm], [JWSAlgorithm] and [issuer's key][ECKey]
-     */
-    private val issuer: SdJwtIssuer<SignedJWT> by lazy { issuerSigningKey.sdJwtVcIssuer(hashAlgorithm) }
-
-    suspend operator fun invoke(
-        pid: Pid,
-        pidMetaData: PidMetaData,
-        deviceKey: JWK,
-        issuedAt: Instant,
-        expiresAt: Instant,
-        notBefore: Instant?,
-        statusListToken: StatusListToken?,
-    ): String {
-        val sdJwtSpec =
-            selectivelyDisclosed(
-                pid = pid,
-                pidMetaData = pidMetaData,
-                vct = vct,
-                credentialIssuerId = credentialIssuerId,
-                holderPubKey = deviceKey,
-                iat = issuedAt,
-                exp = expiresAt,
-                nbf = notBefore,
-                statusListToken = statusListToken,
-            )
-        val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow()
-        if (log.isInfoEnabled) {
-            log.info(with(Printer) { issuedSdJwt.prettyPrint() })
-        }
-
-        return with(NimbusSdJwtOps) {
-            issuedSdJwt.serialize()
-        }
-    }
-}
-
-private fun selectivelyDisclosed(
-    pid: Pid,
-    pidMetaData: PidMetaData,
+fun encodePidInSdJwtVc(
+    sdJwtVcSerialization: SdJwtVcSerialization = SdJwtVcSerialization.Compact,
+    digestsHashAlgorithm: HashAlgorithm,
+    issuerSigningKey: IssuerSigningKey,
     credentialIssuerId: CredentialIssuerId,
     vct: SdJwtVcType,
-    holderPubKey: JWK,
-    iat: Instant,
-    exp: Instant,
-    nbf: Instant?,
-    statusListToken: StatusListToken?,
-): SdJwtObject =
-    sdJwt {
-        //
-        // Always disclosed claims
-        //
-        claim(RFC7519.ISSUER, credentialIssuerId.externalForm)
-        claim(RFC7519.ISSUED_AT, iat.epochSeconds)
-        nbf?.let { claim(RFC7519.NOT_BEFORE, it.epochSeconds) }
-        claim(RFC7519.EXPIRATION_TIME, exp.epochSeconds)
-        cnf(holderPubKey)
-        claim(SdJwtVcSpec.VCT, vct.value)
-        statusListToken?.let {
-            objClaim("status") {
-                objClaim("status_list") {
-                    claim("idx", it.index.toInt())
-                    claim("uri", it.statusList.toString())
-                }
-            }
-        }
+): EncodeAttestationAttributes<PidAttributes> =
+    encodeAttestationAttributesInSdJwtVc(
+        sdJwtVcSerialization,
+        digestsHashAlgorithm,
+        issuerSigningKey,
+        vct,
+        issuer = credentialIssuerId,
+    ) { sdJwtSpec(it) }
 
-        //
-        // Selectively Disclosed claims
-        //
-        sdClaim(SdJwtVcPidClaims.FamilyName.name, pid.familyName.value)
-        sdClaim(SdJwtVcPidClaims.GivenName.name, pid.givenName.value)
-        sdClaim(SdJwtVcPidClaims.BirthDate.name, pid.birthDate.toString())
-        with(pid.placeOfBirth) {
-            sdObjClaim(SdJwtVcPidClaims.PlaceOfBirth.attribute.name) {
-                country?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Country.name, it.value) }
-                region?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Region.name, it.value) }
-                locality?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Locality.name, it.value) }
-            }
+fun SdJwtObjectBuilder.sdJwtSpec(attributes: PidAttributes) {
+    val (pid, pidMetaData) = attributes
+    //
+    // Selectively Disclosed claims
+    //
+    sdClaim(SdJwtVcPidClaims.FamilyName.name, pid.familyName.value)
+    sdClaim(SdJwtVcPidClaims.GivenName.name, pid.givenName.value)
+    sdClaim(SdJwtVcPidClaims.BirthDate.name, pid.birthDate.toString())
+    with(pid.placeOfBirth) {
+        sdObjClaim(SdJwtVcPidClaims.PlaceOfBirth.attribute.name) {
+            country?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Country.name, it.value) }
+            region?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Region.name, it.value) }
+            locality?.let { sdClaim(SdJwtVcPidClaims.PlaceOfBirth.Locality.name, it.value) }
         }
-        sdArrClaim(SdJwtVcPidClaims.Nationalities.name) {
-            pid.nationalities.forEach { sdClaim(it.value) }
-        }
-        pid.oidcAddressClaim()?.let { address ->
-            sdObjClaim(SdJwtVcPidClaims.Address.attribute.name) {
-                address.formatted?.let { sdClaim(SdJwtVcPidClaims.Address.Formatted.name, it) }
-                address.houseNumber?.let { sdClaim(SdJwtVcPidClaims.Address.HouseNumber.name, it) }
-                address.streetAddress?.let { sdClaim(SdJwtVcPidClaims.Address.Street.name, it) }
-                address.locality?.let { sdClaim(SdJwtVcPidClaims.Address.Locality.name, it) }
-                address.region?.let { sdClaim(SdJwtVcPidClaims.Address.Region.name, it) }
-                address.postalCode?.let { sdClaim(SdJwtVcPidClaims.Address.PostalCode.name, it) }
-                address.country?.let { sdClaim(SdJwtVcPidClaims.Address.Country.name, it) }
-            }
-        }
-        pid.personalAdministrativeNumber?.let { sdClaim(SdJwtVcPidClaims.PersonalAdministrativeNumber.name, it.value) }
-        pid.portrait?.let {
-            val encodedBytes =
-                when (it) {
-                    is PortraitImage.JPEG -> Base64.encode(it.value)
-                    is PortraitImage.JPEG2000 -> Base64.encode(it.value)
-                }
-            val url = "data:image/jpeg;base64,$encodedBytes"
-            sdClaim(SdJwtVcPidClaims.Picture.name, url)
-        }
-        pid.familyNameBirth?.let { sdClaim(SdJwtVcPidClaims.BirthFamilyName.name, it.value) }
-        pid.givenNameBirth?.let { sdClaim(SdJwtVcPidClaims.BirthGivenName.name, it.value) }
-        pid.sex?.let { sdClaim(SdJwtVcPidClaims.Sex.name, it.value.toInt()) }
-        pid.emailAddress?.let { sdClaim(SdJwtVcPidClaims.Email.name, it) }
-        pid.mobilePhoneNumber?.let { sdClaim(SdJwtVcPidClaims.PhoneNumber.name, it.value) }
-
-        sdClaim(SdJwtVcPidClaims.DateOfExpiry.name, pidMetaData.expiryDate.toString())
-        sdClaim(SdJwtVcPidClaims.IssuingAuthority.name, pidMetaData.issuingAuthority.valueAsString())
-        sdClaim(SdJwtVcPidClaims.IssuingCountry.name, pidMetaData.issuingCountry.value)
-        pidMetaData.documentNumber?.let { sdClaim(SdJwtVcPidClaims.DocumentNumber.name, it.value) }
-        pidMetaData.issuingJurisdiction?.let { sdClaim(SdJwtVcPidClaims.IssuingJurisdiction.name, it) }
-        pidMetaData.issuanceDate?.let { sdClaim(SdJwtVcPidClaims.DateOfIssuance.name, it.toString()) }
-        pidMetaData.attestationLegalCategory?.let { sdClaim(SdJwtVcPidClaims.AttestationLegalCategory.name, it) }
     }
+    sdArrClaim(SdJwtVcPidClaims.Nationalities.name) {
+        pid.nationalities.forEach { sdClaim(it.value) }
+    }
+    pid.oidcAddressClaim()?.let { address ->
+        sdObjClaim(SdJwtVcPidClaims.Address.attribute.name) {
+            address.formatted?.let { sdClaim(SdJwtVcPidClaims.Address.Formatted.name, it) }
+            address.houseNumber?.let { sdClaim(SdJwtVcPidClaims.Address.HouseNumber.name, it) }
+            address.streetAddress?.let { sdClaim(SdJwtVcPidClaims.Address.Street.name, it) }
+            address.locality?.let { sdClaim(SdJwtVcPidClaims.Address.Locality.name, it) }
+            address.region?.let { sdClaim(SdJwtVcPidClaims.Address.Region.name, it) }
+            address.postalCode?.let { sdClaim(SdJwtVcPidClaims.Address.PostalCode.name, it) }
+            address.country?.let { sdClaim(SdJwtVcPidClaims.Address.Country.name, it) }
+        }
+    }
+    pid.personalAdministrativeNumber?.let { sdClaim(SdJwtVcPidClaims.PersonalAdministrativeNumber.name, it.value) }
+    pid.portrait?.let {
+        val encodedBytes =
+            when (it) {
+                is PortraitImage.JPEG -> Base64.encode(it.value)
+                is PortraitImage.JPEG2000 -> Base64.encode(it.value)
+            }
+        val url = "data:image/jpeg;base64,$encodedBytes"
+        sdClaim(SdJwtVcPidClaims.Picture.name, url)
+    }
+    pid.familyNameBirth?.let { sdClaim(SdJwtVcPidClaims.BirthFamilyName.name, it.value) }
+    pid.givenNameBirth?.let { sdClaim(SdJwtVcPidClaims.BirthGivenName.name, it.value) }
+    pid.sex?.let { sdClaim(SdJwtVcPidClaims.Sex.name, it.value.toInt()) }
+    pid.emailAddress?.let { sdClaim(SdJwtVcPidClaims.Email.name, it) }
+    pid.mobilePhoneNumber?.let { sdClaim(SdJwtVcPidClaims.PhoneNumber.name, it.value) }
+
+    sdClaim(SdJwtVcPidClaims.DateOfExpiry.name, pidMetaData.expiryDate.toString())
+    sdClaim(SdJwtVcPidClaims.IssuingAuthority.name, pidMetaData.issuingAuthority.valueAsString())
+    sdClaim(SdJwtVcPidClaims.IssuingCountry.name, pidMetaData.issuingCountry.value)
+    pidMetaData.documentNumber?.let { sdClaim(SdJwtVcPidClaims.DocumentNumber.name, it.value) }
+    pidMetaData.issuingJurisdiction?.let { sdClaim(SdJwtVcPidClaims.IssuingJurisdiction.name, it) }
+    pidMetaData.issuanceDate?.let { sdClaim(SdJwtVcPidClaims.DateOfIssuance.name, it.toString()) }
+    pidMetaData.attestationLegalCategory?.let { sdClaim(SdJwtVcPidClaims.AttestationLegalCategory.name, it) }
+}
 
 private fun Pid.oidcAddressClaim(): OidcAddressClaim? =
     if (

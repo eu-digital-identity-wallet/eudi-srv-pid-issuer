@@ -38,7 +38,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.learningcredential.IssueLearningCredential
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.*
-import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestationAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.SdJwtVcSerialization
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
@@ -708,7 +707,7 @@ fun beans(
                             getAttestationAttributes = bean(),
                             issuerSigningKey = getIssuerSigningKey("issuer.pid.sd_jwt_vc.signing-key"),
                             credentialIssuerId = issuerPublicUrl,
-                            hashAlgorithm = digestsHashAlgorithm,
+                            digestsHashAlgorithm = digestsHashAlgorithm,
                             deviceBinding =
                                 DeviceBinding.ts3(
                                     jwtProofsSupportedSigningAlgorithms,
@@ -717,10 +716,13 @@ fun beans(
                             credentialReusePolicy = pidSdJwtVcReusePolicy,
                             validity = expiresIn,
                             validateProof = bean(),
-                            notificationsEnabled =
-                                env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled")
-                                    ?: true,
-                            generateNotificationId = bean(),
+                            generateNotificationId =
+                                run {
+                                    val enabled =
+                                        env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.notifications.enabled")
+                                            ?: true
+                                    if (enabled) bean() else null
+                                },
                             storeIssuedCredential = bean(),
                             allocateStatus = bean(),
                             calculateNotUseBefore = notUseBefore?.let { duration -> { iat -> iat + duration } },
