@@ -38,7 +38,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.learningcredential.IssueLearningCredential
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.*
-import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.SdJwtVcSerialization
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.nonce.*
@@ -640,10 +639,17 @@ fun beans(
             IsTrustedKeyAttestationIssuer.usingTrustValidatorService(bean(), URI.create(trustValidatorServiceUrl))
         }
     }
-    registerBean { VerifyKeyAttestation(isTrustedKeyAttestationIssuer = bean()) }
-    registerBean { ValidateJwtProofWithKeyAttestation(issuerPublicUrl, bean()) }
-    registerBean { ValidateAttestationProof(bean()) }
-    registerBean { ValidateProof(bean(), bean(), bean()) }
+    registerBean {
+        val verifyKeyAttestation = VerifyKeyAttestation(isTrustedKeyAttestationIssuer = bean())
+        val validateJwtProofWithKeyAttestation =
+            ValidateJwtProofWithKeyAttestation(issuerPublicUrl, verifyKeyAttestation)
+        val validateAttestationProof = ValidateAttestationProof(verifyKeyAttestation)
+        ValidateProof(
+            validateJwtProofWithKeyAttestation,
+            validateAttestationProof,
+            bean(),
+        )
+    }
     registerBean {
         val attestationIssuers =
             buildList {
