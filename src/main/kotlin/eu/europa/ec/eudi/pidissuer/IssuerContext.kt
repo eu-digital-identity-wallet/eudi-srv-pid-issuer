@@ -38,7 +38,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.learningcredential.IssueLearningCredential
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.*
-import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestedClaims
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestationAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.SdJwtVcSerialization
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
@@ -517,7 +517,7 @@ fun beans(
             users = Realm(keycloakProperties.userRealm),
         )
     }
-    registerBean<EncodeAttestationAttributes<AttestedClaims<PidAttributes>>>(lazyInit = true) {
+    registerBean<EncodeAttestationAttributes<PidAttributes>>(lazyInit = true) {
         encodePidInMdoc(issuerSigningKey = getIssuerSigningKey("issuer.pid.mso_mdoc.signing-key"))
     }
 
@@ -875,7 +875,7 @@ fun beans(
     val accessTokenType = env.getProperty<AccessTokenType>("issuer.access-token.type") ?: AccessTokenType.DPoP
     val enableBearerTokenAuthentication =
         AccessTokenType.Bearer == accessTokenType ||
-                AccessTokenType.BearerAndDPoPIfAvailable == accessTokenType
+            AccessTokenType.BearerAndDPoPIfAvailable == accessTokenType
 
     if (AccessTokenType.DPoP == accessTokenType || AccessTokenType.BearerAndDPoPIfAvailable == accessTokenType) {
         val algorithms =
@@ -1293,8 +1293,7 @@ private fun <T> Environment.readNullableNonEmptySet(
         ?.mapNotNull(f)
         ?.toNonEmptySetOrNull()
 
-private fun Environment.duration(key: String): Duration? =
-    getProperty(key)?.let { Duration.parse(it) }?.takeIf { it.isPositive() }
+private fun Environment.duration(key: String): Duration? = getProperty(key)?.let { Duration.parse(it) }?.takeIf { it.isPositive() }
 
 internal fun HttpsUrl.appendPath(path: String): HttpsUrl =
     HttpsUrl.unsafe(
@@ -1455,7 +1454,7 @@ private fun Environment.getPropertyOrEnvVariable(property: String): String? =
 
 private inline fun <reified T : Any> Environment.getRequiredPropertyOrEnvVariable(property: String): T =
     getProperty<T>(property) ?: getProperty<T>(toEnvironmentVariable(property))
-    ?: throw IllegalStateException("Property $property or environment variable ${toEnvironmentVariable(property)} not found")
+        ?: throw IllegalStateException("Property $property or environment variable ${toEnvironmentVariable(property)} not found")
 
 private fun toEnvironmentVariable(property: String): String =
     property

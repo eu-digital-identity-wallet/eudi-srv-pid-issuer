@@ -20,9 +20,8 @@ import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestedClaims
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestationAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
-import eu.europa.ec.eudi.pidissuer.adapter.out.format.contraMap
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.EncodeAttributesInSdJwtVcLogging.logDebug
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.adapter.out.x509.dropRootCA
@@ -51,40 +50,52 @@ fun <Attr> encodeAttestationAttributesInSdJwtVc(
     vct: SdJwtVcType,
     issuer: CredentialIssuerId? = null,
     build: SdJwtObjectBuilder.(Attr) -> Unit,
-): EncodeAttestationAttributes<AttestedClaims<Attr>> =
-    EncodeSdJwtVcSpec(digestsHashAlgorithm, sdJwtVcSerialization, issuerSigningKey).contraMap { (instance, common) ->
-        val (deviceKey, statusListToken, jwtId) = instance
-        val (attributes, issuedAt, expiresAt, notBefore) = common
-        sdJwt {
-            claim(SdJwtVcSpec.VCT, vct.value)
-            claim(RFC7519.ISSUED_AT, issuedAt.epochSeconds)
-            claim(RFC7519.EXPIRATION_TIME, expiresAt.epochSeconds)
-            issuer?.let { claim(RFC7519.ISSUER, it.externalForm) }
-            notBefore?.let { claim(RFC7519.NOT_BEFORE, it.epochSeconds) }
-            jwtId?.let { claim(RFC7519.JWT_ID, it) }
-            deviceKey?.let { cnf(it) }
-            statusListToken?.let {
-                objClaim("status") {
-                    objClaim("status_list") {
-                        claim("idx", it.index.toInt())
-                        claim("uri", it.statusList.toString())
-                    }
-                }
-            }
-            build(attributes)
-        }
-    }
+): EncodeAttestationAttributes<Attr> =
+    EncodeAttestationAttributesInSdJwtVc(
+        digestsHashAlgorithm,
+        sdJwtVcSerialization,
+        issuerSigningKey,
+        vct,
+        issuer,
+        build,
+    )
 
-
-private class EncodeSdJwtVcSpec(
+private class EncodeAttestationAttributesInSdJwtVc<in Attr>(
     private val digestsHashAlgorithm: HashAlgorithm,
     private val sdJwtVcSerialization: SdJwtVcSerialization,
     private val issuerSigningKey: IssuerSigningKey,
-) : EncodeAttestationAttributes<SdJwtObject> {
-    override suspend fun invoke(attributes: SdJwtObject): JsonElement =
+    private val vct: SdJwtVcType,
+    private val issuer: CredentialIssuerId? = null,
+    private val build: SdJwtObjectBuilder.(Attr) -> Unit,
+) : EncodeAttestationAttributes<Attr> {
+    override suspend fun invoke(attestationAttributes: AttestationAttributes<Attr>): JsonElement {
+        val (attributes, issuedAt, expiresAt, notBefore, deviceKey, status, jwtId) = attestationAttributes
+        val spec =
+            sdJwt {
+                claim(SdJwtVcSpec.VCT, vct.value)
+                claim(RFC7519.ISSUED_AT, issuedAt.epochSeconds)
+                claim(RFC7519.EXPIRATION_TIME, expiresAt.epochSeconds)
+                issuer?.let { claim(RFC7519.ISSUER, it.externalForm) }
+                notBefore?.let { claim(RFC7519.NOT_BEFORE, it.epochSeconds) }
+                jwtId?.let { claim(RFC7519.JWT_ID, it) }
+                deviceKey?.let { cnf(it) }
+                status?.let {
+                    objClaim("status") {
+                        objClaim("status_list") {
+                            claim("idx", it.index.toInt())
+                            claim("uri", it.statusList.toString())
+                        }
+                    }
+                }
+                build(attributes)
+            }
+        return enode(spec)
+    }
+
+    private suspend fun enode(spec: SdJwtObject): JsonElement =
         context(issuerSigningKey, digestsHashAlgorithm, sdJwtVcSerialization, NimbusSdJwtOps) {
             val issuer = sdJwtVcIssuer(digestsHashAlgorithm)
-            val sdJwt = issuer.issue(attributes).getOrThrow().also { it.logDebug() }
+            val sdJwt = issuer.issue(spec).getOrThrow().also { it.logDebug() }
             when (sdJwtVcSerialization) {
                 SdJwtVcSerialization.Compact -> JsonPrimitive(sdJwt.serialize())
                 SdJwtVcSerialization.JwsJson -> sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)

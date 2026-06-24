@@ -19,7 +19,7 @@ import COSE.OneKey
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.cryptoProvider
-import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestedClaims
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestationAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.domain.MsoDocType
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
@@ -39,30 +39,26 @@ import kotlinx.datetime.toDeprecatedInstant
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.io.encoding.Base64
-import kotlin.time.Instant
 
 fun <Attr> encodeAttestationAttributesInMdoc(
     docType: MsoDocType,
     issuerSigningKey: IssuerSigningKey,
     usage: MDocBuilder.(Attr) -> Unit = {},
-): EncodeAttestationAttributes<AttestedClaims<Attr>> = EncodeAttributesInMdoc(issuerSigningKey, docType, usage)
-
+): EncodeAttestationAttributes<Attr> = EncodeAttestationAttributesInMdoc(issuerSigningKey, docType, usage)
 
 private val base64UrlSafeNoPadding = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
 
-private class EncodeAttributesInMdoc<in Attr>(
+private class EncodeAttestationAttributesInMdoc<in Attr>(
     private val issuerSigningKey: IssuerSigningKey,
     private val docType: MsoDocType,
     private val usage: MDocBuilder.(Attr) -> Unit,
-) : EncodeAttestationAttributes<AttestedClaims<Attr>> {
+) : EncodeAttestationAttributes<Attr> {
     private val issuerCryptoProvider: SimpleCOSECryptoProvider by lazy {
         issuerSigningKey.cryptoProvider(includeRootCA = false)
     }
 
-    override suspend fun invoke(attributes: AttestedClaims<Attr>): JsonElement {
-        val (perInstance, common) = attributes
-        val (deviceKey, statusListToken, _) = perInstance
-        val (credential, issuedAt, expiresAt) = common
+    override suspend fun invoke(attestationAttributes: AttestationAttributes<Attr>): JsonElement {
+        val (credential, issuedAt, expiresAt, _, deviceKey, statusListToken) = attestationAttributes
         require(deviceKey is ECKey) { "deviceKey must be ECKey" }
         require(expiresAt >= issuedAt) { "expiresAt must greater or equal to issuedAt" }
         val validityInfo =
@@ -135,4 +131,3 @@ private fun StatusListToken.toMsoStatus(): MapElement {
         put(MapKey(TokenStatusListSpec.STATUS_LIST), toDE())
     }.toDataElement()
 }
-

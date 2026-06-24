@@ -22,7 +22,7 @@ import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidAttributes
-import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestedClaims
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestationAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.SdJwtVcSerialization
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
@@ -52,7 +52,7 @@ internal class IssueLearningCredential(
     private val validateProof: ValidateProof,
     private val generateNotificationId: GenerateNotificationId?,
     private val storeIssuedCredential: StoreIssuedCredential,
-    private val encodeAttestationAttributes: EncodeAttestationAttributes<AttestedClaims<LearningCredential>>,
+    private val encodeAttestationAttributes: EncodeAttestationAttributes<LearningCredential>,
 ) : AttestationIssuer {
     context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
@@ -73,26 +73,32 @@ internal class IssueLearningCredential(
         val notificationId = generateNotificationId?.invoke()
         val clientStatus = authorizationContext.clientStatus.status.statusList
         val keyStorageStatus = keyAttestation.keyStorageStatus.status.statusList
-        val commonAttestedAttributes = AttestedClaims.Common(attributes, issuedAt, expiresAt)
 
         val issuedCredentials =
             keyAttestation.credentialKeys.value
                 .parMap(Dispatchers.Default, 4) { deviceKey ->
 
                     val id = IssuedCredentialId.random()
-                    val instanceAttestedAttributes =
-                        AttestedClaims.PerInstance(deviceKey, jwtId = id.value.toHexDashString())
-                    val attestedAttributes = instanceAttestedAttributes + commonAttestedAttributes
+                    val attestedAttributes =
+                        AttestationAttributes(
+                            attributes,
+                            issuedAt,
+                            expiresAt,
+                            notBefore = issuedAt,
+                            deviceKey,
+                            status = null,
+                            jwtId = id.value.toHexDashString(),
+                        )
                     val attestationInstance = encodeAttestationAttributes(attestedAttributes)
 
                     storeIssuedCredential(
                         IssuedCredential(
                             format = SD_JWT_VC_FORMAT,
                             type = configuration.type.value,
-                            attestedAttributes.common.issuedAt,
-                            attestedAttributes.common.expiresAt,
+                            attestedAttributes.issuedAt,
+                            attestedAttributes.expiresAt,
                             notificationId,
-                            attestedAttributes.perInstance.status,
+                            attestedAttributes.status,
                             clientStatus,
                             keyStorageStatus,
                             identifier = id,

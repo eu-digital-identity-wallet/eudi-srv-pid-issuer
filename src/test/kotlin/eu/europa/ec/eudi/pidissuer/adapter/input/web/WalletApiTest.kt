@@ -31,15 +31,11 @@ import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
-import eu.europa.ec.eudi.pidissuer.BeansDslApplicationContextInitializer
-import eu.europa.ec.eudi.pidissuer.PidIssuerApplicationTest
+import eu.europa.ec.eudi.pidissuer.*
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.*
-import eu.europa.ec.eudi.pidissuer.adapter.out.format.mdoc.EncodeAttributesInMdoc
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.jwtProof
-import eu.europa.ec.eudi.pidissuer.jwtProofWithKeyAttestation
-import eu.europa.ec.eudi.pidissuer.keyAttestationJWT
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.port.out.nonce.GenerateNonce
@@ -177,17 +173,10 @@ internal class TestMocksInitializer : ApplicationContextInitializer<GenericAppli
 
 internal class EncodePidMock :
     BeanRegistrarDsl({
-        registerBean<EncodeAttributesInMdoc<PidAttributes>>(primary = true) {
-            object : EncodeAttributesInMdoc<PidAttributes> {
-                override val signingAlgorithm: CoseAlgorithm = CoseAlgorithm(-7)
-
-                override suspend fun invoke(
-                    attributes: PidAttributes,
-                    deviceKey: ECKey,
-                    issuedAt: Instant,
-                    expiresAt: Instant,
-                    statusListToken: StatusListToken?,
-                ): String = "PID"
+        registerBean<EncodeAttestationAttributes<PidAttributes>>(primary = true) {
+            EncodeAttestationAttributes<PidAttributes> {
+                // override val signingAlgorithm: CoseAlgorithm = CoseAlgorithm(-7)
+                JsonPrimitive("PID")
             }
         }
     })

@@ -20,48 +20,16 @@ import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import kotlinx.serialization.json.JsonElement
 import kotlin.time.Instant
 
-data class AttestedClaims<out Data>(
-    val perInstance: PerInstance,
-    val common: Common<Data>,
-) {
-    data class Common<out Data>(
-        val attributes: Data,
-        val issuedAt: Instant,
-        val expiresAt: Instant,
-        val notBefore: Instant? = null,
-    ) {
-        operator fun plus(instance: PerInstance): AttestedClaims<Data> = AttestedClaims(instance, this)
-    }
-
-    data class PerInstance(
-        val deviceKey: JWK? = null,
-        val status: StatusListToken? = null,
-        val jwtId: String? = null,
-    ) {
-        operator fun <Data> plus(common: Common<Data>): AttestedClaims<Data> = AttestedClaims(this, common)
-    }
-
-    companion object {
-        fun <Data> partial(common: Common<Data>): (PerInstance) -> AttestedClaims<Data> =
-            { instance ->
-                AttestedClaims(instance, common)
-            }
-    }
-}
+data class AttestationAttributes<out Data>(
+    val attributes: Data,
+    val issuedAt: Instant,
+    val expiresAt: Instant,
+    val notBefore: Instant? = null,
+    val deviceKey: JWK? = null,
+    val status: StatusListToken? = null,
+    val jwtId: String? = null,
+)
 
 fun interface EncodeAttestationAttributes<in Attr> {
-    suspend operator fun invoke(attributes: Attr): JsonElement
-}
-
-fun <Attr, Attr1> EncodeAttestationAttributes<Attr>.transform(transform: (Attr1) -> Attr): EncodeAttestationAttributes<Attr1> =
-    contraMap(transform)
-
-fun <Attr, Attr1> EncodeAttestationAttributes<Attr>.contraMap(transform: (Attr1) -> Attr): EncodeAttestationAttributes<Attr1> =
-    EncodeAttestationAttributesContraMap(this, transform)
-
-private class EncodeAttestationAttributesContraMap<D, D1>(
-    private val delegate: EncodeAttestationAttributes<D1>,
-    private val f: (D) -> D1,
-) : EncodeAttestationAttributes<D> {
-    override suspend fun invoke(attributes: D): JsonElement = delegate.invoke(f(attributes))
+    suspend operator fun invoke(attestationAttributes: AttestationAttributes<Attr>): JsonElement
 }

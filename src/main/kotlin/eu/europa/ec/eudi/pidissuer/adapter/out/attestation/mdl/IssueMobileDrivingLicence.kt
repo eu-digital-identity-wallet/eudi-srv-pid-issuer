@@ -21,8 +21,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.IssueMdoc
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.DrivingPrivilege.Restriction.GenericRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.DrivingPrivilege.Restriction.ParameterizedRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.coseAlgorithm
-import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestedClaims
-import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.mdoc.encodeAttestationAttributesInMdoc
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.mdoc.toTDate
 import eu.europa.ec.eudi.pidissuer.domain.*
@@ -383,7 +381,7 @@ fun IssueMobileDrivingLicence(
         storeIssuedCredential,
         getAttestationAttributes,
         allocateStatus,
-        encodeAttestationAttributesInMdoc(configuration.docType, issuerSigningKey){ licence ->
+        encodeAttestationAttributesInMdoc(configuration.docType, issuerSigningKey) { licence ->
             addItemsToSign(licence)
         },
     )

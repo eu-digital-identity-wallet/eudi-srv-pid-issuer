@@ -19,6 +19,6 @@ import id.walt.mdoc.dataelement.TDateElement
 import kotlinx.datetime.toDeprecatedInstant
 import kotlin.time.Instant
 
-
 fun Instant.dropFractionOfSeconds(): Instant = Instant.fromEpochSeconds(epochSeconds, 0L)
+
 fun Instant.toTDate(): TDateElement = TDateElement(dropFractionOfSeconds().toDeprecatedInstant())

@@ -18,8 +18,9 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.attestation
 import arrow.core.raise.Raise
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
+import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestedClaims
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestationAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.mdoc.encodeAttestationAttributesInMdoc
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.toECKeyOrFail
@@ -50,7 +51,7 @@ class IssueMdoc<Attr>(
     private val storeIssuedCredential: StoreIssuedCredential,
     private val getAttestationAttributes: GetAttestationAttributes<Attr>,
     private val allocateStatus: AllocateStatus?,
-    private val encodeAttestationAttributes: EncodeAttestationAttributes<AttestedClaims<Attr>>,
+    private val encodeAttestationAttributes: EncodeAttestationAttributes<Attr>,
 ) : AttestationIssuer {
     private val log = LoggerFactory.getLogger(configuration.docType)
 
@@ -62,46 +63,64 @@ class IssueMdoc<Attr>(
         val deviceKeys =
             keyAttestation.credentialKeys.value
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
-        val attributes = getAttestationAttributes()
-        val expiresAt = issuedAt + configuration.validity
-        val notificationId = generateNotificationId?.invoke()
-        val clientStatus = authorizationContext.clientStatus.status.statusList
-        val keyStorageStatus = keyAttestation.keyStorageStatus.status.statusList
-        val commonAttestedAttributes = AttestedClaims.Common(attributes, issuedAt, expiresAt)
+
+        val cmnAttr =
+            cmnAttr(
+                issuedAt = issuedAt,
+                expiresAt = issuedAt + configuration.validity,
+                notBefore = null,
+                keyAttestation,
+            )
+
         val issuedInstances =
-            deviceKeys.parMap(Dispatchers.Default, 4) { deviceKey ->
-                issueInstance(deviceKey, commonAttestedAttributes, notificationId, clientStatus, keyStorageStatus)
-            }.toNonEmptyListOrNull()
+            deviceKeys
+                .parMap(Dispatchers.Default, 4) { deviceKey ->
+                    issueInstance(deviceKey, cmnAttr)
+                }.toNonEmptyListOrNull()
 
         checkNotNull(issuedInstances) { "Cannot happen" }
 
-        return CredentialResponse.Issued(issuedInstances, notificationId)
+        return CredentialResponse.Issued(issuedInstances, cmnAttr.notificationId)
+    }
+
+    context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>, authorizationContext: AuthorizationContext)
+    private suspend fun cmnAttr(
+        issuedAt: Instant,
+        expiresAt: Instant,
+        notBefore: Instant?,
+        keyAttestation: KeyAttestation?,
+    ): CmnAttr<Attr> {
+        val attributes = getAttestationAttributes()
+        val notificationId = generateNotificationId?.invoke()
+        val clientStatus = authorizationContext.clientStatus
+        val keyStorageStatus = keyAttestation?.keyStorageStatus?.status?.statusList
+        return CmnAttr(attributes, issuedAt, expiresAt, notBefore, clientStatus, keyStorageStatus, notificationId)
     }
 
     private suspend fun issueInstance(
-        deviceKey: com.nimbusds.jose.jwk.ECKey,
-        commonAttestedAttributes: AttestedClaims.Common<Attr>,
-        notificationId: NotificationId?,
-        clientStatus: StatusListToken,
-        keyStorageStatus: StatusListToken,
+        deviceKey: ECKey,
+        cmnAttr: CmnAttr<Attr>,
     ): JsonElement {
-        val status = statusListToken(commonAttestedAttributes.expiresAt)
-        val attestedAttributes = commonAttestedAttributes + AttestedClaims.PerInstance(deviceKey, status)
+        val status = statusListToken(cmnAttr.expiresAt)
+        val attestedAttributes = cmnAttr.instance(deviceKey, status, jwtId = null)
         val attestationInstance = encodeAttestationAttributes(attestedAttributes).also { log.info("Issued $it") }
+        cmnAttr.store(status)
+        return attestationInstance
+    }
 
-        storeIssuedCredential(
+    private suspend fun CmnAttr<Attr>.store(status: StatusListToken?) {
+        val issued =
             IssuedCredential(
                 format = MSO_MDOC_FORMAT,
                 type = configuration.docType,
-                issuedAt = attestedAttributes.common.issuedAt,
-                expiresAt = attestedAttributes.common.expiresAt,
+                issuedAt = issuedAt,
+                expiresAt = expiresAt,
                 notificationId = notificationId,
-                status = attestedAttributes.perInstance.status,
-                clientStatus = clientStatus,
+                status = status,
+                clientStatus = clientStatus.status.statusList,
                 keyStorageStatus = keyStorageStatus,
-            ),
-        )
-        return attestationInstance
+            )
+        storeIssuedCredential(issued)
     }
 
     private suspend fun statusListToken(expiresAt: Instant): StatusListToken? =
@@ -110,7 +129,6 @@ class IssueMdoc<Attr>(
                 allocateStatusWithPolicy(expiresAt)
             }
         }
-
 
     companion object {
         operator fun <Data> invoke(
@@ -136,3 +154,28 @@ class IssueMdoc<Attr>(
             )
     }
 }
+
+private data class CmnAttr<out Attr>(
+    val attributes: Attr,
+    val issuedAt: Instant,
+    val expiresAt: Instant,
+    val notBefore: Instant?,
+    val clientStatus: ClientStatus,
+    val keyStorageStatus: StatusListToken?,
+    val notificationId: NotificationId?,
+)
+
+private fun <Attr> CmnAttr<Attr>.instance(
+    deviceKey: ECKey,
+    status: StatusListToken?,
+    jwtId: String?,
+): AttestationAttributes<Attr> =
+    AttestationAttributes(
+        attributes,
+        issuedAt,
+        expiresAt,
+        notBefore,
+        deviceKey,
+        status,
+        jwtId,
+    )

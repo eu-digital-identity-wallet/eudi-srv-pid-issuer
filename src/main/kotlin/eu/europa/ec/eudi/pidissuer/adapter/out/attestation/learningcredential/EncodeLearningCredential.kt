@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.learningcredential
 
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestedClaims
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.SdJwtVcSerialization
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.encodeAttestationAttributesInSdJwtVc
@@ -32,8 +31,13 @@ fun encodeLearningCredentialInSdJwtVc(
     digestsHashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
     issuerSigningKey: IssuerSigningKey,
     vct: SdJwtVcType,
-): EncodeAttestationAttributes<AttestedClaims<LearningCredential>> =
-    encodeAttestationAttributesInSdJwtVc(sdJwtVcSerialization, digestsHashAlgorithm, issuerSigningKey, vct) { learningCredential ->
+): EncodeAttestationAttributes<LearningCredential> =
+    encodeAttestationAttributesInSdJwtVc(
+        sdJwtVcSerialization,
+        digestsHashAlgorithm,
+        issuerSigningKey,
+        vct,
+    ) { learningCredential ->
         val formatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
         with(learningCredential) {
             with(issuer) {
