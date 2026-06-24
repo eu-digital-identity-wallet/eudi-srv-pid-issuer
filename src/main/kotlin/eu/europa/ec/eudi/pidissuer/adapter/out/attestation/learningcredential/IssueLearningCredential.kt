@@ -22,8 +22,9 @@ import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidAttributes
-import eu.europa.ec.eudi.pidissuer.adapter.out.sdjwtvc.AttestedClaims
-import eu.europa.ec.eudi.pidissuer.adapter.out.sdjwtvc.EncodeAttributesInSdJwtVc
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestedClaims
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.EncodeAttestationAttributesInSdJwtVc
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
@@ -51,7 +52,7 @@ internal class IssueLearningCredential(
     private val validateProof: ValidateProof,
     private val generateNotificationId: GenerateNotificationId?,
     private val storeIssuedCredential: StoreIssuedCredential,
-    private val encodeAttributes: EncodeAttributesInSdJwtVc<AttestedClaims<LearningCredential>>,
+    private val encodeAttestationAttributes: EncodeAttestationAttributes<AttestedClaims<LearningCredential>>,
 ) : AttestationIssuer {
     context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
@@ -82,7 +83,7 @@ internal class IssueLearningCredential(
                     val instanceAttestedAttributes =
                         AttestedClaims.PerInstance(deviceKey, jwtId = id.value.toHexDashString())
                     val attestedAttributes = instanceAttestedAttributes + commonAttestedAttributes
-                    val attestationInstance = encodeAttributes(attestedAttributes)
+                    val attestationInstance = encodeAttestationAttributes(attestedAttributes)
 
                     storeIssuedCredential(
                         IssuedCredential(
@@ -114,7 +115,7 @@ internal class IssueLearningCredential(
 
     companion object {
         operator fun invoke(
-            option: EncodeAttributesInSdJwtVc.Option = EncodeAttributesInSdJwtVc.Option.Compact,
+            option: EncodeAttestationAttributesInSdJwtVc.Option = EncodeAttestationAttributesInSdJwtVc.Option.Compact,
             clock: Clock,
             getAttestationAttributes: GetAttestationAttributes<LearningCredential>,
             issuerSigningKey: IssuerSigningKey,
@@ -134,7 +135,7 @@ internal class IssueLearningCredential(
                 validateProof,
                 generateNotificationId,
                 storeIssuedCredential,
-                encodeAttributes =
+                encodeAttestationAttributes =
                     encodeLearningCredentialInSdJwtVc(
                         option = option,
                         digestsHashAlgorithm,

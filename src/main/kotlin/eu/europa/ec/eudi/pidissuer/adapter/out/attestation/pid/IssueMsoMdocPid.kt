@@ -19,7 +19,7 @@ import arrow.core.nonEmptySetOf
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.IssueMdoc
 import eu.europa.ec.eudi.pidissuer.adapter.out.coseAlgorithm
-import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.EncodeAttributesInMdoc
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.mdoc.EncodeAttributesInMdoc
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId

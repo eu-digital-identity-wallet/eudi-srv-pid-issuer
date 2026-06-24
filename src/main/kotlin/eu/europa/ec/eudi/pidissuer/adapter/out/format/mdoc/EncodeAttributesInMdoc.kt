@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc
+package eu.europa.ec.eudi.pidissuer.adapter.out.format.mdoc
 
 import COSE.OneKey
 import com.nimbusds.jose.jwk.ECKey
@@ -111,7 +111,7 @@ private class MsoMdocSigner<in Data>(
 
 private fun deviceKeyInfo(deviceKey: ECKey): DeviceKeyInfo {
     val key = OneKey(deviceKey.toECPublicKey(), null)
-    val deviceKeyDataElement: MapElement = DataElement.fromCBOR(key.AsCBOR().EncodeToBytes())
+    val deviceKeyDataElement: MapElement = DataElement.Companion.fromCBOR(key.AsCBOR().EncodeToBytes())
     return DeviceKeyInfo(deviceKeyDataElement, null, null)
 }
 

@@ -38,8 +38,9 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.learningcredential.IssueLearningCredential
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.mdoc.EncodeAttributesInMdoc
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.EncodeAttestationAttributesInSdJwtVc
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
-import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.EncodeAttributesInMdoc
 import eu.europa.ec.eudi.pidissuer.adapter.out.nonce.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.R2dbcIssuedCredentialRepository
@@ -47,7 +48,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateAttestationProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateJwtProofWithKeyAttestation
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.VerifyKeyAttestation
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
-import eu.europa.ec.eudi.pidissuer.adapter.out.sdjwtvc.EncodeAttributesInSdJwtVc
 import eu.europa.ec.eudi.pidissuer.adapter.out.status.GenerateStatusListTokenWithExternalService
 import eu.europa.ec.eudi.pidissuer.adapter.out.status.GetStatusListTokenWithStatium
 import eu.europa.ec.eudi.pidissuer.adapter.out.status.MarkStatusAsRevokedWithExternalService
@@ -784,7 +784,7 @@ fun beans(
 
                     val issueLearningCredential =
                         IssueLearningCredential(
-                            option = EncodeAttributesInSdJwtVc.Option.Compact,
+                            option = EncodeAttestationAttributesInSdJwtVc.Option.Compact,
                             clock = clock,
                             getAttestationAttributes = IssueLearningCredential.randomLearningCredentials(clock, bean()),
                             issuerSigningKey = issuerSigningKey,

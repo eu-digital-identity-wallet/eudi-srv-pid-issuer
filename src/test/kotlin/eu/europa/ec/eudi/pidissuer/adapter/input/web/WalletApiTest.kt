@@ -35,7 +35,7 @@ import eu.europa.ec.eudi.pidissuer.BeansDslApplicationContextInitializer
 import eu.europa.ec.eudi.pidissuer.PidIssuerApplicationTest
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.*
-import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.EncodeAttributesInMdoc
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.mdoc.EncodeAttributesInMdoc
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.jwtProof
 import eu.europa.ec.eudi.pidissuer.jwtProofWithKeyAttestation

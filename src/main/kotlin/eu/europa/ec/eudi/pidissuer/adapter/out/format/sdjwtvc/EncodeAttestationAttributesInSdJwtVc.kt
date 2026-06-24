@@ -13,20 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.sdjwtvc
+package eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc
 
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.crypto.ECDSASigner
-import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.sdjwtvc.EncodeAttributesInSdJwtVcLogging.logDebug
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestedClaims
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.contraMap
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.EncodeAttributesInSdJwtVcLogging.logDebug
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.adapter.out.x509.dropRootCA
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
 import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType
-import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps.asJwsJsonObject
 import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps.serialize
@@ -37,101 +38,57 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
-import kotlin.time.Instant
 
-data class AttestedClaims<out Data>(
-    val perInstance: PerInstance,
-    val common: Common<Data>,
-) {
-    data class Common<out Data>(
-        val attributes: Data,
-        val issuedAt: Instant,
-        val expiresAt: Instant,
-        val notBefore: Instant? = null,
-    ) {
-        operator fun plus(instance: PerInstance): AttestedClaims<Data> = AttestedClaims(instance, this)
-    }
-
-    data class PerInstance(
-        val deviceKey: JWK? = null,
-        val status: StatusListToken? = null,
-        val jwtId: String? = null,
-    ) {
-        operator fun <Data> plus(common: Common<Data>): AttestedClaims<Data> = AttestedClaims(this, common)
-    }
-
-    companion object {
-        fun <Data> partial(common: Common<Data>): (PerInstance) -> AttestedClaims<Data> =
-            { instance ->
-                AttestedClaims(instance, common)
-            }
-    }
-}
-
-fun interface EncodeAttributesInSdJwtVc<in Data> {
+object EncodeAttestationAttributesInSdJwtVc {
     enum class Option {
         Compact,
         JwsJson,
     }
 
-    suspend operator fun invoke(data: Data): JsonElement
-
-    companion object {
-        operator fun <D> invoke(
-            option: Option = Option.Compact,
-            digestsHashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
-            issuerSigningKey: IssuerSigningKey,
-            vct: SdJwtVcType,
-            issuer: CredentialIssuerId? = null,
-            build: SdJwtObjectBuilder.(D) -> Unit,
-        ): EncodeAttributesInSdJwtVc<AttestedClaims<D>> =
-            EncodeSdJwtVcSpec(digestsHashAlgorithm, option, issuerSigningKey).contraMap { (instance, common) ->
-                val (deviceKey, statusListToken, jwtId) = instance
-                val (attributes, issuedAt, expiresAt, notBefore) = common
-                sdJwt {
-                    claim(SdJwtVcSpec.VCT, vct.value)
-                    claim(RFC7519.ISSUED_AT, issuedAt.epochSeconds)
-                    claim(RFC7519.EXPIRATION_TIME, expiresAt.epochSeconds)
-                    issuer?.let { claim(RFC7519.ISSUER, it.externalForm) }
-                    notBefore?.let { claim(RFC7519.NOT_BEFORE, it.epochSeconds) }
-                    jwtId?.let { claim(RFC7519.JWT_ID, it) }
-                    deviceKey?.let { cnf(it) }
-                    statusListToken?.let {
-                        objClaim("status") {
-                            objClaim("status_list") {
-                                claim("idx", it.index.toInt())
-                                claim("uri", it.statusList.toString())
-                            }
+    operator fun <D> invoke(
+        option: Option = Option.Compact,
+        digestsHashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
+        issuerSigningKey: IssuerSigningKey,
+        vct: SdJwtVcType,
+        issuer: CredentialIssuerId? = null,
+        build: SdJwtObjectBuilder.(D) -> Unit,
+    ): EncodeAttestationAttributes<AttestedClaims<D>> =
+        EncodeSdJwtVcSpec(digestsHashAlgorithm, option, issuerSigningKey).contraMap { (instance, common) ->
+            val (deviceKey, statusListToken, jwtId) = instance
+            val (attributes, issuedAt, expiresAt, notBefore) = common
+            sdJwt {
+                claim(SdJwtVcSpec.VCT, vct.value)
+                claim(RFC7519.ISSUED_AT, issuedAt.epochSeconds)
+                claim(RFC7519.EXPIRATION_TIME, expiresAt.epochSeconds)
+                issuer?.let { claim(RFC7519.ISSUER, it.externalForm) }
+                notBefore?.let { claim(RFC7519.NOT_BEFORE, it.epochSeconds) }
+                jwtId?.let { claim(RFC7519.JWT_ID, it) }
+                deviceKey?.let { cnf(it) }
+                statusListToken?.let {
+                    objClaim("status") {
+                        objClaim("status_list") {
+                            claim("idx", it.index.toInt())
+                            claim("uri", it.statusList.toString())
                         }
                     }
-                    build(attributes)
                 }
+                build(attributes)
             }
-    }
-}
-
-private fun <D, D1> EncodeAttributesInSdJwtVc<D>.contraMap(f: (D1) -> D): EncodeAttributesInSdJwtVc<D1> =
-    EncodeAttributesInSdJwtVcContraMap(this, f)
-
-private class EncodeAttributesInSdJwtVcContraMap<D, D1>(
-    private val delegate: EncodeAttributesInSdJwtVc<D1>,
-    private val f: (D) -> D1,
-) : EncodeAttributesInSdJwtVc<D> {
-    override suspend fun invoke(data: D): JsonElement = delegate.invoke(f(data))
+        }
 }
 
 private class EncodeSdJwtVcSpec(
     private val digestsHashAlgorithm: HashAlgorithm,
-    private val option: EncodeAttributesInSdJwtVc.Option,
+    private val option: EncodeAttestationAttributesInSdJwtVc.Option,
     private val issuerSigningKey: IssuerSigningKey,
-) : EncodeAttributesInSdJwtVc<SdJwtObject> {
-    override suspend fun invoke(data: SdJwtObject): JsonElement =
+) : EncodeAttestationAttributes<SdJwtObject> {
+    override suspend fun invoke(attributes: SdJwtObject): JsonElement =
         context(issuerSigningKey, digestsHashAlgorithm, option, NimbusSdJwtOps) {
             val issuer = sdJwtVcIssuer(digestsHashAlgorithm)
-            val sdJwt = issuer.issue(data).getOrThrow().also { it.logDebug() }
+            val sdJwt = issuer.issue(attributes).getOrThrow().also { it.logDebug() }
             when (option) {
-                EncodeAttributesInSdJwtVc.Option.Compact -> JsonPrimitive(sdJwt.serialize())
-                EncodeAttributesInSdJwtVc.Option.JwsJson -> sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)
+                EncodeAttestationAttributesInSdJwtVc.Option.Compact -> JsonPrimitive(sdJwt.serialize())
+                EncodeAttestationAttributesInSdJwtVc.Option.JwsJson -> sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)
             }
         }
 }

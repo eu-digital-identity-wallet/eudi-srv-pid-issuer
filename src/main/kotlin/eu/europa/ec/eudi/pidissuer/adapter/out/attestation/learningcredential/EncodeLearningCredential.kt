@@ -16,8 +16,9 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.learningcredential
 
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.sdjwtvc.AttestedClaims
-import eu.europa.ec.eudi.pidissuer.adapter.out.sdjwtvc.EncodeAttributesInSdJwtVc
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestedClaims
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.EncodeAttestationAttributesInSdJwtVc
 import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType
 import eu.europa.ec.eudi.sdjwt.*
 import java.time.ZoneOffset
@@ -26,14 +27,13 @@ import java.time.format.DateTimeFormatter
 import kotlin.time.toJavaInstant
 
 fun encodeLearningCredentialInSdJwtVc(
-    option: EncodeAttributesInSdJwtVc.Option = EncodeAttributesInSdJwtVc.Option.Compact,
+    option: EncodeAttestationAttributesInSdJwtVc.Option = EncodeAttestationAttributesInSdJwtVc.Option.Compact,
     digestsHashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
     issuerSigningKey: IssuerSigningKey,
     vct: SdJwtVcType,
-): EncodeAttributesInSdJwtVc<AttestedClaims<LearningCredential>> =
-    EncodeAttributesInSdJwtVc(option, digestsHashAlgorithm, issuerSigningKey, vct) { learningCredential ->
+): EncodeAttestationAttributes<AttestedClaims<LearningCredential>> =
+    EncodeAttestationAttributesInSdJwtVc(option, digestsHashAlgorithm, issuerSigningKey, vct) { learningCredential ->
         val formatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
-        claim(SdJwtVcSpec.VCT, vct.value)
         with(learningCredential) {
             with(issuer) {
                 claim(SdJwtVcClaims.IssuingAuthority.name, name.value)
