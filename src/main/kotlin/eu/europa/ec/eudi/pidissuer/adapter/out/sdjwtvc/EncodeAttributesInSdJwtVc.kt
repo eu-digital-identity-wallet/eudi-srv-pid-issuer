@@ -39,20 +39,31 @@ import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import kotlin.time.Instant
 
+data class AttestedClaims<out Data>(
+    val attributes: Data,
+    val deviceKey: JWK? = null,
+    val statusListToken: StatusListToken? = null,
+    val common: Common,
+) {
+    data class Common(
+        val issuedAt: Instant? = null,
+        val expiresAt: Instant? = null,
+        val notBefore: Instant? = null,
+    )
+
+    companion object {
+        fun <Data> partial(comon: Common): (Data, JWK?, StatusListToken?) -> AttestedClaims<Data> =
+            { attributes, deviceKey, statusListToken ->
+                AttestedClaims(attributes, deviceKey, statusListToken, comon)
+            }
+    }
+}
+
 fun interface EncodeAttributesInSdJwtVc<in Data> {
     enum class Option {
         Compact,
         JwsJson,
     }
-
-    data class AttestedClaims<out Data>(
-        val attributes: Data,
-        val issuedAt: Instant? = null,
-        val expiresAt: Instant? = null,
-        val notBefore: Instant?,
-        val statusListToken: StatusListToken? = null,
-        val deviceKey: JWK? = null,
-    )
 
     suspend operator fun invoke(data: Data): JsonElement
 
@@ -66,7 +77,8 @@ fun interface EncodeAttributesInSdJwtVc<in Data> {
             build: SdJwtObjectBuilder.(D) -> Unit,
         ): EncodeAttributesInSdJwtVc<AttestedClaims<D>> =
             EncodeSdJwtVcSpec(digestsHashAlgorithm, option, issuerSigningKey)
-                .contraMap { (attributes, issuedAt, expiresAt, notBefore, statusListToken, deviceKey) ->
+                .contraMap { (attributes, deviceKey, statusListToken, common) ->
+                    val (issuedAt, expiresAt, notBefore) = common
                     sdJwt {
                         claim(SdJwtVcSpec.VCT, vct.value)
                         issuer?.let { claim(RFC7519.ISSUER, it.externalForm) }
