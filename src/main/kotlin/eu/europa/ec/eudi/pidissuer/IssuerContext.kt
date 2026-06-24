@@ -52,6 +52,9 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.status.GetStatusListTokenWithStat
 import eu.europa.ec.eudi.pidissuer.adapter.out.status.MarkStatusAsRevokedWithExternalService
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.usingTrustValidatorService
+import eu.europa.ec.eudi.pidissuer.adapter.out.webclient.HttpProxy
+import eu.europa.ec.eudi.pidissuer.adapter.out.webclient.KtorHttpClients
+import eu.europa.ec.eudi.pidissuer.adapter.out.webclient.WebClients
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.asDeferred
@@ -66,8 +69,6 @@ import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import eu.europa.ec.eudi.sdjwt.vc.Vct
 import io.ktor.http.*
-import io.netty.handler.ssl.SslContextBuilder
-import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.TimeZone
@@ -85,7 +86,6 @@ import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.Resource
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
-import org.springframework.http.client.reactive.ReactorClientHttpConnector
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
 import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
 import org.springframework.scheduling.annotation.SchedulingConfigurer
@@ -109,8 +109,6 @@ import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.bodyToMono
 import org.springframework.web.server.WebFilter
 import org.springframework.web.util.UriComponentsBuilder
-import reactor.netty.http.client.HttpClient
-import reactor.netty.transport.ProxyProvider
 import java.net.URI
 import java.net.URL
 import java.security.KeyStore
@@ -123,143 +121,9 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import kotlin.time.toKotlinDuration
-import io.ktor.client.HttpClient as KtorHttpClient
-import io.ktor.client.engine.java.Java as JavaEngine
 import java.time.Duration as JavaDuration
 
-private val log = LoggerFactory.getLogger(PidIssuerApplication::class.java)
-
-/**
- * [WebClient] instances for usage within the application.
- */
-internal object WebClients {
-    /**
-     * A [WebClient] with [Json] serialization enabled.
-     */
-    fun default(proxy: HttpProxy?): WebClient {
-        val httpClient = httpClient(proxy)
-        val connector = ReactorClientHttpConnector(httpClient)
-        return WebClient
-            .builder()
-            .clientConnector(connector)
-            .configureCodecs()
-            .build()
-    }
-
-    /**
-     * A [WebClient] with [Json] serialization enabled that trusts *all* certificates.
-     */
-    fun insecure(proxy: HttpProxy?): WebClient {
-        log.warn("Using insecure WebClient trusting all certificates")
-        val sslContext =
-            SslContextBuilder
-                .forClient()
-                .trustManager(InsecureTrustManagerFactory.INSTANCE)
-                .build()
-        val httpClient = httpClient(proxy).secure { it.sslContext(sslContext) }
-        val connector = ReactorClientHttpConnector(httpClient)
-        return WebClient
-            .builder()
-            .clientConnector(connector)
-            .configureCodecs()
-            .build()
-    }
-
-    private fun httpClient(proxy: HttpProxy? = null): HttpClient {
-        if (proxy == null) {
-            return HttpClient.create()
-        }
-        return HttpClient.create().proxy { proxyProvider ->
-            log.info("Using WebClient with proxy settings")
-            proxyProvider
-                .type(ProxyProvider.Proxy.HTTP)
-                .host(proxy.url.host)
-                .port(proxy.url.port)
-                .apply {
-                    proxy.username?.let {
-                        username(it)
-                        password { proxy.password ?: "" }
-                    }
-                }
-        }
-    }
-
-    private fun WebClient.Builder.configureCodecs(): WebClient.Builder {
-        val json = Json { ignoreUnknownKeys = true }
-
-        return codecs {
-            it.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
-            it.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
-            it.defaultCodecs().enableLoggingRequestDetails(true)
-        }
-    }
-}
-
-/**
- * [KtorHttpClient] instances for usage within the application.
- */
-internal object KtorHttpClients {
-    /**
-     * A [KtorHttpClient] with default settings.
-     */
-    fun default(proxy: HttpProxy?): KtorHttpClient =
-        KtorHttpClient(JavaEngine) {
-            engine {
-                configureProxy(proxy)
-            }
-        }
-
-    /**
-     * A [KtorHttpClient] that trusts *all* certificates.
-     */
-    fun insecure(proxy: HttpProxy?): KtorHttpClient {
-        log.warn("Using insecure KtorHttpClient trusting all certificates")
-        val sslContext =
-            javax.net.ssl.SSLContext.getInstance("TLS").also {
-                it.init(null, arrayOf(InsecureTrustManagerFactory.INSTANCE.trustManagers[0]), null)
-            }
-        return KtorHttpClient(JavaEngine) {
-            engine {
-                config {
-                    sslContext(sslContext)
-                }
-                configureProxy(proxy)
-            }
-        }
-    }
-
-    private fun io.ktor.client.engine.java.JavaHttpConfig.configureProxy(proxy: HttpProxy?) {
-        proxy?.let { httpProxy ->
-            log.info("Using KtorHttpClient with proxy settings")
-            this.proxy =
-                java.net.Proxy(
-                    java.net.Proxy.Type.HTTP,
-                    java.net.InetSocketAddress(httpProxy.url.host, httpProxy.url.port),
-                )
-        }
-    }
-}
-
-data class HttpProxy(
-    val url: Url,
-    val username: String? = null,
-    val password: String? = null,
-) {
-    init {
-        require(password == null || username != null) {
-            "Password cannot be set if username is null"
-        }
-        require(url.protocol == URLProtocol.HTTP) {
-            "Url should be Http"
-        }
-        require(url.encodedPathAndQuery.isBlank()) {
-            "No path or query params should be present in the Url"
-        }
-        require(url.fragment.isEmpty()) {
-            "No fragment should be present in the Url"
-        }
-    }
-}
+val log = LoggerFactory.getLogger(PidIssuerApplication::class.java)
 
 private const val KEYSTORE_DEFAULT_LOCATION = "/keystore.jks"
 
@@ -469,22 +333,14 @@ fun beans(
             val password = env.getProperty("issuer.http.proxy.password")
             HttpProxy(url, username, password)
         }
-    val webClient =
-        if ("insecure" in env.activeProfiles) {
-            WebClients.insecure(proxy = proxy)
-        } else {
-            WebClients.default(proxy = proxy)
-        }
+    val webClient = WebClients(proxy, secure = "insecure" !in env.activeProfiles)
     registerBean { webClient }
-    val ktorHttpClient =
-        if ("insecure" in env.activeProfiles) {
-            KtorHttpClients.insecure(proxy = proxy)
-        } else {
-            KtorHttpClients.default(proxy = proxy)
-        }
-    registerBean { ktorHttpClient }
+
     registerBean {
-        KeycloakConfigurationProperties(
+        KtorHttpClients(proxy, secure = "insecure" !in env.activeProfiles)
+    }
+    registerBean {
+        val keycloakProperties =KeycloakConfigurationProperties(
             env.getRequiredProperty<URL>("issuer.keycloak.server-url"),
             env.getRequiredProperty("issuer.keycloak.authentication-realm"),
             env.getRequiredProperty("issuer.keycloak.client-id"),
@@ -492,9 +348,6 @@ fun beans(
             env.getRequiredProperty("issuer.keycloak.password"),
             env.getRequiredProperty("issuer.keycloak.user-realm"),
         )
-    }
-    registerBean {
-        val keycloakProperties = bean<KeycloakConfigurationProperties>()
         GetPidDataFromKeyCloak(
             issuerCountry = env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
             issuingJurisdiction = env.getProperty("issuer.pid.issuingJurisdiction"),
