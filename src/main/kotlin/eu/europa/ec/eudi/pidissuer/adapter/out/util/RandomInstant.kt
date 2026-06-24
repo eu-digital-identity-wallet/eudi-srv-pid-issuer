@@ -21,10 +21,8 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 import kotlin.time.TimeSource
 
-fun randomInstantInThePast(
-    clock: Clock = Clock.System,
-    random: Random = Random,
-): Instant {
+context(random: Random, clock: Clock)
+fun randomInstantInThePast(): Instant {
     val now =
         TimeSource.Monotonic
             .markNow()

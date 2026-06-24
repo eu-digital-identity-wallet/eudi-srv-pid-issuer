@@ -130,13 +130,13 @@ context(issuerSigningKey: IssuerSigningKey)
 private fun sdJwtVcIssuer(digestsHashAlgorithm: HashAlgorithm): SdJwtIssuer<SignedJWT> {
     val factory = SdJwtFactory(digestsHashAlgorithm)
     val signer = ECDSASigner(issuerSigningKey.key)
+    val x5c =
+        issuerSigningKey.key.parsedX509CertChain
+            .dropRootCA()
+            .map { Base64.encode(it.encoded) }
     return NimbusSdJwtOps.issuer(factory, signer, issuerSigningKey.signingAlgorithm) {
         type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
         keyID(issuerSigningKey.key.keyID)
-        val x5c =
-            issuerSigningKey.key.parsedX509CertChain
-                .dropRootCA()
-                .map { Base64.encode(it.encoded) }
         x509CertChain(x5c)
     }
 }

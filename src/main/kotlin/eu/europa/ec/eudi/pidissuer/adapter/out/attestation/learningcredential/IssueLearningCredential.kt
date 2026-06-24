@@ -21,14 +21,9 @@ import arrow.core.raise.Raise
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.Pid
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidAttributes
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidMetaData
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
-import eu.europa.ec.eudi.pidissuer.domain.AttestationCategory
-import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcCredentialConfiguration
-import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.AttestationIssuer
@@ -41,6 +36,7 @@ import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.coroutines.Dispatchers
 import org.slf4j.LoggerFactory
 import java.util.*
+import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration
 
@@ -154,7 +150,10 @@ internal class IssueLearningCredential(
             return IssueLearningCredential(
                 credentialConfiguration,
                 clock,
-                GetLearningCredentialMock(clock, getPidData),
+                getAttestationAttributes = {
+                    val (pid, _) = getPidData()
+                    context(clock, Random) { LearningCredential.random(pid) }
+                },
                 EncodeLearningCredential.sdJwtVcCompact(
                     digestsHashAlgorithm,
                     issuerSigningKey,
