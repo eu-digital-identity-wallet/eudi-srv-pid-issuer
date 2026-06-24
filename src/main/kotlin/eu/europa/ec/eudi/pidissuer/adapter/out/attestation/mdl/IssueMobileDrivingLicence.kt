@@ -21,7 +21,9 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.IssueMdoc
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.DrivingPrivilege.Restriction.GenericRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.DrivingPrivilege.Restriction.ParameterizedRestriction
 import eu.europa.ec.eudi.pidissuer.adapter.out.coseAlgorithm
-import eu.europa.ec.eudi.pidissuer.adapter.out.format.mdoc.EncodeAttributesInMdoc
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestedClaims
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.mdoc.encodeAttestationAttributesInMdoc
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.mdoc.toTDate
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
@@ -358,34 +360,6 @@ internal fun mobileDrivingLicenceV1(
         validity = validity,
     )
 
-@Deprecated("Use the other constructor instead")
-@Suppress("FunctionName")
-fun IssueMobileDrivingLicence(
-    credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
-    deviceBinding: DeviceBinding.Required,
-    validity: Duration,
-    clock: Clock,
-    validateProof: ValidateProof,
-    generateNotificationId: GenerateNotificationId?,
-    storeIssuedCredential: StoreIssuedCredential,
-    getAttestationAttributes: GetAttestationAttributes<MobileDrivingLicence>,
-    allocateStatus: AllocateStatus,
-    encodeAttributes: EncodeAttributesInMdoc<MobileDrivingLicence>,
-): IssueMdoc<MobileDrivingLicence> {
-    val configuration =
-        mobileDrivingLicenceV1(encodeAttributes.signingAlgorithm, deviceBinding, credentialReusePolicy, validity)
-    return IssueMdoc(
-        configuration,
-        clock,
-        validateProof,
-        generateNotificationId,
-        storeIssuedCredential,
-        getAttestationAttributes,
-        allocateStatus,
-        encodeAttributes,
-    )
-}
-
 @Suppress("FunctionName")
 fun IssueMobileDrivingLicence(
     credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
@@ -409,11 +383,9 @@ fun IssueMobileDrivingLicence(
         storeIssuedCredential,
         getAttestationAttributes,
         allocateStatus,
-        EncodeAttributesInMdoc(
-            configuration.docType,
-            issuerSigningKey,
-            usage = MDocBuilder::addItemsToSign,
-        ),
+        encodeAttestationAttributesInMdoc(configuration.docType, issuerSigningKey){ licence ->
+            addItemsToSign(licence)
+        },
     )
 }
 

@@ -24,7 +24,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestedClaims
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
-import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.EncodeAttestationAttributesInSdJwtVc
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.SdJwtVcSerialization
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
@@ -115,7 +115,7 @@ internal class IssueLearningCredential(
 
     companion object {
         operator fun invoke(
-            option: EncodeAttestationAttributesInSdJwtVc.Option = EncodeAttestationAttributesInSdJwtVc.Option.Compact,
+            sdJwtVcSerialization: SdJwtVcSerialization = SdJwtVcSerialization.Compact,
             clock: Clock,
             getAttestationAttributes: GetAttestationAttributes<LearningCredential>,
             issuerSigningKey: IssuerSigningKey,
@@ -137,7 +137,7 @@ internal class IssueLearningCredential(
                 storeIssuedCredential,
                 encodeAttestationAttributes =
                     encodeLearningCredentialInSdJwtVc(
-                        option = option,
+                        sdJwtVcSerialization = sdJwtVcSerialization,
                         digestsHashAlgorithm,
                         issuerSigningKey,
                         vct = credentialConfiguration.type,

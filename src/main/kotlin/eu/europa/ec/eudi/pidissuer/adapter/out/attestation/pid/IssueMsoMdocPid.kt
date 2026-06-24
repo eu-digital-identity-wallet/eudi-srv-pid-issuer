@@ -19,7 +19,9 @@ import arrow.core.nonEmptySetOf
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.IssueMdoc
 import eu.europa.ec.eudi.pidissuer.adapter.out.coseAlgorithm
-import eu.europa.ec.eudi.pidissuer.adapter.out.format.mdoc.EncodeAttributesInMdoc
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestedClaims
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.mdoc.encodeAttestationAttributesInMdoc
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
@@ -328,7 +330,7 @@ fun IssueMsoMdocPid(
     storeIssuedCredential: StoreIssuedCredential,
     getAttestationAttributes: GetAttestationAttributes<PidAttributes>,
     allocateStatus: AllocateStatus,
-    encodeAttributes: EncodeAttributesInMdoc<PidAttributes>,
+    encodeAttributes: EncodeAttestationAttributes<AttestedClaims<PidAttributes>>,
 ): IssueMdoc<PidAttributes> {
     val configuration =
         pidMsoMdocV1(encodeAttributes.signingAlgorithm, deviceBinding, credentialReusePolicy, validity)
@@ -375,8 +377,8 @@ fun IssueMsoMdocPid(
 fun encodePidInMdoc(
     docType: MsoDocType = PidMsoMdocV1DocType,
     issuerSigningKey: IssuerSigningKey,
-): EncodeAttributesInMdoc<PidAttributes> =
-    EncodeAttributesInMdoc(docType, issuerSigningKey) { (pid, pidMetaData) ->
+): EncodeAttestationAttributes<AttestedClaims<PidAttributes>> =
+    encodeAttestationAttributesInMdoc(docType, issuerSigningKey) { (pid, pidMetaData) ->
         addItemsToSign(pid)
         addItemsToSign(pidMetaData)
     }

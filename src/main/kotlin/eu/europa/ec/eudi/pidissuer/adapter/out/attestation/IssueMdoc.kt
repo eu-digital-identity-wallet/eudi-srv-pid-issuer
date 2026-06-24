@@ -19,7 +19,9 @@ import arrow.core.raise.Raise
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.format.mdoc.EncodeAttributesInMdoc
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestedClaims
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.mdoc.encodeAttestationAttributesInMdoc
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.toECKeyOrFail
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
@@ -35,20 +37,20 @@ import eu.europa.ec.eudi.pidissuer.port.out.proof.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
 import id.walt.mdoc.doc.MDocBuilder
 import kotlinx.coroutines.Dispatchers
-import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonElement
 import org.slf4j.LoggerFactory
 import kotlin.time.Clock
 import kotlin.time.Instant
 
-class IssueMdoc<Data>(
+class IssueMdoc<Attr>(
     override val configuration: MsoMdocCredentialConfiguration,
     private val clock: Clock,
     private val validateProof: ValidateProof,
     private val generateNotificationId: GenerateNotificationId?,
     private val storeIssuedCredential: StoreIssuedCredential,
-    private val getAttestationAttributes: GetAttestationAttributes<Data>,
+    private val getAttestationAttributes: GetAttestationAttributes<Attr>,
     private val allocateStatus: AllocateStatus?,
-    private val encodeAttributes: EncodeAttributesInMdoc<Data>,
+    private val encodeAttestationAttributes: EncodeAttestationAttributes<AttestedClaims<Attr>>,
 ) : AttestationIssuer {
     private val log = LoggerFactory.getLogger(configuration.docType)
 
@@ -62,45 +64,44 @@ class IssueMdoc<Data>(
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
         val attributes = getAttestationAttributes()
         val expiresAt = issuedAt + configuration.validity
-        val notificationId = notificationId()
+        val notificationId = generateNotificationId?.invoke()
         val clientStatus = authorizationContext.clientStatus.status.statusList
         val keyStorageStatus = keyAttestation.keyStorageStatus.status.statusList
+        val commonAttestedAttributes = AttestedClaims.Common(attributes, issuedAt, expiresAt)
+        val issuedInstances =
+            deviceKeys.parMap(Dispatchers.Default, 4) { deviceKey ->
+                issueInstance(deviceKey, commonAttestedAttributes, notificationId, clientStatus, keyStorageStatus)
+            }.toNonEmptyListOrNull()
 
-        val issuedCredentials =
-            deviceKeys
-                .parMap(Dispatchers.Default, 4) { deviceKey ->
-                    val statusListToken = statusListToken(expiresAt)
-                    val encodedCredential =
-                        encodeAttributes(
-                            attributes,
-                            deviceKey,
-                            issuedAt = issuedAt,
-                            expiresAt = expiresAt,
-                            statusListToken,
-                        ).also {
-                            log.info("Issued $it")
-                        }
+        checkNotNull(issuedInstances) { "Cannot happen" }
 
-                    storeIssuedCredential(
-                        IssuedCredential(
-                            format = MSO_MDOC_FORMAT,
-                            type = configuration.docType,
-                            issuedAt = issuedAt,
-                            expiresAt = expiresAt,
-                            notificationId = notificationId,
-                            status = statusListToken,
-                            clientStatus = clientStatus,
-                            keyStorageStatus = keyStorageStatus,
-                        ),
-                    )
+        return CredentialResponse.Issued(issuedInstances, notificationId)
+    }
 
-                    encodedCredential
-                }.toNonEmptyListOrNull()
+    private suspend fun issueInstance(
+        deviceKey: com.nimbusds.jose.jwk.ECKey,
+        commonAttestedAttributes: AttestedClaims.Common<Attr>,
+        notificationId: NotificationId?,
+        clientStatus: StatusListToken,
+        keyStorageStatus: StatusListToken,
+    ): JsonElement {
+        val status = statusListToken(commonAttestedAttributes.expiresAt)
+        val attestedAttributes = commonAttestedAttributes + AttestedClaims.PerInstance(deviceKey, status)
+        val attestationInstance = encodeAttestationAttributes(attestedAttributes).also { log.info("Issued $it") }
 
-        checkNotNull(issuedCredentials) { "Cannot happen" }
-
-        return CredentialResponse
-            .Issued(issuedCredentials.map { JsonPrimitive(it) }, notificationId)
+        storeIssuedCredential(
+            IssuedCredential(
+                format = MSO_MDOC_FORMAT,
+                type = configuration.docType,
+                issuedAt = attestedAttributes.common.issuedAt,
+                expiresAt = attestedAttributes.common.expiresAt,
+                notificationId = notificationId,
+                status = attestedAttributes.perInstance.status,
+                clientStatus = clientStatus,
+                keyStorageStatus = keyStorageStatus,
+            ),
+        )
+        return attestationInstance
     }
 
     private suspend fun statusListToken(expiresAt: Instant): StatusListToken? =
@@ -110,7 +111,6 @@ class IssueMdoc<Data>(
             }
         }
 
-    private suspend fun notificationId(): NotificationId? = generateNotificationId?.let { it() }
 
     companion object {
         operator fun <Data> invoke(
@@ -132,7 +132,7 @@ class IssueMdoc<Data>(
                 storeIssuedCredential,
                 getAttestationAttributes,
                 allocateStatus,
-                EncodeAttributesInMdoc(configuration.docType, issuerSigningKey, usage = usage),
+                encodeAttestationAttributesInMdoc(configuration.docType, issuerSigningKey, usage = usage),
             )
     }
 }

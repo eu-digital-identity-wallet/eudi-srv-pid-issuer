@@ -39,56 +39,55 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 
-object EncodeAttestationAttributesInSdJwtVc {
-    enum class Option {
-        Compact,
-        JwsJson,
-    }
+enum class SdJwtVcSerialization {
+    Compact,
+    JwsJson,
+}
 
-    operator fun <D> invoke(
-        option: Option = Option.Compact,
-        digestsHashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
-        issuerSigningKey: IssuerSigningKey,
-        vct: SdJwtVcType,
-        issuer: CredentialIssuerId? = null,
-        build: SdJwtObjectBuilder.(D) -> Unit,
-    ): EncodeAttestationAttributes<AttestedClaims<D>> =
-        EncodeSdJwtVcSpec(digestsHashAlgorithm, option, issuerSigningKey).contraMap { (instance, common) ->
-            val (deviceKey, statusListToken, jwtId) = instance
-            val (attributes, issuedAt, expiresAt, notBefore) = common
-            sdJwt {
-                claim(SdJwtVcSpec.VCT, vct.value)
-                claim(RFC7519.ISSUED_AT, issuedAt.epochSeconds)
-                claim(RFC7519.EXPIRATION_TIME, expiresAt.epochSeconds)
-                issuer?.let { claim(RFC7519.ISSUER, it.externalForm) }
-                notBefore?.let { claim(RFC7519.NOT_BEFORE, it.epochSeconds) }
-                jwtId?.let { claim(RFC7519.JWT_ID, it) }
-                deviceKey?.let { cnf(it) }
-                statusListToken?.let {
-                    objClaim("status") {
-                        objClaim("status_list") {
-                            claim("idx", it.index.toInt())
-                            claim("uri", it.statusList.toString())
-                        }
+fun <Attr> encodeAttestationAttributesInSdJwtVc(
+    sdJwtVcSerialization: SdJwtVcSerialization = SdJwtVcSerialization.Compact,
+    digestsHashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
+    issuerSigningKey: IssuerSigningKey,
+    vct: SdJwtVcType,
+    issuer: CredentialIssuerId? = null,
+    build: SdJwtObjectBuilder.(Attr) -> Unit,
+): EncodeAttestationAttributes<AttestedClaims<Attr>> =
+    EncodeSdJwtVcSpec(digestsHashAlgorithm, sdJwtVcSerialization, issuerSigningKey).contraMap { (instance, common) ->
+        val (deviceKey, statusListToken, jwtId) = instance
+        val (attributes, issuedAt, expiresAt, notBefore) = common
+        sdJwt {
+            claim(SdJwtVcSpec.VCT, vct.value)
+            claim(RFC7519.ISSUED_AT, issuedAt.epochSeconds)
+            claim(RFC7519.EXPIRATION_TIME, expiresAt.epochSeconds)
+            issuer?.let { claim(RFC7519.ISSUER, it.externalForm) }
+            notBefore?.let { claim(RFC7519.NOT_BEFORE, it.epochSeconds) }
+            jwtId?.let { claim(RFC7519.JWT_ID, it) }
+            deviceKey?.let { cnf(it) }
+            statusListToken?.let {
+                objClaim("status") {
+                    objClaim("status_list") {
+                        claim("idx", it.index.toInt())
+                        claim("uri", it.statusList.toString())
                     }
                 }
-                build(attributes)
             }
+            build(attributes)
         }
-}
+    }
+
 
 private class EncodeSdJwtVcSpec(
     private val digestsHashAlgorithm: HashAlgorithm,
-    private val option: EncodeAttestationAttributesInSdJwtVc.Option,
+    private val sdJwtVcSerialization: SdJwtVcSerialization,
     private val issuerSigningKey: IssuerSigningKey,
 ) : EncodeAttestationAttributes<SdJwtObject> {
     override suspend fun invoke(attributes: SdJwtObject): JsonElement =
-        context(issuerSigningKey, digestsHashAlgorithm, option, NimbusSdJwtOps) {
+        context(issuerSigningKey, digestsHashAlgorithm, sdJwtVcSerialization, NimbusSdJwtOps) {
             val issuer = sdJwtVcIssuer(digestsHashAlgorithm)
             val sdJwt = issuer.issue(attributes).getOrThrow().also { it.logDebug() }
-            when (option) {
-                EncodeAttestationAttributesInSdJwtVc.Option.Compact -> JsonPrimitive(sdJwt.serialize())
-                EncodeAttestationAttributesInSdJwtVc.Option.JwsJson -> sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)
+            when (sdJwtVcSerialization) {
+                SdJwtVcSerialization.Compact -> JsonPrimitive(sdJwt.serialize())
+                SdJwtVcSerialization.JwsJson -> sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)
             }
         }
 }
