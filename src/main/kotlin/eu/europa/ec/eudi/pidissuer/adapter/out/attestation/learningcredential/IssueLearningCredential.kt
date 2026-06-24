@@ -22,6 +22,8 @@ import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidAttributes
+import eu.europa.ec.eudi.pidissuer.adapter.out.sdjwtvc.AttestedClaims
+import eu.europa.ec.eudi.pidissuer.adapter.out.sdjwtvc.EncodeAttributesInSdJwtVc
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
@@ -46,10 +48,10 @@ internal class IssueLearningCredential(
     override val configuration: SdJwtVcCredentialConfiguration,
     private val clock: Clock,
     private val getAttestationAttributes: GetAttestationAttributes<LearningCredential>,
-    private val encodeLearningCredential: EncodeLearningCredential,
     private val validateProof: ValidateProof,
     private val generateNotificationId: GenerateNotificationId?,
     private val storeIssuedCredential: StoreIssuedCredential,
+    private val encodeAttributes: EncodeAttributesInSdJwtVc<AttestedClaims<LearningCredential>>,
 ) : AttestationIssuer {
     context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
@@ -70,32 +72,33 @@ internal class IssueLearningCredential(
         val notificationId = generateNotificationId?.invoke()
         val clientStatus = authorizationContext.clientStatus.status.statusList
         val keyStorageStatus = keyAttestation.keyStorageStatus.status.statusList
+        val commonAttestedAttributes = AttestedClaims.Common(attributes, issuedAt, expiresAt)
 
         val issuedCredentials =
             keyAttestation.credentialKeys.value
                 .parMap(Dispatchers.Default, 4) { deviceKey ->
-                    val encodedCredential =
-                        encodeLearningCredential(
-                            attributes,
-                            deviceKey,
-                            issuedAt,
-                            expiresAt,
-                        )
+
+                    val id = IssuedCredentialId.random()
+                    val instanceAttestedAttributes =
+                        AttestedClaims.PerInstance(deviceKey, jwtId = id.value.toHexDashString())
+                    val attestedAttributes = instanceAttestedAttributes + commonAttestedAttributes
+                    val attestationInstance = encodeAttributes(attestedAttributes)
 
                     storeIssuedCredential(
                         IssuedCredential(
-                            encodeLearningCredential.format,
-                            encodeLearningCredential.type,
-                            issuedAt,
-                            expiresAt,
+                            format = SD_JWT_VC_FORMAT,
+                            type = configuration.type.value,
+                            attestedAttributes.common.issuedAt,
+                            attestedAttributes.common.expiresAt,
                             notificationId,
-                            status = null,
+                            attestedAttributes.perInstance.status,
                             clientStatus,
                             keyStorageStatus,
+                            identifier = id,
                         ),
                     )
 
-                    encodedCredential
+                    attestationInstance
                 }.toNonEmptyListOrNull()
 
         // This is runtime error, not a business error
@@ -110,9 +113,10 @@ internal class IssueLearningCredential(
     }
 
     companion object {
-        fun sdJwtVcCompact(
+        operator fun invoke(
+            option: EncodeAttributesInSdJwtVc.Option = EncodeAttributesInSdJwtVc.Option.Compact,
             clock: Clock,
-            getPidData: GetAttestationAttributes<PidAttributes>,
+            getAttestationAttributes: GetAttestationAttributes<LearningCredential>,
             issuerSigningKey: IssuerSigningKey,
             digestsHashAlgorithm: HashAlgorithm,
             deviceBinding: DeviceBinding.Required,
@@ -122,44 +126,59 @@ internal class IssueLearningCredential(
             generateNotificationId: GenerateNotificationId?,
             storeIssuedCredential: StoreIssuedCredential,
         ): IssueLearningCredential {
-            val credentialConfiguration =
-                SdJwtVcCredentialConfiguration(
-                    CredentialConfigurationId("urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt-compact"),
-                    Scope("urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt"),
-                    display =
-                        nonEmptyListOf(
-                            CredentialDisplay(
-                                DisplayName(
-                                    "Learning Credential (SD-JWT VC Compact)",
-                                    Locale.ENGLISH,
-                                ),
-                            ),
-                        ),
-                    claims = SdJwtVcClaims.all(),
-                    deviceBinding = deviceBinding,
-                    category = AttestationCategory.Eaa,
-                    reusePolicy = credentialReusePolicy,
-                    validity = validity,
-                    type = SdJwtVcType("urn:eu.europa.ec.eudi:learning:credential:1"),
-                    credentialSigningAlgorithmsSupported = nonEmptySetOf(issuerSigningKey.signingAlgorithm),
-                    publicKey = issuerSigningKey.key.toPublicJWK(),
-                )
+            val credentialConfiguration = cfg(deviceBinding, credentialReusePolicy, validity, issuerSigningKey)
             return IssueLearningCredential(
                 credentialConfiguration,
                 clock,
-                getAttestationAttributes = {
-                    val (pid, _) = getPidData()
-                    context(clock, Random) { LearningCredential.random(pid) }
-                },
-                EncodeLearningCredential.sdJwtVcCompact(
-                    digestsHashAlgorithm,
-                    issuerSigningKey,
-                    credentialConfiguration.type,
-                ),
+                getAttestationAttributes,
                 validateProof,
                 generateNotificationId,
                 storeIssuedCredential,
+                encodeAttributes =
+                    encodeLearningCredentialInSdJwtVc(
+                        option = option,
+                        digestsHashAlgorithm,
+                        issuerSigningKey,
+                        vct = credentialConfiguration.type,
+                    ),
             )
         }
+
+        fun randomLearningCredentials(
+            clock: Clock,
+            getPidData: GetAttestationAttributes<PidAttributes>,
+        ): GetAttestationAttributes<LearningCredential> =
+            GetAttestationAttributes {
+                val (pid, _) = getPidData()
+                context(clock, Random) { LearningCredential.random(pid) }
+            }
+
+        private fun cfg(
+            deviceBinding: DeviceBinding.Required,
+            credentialReusePolicy: CredentialReusePolicy,
+            validity: Duration,
+            issuerSigningKey: IssuerSigningKey,
+        ): SdJwtVcCredentialConfiguration =
+            SdJwtVcCredentialConfiguration(
+                CredentialConfigurationId("urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt-compact"),
+                Scope("urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt"),
+                display =
+                    nonEmptyListOf(
+                        CredentialDisplay(
+                            DisplayName(
+                                "Learning Credential (SD-JWT VC Compact)",
+                                Locale.ENGLISH,
+                            ),
+                        ),
+                    ),
+                claims = SdJwtVcClaims.all(),
+                deviceBinding = deviceBinding,
+                category = AttestationCategory.Eaa,
+                reusePolicy = credentialReusePolicy,
+                validity = validity,
+                type = SdJwtVcType("urn:eu.europa.ec.eudi:learning:credential:1"),
+                credentialSigningAlgorithmsSupported = nonEmptySetOf(issuerSigningKey.signingAlgorithm),
+                publicKey = issuerSigningKey.key.toPublicJWK(),
+            )
     }
 }

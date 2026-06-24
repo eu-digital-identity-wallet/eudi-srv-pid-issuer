@@ -27,6 +27,7 @@ import java.net.URI
 import java.net.URL
 import java.util.*
 import kotlin.time.Instant
+import kotlin.uuid.Uuid
 
 private val logHttpsUrl = LoggerFactory.getLogger(HttpsUrl::class.java)
 
@@ -134,8 +135,12 @@ sealed interface CryptographicBindingMethod {
  */
 @JvmInline
 value class IssuedCredentialId(
-    val value: UUID,
-)
+    val value: Uuid,
+) {
+    companion object {
+        fun random(): IssuedCredentialId = IssuedCredentialId(Uuid.random())
+    }
+}
 
 /**
  * Credential that have issued by a specific issuing service.
@@ -149,7 +154,7 @@ data class IssuedCredential(
     val status: StatusListToken?,
     val clientStatus: StatusListToken,
     val keyStorageStatus: StatusListToken?,
-    val identifier: IssuedCredentialId = IssuedCredentialId(UUID.randomUUID()),
+    val identifier: IssuedCredentialId = IssuedCredentialId.random(),
 )
 
 /**

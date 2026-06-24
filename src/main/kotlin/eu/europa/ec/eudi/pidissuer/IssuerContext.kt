@@ -47,6 +47,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateAttestationProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateJwtProofWithKeyAttestation
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.VerifyKeyAttestation
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
+import eu.europa.ec.eudi.pidissuer.adapter.out.sdjwtvc.EncodeAttributesInSdJwtVc
 import eu.europa.ec.eudi.pidissuer.adapter.out.status.GenerateStatusListTokenWithExternalService
 import eu.europa.ec.eudi.pidissuer.adapter.out.status.GetStatusListTokenWithStatium
 import eu.europa.ec.eudi.pidissuer.adapter.out.status.MarkStatusAsRevokedWithExternalService
@@ -781,10 +782,11 @@ fun beans(
                     val notificationsEnabled =
                         env.getProperty<Boolean>("issuer.learningCredential.notifications.enabled") ?: true
 
-                    val sdJwtVcCompactIssuer =
-                        IssueLearningCredential.sdJwtVcCompact(
+                    val issueLearningCredential =
+                        IssueLearningCredential(
+                            option = EncodeAttributesInSdJwtVc.Option.Compact,
                             clock = clock,
-                            getPidData = bean(),
+                            getAttestationAttributes = IssueLearningCredential.randomLearningCredentials(clock, bean()),
                             issuerSigningKey = issuerSigningKey,
                             digestsHashAlgorithm = digestHashAlgorithm,
                             deviceBinding =
@@ -801,8 +803,8 @@ fun beans(
                             storeIssuedCredential = bean(),
                         )
 
-                    add(sdJwtVcCompactIssuer)
-                    add(sdJwtVcCompactIssuer.asDeferred(bean(), bean(), bean()))
+                    add(issueLearningCredential)
+                    add(issueLearningCredential.asDeferred(bean(), bean(), bean()))
                 }
             }.toNonEmptyListOrNull()
 
@@ -872,7 +874,7 @@ fun beans(
     val accessTokenType = env.getProperty<AccessTokenType>("issuer.access-token.type") ?: AccessTokenType.DPoP
     val enableBearerTokenAuthentication =
         AccessTokenType.Bearer == accessTokenType ||
-                AccessTokenType.BearerAndDPoPIfAvailable == accessTokenType
+            AccessTokenType.BearerAndDPoPIfAvailable == accessTokenType
 
     if (AccessTokenType.DPoP == accessTokenType || AccessTokenType.BearerAndDPoPIfAvailable == accessTokenType) {
         val algorithms =
@@ -1290,8 +1292,7 @@ private fun <T> Environment.readNullableNonEmptySet(
         ?.mapNotNull(f)
         ?.toNonEmptySetOrNull()
 
-private fun Environment.duration(key: String): Duration? =
-    getProperty(key)?.let { Duration.parse(it) }?.takeIf { it.isPositive() }
+private fun Environment.duration(key: String): Duration? = getProperty(key)?.let { Duration.parse(it) }?.takeIf { it.isPositive() }
 
 internal fun HttpsUrl.appendPath(path: String): HttpsUrl =
     HttpsUrl.unsafe(
@@ -1452,7 +1453,7 @@ private fun Environment.getPropertyOrEnvVariable(property: String): String? =
 
 private inline fun <reified T : Any> Environment.getRequiredPropertyOrEnvVariable(property: String): T =
     getProperty<T>(property) ?: getProperty<T>(toEnvironmentVariable(property))
-    ?: throw IllegalStateException("Property $property or environment variable ${toEnvironmentVariable(property)} not found")
+        ?: throw IllegalStateException("Property $property or environment variable ${toEnvironmentVariable(property)} not found")
 
 private fun toEnvironmentVariable(property: String): String =
     property

@@ -40,24 +40,28 @@ import org.slf4j.LoggerFactory
 import kotlin.time.Instant
 
 data class AttestedClaims<out Data>(
-    val instance: Instance,
+    val perInstance: PerInstance,
     val common: Common<Data>,
 ) {
     data class Common<out Data>(
         val attributes: Data,
-        val issuedAt: Instant? = null,
-        val expiresAt: Instant? = null,
+        val issuedAt: Instant,
+        val expiresAt: Instant,
         val notBefore: Instant? = null,
-    )
+    ) {
+        operator fun plus(instance: PerInstance): AttestedClaims<Data> = AttestedClaims(instance, this)
+    }
 
-    data class Instance(
+    data class PerInstance(
         val deviceKey: JWK? = null,
-        val statusListToken: StatusListToken? = null,
+        val status: StatusListToken? = null,
         val jwtId: String? = null,
-    )
+    ) {
+        operator fun <Data> plus(common: Common<Data>): AttestedClaims<Data> = AttestedClaims(this, common)
+    }
 
     companion object {
-        fun <Data> partial(common: Common<Data>): (Instance) -> AttestedClaims<Data> =
+        fun <Data> partial(common: Common<Data>): (PerInstance) -> AttestedClaims<Data> =
             { instance ->
                 AttestedClaims(instance, common)
             }
@@ -86,10 +90,10 @@ fun interface EncodeAttributesInSdJwtVc<in Data> {
                 val (attributes, issuedAt, expiresAt, notBefore) = common
                 sdJwt {
                     claim(SdJwtVcSpec.VCT, vct.value)
+                    claim(RFC7519.ISSUED_AT, issuedAt.epochSeconds)
+                    claim(RFC7519.EXPIRATION_TIME, expiresAt.epochSeconds)
                     issuer?.let { claim(RFC7519.ISSUER, it.externalForm) }
-                    issuedAt?.let { claim(RFC7519.ISSUED_AT, it.epochSeconds) }
                     notBefore?.let { claim(RFC7519.NOT_BEFORE, it.epochSeconds) }
-                    expiresAt?.let { claim(RFC7519.EXPIRATION_TIME, it.epochSeconds) }
                     jwtId?.let { claim(RFC7519.JWT_ID, it) }
                     deviceKey?.let { cnf(it) }
                     statusListToken?.let {
