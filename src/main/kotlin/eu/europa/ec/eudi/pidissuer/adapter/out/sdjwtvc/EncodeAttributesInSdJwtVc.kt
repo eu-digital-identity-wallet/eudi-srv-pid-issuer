@@ -40,21 +40,26 @@ import org.slf4j.LoggerFactory
 import kotlin.time.Instant
 
 data class AttestedClaims<out Data>(
-    val attributes: Data,
-    val deviceKey: JWK? = null,
-    val statusListToken: StatusListToken? = null,
-    val common: Common,
+    val instance: Instance,
+    val common: Common<Data>,
 ) {
-    data class Common(
+    data class Common<out Data>(
+        val attributes: Data,
         val issuedAt: Instant? = null,
         val expiresAt: Instant? = null,
         val notBefore: Instant? = null,
     )
 
+    data class Instance(
+        val deviceKey: JWK? = null,
+        val statusListToken: StatusListToken? = null,
+        val jwtId: String? = null,
+    )
+
     companion object {
-        fun <Data> partial(comon: Common): (Data, JWK?, StatusListToken?) -> AttestedClaims<Data> =
-            { attributes, deviceKey, statusListToken ->
-                AttestedClaims(attributes, deviceKey, statusListToken, comon)
+        fun <Data> partial(common: Common<Data>): (Instance) -> AttestedClaims<Data> =
+            { instance ->
+                AttestedClaims(instance, common)
             }
     }
 }
@@ -76,27 +81,28 @@ fun interface EncodeAttributesInSdJwtVc<in Data> {
             issuer: CredentialIssuerId? = null,
             build: SdJwtObjectBuilder.(D) -> Unit,
         ): EncodeAttributesInSdJwtVc<AttestedClaims<D>> =
-            EncodeSdJwtVcSpec(digestsHashAlgorithm, option, issuerSigningKey)
-                .contraMap { (attributes, deviceKey, statusListToken, common) ->
-                    val (issuedAt, expiresAt, notBefore) = common
-                    sdJwt {
-                        claim(SdJwtVcSpec.VCT, vct.value)
-                        issuer?.let { claim(RFC7519.ISSUER, it.externalForm) }
-                        issuedAt?.let { claim(RFC7519.ISSUED_AT, it.epochSeconds) }
-                        notBefore?.let { claim(RFC7519.NOT_BEFORE, it.epochSeconds) }
-                        expiresAt?.let { claim(RFC7519.EXPIRATION_TIME, it.epochSeconds) }
-                        deviceKey?.let { cnf(it) }
-                        statusListToken?.let {
-                            objClaim("status") {
-                                objClaim("status_list") {
-                                    claim("idx", it.index.toInt())
-                                    claim("uri", it.statusList.toString())
-                                }
+            EncodeSdJwtVcSpec(digestsHashAlgorithm, option, issuerSigningKey).contraMap { (instance, common) ->
+                val (deviceKey, statusListToken, jwtId) = instance
+                val (attributes, issuedAt, expiresAt, notBefore) = common
+                sdJwt {
+                    claim(SdJwtVcSpec.VCT, vct.value)
+                    issuer?.let { claim(RFC7519.ISSUER, it.externalForm) }
+                    issuedAt?.let { claim(RFC7519.ISSUED_AT, it.epochSeconds) }
+                    notBefore?.let { claim(RFC7519.NOT_BEFORE, it.epochSeconds) }
+                    expiresAt?.let { claim(RFC7519.EXPIRATION_TIME, it.epochSeconds) }
+                    jwtId?.let { claim(RFC7519.JWT_ID, it) }
+                    deviceKey?.let { cnf(it) }
+                    statusListToken?.let {
+                        objClaim("status") {
+                            objClaim("status_list") {
+                                claim("idx", it.index.toInt())
+                                claim("uri", it.statusList.toString())
                             }
                         }
-                        build(attributes)
                     }
+                    build(attributes)
                 }
+            }
     }
 }
 
