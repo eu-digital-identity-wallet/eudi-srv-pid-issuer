@@ -783,7 +783,7 @@ fun beans(
 
                     val sdJwtVcCompactIssuer =
                         IssueLearningCredential.sdJwtVcCompact(
-                            clock = bean(),
+                            clock = clock,
                             getPidData = bean(),
                             issuerSigningKey = issuerSigningKey,
                             digestsHashAlgorithm = digestHashAlgorithm,
@@ -797,8 +797,7 @@ fun beans(
                             credentialReusePolicy = learningCredentialReusePolicy,
                             validity = validity,
                             validateProof = bean(),
-                            notificationsEnabled = notificationsEnabled,
-                            generateNotificationId = bean(),
+                            generateNotificationId = if (notificationsEnabled) bean() else null,
                             storeIssuedCredential = bean(),
                         )
 
@@ -873,7 +872,7 @@ fun beans(
     val accessTokenType = env.getProperty<AccessTokenType>("issuer.access-token.type") ?: AccessTokenType.DPoP
     val enableBearerTokenAuthentication =
         AccessTokenType.Bearer == accessTokenType ||
-            AccessTokenType.BearerAndDPoPIfAvailable == accessTokenType
+                AccessTokenType.BearerAndDPoPIfAvailable == accessTokenType
 
     if (AccessTokenType.DPoP == accessTokenType || AccessTokenType.BearerAndDPoPIfAvailable == accessTokenType) {
         val algorithms =
@@ -1291,7 +1290,8 @@ private fun <T> Environment.readNullableNonEmptySet(
         ?.mapNotNull(f)
         ?.toNonEmptySetOrNull()
 
-private fun Environment.duration(key: String): Duration? = getProperty(key)?.let { Duration.parse(it) }?.takeIf { it.isPositive() }
+private fun Environment.duration(key: String): Duration? =
+    getProperty(key)?.let { Duration.parse(it) }?.takeIf { it.isPositive() }
 
 internal fun HttpsUrl.appendPath(path: String): HttpsUrl =
     HttpsUrl.unsafe(
@@ -1452,7 +1452,7 @@ private fun Environment.getPropertyOrEnvVariable(property: String): String? =
 
 private inline fun <reified T : Any> Environment.getRequiredPropertyOrEnvVariable(property: String): T =
     getProperty<T>(property) ?: getProperty<T>(toEnvironmentVariable(property))
-        ?: throw IllegalStateException("Property $property or environment variable ${toEnvironmentVariable(property)} not found")
+    ?: throw IllegalStateException("Property $property or environment variable ${toEnvironmentVariable(property)} not found")
 
 private fun toEnvironmentVariable(property: String): String =
     property

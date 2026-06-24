@@ -48,8 +48,7 @@ internal class IssueLearningCredential(
     private val getAttestationAttributes: GetAttestationAttributes<LearningCredential>,
     private val encodeLearningCredential: EncodeLearningCredential,
     private val validateProof: ValidateProof,
-    private val notificationsEnabled: Boolean,
-    private val generateNotificationId: GenerateNotificationId,
+    private val generateNotificationId: GenerateNotificationId?,
     private val storeIssuedCredential: StoreIssuedCredential,
 ) : AttestationIssuer {
     context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
@@ -58,18 +57,17 @@ internal class IssueLearningCredential(
 
         val issuedAt = clock.now()
         val keyAttestation = context(validateProof) { keyAttestation(request, issuedAt) }
-        val learningCredentialAttributes = getAttestationAttributes()
-
+        val attributes = getAttestationAttributes()
         val expiresAt =
             run {
                 val dateOfExpiry = issuedAt + configuration.validity
-                if (null != learningCredentialAttributes.dateOfExpiry && learningCredentialAttributes.dateOfExpiry < dateOfExpiry)
-                    learningCredentialAttributes.dateOfExpiry
+                if (null != attributes.dateOfExpiry && attributes.dateOfExpiry < dateOfExpiry)
+                    attributes.dateOfExpiry
                 else
                     dateOfExpiry
             }
 
-        val notificationId = if (notificationsEnabled) generateNotificationId() else null
+        val notificationId = generateNotificationId?.invoke()
         val clientStatus = authorizationContext.clientStatus.status.statusList
         val keyStorageStatus = keyAttestation.keyStorageStatus.status.statusList
 
@@ -78,7 +76,7 @@ internal class IssueLearningCredential(
                 .parMap(Dispatchers.Default, 4) { deviceKey ->
                     val encodedCredential =
                         encodeLearningCredential(
-                            learningCredentialAttributes,
+                            attributes,
                             deviceKey,
                             issuedAt,
                             expiresAt,
@@ -121,8 +119,7 @@ internal class IssueLearningCredential(
             credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
             validity: Duration,
             validateProof: ValidateProof,
-            notificationsEnabled: Boolean,
-            generateNotificationId: GenerateNotificationId,
+            generateNotificationId: GenerateNotificationId?,
             storeIssuedCredential: StoreIssuedCredential,
         ): IssueLearningCredential {
             val credentialConfiguration =
@@ -160,7 +157,6 @@ internal class IssueLearningCredential(
                     credentialConfiguration.type,
                 ),
                 validateProof,
-                notificationsEnabled,
                 generateNotificationId,
                 storeIssuedCredential,
             )
