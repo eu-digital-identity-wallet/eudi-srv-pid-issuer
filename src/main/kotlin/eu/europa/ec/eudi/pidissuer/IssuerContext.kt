@@ -35,20 +35,9 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.ehic.GetEuropeanHealthInsuranceCardDataMock
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.ehic.IssueSdJwtVcEuropeanHealthInsuranceCard
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.learningcredential.IssueLearningCredential
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.*
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.GetMobileDrivingLicenceDataMock
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.IssueMobileDrivingLicence
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.*
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.AdministrationClient
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.Credentials
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.GetPidDataFromKeyCloak
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.IsoCountry
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.IssueMsoMdocPid
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.IssueSdJwtVcPid
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.Realm
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc.EncodeAttributesInMdoc
 import eu.europa.ec.eudi.pidissuer.adapter.out.nonce.*
@@ -134,7 +123,6 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import kotlin.time.toKotlinDuration
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.ehic.IssuingCountry as EhicIssuingCountry
 import io.ktor.client.HttpClient as KtorHttpClient
 import io.ktor.client.engine.java.Java as JavaEngine
 import java.time.Duration as JavaDuration
@@ -284,8 +272,6 @@ fun beans(
     val enableMsoMdocPid = env.getProperty<Boolean>("issuer.pid.mso_mdoc.enabled") ?: true
     val enableSdJwtVcPid = env.getProperty<Boolean>("issuer.pid.sd_jwt_vc.enabled") ?: true
     val credentialsOfferUri = env.getRequiredProperty("issuer.credentialOffer.uri")
-    val enableCompactEhic = env.getProperty<Boolean>("issuer.ehic.compact.enabled") ?: true
-    val enableJwsJsonFlattenedEhic = env.getProperty<Boolean>("issuer.ehic.jwsJsonFlattened.enabled") ?: false
     val enableLearningCredential = env.getProperty<Boolean>("issuer.learningCredential.enabled") ?: true
     val trustValidatorServiceUrl = env.getProperty<String>("issuer.trust.service-url")
 
@@ -775,78 +761,6 @@ fun beans(
                         )
                     add(mdlIssuer)
                     add(mdlIssuer.asDeferred(bean(), bean(), clock))
-                }
-
-                if (enableCompactEhic || enableJwsJsonFlattenedEhic) {
-                    val digestHashAlgorithm =
-                        env.getProperty<HashAlgorithm>(
-                            "issuer.ehic.encoder.digests.hashAlgorithm",
-                        ) ?: HashAlgorithm.SHA_256
-                    val validity = Duration.parse(env.getProperty("issuer.ehic.validity", "P31D"))
-                    val ehicNotificationsEnabled =
-                        env.getProperty<Boolean>("issuer.ehic.notifications.enabled") ?: true
-                    val issuingCountry = EhicIssuingCountry(env.getProperty("issuer.ehic.issuingCountry", "GR"))
-                    val jwtProofsSupportedSigningAlgorithms =
-                        env.readNonEmptySet(
-                            "issuer.ehic.jwtProofs.supportedSigningAlgorithms",
-                            JWSAlgorithm::parse,
-                        )
-                    val ehicReusePolicy = this@BeanRegistrarDsl.credentialReusePolicy("issuer.ehic")
-
-                    val issuerSigningKey = getIssuerSigningKey("issuer.ehic.signing-key")
-
-                    val getEuropeanHealthInsuranceCardData =
-                        GetEuropeanHealthInsuranceCardDataMock(
-                            clock,
-                            timeZone,
-                            issuingCountry,
-                        )
-
-                    val deviceBinding =
-                        DeviceBinding.ts3(
-                            jwtProofsSupportedSigningAlgorithms,
-                            PreferredKeyStorageStatusPeriod(validity),
-                        )
-
-                    if (enableJwsJsonFlattenedEhic) {
-                        val ehicJwsJsonFlattenedIssuer =
-                            IssueSdJwtVcEuropeanHealthInsuranceCard.jwsJsonFlattened(
-                                clock = clock,
-                                getAttestationAttributes = getEuropeanHealthInsuranceCardData,
-                                issuerSigningKey = issuerSigningKey,
-                                digestsHashAlgorithm = digestHashAlgorithm,
-                                credentialIssuerId = issuerPublicUrl,
-                                deviceBinding = deviceBinding,
-                                credentialReusePolicy = ehicReusePolicy,
-                                validity = validity,
-                                validateProof = bean(),
-                                notificationsEnabled = ehicNotificationsEnabled,
-                                generateNotificationId = bean(),
-                                storeIssuedCredential = bean(),
-                            )
-                        add(ehicJwsJsonFlattenedIssuer)
-                        add(ehicJwsJsonFlattenedIssuer.asDeferred(bean(), bean(), clock))
-                    }
-
-                    if (enableCompactEhic) {
-                        val ehicCompactIssuer =
-                            IssueSdJwtVcEuropeanHealthInsuranceCard.compact(
-                                clock = bean(),
-                                getAttestationAttributes = getEuropeanHealthInsuranceCardData,
-                                issuerSigningKey = issuerSigningKey,
-                                digestsHashAlgorithm = digestHashAlgorithm,
-                                credentialIssuerId = issuerPublicUrl,
-                                deviceBinding = deviceBinding,
-                                credentialReusePolicy = ehicReusePolicy,
-                                validity = validity,
-                                validateProof = bean(),
-                                notificationsEnabled = ehicNotificationsEnabled,
-                                generateNotificationId = bean(),
-                                storeIssuedCredential = bean(),
-                            )
-                        add(ehicCompactIssuer)
-                        add(ehicCompactIssuer.asDeferred(bean(), bean(), bean()))
-                    }
                 }
 
                 if (enableLearningCredential) {
