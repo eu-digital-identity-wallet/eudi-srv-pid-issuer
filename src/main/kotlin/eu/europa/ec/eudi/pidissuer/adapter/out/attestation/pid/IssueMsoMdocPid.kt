@@ -318,35 +318,6 @@ internal fun pidMsoMdocV1(
         validity = validity,
     )
 
-@Deprecated("This is only for testing purposes. Use the other constructor instead.")
-@Suppress("FunctionName")
-fun IssueMsoMdocPid(
-    credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,
-    deviceBinding: DeviceBinding.Required,
-    validity: Duration,
-    clock: Clock,
-    validateProof: ValidateProof,
-    generateNotificationId: GenerateNotificationId?,
-    storeIssuedCredential: StoreIssuedCredential,
-    getAttestationAttributes: GetAttestationAttributes<PidAttributes>,
-    allocateStatus: AllocateStatus,
-    encodeAttributes: EncodeAttestationAttributes<PidAttributes>,
-): IssueMdoc<PidAttributes> {
-    val credentialSigningAlgorithm: CoseAlgorithm = TODO()
-    val configuration =
-        pidMsoMdocV1(credentialSigningAlgorithm, deviceBinding, credentialReusePolicy, validity)
-    return IssueMdoc(
-        configuration,
-        clock,
-        validateProof,
-        generateNotificationId,
-        storeIssuedCredential,
-        getAttestationAttributes,
-        allocateStatus,
-        encodeAttributes,
-    )
-}
-
 @Suppress("FunctionName")
 fun IssueMsoMdocPid(
     credentialReusePolicy: CredentialReusePolicy = CredentialReusePolicy.None,

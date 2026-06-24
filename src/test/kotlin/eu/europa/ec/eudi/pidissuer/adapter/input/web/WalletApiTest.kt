@@ -18,8 +18,6 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.nonEmptyListOf
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.nimbusds.jose.*
 import com.nimbusds.jose.crypto.ECDHEncrypter
 import com.nimbusds.jose.crypto.factories.DefaultJWEDecrypterFactory
@@ -34,7 +32,6 @@ import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import eu.europa.ec.eudi.pidissuer.*
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.*
-import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
@@ -46,8 +43,6 @@ import kotlinx.datetime.Month
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonPrimitive
-import org.springframework.beans.factory.BeanRegistrarDsl
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.ApplicationContext
@@ -167,19 +162,8 @@ class BaseWalletApiTest {
 internal class TestMocksInitializer : ApplicationContextInitializer<GenericApplicationContext> {
     override fun initialize(applicationContext: GenericApplicationContext) {
         BeansDslApplicationContextInitializer().initialize(applicationContext)
-        applicationContext.register(EncodePidMock())
     }
 }
-
-internal class EncodePidMock :
-    BeanRegistrarDsl({
-        registerBean<EncodeAttestationAttributes<PidAttributes>>(primary = true) {
-            EncodeAttestationAttributes<PidAttributes> {
-                // override val signingAlgorithm: CoseAlgorithm = CoseAlgorithm(-7)
-                JsonPrimitive("PID")
-            }
-        }
-    })
 
 /**
  * Test cases for [WalletApi] when encryption is optional. Key Attestations are **NOT** required.
@@ -467,7 +451,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                     .let { assertNotNull(it.responseBody) }
 
             val issuedCredentials = assertNotNull(response.credentials)
-            assertEquals(listOf(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID"))), issuedCredentials)
+            assertEquals(1, issuedCredentials.size)
             assertNull(response.transactionId)
         }
 
@@ -500,9 +484,6 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
 
             val issuedCredentials = assertNotNull(response.credentials)
             assertEquals(3, issuedCredentials.size)
-            issuedCredentials.forEach {
-                assertEquals(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID")), it)
-            }
             assertNull(response.transactionId)
         }
 
@@ -560,9 +541,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                     .let { assertNotNull(it.responseBody) }
 
             val issuedCredentials = assertNotNull(response.credentials)
-            issuedCredentials.forEach {
-                assertEquals(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID")), it)
-            }
+            assertTrue(issuedCredentials.isNotEmpty())
             assertNull(response.transactionId)
         }
 }
@@ -822,9 +801,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                     .let { assertNotNull(it.responseBody) }
 
             val issuedCredentials = assertNotNull(response.credentials)
-            issuedCredentials.forEach {
-                assertEquals(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID")), it)
-            }
+            assertTrue(issuedCredentials.isNotEmpty())
             assertNull(response.transactionId)
         }
 
@@ -1018,9 +995,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                     .let { assertNotNull(it.responseBody) }
 
             val issuedCredentials = assertNotNull(response.credentials)
-            issuedCredentials.forEach {
-                assertEquals(IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID")), it)
-            }
+            assertTrue(issuedCredentials.isNotEmpty())
             assertNull(response.transactionId)
         }
 
@@ -1119,8 +1094,6 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
     ],
 )
 internal class WalletApiResponseEncryptionRequiredTest : BaseWalletApiTest() {
-    private val jacksonObjectMapper: ObjectMapper by lazy { jacksonObjectMapper() }
-
     /**
      * Verifies issuance fails when encryption is not requested.
      * Creates a CNonce value before doing the request.
@@ -1221,16 +1194,6 @@ internal class WalletApiResponseEncryptionRequiredTest : BaseWalletApiTest() {
 
             val issuedCredentials = assertNotNull(claims.getListClaim("credentials"))
             assertEquals(1, issuedCredentials.size)
-            issuedCredentials.first().also {
-                assertEquals(
-                    IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID")),
-                    Json.decodeFromString<IssueCredentialResponse.PlainTO.CredentialTO>(
-                        jacksonObjectMapper.writeValueAsString(
-                            it,
-                        ),
-                    ),
-                )
-            }
         }
 
     /**
@@ -1287,16 +1250,6 @@ internal class WalletApiResponseEncryptionRequiredTest : BaseWalletApiTest() {
                 }
             val credentials = assertNotNull(claims.getListClaim("credentials"))
             assertEquals(3, credentials.size)
-            credentials.forEach {
-                assertEquals(
-                    IssueCredentialResponse.PlainTO.CredentialTO(JsonPrimitive("PID")),
-                    Json.decodeFromString<IssueCredentialResponse.PlainTO.CredentialTO>(
-                        jacksonObjectMapper.writeValueAsString(
-                            it,
-                        ),
-                    ),
-                )
-            }
         }
 
     @Test

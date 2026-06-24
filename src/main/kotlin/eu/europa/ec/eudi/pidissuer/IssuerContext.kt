@@ -516,9 +516,6 @@ fun beans(
             users = Realm(keycloakProperties.userRealm),
         )
     }
-    registerBean<EncodeAttestationAttributes<PidAttributes>>(lazyInit = true) {
-        encodePidInMdoc(issuerSigningKey = getIssuerSigningKey("issuer.pid.mso_mdoc.signing-key"))
-    }
 
     registerBean {
         GetMobileDrivingLicenceDataMock()
@@ -662,7 +659,7 @@ fun beans(
                         IssueMsoMdocPid(
                             clock = clock,
                             getAttestationAttributes = bean(),
-                            encodeAttributes = bean(),
+                            issuerSigningKey = getIssuerSigningKey("issuer.pid.mso_mdoc.signing-key"),
                             deviceBinding =
                                 DeviceBinding.ts3(
                                     jwtProofsSupportedSigningAlgorithms,
