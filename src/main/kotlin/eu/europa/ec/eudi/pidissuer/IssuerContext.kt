@@ -324,10 +324,6 @@ fun beans(
     val webClient = WebClients(proxy, secure = "insecure" !in env.activeProfiles)
     registerBean { webClient }
 
-    registerBean {
-        KtorHttpClients(proxy, secure = "insecure" !in env.activeProfiles)
-    }
-
     registerBean { DefaultGenerateQrCode() }
     registerBean { HandleNotificationRequest(bean()) }
     registerBean {
@@ -352,9 +348,10 @@ fun beans(
         )
     }
     registerBean<GetStatusListTokenStatus> {
+        val httpClient = KtorHttpClients(proxy, secure = "insecure" !in env.activeProfiles)
         GetStatusListTokenWithStatium(
-            bean(),
-            bean(),
+            httpClient,
+            clock = clock,
             allowedClockSkew = 5.seconds,
         )
     }
@@ -570,31 +567,32 @@ fun beans(
         AccessTokenType.Bearer == accessTokenType ||
             AccessTokenType.BearerAndDPoPIfAvailable == accessTokenType
 
-    if (AccessTokenType.DPoP == accessTokenType || AccessTokenType.BearerAndDPoPIfAvailable == accessTokenType) {
-        val algorithms =
-            runBlocking {
-                val authorizationServerMetadata =
-                    URI.create(env.getRequiredProperty("issuer.authorizationServer.metadata"))
-                webClient.authorizationServerSupportedDPoPJWSAlgorithms(authorizationServerMetadata)
-            }
-        if (AccessTokenType.DPoP == accessTokenType) {
-            requireNotNull(algorithms) { "DPoP is required but Authorization Server does not support DPoP." }
-        }
-
-        algorithms?.let { algs ->
-            log.info("DPoP support will be enabled. Supported algorithms: $algs")
-
-            val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
-
-            registerBean { DPoPConfigurationProperties(algs, realm) }
-        }
-    }
-
     registerBean {
+        val dPoPConfigurationProperties =
+            if (AccessTokenType.DPoP == accessTokenType || AccessTokenType.BearerAndDPoPIfAvailable == accessTokenType) {
+                val algorithms =
+                    runBlocking {
+                        val authorizationServerMetadata =
+                            URI.create(env.getRequiredProperty("issuer.authorizationServer.metadata"))
+                        webClient.authorizationServerSupportedDPoPJWSAlgorithms(authorizationServerMetadata)
+                    }
+
+                if (AccessTokenType.DPoP == accessTokenType) {
+                    requireNotNull(algorithms) { "DPoP is required but Authorization Server does not support DPoP." }
+                }
+
+                algorithms?.let { algs ->
+                    log.info("DPoP support will be enabled. Supported algorithms: $algs")
+                    val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
+                    DPoPConfigurationProperties(algs, realm)
+                }
+            } else {
+                null
+            }
         GetProtectedResourceMetadata(
             credentialIssuerMetadata = bean(),
             bearerTokenAuthenticationEnabled = enableBearerTokenAuthentication,
-            dPoPConfigurationProperties = beanProvider<DPoPConfigurationProperties>().ifAvailable,
+            dPoPConfigurationProperties = dPoPConfigurationProperties,
         )
     }
 
