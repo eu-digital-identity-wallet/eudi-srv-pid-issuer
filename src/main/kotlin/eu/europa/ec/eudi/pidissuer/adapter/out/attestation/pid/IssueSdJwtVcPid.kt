@@ -38,10 +38,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObjectBuilder
 import kotlinx.coroutines.Dispatchers
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
 import org.slf4j.LoggerFactory
-import java.util.*
 import kotlin.io.encoding.Base64
 import kotlin.time.Clock
 import kotlin.time.Duration
@@ -80,7 +77,7 @@ class IssueSdJwtVcPid private constructor(
         log.info("Handling issuance request ...")
         val issuedAt = clock.now()
         val keyAttestation = context(validateProof) { keyAttestation(request, issuedAt) }
-        val deviceKeys = keyAttestation.credentialKeys.value
+        val deviceKeys = keyAttestation.keys.value
         val attributes = getAttestationAttributes()
         val expiresAt = issuedAt + configuration.validity
         val notBefore = nbf(issuedAt)

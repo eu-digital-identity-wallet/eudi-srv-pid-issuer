@@ -59,7 +59,7 @@ class IssueMdoc<Attr>(
         val issuedAt = clock.now()
         val keyAttestation = context(validateProof) { keyAttestation(request, issuedAt) }
         val deviceKeys =
-            keyAttestation.credentialKeys.value
+            keyAttestation.keys.value
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
 
         val attributes = getAttestationAttributes()

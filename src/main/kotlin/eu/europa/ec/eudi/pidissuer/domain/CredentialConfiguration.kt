@@ -83,7 +83,7 @@ sealed interface ProofType {
 sealed interface DeviceBinding {
     data object None : DeviceBinding
 
-    data class Required constructor(
+    data class Required(
         val algorithmsSupported: NonEmptySet<JWSAlgorithm>,
         val keyStorageRequirement: KeyAttestationRequirement,
         val proofType: ProofOption = ProofOption.Either,

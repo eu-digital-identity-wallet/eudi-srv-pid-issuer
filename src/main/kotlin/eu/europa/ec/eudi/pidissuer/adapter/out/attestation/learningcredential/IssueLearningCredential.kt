@@ -71,7 +71,7 @@ class IssueLearningCredential(
         val clientStatus = authorizationContext.clientStatus.status.statusList
         val keyStorageStatus = keyAttestation.keyStorageStatus.status.statusList
         val issuedCredentials =
-            keyAttestation.credentialKeys.value
+            keyAttestation.keys.value
                 .parMap(Dispatchers.Default, 4) { deviceKey ->
 
                     val id = IssuedCredentialId.random()

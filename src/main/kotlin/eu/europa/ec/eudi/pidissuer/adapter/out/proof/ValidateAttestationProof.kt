@@ -29,51 +29,43 @@ import kotlin.time.Instant
 class ValidateAttestationProof(
     private val verifyKeyAttestation: VerifyKeyAttestation,
 ) : ValidateProof.Validator<UnvalidatedProof.Attestation, ProofType.Attestation> {
-    context(_: Raise<IssueCredentialError.InvalidProof>, proofType: ProofType.Attestation,)
+    context(_: Raise<IssueCredentialError.InvalidProof>, proofType: ProofType.Attestation)
     override suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof.Attestation,
         at: Instant,
     ): KeyAttestation =
         effect {
-            val keyAttestationJWT = KeyAttestationJWT(unvalidatedProof.jwt)
-
-            ensure(keyAttestationJWT.jwt.header.algorithm in proofType.signingAlgorithmsSupported) {
-                "Key attestation signing algorithm '${keyAttestationJWT.jwt.header.algorithm}' is not supported, " +
-                    "must be one of: ${proofType.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
-            }
-            credentialKeyAndNonce(keyAttestationJWT, proofType, at)
+            KeyAttestationJWT(unvalidatedProof.jwt).checkAlg().keyAttestation(at)
         }.fold(
             transform = { it },
             recover = { raise(IssueCredentialError.InvalidProof(it)) },
             catch = { raise(IssueCredentialError.InvalidProof("Invalid proof Attestation", it)) },
         )
 
-    context(_: Raise<String>)
-    private suspend fun credentialKeyAndNonce(
-        keyAttestationJWT: KeyAttestationJWT,
-        proofType: ProofType.Attestation,
-        at: Instant,
-    ): KeyAttestation {
-        val (attestedKeys, nonce) =
-            verifyKeyAttestation(
-                keyAttestation = keyAttestationJWT,
-                signingAlgorithmsSupported = proofType.signingAlgorithmsSupported,
-                keyAttestationRequirement = proofType.keyAttestationRequirement,
-                expectExpirationClaim = false,
-                at = at,
-            )
-        ensureNotNull(nonce) { "Key attestation does not contain a c_nonce." }
+    context(_: Raise<String>, proofType: ProofType.Attestation)
+    private fun KeyAttestationJWT.checkAlg() =
+        apply {
+            val alg = jwt.header.algorithm
+            ensure(alg in proofType.signingAlgorithmsSupported) {
+                val supported = proofType.signingAlgorithmsSupported.joinToString(", ") { it.name }
+                "Key attestation signing algorithm '$alg' is not supported, must be one of: $supported"
+            }
+        }
 
+    context(_: Raise<String>, proofType: ProofType.Attestation)
+    private suspend fun KeyAttestationJWT.keyAttestation(at: Instant): KeyAttestation {
+        val (attestedKeys, nonce) = verifyKeyAttestation(this, at)
+        ensureNotNull(nonce) { "Key attestation does not contain a c_nonce." }
         ensure(
-            keyAttestationJWT.claims.keyStorageStatus.exp >= at + proofType.keyAttestationRequirement.preferredKeyStorageStatusPeriod.value,
+            claims.keyStorageStatus.exp >= at + proofType.keyAttestationRequirement.preferredKeyStorageStatusPeriod.value,
         ) {
             "Key Storage Status expiration date does not meet the preferred key storage status period"
         }
 
         return KeyAttestation(
-            credentialKeys = CredentialKeys(attestedKeys),
+            keys = CredentialKeys(attestedKeys),
             cNonce = nonce,
-            keyStorageStatus = keyAttestationJWT.claims.keyStorageStatus,
+            keyStorageStatus = claims.keyStorageStatus,
         )
     }
 }

@@ -39,6 +39,7 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationJWT
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
+import eu.europa.ec.eudi.pidissuer.domain.ProofType
 import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.trust.TrustResult
 import java.net.URI
@@ -53,8 +54,34 @@ class VerifyKeyAttestation(
     private val maxSkew: Duration = 30.seconds,
     private val isTrustedKeyAttestationIssuer: IsTrustedKeyAttestationIssuer,
 ) {
-    context(_: Raise<String>)
+    context(_: Raise<String>, proofType: ProofType.Jwt)
     suspend operator fun invoke(
+        keyAttestation: KeyAttestationJWT,
+        at: Instant,
+    ): Pair<NonEmptyList<JWK>, String?> =
+        invoke(
+            keyAttestation,
+            proofType.signingAlgorithmsSupported,
+            proofType.keyAttestationRequirement,
+            expectExpirationClaim = true,
+            at,
+        )
+
+    context(_: Raise<String>, proofType: ProofType.Attestation)
+    suspend operator fun invoke(
+        keyAttestation: KeyAttestationJWT,
+        at: Instant,
+    ): Pair<NonEmptyList<JWK>, String?> =
+        invoke(
+            keyAttestation,
+            proofType.signingAlgorithmsSupported,
+            proofType.keyAttestationRequirement,
+            expectExpirationClaim = false,
+            at,
+        )
+
+    context(_: Raise<String>)
+    private suspend operator fun invoke(
         keyAttestation: KeyAttestationJWT,
         signingAlgorithmsSupported: NonEmptySet<JWSAlgorithm>,
         keyAttestationRequirement: KeyAttestationRequirement,
