@@ -233,8 +233,7 @@ fun SdJwtObjectBuilder.pid(attributes: PidAttributes) {
         val encodedBytes =
             when (it) {
                 is PortraitImage.JPEG -> {
-                    kotlin.io.encoding.Base64
-                        .encode(it.value)
+                    Base64.encode(it.value)
                 }
 
                 is PortraitImage.JPEG2000 -> {
