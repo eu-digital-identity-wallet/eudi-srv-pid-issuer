@@ -20,7 +20,6 @@ import arrow.core.raise.catch
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.oauth2.sdk.token.AccessToken
-import com.nimbusds.oauth2.sdk.token.BearerAccessToken
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
 import eu.europa.ec.eudi.pidissuer.adapter.out.json.jsonSupport
 import eu.europa.ec.eudi.pidissuer.domain.ClientStatus
@@ -33,7 +32,6 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.oauth2.core.OAuth2TokenIntrospectionClaimNames
-import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthentication
 import org.springframework.web.reactive.function.server.*
 import org.springframework.web.server.ServerWebInputException
 import kotlin.jvm.optionals.getOrNull
@@ -181,16 +179,6 @@ private suspend fun ServerRequest.authorizationContext(): AuthorizationContext {
                     authentication.name,
                     authentication.accessToken,
                     authentication.principal?.attributes?.get(TS3.CLIENT_STATUS),
-                )
-            }
-
-            is BearerTokenAuthentication -> {
-                AuthenticationDetails(
-                    authentication.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull(),
-                    authentication.tokenAttributes[OAuth2TokenIntrospectionClaimNames.CLIENT_ID],
-                    authentication.tokenAttributes[OAuth2TokenIntrospectionClaimNames.USERNAME],
-                    BearerAccessToken.parse("${authentication.token.tokenType.value} ${authentication.token.tokenValue}"),
-                    authentication.tokenAttributes[TS3.CLIENT_STATUS],
                 )
             }
 

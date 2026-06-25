@@ -548,7 +548,6 @@ fun beans(
                     webClient.authorizationServerSupportedDPoPJWSAlgorithms(authorizationServerMetadata)
                 }
 
-            requireNotNull(algorithms) { "DPoP is required but Authorization Server does not support DPoP." }
             val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
             DPoPConfigurationProperties(algorithms, realm)
         }
