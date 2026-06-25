@@ -50,7 +50,6 @@ import kotlin.time.DurationUnit
 import kotlin.time.Instant
 
 class VerifyKeyAttestation(
-    private val verifyAttestedKey: VerifyAttestedKey? = null,
     private val maxSkew: Duration = 30.seconds,
     private val isTrustedKeyAttestationIssuer: IsTrustedKeyAttestationIssuer,
 ) {
@@ -97,7 +96,7 @@ class VerifyKeyAttestation(
                     .ensureCompatibleWith(algorithm)
                     .ensureIsPublicAsymmetricKey()
             verifySignature(key, algorithm, expectExpirationClaim)
-            ensureMeetsKeyAttestationRequirements(keyAttestationRequirement, nonce)
+            ensureMeetsKeyAttestationRequirements(keyAttestationRequirement)
             if (walletProviderSigningKey is WalletProviderSigningKey.X5C) {
                 walletProviderSigningKey.ensureTrustWalletProvider()
             }
@@ -169,10 +168,7 @@ class VerifyKeyAttestation(
     }
 
     context(_: Raise<String>)
-    private suspend fun KeyAttestationJWT.ensureMeetsKeyAttestationRequirements(
-        keyAttestationRequirement: KeyAttestationRequirement,
-        nonce: String?,
-    ) {
+    private fun KeyAttestationJWT.ensureMeetsKeyAttestationRequirements(keyAttestationRequirement: KeyAttestationRequirement) {
         // if key storage constraints are expected, the passed key attestation must meet these constraints
         keyAttestationRequirement.keyStorage?.let {
             val keyStorage = claims.keyStorage
@@ -187,12 +183,7 @@ class VerifyKeyAttestation(
                 "The provided user authentication's attack resistance does not match the expected one."
             }
         }
-        val attestedKeys = claims.attestedKeys
-        verifyAttestedKey
-            ?.verify(attestedKeys.value, keyAttestationRequirement, nonce)
-            ?.mapLeft {
-                raise("${it.size} of the total ${attestedKeys.value.size} attested keys failed to pass verification")
-            }
+        claims.attestedKeys
     }
 }
 
