@@ -30,6 +30,7 @@ import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.data.repository.kotlin.CoroutineSortingRepository
 import java.time.OffsetDateTime
 import java.util.UUID
+import kotlin.uuid.toJavaUuid
 
 private val log = LoggerFactory.getLogger(R2dbcIssuedCredentialRepository::class.java)
 
@@ -93,6 +94,6 @@ class R2dbcIssuedCredentialRepository(
 
     val deleteIssuedCredential: DeleteIssuedCredential =
         DeleteIssuedCredential { credential ->
-            r2dbc.deleteByIdentifier(credential.identifier.value)
+            r2dbc.deleteByIdentifier(credential.identifier.value.toJavaUuid())
         }
 }

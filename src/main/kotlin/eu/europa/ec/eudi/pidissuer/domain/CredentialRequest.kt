@@ -50,7 +50,7 @@ sealed interface UnvalidatedProof {
 }
 
 data class KeyAttestation(
-    val credentialKeys: CredentialKeys,
+    val keys: CredentialKeys,
     val cNonce: String,
     val keyStorageStatus: KeyStorageStatus,
 )
@@ -64,7 +64,7 @@ suspend fun KeyAttestation.ensureFreshNonce(at: Instant): KeyAttestation =
     }
 
 context(_: CredentialReusePolicy)
-fun KeyAttestation.limitKeys(): KeyAttestation = copy(credentialKeys = credentialKeys.limitToPolicy())
+fun KeyAttestation.limitKeys(): KeyAttestation = copy(keys = keys.limitToPolicy())
 
 context(policy: CredentialReusePolicy)
 private fun CredentialKeys.limitToPolicy(): CredentialKeys =

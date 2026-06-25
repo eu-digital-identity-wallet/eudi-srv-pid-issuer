@@ -27,6 +27,7 @@ import java.net.URI
 import java.net.URL
 import java.util.*
 import kotlin.time.Instant
+import kotlin.uuid.Uuid
 
 private val logHttpsUrl = LoggerFactory.getLogger(HttpsUrl::class.java)
 
@@ -80,7 +81,11 @@ value class BackgroundImage(
 data class DisplayName(
     val name: String,
     val locale: Locale,
-)
+) {
+    companion object {
+        fun en(name: String): DisplayName = DisplayName(name, Locale.ENGLISH)
+    }
+}
 typealias Color = String
 
 data class CredentialDisplay(
@@ -134,8 +139,12 @@ sealed interface CryptographicBindingMethod {
  */
 @JvmInline
 value class IssuedCredentialId(
-    val value: UUID,
-)
+    val value: Uuid,
+) {
+    companion object {
+        fun random(): IssuedCredentialId = IssuedCredentialId(Uuid.random())
+    }
+}
 
 /**
  * Credential that have issued by a specific issuing service.
@@ -149,7 +158,7 @@ data class IssuedCredential(
     val status: StatusListToken?,
     val clientStatus: StatusListToken,
     val keyStorageStatus: StatusListToken?,
-    val identifier: IssuedCredentialId = IssuedCredentialId(UUID.randomUUID()),
+    val identifier: IssuedCredentialId = IssuedCredentialId.random(),
 )
 
 /**

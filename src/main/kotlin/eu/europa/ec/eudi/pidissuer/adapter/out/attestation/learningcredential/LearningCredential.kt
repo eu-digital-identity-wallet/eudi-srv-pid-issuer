@@ -16,9 +16,15 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.learningcredential
 
 import arrow.core.NonEmptyList
+import arrow.core.nonEmptyListOf
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.IsoAlpha2CountryCode
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.Pid
+import eu.europa.ec.eudi.pidissuer.adapter.out.util.randomInstantInThePast
 import eu.europa.ec.eudi.pidissuer.domain.HttpsUrl
 import eu.europa.ec.eudi.pidissuer.domain.NonBlankString
+import kotlin.random.Random
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 
 data class Issuer(
@@ -83,4 +89,50 @@ data class LearningCredential(
     val integrationStackabilityOptions: IntegrationStackabilityOptions? = null,
 ) {
     companion object
+}
+
+context(random: Random)
+fun LearningCredential.Companion.random(pid: Pid): LearningCredential {
+    fun effectivity(): Pair<Instant, Instant> {
+        val dateOfIssuance = context(Clock.System) { randomInstantInThePast() }
+        val inTwoYears = dateOfIssuance + (2 * 365).days
+        val inFifteenYears = dateOfIssuance + (15 * 365).days
+        val dateOfExpiry =
+            Instant.fromEpochSeconds(random.nextLong(inTwoYears.epochSeconds, inFifteenYears.epochSeconds))
+        return Pair(dateOfIssuance, dateOfExpiry)
+    }
+
+    val (dateOfIssuance, dateOfExpiry) = effectivity()
+
+    return LearningCredential(
+        issuer =
+            Issuer(
+                name = Issuer.Name("Technical University of Munich: Department of Applied Sciences"),
+                country = IsoAlpha2CountryCode("DE"),
+                uri = HttpsUrl.unsafe("https://university.de/department-of-applied-sciences"),
+            ),
+        dateOfIssuance = dateOfIssuance,
+        dateOfExpiry = dateOfExpiry,
+        familyName = FamilyName(pid.familyName.value),
+        givenName = GivenName(pid.givenName.value),
+        achievementTitle = AchievementTitle("Foundations of Applied AI in Business"),
+        achievementDescription =
+            AchievementDescription(
+                "A comprehensive introductory course on the practical application of " +
+                    "Artificial Intelligence models to solve common business problems.",
+            ),
+        learningOutcomes =
+            nonEmptyListOf(
+                LearningOutcome("Analyze business processes to identify opportunities for AI implementation"),
+                LearningOutcome("Evaluate the suitability of different machine learning models for a given problem"),
+            ),
+        assessmentGrade = AssessmentGrade("Excellent"),
+        languagesOfClasses = nonEmptyListOf(Language.entries.shuffled(random).first()),
+        learnerIdentification = LearnerIdentification("0123456"),
+        expectedStudyTime = ExpectedStudyTime("12 months"),
+        levelOfLearningExperience = LevelOfLearningExperience.entries.shuffled(random).first(),
+        typesOfQualityAssurance = nonEmptyListOf(TypesOfQualityAssurance("Institutional Evaluation")),
+        prerequisitesToEnroll = nonEmptyListOf(PrerequisiteToEnroll("Familiarity with Python")),
+        integrationStackabilityOptions = IntegrationStackabilityOptions.entries.shuffled(random).first(),
+    )
 }
