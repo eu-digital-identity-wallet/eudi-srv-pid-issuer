@@ -25,6 +25,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestationAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.SdJwtVcSerialization
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.encodeAttestationAttributesInSdJwtVc
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
@@ -36,16 +37,21 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.proof.ValidateProof
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
+import eu.europa.ec.eudi.sdjwt.RFC7519
+import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObjectBuilder
 import kotlinx.coroutines.Dispatchers
 import org.slf4j.LoggerFactory
-import java.util.*
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.toJavaInstant
 
 private val log = LoggerFactory.getLogger(IssueLearningCredential::class.java)
 
-internal class IssueLearningCredential(
+class IssueLearningCredential(
     override val configuration: SdJwtVcCredentialConfiguration,
     private val clock: Clock,
     private val getAttestationAttributes: GetAttestationAttributes<LearningCredential>,
@@ -57,23 +63,13 @@ internal class IssueLearningCredential(
     context(_: Raise<IssueCredentialError>, authorizationContext: AuthorizationContext)
     override suspend fun invoke(request: AuthorizedCredentialRequest): CredentialResponse {
         log.info("Issuing Learning Credential")
-
         val issuedAt = clock.now()
         val keyAttestation = context(validateProof) { keyAttestation(request, issuedAt) }
         val attributes = getAttestationAttributes()
-        val expiresAt =
-            run {
-                val dateOfExpiry = issuedAt + configuration.validity
-                if (null != attributes.dateOfExpiry && attributes.dateOfExpiry < dateOfExpiry)
-                    attributes.dateOfExpiry
-                else
-                    dateOfExpiry
-            }
-
+        val expiresAt = issuedAt + configuration.validity
         val notificationId = generateNotificationId?.invoke()
         val clientStatus = authorizationContext.clientStatus.status.statusList
         val keyStorageStatus = keyAttestation.keyStorageStatus.status.statusList
-
         val issuedCredentials =
             keyAttestation.credentialKeys.value
                 .parMap(Dispatchers.Default, 4) { deviceKey ->
@@ -141,13 +137,13 @@ internal class IssueLearningCredential(
                 validateProof,
                 generateNotificationId,
                 storeIssuedCredential,
-                encodeAttestationAttributes =
-                    encodeLearningCredentialInSdJwtVc(
-                        sdJwtVcSerialization = sdJwtVcSerialization,
-                        digestsHashAlgorithm,
-                        issuerSigningKey,
-                        vct = credentialConfiguration.type,
-                    ),
+                encodeAttestationAttributesInSdJwtVc(
+                    sdJwtVcSerialization,
+                    digestsHashAlgorithm,
+                    issuerSigningKey,
+                    vct = credentialConfiguration.type,
+                    build = { learningCredential(it) },
+                ),
             )
         }
 
@@ -159,33 +155,111 @@ internal class IssueLearningCredential(
                 val (pid, _) = getPidData()
                 context(clock, Random) { LearningCredential.random(pid) }
             }
-
-        private fun cfg(
-            deviceBinding: DeviceBinding.Required,
-            credentialReusePolicy: CredentialReusePolicy,
-            validity: Duration,
-            issuerSigningKey: IssuerSigningKey,
-        ): SdJwtVcCredentialConfiguration =
-            SdJwtVcCredentialConfiguration(
-                CredentialConfigurationId("urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt-compact"),
-                Scope("urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt"),
-                display =
-                    nonEmptyListOf(
-                        CredentialDisplay(
-                            DisplayName(
-                                "Learning Credential (SD-JWT VC Compact)",
-                                Locale.ENGLISH,
-                            ),
-                        ),
-                    ),
-                claims = SdJwtVcClaims.all(),
-                deviceBinding = deviceBinding,
-                category = AttestationCategory.Eaa,
-                reusePolicy = credentialReusePolicy,
-                validity = validity,
-                type = SdJwtVcType("urn:eu.europa.ec.eudi:learning:credential:1"),
-                credentialSigningAlgorithmsSupported = nonEmptySetOf(issuerSigningKey.signingAlgorithm),
-                publicKey = issuerSigningKey.key.toPublicJWK(),
-            )
     }
 }
+
+private fun cfg(
+    deviceBinding: DeviceBinding.Required,
+    credentialReusePolicy: CredentialReusePolicy,
+    validity: Duration,
+    issuerSigningKey: IssuerSigningKey,
+): SdJwtVcCredentialConfiguration =
+    SdJwtVcCredentialConfiguration(
+        CredentialConfigurationId("urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt-compact"),
+        Scope("urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt"),
+        display =
+            nonEmptyListOf(
+                CredentialDisplay(
+                    DisplayName.en("Learning Credential (SD-JWT VC Compact)"),
+                ),
+            ),
+        claims = SdJwtVcClaims.all(),
+        deviceBinding = deviceBinding,
+        category = AttestationCategory.Eaa,
+        reusePolicy = credentialReusePolicy,
+        validity = validity,
+        type = SdJwtVcType("urn:eu.europa.ec.eudi:learning:credential:1"),
+        credentialSigningAlgorithmsSupported = nonEmptySetOf(issuerSigningKey.signingAlgorithm),
+        publicKey = issuerSigningKey.key.toPublicJWK(),
+    )
+
+fun SdJwtObjectBuilder.learningCredential(learningCredential: LearningCredential) {
+    val formatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
+    with(learningCredential) {
+        with(issuer) {
+            claim(SdJwtVcClaims.IssuingAuthority.name, name.value)
+            claim(SdJwtVcClaims.IssuingCountry.name, country.code)
+            claim(RFC7519.ISSUER, uri.externalForm)
+        }
+        claim(
+            SdJwtVcClaims.DateOfIssuance.name,
+            formatter.format(ZonedDateTime.ofInstant(dateOfIssuance.toJavaInstant(), ZoneOffset.UTC)),
+        )
+        if (null != dateOfExpiry) {
+            claim(
+                SdJwtVcClaims.DateOfExpiry.name,
+                formatter.format(ZonedDateTime.ofInstant(dateOfExpiry.toJavaInstant(), ZoneOffset.UTC)),
+            )
+        }
+        sdClaim(SdJwtVcClaims.FamilyName.name, familyName.value)
+        if (null != givenName) {
+            sdClaim(SdJwtVcClaims.GivenName.name, givenName.value)
+        }
+        claim(SdJwtVcClaims.AchievementTitle.name, achievementTitle.value)
+        if (null != achievementDescription) {
+            claim(SdJwtVcClaims.AchievementDescription.name, achievementDescription.value)
+        }
+        if (null != learningOutcomes) {
+            sdArrClaim(SdJwtVcClaims.LearningOutcomes.name) {
+                learningOutcomes.forEach { learningOutcome -> claim(learningOutcome.value) }
+            }
+        }
+        if (null != assessmentGrade) {
+            sdClaim(SdJwtVcClaims.AssessmentGrade.name, assessmentGrade.value)
+        }
+        arrClaim(SdJwtVcClaims.LanguageOfClasses.name) {
+            languagesOfClasses.forEach { languageOfClasses -> claim(languageOfClasses.value) }
+        }
+        sdClaim(SdJwtVcClaims.LearnerIdentification.name, learnerIdentification.value)
+        sdClaim(SdJwtVcClaims.ExpectedStudyTime.name, expectedStudyTime.value)
+        sdClaim(SdJwtVcClaims.LevelOfLearningExperience.name, levelOfLearningExperience.value)
+        sdArrClaim(SdJwtVcClaims.TypesOfQualityAssurance.name) {
+            typesOfQualityAssurance.forEach { typeOfQualityAssurance -> claim(typeOfQualityAssurance.value) }
+        }
+        if (null != prerequisitesToEnroll) {
+            sdArrClaim(SdJwtVcClaims.PrerequisitesToEnroll.name) {
+                prerequisitesToEnroll.forEach { prerequisiteToEnroll -> claim(prerequisiteToEnroll.value) }
+            }
+        }
+        if (null != integrationStackabilityOptions) {
+            sdClaim(SdJwtVcClaims.IntegrationStackabilityOptions.name, integrationStackabilityOptions.value)
+        }
+    }
+}
+
+private val Language.value: String
+    get() =
+        when (this) {
+            Language.EN -> "en"
+            Language.JP -> "jp"
+        }
+
+private val LevelOfLearningExperience.value: Int
+    get() =
+        when (this) {
+            LevelOfLearningExperience.Level1 -> 1
+            LevelOfLearningExperience.Level2 -> 2
+            LevelOfLearningExperience.Level3 -> 3
+            LevelOfLearningExperience.Level4 -> 4
+            LevelOfLearningExperience.Level5 -> 5
+            LevelOfLearningExperience.Level6 -> 6
+            LevelOfLearningExperience.Level7 -> 7
+            LevelOfLearningExperience.Level8 -> 8
+        }
+
+private val IntegrationStackabilityOptions.value: Boolean
+    get() =
+        when (this) {
+            IntegrationStackabilityOptions.Yes -> true
+            IntegrationStackabilityOptions.No -> false
+        }

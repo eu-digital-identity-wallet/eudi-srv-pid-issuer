@@ -23,8 +23,37 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
+import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.IssueMdoc
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.learningcredential.IssueLearningCredential
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.IssueMobileDrivingLicence
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.MobileDrivingLicence
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.RandomMobileDrivingLicence
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.AdministrationClient
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.Credentials
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.GetPidDataFromKeyCloak
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.IsoCountry
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.IssueMsoMdocPid
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.IssueSdJwtVcPid
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidAttributes
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.Realm
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.SdJwtVcSerialization
+import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateAttestationProof
+import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateJwtProofWithKeyAttestation
+import eu.europa.ec.eudi.pidissuer.adapter.out.proof.VerifyKeyAttestation
+import eu.europa.ec.eudi.pidissuer.adapter.out.webclient.HttpProxy
 import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
+import eu.europa.ec.eudi.pidissuer.port.out.nonce.VerifyNonce
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
+import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
+import eu.europa.ec.eudi.pidissuer.port.out.proof.ValidateProof
+import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
+import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
+import eu.europa.ec.eudi.sdjwt.HashAlgorithm
+import io.ktor.http.Url
 import kotlinx.coroutines.reactor.awaitSingle
+import kotlinx.datetime.TimeZone
 import org.slf4j.LoggerFactory
 import org.springframework.core.env.Environment
 import org.springframework.core.env.getProperty
@@ -34,9 +63,12 @@ import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.bodyToMono
 import org.springframework.web.util.UriComponentsBuilder
 import java.net.URI
+import java.net.URL
 import java.security.KeyStore
 import java.security.cert.X509Certificate
+import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
@@ -301,3 +333,226 @@ internal fun toEnvironmentVariable(property: String): String =
         .replace("]", "")
         .replace("-", "")
         .uppercase()
+
+internal object IssuerFactory {
+    data class Ctx(
+        val clock: Clock,
+        val timeZone: TimeZone,
+        val env: Environment,
+        val credentialIssuerId: CredentialIssuerId,
+        val validateProof: ValidateProof,
+        val storeIssuedCredential: StoreIssuedCredential,
+        val allocateStatus: AllocateStatus,
+        val generateNotificationId: GenerateNotificationId,
+    )
+
+    context(ctx: Ctx)
+    fun mdl(issuerSigningKey: IssuerSigningKey): IssueMdoc<MobileDrivingLicence> {
+        val validity = ctx.env.duration("issuer.mdl.mso_mdoc.encoder.duration") ?: 31.days
+        val jwtProofsSupportedSigningAlgorithms =
+            ctx.env.readNonEmptySet(
+                "issuer.mdl.jwtProofs.supportedSigningAlgorithms",
+                JWSAlgorithm::parse,
+            )
+        val deviceBinding =
+            DeviceBinding.ts3(
+                jwtProofsSupportedSigningAlgorithms,
+                PreferredKeyStorageStatusPeriod(validity),
+            )
+        val mdlIssuerReusePolicy = credentialReusePolicy(ctx.env, "issuer.mdl")
+        val generateNotificationId =
+            ctx.generateNotificationId.takeIf {
+                ctx.env.getProperty<Boolean>("issuer.mdl.notifications.enabled") ?: true
+            }
+        return IssueMobileDrivingLicence(
+            clock = ctx.clock,
+            getAttestationAttributes = RandomMobileDrivingLicence(),
+            issuerSigningKey = issuerSigningKey,
+            deviceBinding = deviceBinding,
+            credentialReusePolicy = mdlIssuerReusePolicy,
+            validity = validity,
+            validateProof = ctx.validateProof,
+            generateNotificationId = generateNotificationId,
+            storeIssuedCredential = ctx.storeIssuedCredential,
+            allocateStatus = ctx.allocateStatus,
+        )
+    }
+
+    context(ctx: Ctx)
+    fun pidInMdoc(
+        issuerSigningKey: IssuerSigningKey,
+        getAttestationAttributes: GetAttestationAttributes<PidAttributes>,
+    ): IssueMdoc<PidAttributes> {
+        val duration = ctx.env.duration("issuer.pid.mso_mdoc.encoder.duration") ?: 31.days
+        val jwtProofsSupportedSigningAlgorithms =
+            ctx.env.readNonEmptySet(
+                "issuer.pid.mso_mdoc.jwtProofs.supportedSigningAlgorithms",
+                JWSAlgorithm::parse,
+            )
+        val pidMsoMdocReusePolicy = credentialReusePolicy(ctx.env, "issuer.pid.mso_mdoc")
+
+        return IssueMsoMdocPid(
+            clock = ctx.clock,
+            getAttestationAttributes = getAttestationAttributes,
+            issuerSigningKey = issuerSigningKey,
+            deviceBinding =
+                DeviceBinding.ts3(
+                    jwtProofsSupportedSigningAlgorithms,
+                    PreferredKeyStorageStatusPeriod(duration),
+                ),
+            credentialReusePolicy = pidMsoMdocReusePolicy,
+            validity = duration,
+            validateProof = ctx.validateProof,
+            generateNotificationId =
+                ctx.generateNotificationId.takeIf {
+                    ctx.env.getProperty<Boolean>("issuer.pid.mso_mdoc.notifications.enabled") ?: true
+                },
+            storeIssuedCredential = ctx.storeIssuedCredential,
+            allocateStatus = ctx.allocateStatus,
+        )
+    }
+
+    context(ctx: Ctx)
+    fun pidInSdJwtVc(
+        issuerSigningKey: IssuerSigningKey,
+        getAttestationAttributes: GetAttestationAttributes<PidAttributes>,
+    ): IssueSdJwtVcPid {
+        val expiresIn = ctx.env.duration("issuer.pid.sd_jwt_vc.duration") ?: 31.days
+        val notUseBefore = ctx.env.duration("issuer.pid.sd_jwt_vc.notUseBefore")
+        val pidSdJwtVcReusePolicy = credentialReusePolicy(ctx.env, "issuer.pid.sd_jwt_vc")
+
+        val digestsHashAlgorithm =
+            ctx.env.getProperty<HashAlgorithm>("issuer.pid.sd_jwt_vc.digests.hashAlgorithm") ?: HashAlgorithm.SHA_256
+        val jwtProofsSupportedSigningAlgorithms =
+            ctx.env.readNonEmptySet("issuer.pid.sd_jwt_vc.jwtProofs.supportedSigningAlgorithms", JWSAlgorithm::parse)
+
+        return IssueSdJwtVcPid(
+            clock = ctx.clock,
+            getAttestationAttributes = getAttestationAttributes,
+            issuerSigningKey = issuerSigningKey,
+            credentialIssuerId = ctx.credentialIssuerId,
+            digestsHashAlgorithm = digestsHashAlgorithm,
+            deviceBinding =
+                DeviceBinding.ts3(
+                    jwtProofsSupportedSigningAlgorithms,
+                    PreferredKeyStorageStatusPeriod(expiresIn),
+                ),
+            credentialReusePolicy = pidSdJwtVcReusePolicy,
+            validity = expiresIn,
+            validateProof = ctx.validateProof,
+            generateNotificationId =
+                ctx.generateNotificationId.takeIf {
+                    ctx.env.getBoolean("issuer.pid.sd_jwt_vc.notifications.enabled") ?: true
+                },
+            storeIssuedCredential = ctx.storeIssuedCredential,
+            allocateStatus = ctx.allocateStatus,
+            calculateNotUseBefore = notUseBefore?.let { duration -> { iat -> iat + duration } },
+        )
+    }
+
+    context(ctx: Ctx)
+    fun learningCredentialInSdJwtVc(
+        issuerSigningKey: IssuerSigningKey,
+        getPidData: GetAttestationAttributes<PidAttributes>,
+    ): IssueLearningCredential {
+        val jwtProofsSupportedSigningAlgorithms =
+            ctx.env.readNonEmptySet(
+                "issuer.learningCredential.jwtProofs.supportedSigningAlgorithms",
+                JWSAlgorithm::parse,
+            )
+        val learningCredentialReusePolicy =
+            credentialReusePolicy(ctx.env, "issuer.learningCredential")
+        val validity = Duration.parse(ctx.env.getProperty("issuer.learningCredential.validity", "P31D"))
+        val digestHashAlgorithm =
+            ctx.env.getProperty<HashAlgorithm>(
+                "issuer.learningCredential.sdJwtVc.encoder.digests.hashAlgorithm",
+            ) ?: HashAlgorithm.SHA_256
+
+        val notificationsEnabled =
+            ctx.env.getProperty<Boolean>("issuer.learningCredential.notifications.enabled") ?: true
+
+        return IssueLearningCredential(
+            sdJwtVcSerialization = SdJwtVcSerialization.Compact,
+            clock = ctx.clock,
+            getAttestationAttributes =
+                IssueLearningCredential.randomLearningCredentials(
+                    ctx.clock,
+                    getPidData,
+                ),
+            issuerSigningKey = issuerSigningKey,
+            digestsHashAlgorithm = digestHashAlgorithm,
+            deviceBinding =
+                DeviceBinding.Required(
+                    jwtProofsSupportedSigningAlgorithms,
+                    KeyAttestationRequirement.ts3(
+                        PreferredKeyStorageStatusPeriod(validity),
+                    ),
+                ),
+            credentialReusePolicy = learningCredentialReusePolicy,
+            validity = validity,
+            validateProof = ctx.validateProof,
+            generateNotificationId = ctx.generateNotificationId.takeIf { notificationsEnabled },
+            storeIssuedCredential = ctx.storeIssuedCredential,
+        )
+    }
+}
+
+internal fun getPidDataFromKeyCloak(
+    clock: Clock,
+    timeZone: TimeZone,
+    env: Environment,
+    webClient: WebClient,
+): GetAttestationAttributes<PidAttributes> {
+    val keycloakProperties =
+        KeycloakConfigurationProperties(
+            env.getRequiredProperty<URL>("issuer.keycloak.server-url"),
+            env.getRequiredProperty("issuer.keycloak.authentication-realm"),
+            env.getRequiredProperty("issuer.keycloak.client-id"),
+            env.getRequiredProperty("issuer.keycloak.username"),
+            env.getRequiredProperty("issuer.keycloak.password"),
+            env.getRequiredProperty("issuer.keycloak.user-realm"),
+        )
+    return GetPidDataFromKeyCloak(
+        issuerCountry = env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
+        issuingJurisdiction = env.getProperty("issuer.pid.issuingJurisdiction"),
+        clock = clock,
+        timeZone = timeZone,
+        webClient = webClient,
+        keyCloak = Url(keycloakProperties.serverUrl.toExternalForm()),
+        administrationClient =
+            AdministrationClient(
+                realm = Realm(keycloakProperties.authenticationRealm),
+                client = Credentials(username = keycloakProperties.clientId, password = null),
+                admin =
+                    Credentials(
+                        username = keycloakProperties.username,
+                        password = keycloakProperties.password,
+                    ),
+            ),
+        users = Realm(keycloakProperties.userRealm),
+    )
+}
+
+internal fun validateProof(
+    credentialIssuerId: CredentialIssuerId,
+    isTrustedKeyAttestationIssuer: IsTrustedKeyAttestationIssuer,
+    verifyNonce: VerifyNonce,
+): ValidateProof {
+    val verifyKeyAttestation = VerifyKeyAttestation(isTrustedKeyAttestationIssuer = isTrustedKeyAttestationIssuer)
+    val validateJwtProofWithKeyAttestation =
+        ValidateJwtProofWithKeyAttestation(credentialIssuerId, verifyKeyAttestation)
+    val validateAttestationProof = ValidateAttestationProof(verifyKeyAttestation)
+    return ValidateProof(
+        validateJwtProofWithKeyAttestation,
+        validateAttestationProof,
+        verifyNonce,
+    )
+}
+
+internal fun httpProxy(env: Environment): HttpProxy? =
+    env.getProperty("issuer.http.proxy.url")?.let {
+        val url = Url(it)
+        val username = env.getProperty("issuer.http.proxy.username")
+        val password = env.getProperty("issuer.http.proxy.password")
+        HttpProxy(url, username, password)
+    }

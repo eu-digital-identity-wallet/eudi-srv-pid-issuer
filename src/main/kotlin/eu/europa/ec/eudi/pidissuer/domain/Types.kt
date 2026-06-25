@@ -81,7 +81,11 @@ value class BackgroundImage(
 data class DisplayName(
     val name: String,
     val locale: Locale,
-)
+) {
+    companion object {
+        fun en(name: String): DisplayName = DisplayName(name, Locale.ENGLISH)
+    }
+}
 typealias Color = String
 
 data class CredentialDisplay(
