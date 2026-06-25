@@ -43,12 +43,15 @@ enum class SdJwtVcSerialization {
     JwsJson,
 }
 
+typealias GenerateJwtId = suspend () -> String
+
 fun <Attr> encodeAttestationAttributesInSdJwtVc(
     sdJwtVcSerialization: SdJwtVcSerialization = SdJwtVcSerialization.Compact,
     digestsHashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
     issuerSigningKey: IssuerSigningKey,
     vct: SdJwtVcType,
     issuer: CredentialIssuerId? = null,
+    generateJwtId: GenerateJwtId? = null,
     build: SdJwtObjectBuilder.(Attr) -> Unit,
 ): EncodeAttestationAttributes<Attr> =
     EncodeAttestationAttributesInSdJwtVc(
@@ -57,6 +60,7 @@ fun <Attr> encodeAttestationAttributesInSdJwtVc(
         issuerSigningKey,
         vct,
         issuer,
+        generateJwtId,
         build,
     )
 
@@ -65,11 +69,12 @@ private class EncodeAttestationAttributesInSdJwtVc<in Attr>(
     private val sdJwtVcSerialization: SdJwtVcSerialization,
     private val issuerSigningKey: IssuerSigningKey,
     private val vct: SdJwtVcType,
-    private val issuer: CredentialIssuerId? = null,
+    private val issuer: CredentialIssuerId?,
+    private val generateJwtId: GenerateJwtId?,
     private val build: SdJwtObjectBuilder.(Attr) -> Unit,
 ) : EncodeAttestationAttributes<Attr> {
     override suspend fun invoke(attestationAttributes: AttestationAttributes<Attr>): JsonElement {
-        val (attributes, issuedAt, expiresAt, notBefore, deviceKey, status, jwtId) = attestationAttributes
+        val (attributes, issuedAt, expiresAt, notBefore, deviceKey, status) = attestationAttributes
         val spec =
             sdJwt {
                 claim(SdJwtVcSpec.VCT, vct.value)
@@ -77,7 +82,7 @@ private class EncodeAttestationAttributesInSdJwtVc<in Attr>(
                 claim(RFC7519.EXPIRATION_TIME, expiresAt.epochSeconds)
                 issuer?.let { claim(RFC7519.ISSUER, it.externalForm) }
                 notBefore?.let { claim(RFC7519.NOT_BEFORE, it.epochSeconds) }
-                jwtId?.let { claim(RFC7519.JWT_ID, it) }
+                generateJwtId?.invoke()?.let { claim(RFC7519.JWT_ID, it) }
                 deviceKey?.let { cnf(it) }
                 status?.let {
                     objClaim("status") {

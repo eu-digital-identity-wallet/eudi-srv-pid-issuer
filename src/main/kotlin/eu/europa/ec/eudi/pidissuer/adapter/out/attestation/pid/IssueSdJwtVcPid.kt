@@ -99,7 +99,6 @@ class IssueSdJwtVcPid private constructor(
                             notBefore = notBefore,
                             deviceKey,
                             status,
-                            jwtId = null,
                         )
                     val attestation =
                         encodeAttestationAttributes(attestationAttributes)

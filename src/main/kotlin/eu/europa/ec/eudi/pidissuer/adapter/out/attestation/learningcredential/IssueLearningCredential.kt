@@ -48,6 +48,7 @@ import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.toJavaInstant
+import kotlin.uuid.Uuid
 
 private val log = LoggerFactory.getLogger(IssueLearningCredential::class.java)
 
@@ -74,7 +75,6 @@ class IssueLearningCredential(
             keyAttestation.keys.value
                 .parMap(Dispatchers.Default, 4) { deviceKey ->
 
-                    val id = IssuedCredentialId.random()
                     val attestedAttributes =
                         AttestationAttributes(
                             attributes,
@@ -83,7 +83,6 @@ class IssueLearningCredential(
                             notBefore = issuedAt,
                             deviceKey,
                             status = null,
-                            jwtId = id.value.toHexDashString(),
                         )
                     val attestationInstance = encodeAttestationAttributes(attestedAttributes)
 
@@ -97,7 +96,6 @@ class IssueLearningCredential(
                             attestedAttributes.status,
                             clientStatus,
                             keyStorageStatus,
-                            identifier = id,
                         ),
                     )
 
@@ -142,6 +140,7 @@ class IssueLearningCredential(
                     digestsHashAlgorithm,
                     issuerSigningKey,
                     vct = credentialConfiguration.type,
+                    generateJwtId = { Uuid.random().toHexDashString() },
                     build = { learningCredential(it) },
                 ),
             )

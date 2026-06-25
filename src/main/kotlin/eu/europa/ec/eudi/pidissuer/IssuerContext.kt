@@ -565,28 +565,28 @@ fun beans(
         AccessTokenType.Bearer == accessTokenType ||
             AccessTokenType.BearerAndDPoPIfAvailable == accessTokenType
 
-    registerBean {
-        val dPoPConfigurationProperties =
-            if (AccessTokenType.DPoP == accessTokenType || AccessTokenType.BearerAndDPoPIfAvailable == accessTokenType) {
-                val algorithms =
-                    runBlocking {
-                        val authorizationServerMetadata =
-                            URI.create(env.getRequiredProperty("issuer.authorizationServer.metadata"))
-                        webClient.authorizationServerSupportedDPoPJWSAlgorithms(authorizationServerMetadata)
-                    }
-
-                if (AccessTokenType.DPoP == accessTokenType) {
-                    requireNotNull(algorithms) { "DPoP is required but Authorization Server does not support DPoP." }
+    val dPoPConfigurationProperties =
+        if (AccessTokenType.DPoP == accessTokenType || AccessTokenType.BearerAndDPoPIfAvailable == accessTokenType) {
+            val algorithms =
+                runBlocking {
+                    val authorizationServerMetadata =
+                        URI.create(env.getRequiredProperty("issuer.authorizationServer.metadata"))
+                    webClient.authorizationServerSupportedDPoPJWSAlgorithms(authorizationServerMetadata)
                 }
 
-                algorithms?.let { algs ->
-                    log.info("DPoP support will be enabled. Supported algorithms: $algs")
-                    val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
-                    DPoPConfigurationProperties(algs, realm)
-                }
-            } else {
-                null
+            if (AccessTokenType.DPoP == accessTokenType) {
+                requireNotNull(algorithms) { "DPoP is required but Authorization Server does not support DPoP." }
             }
+
+            algorithms?.let { algs ->
+                log.info("DPoP support will be enabled. Supported algorithms: $algs")
+                val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
+                DPoPConfigurationProperties(algs, realm)
+            }
+        } else {
+            null
+        }
+    registerBean {
         GetProtectedResourceMetadata(
             credentialIssuerMetadata = bean(),
             bearerTokenAuthenticationEnabled = enableBearerTokenAuthentication,
@@ -677,14 +677,12 @@ fun beans(
                         }.build(),
                 )
 
-            val dpopConfigurationProperties = beanProvider<DPoPConfigurationProperties>().ifAvailable
-
             val entryPoints = mutableListOf<DelegatingServerAuthenticationEntryPoint.DelegateEntry>()
             val accessDeniedHandlers =
                 mutableListOf<ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry>()
             val filters = mutableListOf<Pair<SecurityWebFiltersOrder, WebFilter>>()
 
-            if (null != dpopConfigurationProperties) {
+            if (null != dPoPConfigurationProperties) {
                 log.info("Enabling DPoP AccessToken support")
 
                 val enableDPoPNonce = env.getProperty<Boolean>("issuer.dpop.nonce.enabled") ?: true
@@ -697,7 +695,7 @@ fun beans(
                     }
 
                 val entryPoint =
-                    DPoPTokenServerAuthenticationEntryPoint(dpopConfigurationProperties.realm, dpopNonce, bean())
+                    DPoPTokenServerAuthenticationEntryPoint(dPoPConfigurationProperties.realm, dpopNonce, bean())
                 val tokenConverter = ServerDPoPAuthenticationTokenAuthenticationConverter()
 
                 entryPoints.add(
@@ -710,7 +708,7 @@ fun beans(
                 accessDeniedHandlers.add(
                     ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry(
                         AuthenticationConverterServerWebExchangeMatcher(tokenConverter),
-                        DPoPTokenServerAccessDeniedHandler(dpopConfigurationProperties.realm),
+                        DPoPTokenServerAccessDeniedHandler(dPoPConfigurationProperties.realm),
                     ),
                 )
 
@@ -718,7 +716,7 @@ fun beans(
                     run {
                         val dPoPVerifier =
                             DPoPProtectedResourceRequestVerifier(
-                                dpopConfigurationProperties.algorithms,
+                                dPoPConfigurationProperties.algorithms,
                                 15.seconds.inWholeSeconds,
                                 30.seconds.inWholeSeconds,
                                 InMemoryDPoPSingleUseChecker(

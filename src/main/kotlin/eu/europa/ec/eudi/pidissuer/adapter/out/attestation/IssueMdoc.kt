@@ -78,7 +78,6 @@ class IssueMdoc<Attr>(
                             notBefore = null,
                             deviceKey,
                             status = statusListToken(expiresAt),
-                            jwtId = null,
                         )
                     val instance = encodeAttestationAttributes(attestedAttributes).also { log.info("Issued $it") }
 

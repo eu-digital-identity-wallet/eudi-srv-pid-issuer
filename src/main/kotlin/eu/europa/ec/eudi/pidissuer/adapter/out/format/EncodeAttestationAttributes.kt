@@ -27,7 +27,6 @@ data class AttestationAttributes<out Data>(
     val notBefore: Instant? = null,
     val deviceKey: JWK? = null,
     val status: StatusListToken? = null,
-    val jwtId: String? = null,
 )
 
 fun interface EncodeAttestationAttributes<in Attr> {
