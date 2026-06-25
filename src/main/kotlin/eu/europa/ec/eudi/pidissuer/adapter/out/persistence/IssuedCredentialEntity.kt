@@ -26,6 +26,8 @@ import java.util.UUID
 import kotlin.time.Instant
 import kotlin.time.toJavaInstant
 import kotlin.time.toKotlinInstant
+import kotlin.uuid.toJavaUuid
+import kotlin.uuid.toKotlinUuid
 
 @Table("issued_credential")
 data class IssuedCredentialEntity(
@@ -87,7 +89,7 @@ data class IssuedCredentialEntity(
                 } else {
                     null
                 },
-            identifier = IssuedCredentialId(identifier),
+            identifier = IssuedCredentialId(identifier.toKotlinUuid()),
         )
 
     companion object {
@@ -104,7 +106,7 @@ data class IssuedCredentialEntity(
                 clientStatusListIndex = credential.clientStatus.index.toLong(),
                 keyStorageStatusListUri = credential.keyStorageStatus?.statusList?.toString(),
                 keyStorageStatusListIndex = credential.keyStorageStatus?.index?.toLong(),
-                identifier = credential.identifier.value,
+                identifier = credential.identifier.value.toJavaUuid(),
             )
     }
 }

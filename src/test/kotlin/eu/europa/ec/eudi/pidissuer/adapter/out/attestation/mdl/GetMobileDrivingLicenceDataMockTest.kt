@@ -35,7 +35,7 @@ internal class GetMobileDrivingLicenceDataMockTest {
     @Test
     internal fun `get mDL success`() =
         runTest {
-            val getMobileDrivingLicenceData = GetMobileDrivingLicenceDataMock()
+            val getMobileDrivingLicenceData = RandomMobileDrivingLicence()
 
             val expiresAt = (Clock.System.now() + 32.days)
             val clientStatus =

@@ -58,7 +58,7 @@ class DefaultValidateProofTest {
                 )
 
             // 2 attested keys, all distinct, none truncated
-            assertEquals(2, result?.credentialKeys?.value?.size)
+            assertEquals(2, result?.keys?.value?.size)
         }
 
     @Test
@@ -77,7 +77,7 @@ class DefaultValidateProofTest {
                     policy = policy,
                 )
 
-            assertEquals(1, result?.credentialKeys?.value?.size)
+            assertEquals(1, result?.keys?.value?.size)
         }
 
     @Test
@@ -96,7 +96,7 @@ class DefaultValidateProofTest {
                     policy = policy,
                 )
 
-            assertEquals(3, result?.credentialKeys?.value?.size)
+            assertEquals(3, result?.keys?.value?.size)
         }
 
     private suspend fun runValidateProofs(

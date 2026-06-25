@@ -13,12 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc
+package eu.europa.ec.eudi.pidissuer.adapter.out.format
 
-import id.walt.mdoc.dataelement.TDateElement
-import kotlinx.datetime.toDeprecatedInstant
+import com.nimbusds.jose.jwk.JWK
+import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
+import kotlinx.serialization.json.JsonElement
 import kotlin.time.Instant
 
-fun Instant.dropFractionOfSeconds(): Instant = Instant.fromEpochSeconds(epochSeconds, 0L)
+data class AttestationAttributes<out Data>(
+    val attributes: Data,
+    val issuedAt: Instant,
+    val expiresAt: Instant,
+    val notBefore: Instant? = null,
+    val deviceKey: JWK? = null,
+    val status: StatusListToken? = null,
+)
 
-fun Instant.toTDate(): TDateElement = TDateElement(dropFractionOfSeconds().toDeprecatedInstant())
+fun interface EncodeAttestationAttributes<in Attr> {
+    suspend operator fun invoke(attestationAttributes: AttestationAttributes<Attr>): JsonElement
+}

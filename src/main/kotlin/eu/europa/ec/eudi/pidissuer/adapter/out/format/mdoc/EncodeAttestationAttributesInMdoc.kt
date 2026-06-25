@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.pidissuer.adapter.out.msomdoc
+package eu.europa.ec.eudi.pidissuer.adapter.out.format.mdoc
 
 import COSE.OneKey
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.coseAlgorithm
 import eu.europa.ec.eudi.pidissuer.adapter.out.cryptoProvider
-import eu.europa.ec.eudi.pidissuer.domain.CoseAlgorithm
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestationAttributes
+import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.domain.MsoDocType
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.domain.TokenStatusListSpec
@@ -36,62 +36,30 @@ import id.walt.mdoc.mso.DeviceKeyInfo
 import id.walt.mdoc.mso.MSO
 import id.walt.mdoc.mso.ValidityInfo
 import kotlinx.datetime.toDeprecatedInstant
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.io.encoding.Base64
-import kotlin.time.Instant
 
-interface EncodeAttributesInMdoc<in Data> {
-    val signingAlgorithm: CoseAlgorithm
-
-    suspend operator fun invoke(
-        attributes: Data,
-        deviceKey: ECKey,
-        issuedAt: Instant,
-        expiresAt: Instant,
-        statusListToken: StatusListToken?,
-    ): String
-
-    companion object {
-        operator fun <Data> invoke(
-            docType: MsoDocType,
-            issuerSigningKey: IssuerSigningKey,
-            usage: MDocBuilder.(Data) -> Unit,
-        ): EncodeAttributesInMdoc<Data> =
-            object : EncodeAttributesInMdoc<Data> {
-                override val signingAlgorithm: CoseAlgorithm
-                    get() = issuerSigningKey.coseAlgorithm
-
-                override suspend fun invoke(
-                    attributes: Data,
-                    deviceKey: ECKey,
-                    issuedAt: Instant,
-                    expiresAt: Instant,
-                    statusListToken: StatusListToken?,
-                ): String {
-                    val signer = MsoMdocSigner(issuerSigningKey, docType, usage)
-                    return signer.sign(attributes, deviceKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
-                }
-            }
-    }
-}
+fun <Attr> encodeAttestationAttributesInMdoc(
+    docType: MsoDocType,
+    issuerSigningKey: IssuerSigningKey,
+    usage: MDocBuilder.(Attr) -> Unit = {},
+): EncodeAttestationAttributes<Attr> = EncodeAttestationAttributesInMdoc(issuerSigningKey, docType, usage)
 
 private val base64UrlSafeNoPadding = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
 
-private class MsoMdocSigner<in Data>(
+private class EncodeAttestationAttributesInMdoc<in Attr>(
     private val issuerSigningKey: IssuerSigningKey,
     private val docType: MsoDocType,
-    private val usage: MDocBuilder.(Data) -> Unit,
-) {
+    private val usage: MDocBuilder.(Attr) -> Unit,
+) : EncodeAttestationAttributes<Attr> {
     private val issuerCryptoProvider: SimpleCOSECryptoProvider by lazy {
         issuerSigningKey.cryptoProvider(includeRootCA = false)
     }
 
-    fun sign(
-        credential: Data,
-        deviceKey: ECKey,
-        issuedAt: Instant,
-        expiresAt: Instant,
-        statusListToken: StatusListToken?,
-    ): String {
+    override suspend fun invoke(attestationAttributes: AttestationAttributes<Attr>): JsonElement {
+        val (credential, issuedAt, expiresAt, _, deviceKey, statusListToken) = attestationAttributes
+        require(deviceKey is ECKey) { "deviceKey must be ECKey" }
         require(expiresAt >= issuedAt) { "expiresAt must greater or equal to issuedAt" }
         val validityInfo =
             ValidityInfo(
@@ -105,13 +73,14 @@ private class MsoMdocSigner<in Data>(
             MDocBuilder(docType)
                 .apply { usage(credential) }
                 .sign(validityInfo, deviceKeyInfo, statusListToken, issuerCryptoProvider, issuerSigningKey.key.keyID)
-        return base64UrlSafeNoPadding.encode(mdoc.issuerSigned.toMapElement().toCBOR())
+        val encoded = base64UrlSafeNoPadding.encode(mdoc.issuerSigned.toMapElement().toCBOR())
+        return JsonPrimitive(encoded)
     }
 }
 
 private fun deviceKeyInfo(deviceKey: ECKey): DeviceKeyInfo {
     val key = OneKey(deviceKey.toECPublicKey(), null)
-    val deviceKeyDataElement: MapElement = DataElement.fromCBOR(key.AsCBOR().EncodeToBytes())
+    val deviceKeyDataElement: MapElement = DataElement.Companion.fromCBOR(key.AsCBOR().EncodeToBytes())
     return DeviceKeyInfo(deviceKeyDataElement, null, null)
 }
 

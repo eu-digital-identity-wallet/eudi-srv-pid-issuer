@@ -28,7 +28,7 @@ import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.mobileDrivingLicenceV1
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.mdlV1Cfg
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateJwtProofWithKeyAttestation
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.VerifyKeyAttestation
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
@@ -54,7 +54,7 @@ internal class ValidateJwtProofWithKeyAttestationTest {
         VerifyKeyAttestation(isTrustedKeyAttestationIssuer = IsTrustedKeyAttestationIssuer.Ignored)
     private val validateJwtProofWithKeyAttestation = ValidateJwtProofWithKeyAttestation(issuer, verifyKeyAttestation)
     private val credentialConfiguration =
-        mobileDrivingLicenceV1(
+        mdlV1Cfg(
             CoseAlgorithm(-7),
             deviceBinding =
                 DeviceBinding.Required(
@@ -186,7 +186,7 @@ internal class ValidateJwtProofWithKeyAttestationTest {
                 }
 
             val credentialConfiguration =
-                mobileDrivingLicenceV1(
+                mdlV1Cfg(
                     CoseAlgorithm(-7),
                     DeviceBinding.Required(
                         nonEmptySetOf(JWSAlgorithm.ES512),

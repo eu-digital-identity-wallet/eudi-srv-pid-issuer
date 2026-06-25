@@ -29,12 +29,12 @@ import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.time.Month
 
-private val log = LoggerFactory.getLogger(GetMobileDrivingLicenceDataMock::class.java)
+private val log = LoggerFactory.getLogger(RandomMobileDrivingLicence::class.java)
 
 /**
  * Mock implementation
  */
-class GetMobileDrivingLicenceDataMock : GetAttestationAttributes<MobileDrivingLicence> {
+class RandomMobileDrivingLicence : GetAttestationAttributes<MobileDrivingLicence> {
     context(_: Raise<IssueCredentialError.AttestationDatasetNotFound>, authorizationContext: AuthorizationContext)
     override suspend fun invoke(): MobileDrivingLicence =
         coroutineScope {
