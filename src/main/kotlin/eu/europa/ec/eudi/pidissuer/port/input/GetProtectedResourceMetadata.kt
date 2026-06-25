@@ -18,7 +18,6 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.NonEmptyList
-import arrow.core.nonEmptyListOf
 import arrow.core.serialization.NonEmptyListSerializer
 import arrow.core.toNonEmptyListOrNull
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPConfigurationProperties
@@ -54,26 +53,19 @@ data class ProtectedResourceMetadataTO(
 
 class GetProtectedResourceMetadata(
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
-    private val bearerTokenAuthenticationEnabled: Boolean,
-    private val dPoPConfigurationProperties: DPoPConfigurationProperties?,
+    private val dPoPConfigurationProperties: DPoPConfigurationProperties,
 ) {
-    fun unsigned(): ProtectedResourceMetadataTO {
-        val bearerMethodsSupported = if (bearerTokenAuthenticationEnabled) nonEmptyListOf(BearerMethodTO.HEADER) else null
-        val dPoPSigningAlgorithmsSupported = dPoPConfigurationProperties?.algorithms?.map { it.name }
-        val dPoPBoundAccessTokenRequired = dPoPConfigurationProperties?.let { !bearerTokenAuthenticationEnabled }
-
-        return ProtectedResourceMetadataTO(
-            resource = credentialIssuerMetadata.id.externalForm,
-            authorizationServers = credentialIssuerMetadata.authorizationServers.map { it.externalForm }.toNonEmptyListOrNull(),
-            scopesSupported =
-                credentialIssuerMetadata.attestationIssuers
-                    .map {
-                        it.configuration.scope.value
-                    }.distinct()
-                    .toNonEmptyListOrNull(),
-            bearerMethodsSupported = bearerMethodsSupported,
-            dpopSigningAlgorithmsSupported = dPoPSigningAlgorithmsSupported,
-            dpopBoundAccessTokenRequired = dPoPBoundAccessTokenRequired,
-        )
-    }
+    fun unsigned(): ProtectedResourceMetadataTO =
+        with(credentialIssuerMetadata) {
+            val authorizationServers = authorizationServers.map { it.externalForm }.toNonEmptyListOrNull()
+            val scopes = attestationIssuers.map { it.configuration.scope.value }.distinct().toNonEmptyListOrNull()
+            val dpopAlgs = dPoPConfigurationProperties.algorithms.map { it.name }
+            ProtectedResourceMetadataTO(
+                resource = id.externalForm,
+                authorizationServers = authorizationServers,
+                scopesSupported = scopes,
+                dpopSigningAlgorithmsSupported = dpopAlgs,
+                dpopBoundAccessTokenRequired = true,
+            )
+        }
 }

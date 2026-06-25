@@ -15,7 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer
 
-import arrow.core.*
+import arrow.core.recover
+import arrow.core.some
+import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
@@ -33,10 +35,10 @@ import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.*
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
-import eu.europa.ec.eudi.pidissuer.adapter.out.nonce.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.nonce.DecryptNonceWithNimbusAndVerify
+import eu.europa.ec.eudi.pidissuer.adapter.out.nonce.GenerateNonceAndEncryptWithNimbus
+import eu.europa.ec.eudi.pidissuer.adapter.out.nonce.NonceEncryptionKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.InMemoryDeferredCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.persistence.R2dbcIssuedCredentialRepository
 import eu.europa.ec.eudi.pidissuer.adapter.out.qr.DefaultGenerateQrCode
@@ -58,7 +60,6 @@ import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.MarkStatusAsRevoked
 import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
 import eu.europa.ec.eudi.sdjwt.vc.Vct
-import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.TimeZone
 import kotlinx.serialization.json.Json
@@ -76,11 +77,7 @@ import org.springframework.scheduling.annotation.SchedulingConfigurer
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.config.web.server.invoke
-import org.springframework.security.oauth2.server.resource.authentication.OpaqueTokenReactiveAuthenticationManager
 import org.springframework.security.oauth2.server.resource.introspection.SpringReactiveOpaqueTokenIntrospector
-import org.springframework.security.oauth2.server.resource.web.access.server.BearerTokenServerAccessDeniedHandler
-import org.springframework.security.oauth2.server.resource.web.server.BearerTokenServerAuthenticationEntryPoint
-import org.springframework.security.oauth2.server.resource.web.server.authentication.ServerBearerTokenAuthenticationConverter
 import org.springframework.security.web.server.DelegatingServerAuthenticationEntryPoint
 import org.springframework.security.web.server.authentication.AuthenticationConverterServerWebExchangeMatcher
 import org.springframework.security.web.server.authentication.AuthenticationWebFilter
@@ -542,13 +539,8 @@ fun beans(
         CreateCredentialsOffer(bean(), credentialsOfferUri)
     }
 
-    val accessTokenType = env.getProperty<AccessTokenType>("issuer.access-token.type") ?: AccessTokenType.DPoP
-    val enableBearerTokenAuthentication =
-        AccessTokenType.Bearer == accessTokenType ||
-            AccessTokenType.BearerAndDPoPIfAvailable == accessTokenType
-
     val dPoPConfigurationProperties =
-        if (AccessTokenType.DPoP == accessTokenType || AccessTokenType.BearerAndDPoPIfAvailable == accessTokenType) {
+        run {
             val algorithms =
                 runBlocking {
                     val authorizationServerMetadata =
@@ -556,22 +548,14 @@ fun beans(
                     webClient.authorizationServerSupportedDPoPJWSAlgorithms(authorizationServerMetadata)
                 }
 
-            if (AccessTokenType.DPoP == accessTokenType) {
-                requireNotNull(algorithms) { "DPoP is required but Authorization Server does not support DPoP." }
-            }
-
-            algorithms?.let { algs ->
-                log.info("DPoP support will be enabled. Supported algorithms: $algs")
-                val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
-                DPoPConfigurationProperties(algs, realm)
-            }
-        } else {
-            null
+            requireNotNull(algorithms) { "DPoP is required but Authorization Server does not support DPoP." }
+            val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
+            DPoPConfigurationProperties(algorithms, realm)
         }
+
     registerBean {
         GetProtectedResourceMetadata(
             credentialIssuerMetadata = bean(),
-            bearerTokenAuthenticationEnabled = enableBearerTokenAuthentication,
             dPoPConfigurationProperties = dPoPConfigurationProperties,
         )
     }
@@ -644,11 +628,13 @@ fun beans(
             }
 
             val introspectionProperties = bean<OAuth2ResourceServerProperties>()
+            val introspectionEndpoint = introspectionProperties.opaquetoken.introspectionUri
+            checkNotNull(introspectionEndpoint) {
+                "missing spring.security.oauth2.resourceserver.opaquetoken.introspection-uri configuration property"
+            }
             val introspector =
                 SpringReactiveOpaqueTokenIntrospector(
-                    requireNotNull(introspectionProperties.opaquetoken.introspectionUri) {
-                        "missing spring.security.oauth2.resourceserver.opaquetoken.introspection-uri configuration property"
-                    },
+                    introspectionEndpoint,
                     webClient
                         .mutate()
                         .defaultHeaders {
@@ -664,105 +650,71 @@ fun beans(
                 mutableListOf<ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry>()
             val filters = mutableListOf<Pair<SecurityWebFiltersOrder, WebFilter>>()
 
-            if (null != dPoPConfigurationProperties) {
-                log.info("Enabling DPoP AccessToken support")
+            log.info("Enabling DPoP AccessToken support")
 
-                val enableDPoPNonce = env.getProperty<Boolean>("issuer.dpop.nonce.enabled") ?: true
-                val dpopNonce =
-                    if (enableDPoPNonce) {
-                        val dpopNonceExpiresIn = env.duration("issuer.dpop.nonce.expiration") ?: 5.minutes
-                        DPoPNoncePolicy.Enforcing(bean(), bean(), dpopNonceExpiresIn)
-                    } else {
-                        DPoPNoncePolicy.Disabled
-                    }
+            val enableDPoPNonce = env.getProperty<Boolean>("issuer.dpop.nonce.enabled") ?: true
+            val dpopNonce =
+                if (enableDPoPNonce) {
+                    val dpopNonceExpiresIn = env.duration("issuer.dpop.nonce.expiration") ?: 5.minutes
+                    DPoPNoncePolicy.Enforcing(bean(), bean(), dpopNonceExpiresIn)
+                } else {
+                    DPoPNoncePolicy.Disabled
+                }
 
-                val entryPoint =
-                    DPoPTokenServerAuthenticationEntryPoint(dPoPConfigurationProperties.realm, dpopNonce, bean())
-                val tokenConverter = ServerDPoPAuthenticationTokenAuthenticationConverter()
+            val entryPoint =
+                DPoPTokenServerAuthenticationEntryPoint(dPoPConfigurationProperties.realm, dpopNonce, bean())
+            val tokenConverter = ServerDPoPAuthenticationTokenAuthenticationConverter()
 
-                entryPoints.add(
-                    DelegatingServerAuthenticationEntryPoint.DelegateEntry(
-                        AuthenticationConverterServerWebExchangeMatcher(tokenConverter),
-                        entryPoint,
-                    ),
-                )
+            entryPoints.add(
+                DelegatingServerAuthenticationEntryPoint.DelegateEntry(
+                    AuthenticationConverterServerWebExchangeMatcher(tokenConverter),
+                    entryPoint,
+                ),
+            )
 
-                accessDeniedHandlers.add(
-                    ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry(
-                        AuthenticationConverterServerWebExchangeMatcher(tokenConverter),
-                        DPoPTokenServerAccessDeniedHandler(dPoPConfigurationProperties.realm),
-                    ),
-                )
+            accessDeniedHandlers.add(
+                ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry(
+                    AuthenticationConverterServerWebExchangeMatcher(tokenConverter),
+                    DPoPTokenServerAccessDeniedHandler(dPoPConfigurationProperties.realm),
+                ),
+            )
 
-                val dpopFilter =
-                    run {
-                        val dPoPVerifier =
-                            DPoPProtectedResourceRequestVerifier(
-                                dPoPConfigurationProperties.algorithms,
-                                15.seconds.inWholeSeconds,
-                                30.seconds.inWholeSeconds,
-                                InMemoryDPoPSingleUseChecker(
-                                    60.seconds.inWholeSeconds,
-                                    10.minutes.inWholeSeconds,
-                                ),
-                            )
-
-                        val authenticationManager =
-                            DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier, dpopNonce, bean())
-
-                        AuthenticationWebFilter(authenticationManager).apply {
-                            setServerAuthenticationConverter(tokenConverter)
-                            setAuthenticationFailureHandler(ServerAuthenticationEntryPointFailureHandler(entryPoint))
-                        }
-                    }
-                filters.add(SecurityWebFiltersOrder.AUTHENTICATION to dpopFilter)
-
-                if (dpopNonce is DPoPNoncePolicy.Enforcing) {
-                    val dpopNonceFilter =
-                        DPoPNonceWebFilter(
-                            dpopNonce,
-                            bean(),
-                            listOf(
-                                WalletApi.CREDENTIAL_ENDPOINT,
-                                WalletApi.DEFERRED_ENDPOINT,
-                                WalletApi.NOTIFICATION_ENDPOINT,
-                                WalletApi.NONCE_ENDPOINT,
+            val dpopFilter =
+                run {
+                    val dPoPVerifier =
+                        DPoPProtectedResourceRequestVerifier(
+                            dPoPConfigurationProperties.algorithms,
+                            15.seconds.inWholeSeconds,
+                            30.seconds.inWholeSeconds,
+                            InMemoryDPoPSingleUseChecker(
+                                60.seconds.inWholeSeconds,
+                                10.minutes.inWholeSeconds,
                             ),
                         )
-                    filters.add(SecurityWebFiltersOrder.LAST to dpopNonceFilter)
+
+                    val authenticationManager =
+                        DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier, dpopNonce, bean())
+
+                    AuthenticationWebFilter(authenticationManager).apply {
+                        setServerAuthenticationConverter(tokenConverter)
+                        setAuthenticationFailureHandler(ServerAuthenticationEntryPointFailureHandler(entryPoint))
+                    }
                 }
-            }
+            filters.add(SecurityWebFiltersOrder.AUTHENTICATION to dpopFilter)
 
-            if (enableBearerTokenAuthentication) {
-                log.info("Enabled Bearer AccessToken support")
-
-                val entryPoint = BearerTokenServerAuthenticationEntryPoint()
-                val tokenConverter = ServerBearerTokenAuthenticationConverter()
-
-                entryPoints.add(
-                    DelegatingServerAuthenticationEntryPoint.DelegateEntry(
-                        AuthenticationConverterServerWebExchangeMatcher(tokenConverter),
-                        entryPoint,
-                    ),
-                )
-
-                accessDeniedHandlers.add(
-                    ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry(
-                        AuthenticationConverterServerWebExchangeMatcher(tokenConverter),
-                        BearerTokenServerAccessDeniedHandler(),
-                    ),
-                )
-
-                val filter =
-                    AuthenticationWebFilter(OpaqueTokenReactiveAuthenticationManager(introspector))
-                        .apply {
-                            setServerAuthenticationConverter(tokenConverter)
-                            setAuthenticationFailureHandler(
-                                ServerAuthenticationEntryPointFailureHandler(HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED)),
-                            )
-                        }
-
-                filters.add(SecurityWebFiltersOrder.AUTHENTICATION to filter)
+            if (dpopNonce is DPoPNoncePolicy.Enforcing) {
+                val dpopNonceFilter =
+                    DPoPNonceWebFilter(
+                        dpopNonce,
+                        bean(),
+                        listOf(
+                            WalletApi.CREDENTIAL_ENDPOINT,
+                            WalletApi.DEFERRED_ENDPOINT,
+                            WalletApi.NOTIFICATION_ENDPOINT,
+                            WalletApi.NONCE_ENDPOINT,
+                        ),
+                    )
+                filters.add(SecurityWebFiltersOrder.LAST to dpopNonceFilter)
             }
 
             exceptionHandling {

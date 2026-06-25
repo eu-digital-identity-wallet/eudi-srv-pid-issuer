@@ -29,14 +29,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.learningcredential.Is
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.IssueMobileDrivingLicence
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.MobileDrivingLicence
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.RandomMobileDrivingLicence
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.AdministrationClient
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.Credentials
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.GetPidDataFromKeyCloak
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.IsoCountry
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.IssueMsoMdocPid
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.IssueSdJwtVcPid
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidAttributes
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.Realm
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.SdJwtVcSerialization
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateAttestationProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateJwtProofWithKeyAttestation
@@ -51,7 +44,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.proof.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
 import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
-import io.ktor.http.Url
+import io.ktor.http.*
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.datetime.TimeZone
 import org.slf4j.LoggerFactory
@@ -302,7 +295,7 @@ internal fun KeyStore.loadJwk(
     }
 }
 
-internal suspend fun WebClient.authorizationServerSupportedDPoPJWSAlgorithms(authorizationServerMetadata: URI): NonEmptySet<JWSAlgorithm>? =
+internal suspend fun WebClient.authorizationServerSupportedDPoPJWSAlgorithms(authorizationServerMetadata: URI): NonEmptySet<JWSAlgorithm> =
     Either
         .catch {
             val metadata =
@@ -317,7 +310,7 @@ internal suspend fun WebClient.authorizationServerSupportedDPoPJWSAlgorithms(aut
         }.getOrElse {
             extensionLogger.warn("Unable to fetch Authorization Server metadata. DPoP support will be disabled.", it)
             null
-        }
+        } ?: nonEmptySetOf(JWSAlgorithm.ES256)
 
 internal fun Environment.getPropertyOrEnvVariable(property: String): String? =
     getProperty(property) ?: getProperty(toEnvironmentVariable(property))
