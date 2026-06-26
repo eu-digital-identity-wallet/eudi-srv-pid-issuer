@@ -25,18 +25,16 @@ import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64
-import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPProtectedResourceRequestVerifier
-import com.nimbusds.oauth2.sdk.dpop.verifiers.InMemoryDPoPSingleUseChecker
 import com.nimbusds.oauth2.sdk.id.Issuer
 import com.nimbusds.oauth2.sdk.util.X509CertificateUtils
 import eu.europa.ec.eudi.pidissuer.adapter.input.scheduler.CredentialRevocationJob
-import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerApi
-import eu.europa.ec.eudi.pidissuer.adapter.input.web.IssuerUi
-import eu.europa.ec.eudi.pidissuer.adapter.input.web.MetaDataApi
-import eu.europa.ec.eudi.pidissuer.adapter.input.web.WalletApi
-import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.*
+import eu.europa.ec.eudi.pidissuer.adapter.input.web.*
+import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPConfigurationProperties
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.AccessCertificate
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseNimbus
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptDeferredResponseNimbus
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.GenerateSignedMetadataWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.nonce.DecryptNonceWithNimbusAndVerify
 import eu.europa.ec.eudi.pidissuer.adapter.out.nonce.GenerateNonceAndEncryptWithNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.nonce.NonceEncryptionKey
@@ -53,7 +51,6 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.webclient.WebClients
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.asDeferred
-import eu.europa.ec.eudi.pidissuer.port.out.jose.GenerateSignedMetadata
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
@@ -67,28 +64,14 @@ import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.BeanRegistrarDsl
 import org.springframework.boot.http.codec.CodecCustomizer
-import org.springframework.boot.security.oauth2.server.resource.autoconfigure.OAuth2ResourceServerProperties
 import org.springframework.core.env.Environment
 import org.springframework.core.env.getProperty
 import org.springframework.core.io.DefaultResourceLoader
 import org.springframework.core.io.FileSystemResource
-import org.springframework.http.HttpStatus
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
 import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
 import org.springframework.scheduling.annotation.SchedulingConfigurer
-import org.springframework.security.config.web.server.SecurityWebFiltersOrder
-import org.springframework.security.config.web.server.ServerHttpSecurity
-import org.springframework.security.config.web.server.invoke
-import org.springframework.security.oauth2.server.resource.introspection.SpringReactiveOpaqueTokenIntrospector
-import org.springframework.security.web.server.DelegatingServerAuthenticationEntryPoint
-import org.springframework.security.web.server.authentication.AuthenticationConverterServerWebExchangeMatcher
-import org.springframework.security.web.server.authentication.AuthenticationWebFilter
-import org.springframework.security.web.server.authentication.HttpStatusServerEntryPoint
-import org.springframework.security.web.server.authentication.ServerAuthenticationEntryPointFailureHandler
-import org.springframework.security.web.server.authorization.HttpStatusServerAccessDeniedHandler
-import org.springframework.security.web.server.authorization.ServerWebExchangeDelegatingServerAccessDeniedHandler
 import org.springframework.util.unit.DataSize
-import org.springframework.web.server.WebFilter
 import java.net.URI
 import java.security.KeyStore
 import java.util.*
@@ -109,7 +92,6 @@ fun beans(
     val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl", removeTrailingSlash = true)
     val credentialsOfferUri = env.getRequiredProperty("issuer.credentialOffer.uri")
     val trustValidatorServiceUrl = env.getProperty<String>("issuer.trust.service-url")
-
     val issuerKeystore: KeyStore by lazy {
         val keystoreLocation = env.getRequiredProperty("issuer.keystore.file")
         log.info("Will try to load Keystore from: '{}'", keystoreLocation)
@@ -472,100 +454,17 @@ fun beans(
     // Security
     //
     registerBean {
-        fun Scope.springConvention() = "SCOPE_$value"
-        val metaData = bean<CredentialIssuerMetaData>()
-        val scopes =
-            metaData.credentialConfigurationsSupported
-                .map { it.scope.springConvention() }
-                .distinct()
-        val http = bean<ServerHttpSecurity>()
-        http {
-            authorizeExchange {
-                authorize(WalletApi.CREDENTIAL_ENDPOINT, hasAnyAuthority(*scopes.toTypedArray()))
-                authorize(WalletApi.DEFERRED_ENDPOINT, hasAnyAuthority(*scopes.toTypedArray()))
-                authorize(WalletApi.NOTIFICATION_ENDPOINT, hasAnyAuthority(*scopes.toTypedArray()))
-                authorize(WalletApi.NONCE_ENDPOINT, permitAll)
-                authorize(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER, permitAll)
-                authorize(MetaDataApi.WELL_KNOWN_JWT_VC_ISSUER, permitAll)
-                authorize(MetaDataApi.PUBLIC_KEYS, permitAll)
-                authorize(MetaDataApi.TYPE_METADATA, permitAll)
-                authorize(MetaDataApi.WELL_KNOWN_PROTECTED_RESOURCE_METADATA, permitAll)
-                authorize(IssuerUi.GENERATE_CREDENTIALS_OFFER, permitAll)
-                authorize(IssuerApi.CREATE_CREDENTIALS_OFFER, permitAll)
-                authorize("", permitAll)
-                authorize("/", permitAll)
-                authorize(env.getRequiredProperty("spring.webflux.static-path-pattern"), permitAll)
-                authorize(env.getRequiredProperty("spring.webflux.webjars-path-pattern"), permitAll)
-                authorize(anyExchange, denyAll)
-            }
-
-            csrf {
-                disable()
-            }
-
-            cors {
-                disable()
-            }
-
-            val introspector = createTokenIntrospector(bean<OAuth2ResourceServerProperties>(), webClient)
-
-            log.info("Enabling DPoP AccessToken support")
-
-            val dpopNonce =
-                if (dPoPConfigurationProperties.dPoPNonceEnabled) {
-                    val dpopNonceExpiresIn = env.duration("issuer.dpop.nonce.expiration") ?: 5.minutes
-                    DPoPNoncePolicy.Enforcing(bean(), bean(), dpopNonceExpiresIn)
-                } else {
-                    DPoPNoncePolicy.Disabled
-                }
-
-            val entryPoint = DPoPTokenServerAuthenticationEntryPoint(dPoPConfigurationProperties.realm, dpopNonce, bean())
-            val tokenConverter = ServerDPoPAuthenticationTokenAuthenticationConverter()
-
-            val dpopFilter = createDpopFilter(dPoPConfigurationProperties, introspector, dpopNonce, tokenConverter, entryPoint, clock)
-            http.addFilterAfter(dpopFilter, SecurityWebFiltersOrder.AUTHENTICATION)
-
-            if (dpopNonce is DPoPNoncePolicy.Enforcing) {
-                val dpopNonceFilter =
-                    DPoPNonceWebFilter(
-                        dpopNonce,
-                        bean(),
-                        listOf(
-                            WalletApi.CREDENTIAL_ENDPOINT,
-                            WalletApi.DEFERRED_ENDPOINT,
-                            WalletApi.NOTIFICATION_ENDPOINT,
-                            WalletApi.NONCE_ENDPOINT,
-                        ),
-                    )
-                http.addFilterAt(dpopNonceFilter, SecurityWebFiltersOrder.LAST)
-            }
-
-            exceptionHandling {
-                authenticationEntryPoint =
-                    DelegatingServerAuthenticationEntryPoint(
-                        listOf(
-                            DelegatingServerAuthenticationEntryPoint.DelegateEntry(
-                                AuthenticationConverterServerWebExchangeMatcher(tokenConverter),
-                                entryPoint,
-                            ),
-                        ),
-                    ).apply {
-                        setDefaultEntryPoint(HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED))
-                    }
-
-                accessDeniedHandler =
-                    ServerWebExchangeDelegatingServerAccessDeniedHandler(
-                        listOf(
-                            ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry(
-                                AuthenticationConverterServerWebExchangeMatcher(tokenConverter),
-                                DPoPTokenServerAccessDeniedHandler(dPoPConfigurationProperties.realm),
-                            ),
-                        ),
-                    ).apply {
-                        setDefaultAccessDeniedHandler(HttpStatusServerAccessDeniedHandler(HttpStatus.FORBIDDEN))
-                    }
-            }
-        }
+        configureSecurity(
+            http = bean(),
+            metadata = bean(),
+            oAuth2ResourceServerProperties = bean(),
+            dPoPConfigurationProperties = dPoPConfigurationProperties,
+            webClient = webClient,
+            env = env,
+            clock = clock,
+            verifyNonce = bean(),
+            generateNonce = bean(),
+        )
     }
 
     //
@@ -607,55 +506,6 @@ private fun loadNonceEncryptionKey(
             }
         }
     return NonceEncryptionKey(encryptionKey)
-}
-
-private fun createTokenIntrospector(
-    introspectionProperties: OAuth2ResourceServerProperties,
-    webClient: org.springframework.web.reactive.function.client.WebClient,
-): SpringReactiveOpaqueTokenIntrospector {
-    val introspectionEndpoint =
-        checkNotNull(introspectionProperties.opaquetoken.introspectionUri) {
-            "missing spring.security.oauth2.resourceserver.opaquetoken.introspection-uri configuration property"
-        }
-    return SpringReactiveOpaqueTokenIntrospector(
-        introspectionEndpoint,
-        webClient
-            .mutate()
-            .defaultHeaders {
-                it.setBasicAuth(
-                    introspectionProperties.opaquetoken.clientId!!,
-                    introspectionProperties.opaquetoken.clientSecret!!,
-                )
-            }.build(),
-    )
-}
-
-private fun createDpopFilter(
-    dPoPConfigurationProperties: DPoPConfigurationProperties,
-    introspector: SpringReactiveOpaqueTokenIntrospector,
-    dpopNonce: DPoPNoncePolicy,
-    tokenConverter: ServerDPoPAuthenticationTokenAuthenticationConverter,
-    entryPoint: DPoPTokenServerAuthenticationEntryPoint,
-    clock: Clock,
-): AuthenticationWebFilter {
-    val dPoPVerifier =
-        DPoPProtectedResourceRequestVerifier(
-            dPoPConfigurationProperties.algorithms,
-            15.seconds.inWholeSeconds,
-            30.seconds.inWholeSeconds,
-            InMemoryDPoPSingleUseChecker(
-                60.seconds.inWholeSeconds,
-                10.minutes.inWholeSeconds,
-            ),
-        )
-
-    val authenticationManager =
-        DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier, dpopNonce, clock)
-
-    return AuthenticationWebFilter(authenticationManager).apply {
-        setServerAuthenticationConverter(tokenConverter)
-        setAuthenticationFailureHandler(ServerAuthenticationEntryPointFailureHandler(entryPoint))
-    }
 }
 
 private fun Environment.batchCredentialIssuance(): BatchCredentialIssuance {
