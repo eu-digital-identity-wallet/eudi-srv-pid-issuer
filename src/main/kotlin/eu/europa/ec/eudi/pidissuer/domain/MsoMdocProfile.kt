@@ -28,7 +28,7 @@ typealias MsoNameSpace = String
 const val MSO_MDOC_FORMAT_VALUE = "mso_mdoc"
 val MSO_MDOC_FORMAT = Format(MSO_MDOC_FORMAT_VALUE)
 
-fun ClaimPath.isMsoMDoc(): Boolean = 2 == size && all { it is ClaimPathElement.Claim }
+fun ClaimPath.isMsoMDoc(): Boolean = 2 == value.size && value.all { it is ClaimPathElement.Claim }
 
 operator fun ClaimPath.Companion.invoke(
     nameSpace: MsoNameSpace,
