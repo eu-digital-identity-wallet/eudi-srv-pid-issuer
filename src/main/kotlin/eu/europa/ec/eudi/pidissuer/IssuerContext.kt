@@ -627,10 +627,10 @@ fun beans(
             }
 
             val introspectionProperties = bean<OAuth2ResourceServerProperties>()
-            val introspectionEndpoint = introspectionProperties.opaquetoken.introspectionUri
-            checkNotNull(introspectionEndpoint) {
-                "missing spring.security.oauth2.resourceserver.opaquetoken.introspection-uri configuration property"
-            }
+            val introspectionEndpoint =
+                checkNotNull(introspectionProperties.opaquetoken.introspectionUri) {
+                    "missing spring.security.oauth2.resourceserver.opaquetoken.introspection-uri configuration property"
+                }
             val introspector =
                 SpringReactiveOpaqueTokenIntrospector(
                     introspectionEndpoint,
@@ -644,11 +644,6 @@ fun beans(
                         }.build(),
                 )
 
-            val entryPoints = mutableListOf<DelegatingServerAuthenticationEntryPoint.DelegateEntry>()
-            val accessDeniedHandlers =
-                mutableListOf<ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry>()
-            val filters = mutableListOf<Pair<SecurityWebFiltersOrder, WebFilter>>()
-
             log.info("Enabling DPoP AccessToken support")
 
             val enableDPoPNonce = env.getProperty<Boolean>("issuer.dpop.nonce.enabled") ?: true
@@ -660,23 +655,8 @@ fun beans(
                     DPoPNoncePolicy.Disabled
                 }
 
-            val entryPoint =
-                DPoPTokenServerAuthenticationEntryPoint(dPoPConfigurationProperties.realm, dpopNonce, bean())
+            val entryPoint = DPoPTokenServerAuthenticationEntryPoint(dPoPConfigurationProperties.realm, dpopNonce, bean())
             val tokenConverter = ServerDPoPAuthenticationTokenAuthenticationConverter()
-
-            entryPoints.add(
-                DelegatingServerAuthenticationEntryPoint.DelegateEntry(
-                    AuthenticationConverterServerWebExchangeMatcher(tokenConverter),
-                    entryPoint,
-                ),
-            )
-
-            accessDeniedHandlers.add(
-                ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry(
-                    AuthenticationConverterServerWebExchangeMatcher(tokenConverter),
-                    DPoPTokenServerAccessDeniedHandler(dPoPConfigurationProperties.realm),
-                ),
-            )
 
             val dpopFilter =
                 run {
@@ -699,7 +679,7 @@ fun beans(
                         setAuthenticationFailureHandler(ServerAuthenticationEntryPointFailureHandler(entryPoint))
                     }
                 }
-            filters.add(SecurityWebFiltersOrder.AUTHENTICATION to dpopFilter)
+            http.addFilterAfter(dpopFilter, SecurityWebFiltersOrder.AUTHENTICATION)
 
             if (dpopNonce is DPoPNoncePolicy.Enforcing) {
                 val dpopNonceFilter =
@@ -713,29 +693,33 @@ fun beans(
                             WalletApi.NONCE_ENDPOINT,
                         ),
                     )
-                filters.add(SecurityWebFiltersOrder.LAST to dpopNonceFilter)
+                http.addFilterAt(dpopNonceFilter, SecurityWebFiltersOrder.LAST)
             }
 
             exceptionHandling {
                 authenticationEntryPoint =
-                    DelegatingServerAuthenticationEntryPoint(entryPoints)
-                        .apply {
-                            setDefaultEntryPoint(HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED))
-                        }
+                    DelegatingServerAuthenticationEntryPoint(
+                        listOf(
+                            DelegatingServerAuthenticationEntryPoint.DelegateEntry(
+                                AuthenticationConverterServerWebExchangeMatcher(tokenConverter),
+                                entryPoint,
+                            ),
+                        ),
+                    ).apply {
+                        setDefaultEntryPoint(HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED))
+                    }
 
                 accessDeniedHandler =
-                    ServerWebExchangeDelegatingServerAccessDeniedHandler(accessDeniedHandlers)
-                        .apply {
-                            setDefaultAccessDeniedHandler(HttpStatusServerAccessDeniedHandler(HttpStatus.FORBIDDEN))
-                        }
-            }
-
-            filters.forEach { (order, filter) ->
-                if (SecurityWebFiltersOrder.LAST == order) {
-                    http.addFilterAt(filter, SecurityWebFiltersOrder.LAST)
-                } else {
-                    http.addFilterAfter(filter, order)
-                }
+                    ServerWebExchangeDelegatingServerAccessDeniedHandler(
+                        listOf(
+                            ServerWebExchangeDelegatingServerAccessDeniedHandler.DelegateEntry(
+                                AuthenticationConverterServerWebExchangeMatcher(tokenConverter),
+                                DPoPTokenServerAccessDeniedHandler(dPoPConfigurationProperties.realm),
+                            ),
+                        ),
+                    ).apply {
+                        setDefaultAccessDeniedHandler(HttpStatusServerAccessDeniedHandler(HttpStatus.FORBIDDEN))
+                    }
             }
         }
     }
