@@ -15,11 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
-import arrow.core.NonEmptySet
 import arrow.core.raise.catch
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.util.JSONObjectUtils
-import com.nimbusds.oauth2.sdk.token.AccessToken
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPTokenAuthentication
 import eu.europa.ec.eudi.pidissuer.adapter.out.json.jsonSupport
 import eu.europa.ec.eudi.pidissuer.domain.ClientStatus
@@ -146,53 +144,36 @@ internal class WalletApi(
 }
 
 private suspend fun ServerRequest.authorizationContext(): AuthorizationContext {
-    @Suppress("UNCHECKED_CAST")
-    fun Map<*, *>.toClientStatus(): ClientStatus {
-        val serialized = JSONObjectUtils.toJSONString(this as Map<String, Any?>)
-        return jsonSupport.decodeFromString(serialized)
-    }
+    val authentication = requireNotNull(awaitPrincipal()) { "Authentication is expected" } as DPoPTokenAuthentication
+    val scopes =
+        run {
+            fun fromSpring(authority: GrantedAuthority): Scope? =
+                authority.authority
+                    ?.takeIf { it.startsWith("SCOPE_") }
+                    ?.replaceFirst("SCOPE_", "")
+                    ?.let { Scope(it) }
 
-    val authentication = awaitPrincipal()
-
-    requireNotNull(authentication) { "Authentication is expected" }
-
-    fun fromSpring(authority: GrantedAuthority): Scope? =
-        authority.authority
-            ?.takeIf { it.startsWith("SCOPE_") }
-            ?.replaceFirst("SCOPE_", "")
-            ?.let { Scope(it) }
-
-    data class AuthenticationDetails(
-        val scopes: NonEmptySet<Scope>? = null,
-        val clientId: Any? = null,
-        val username: Any? = null,
-        val accessToken: AccessToken,
-        val clientStatus: Any?,
-    )
-
-    val (scopes, clientId, username, accessToken, clientStatus) =
-        when (authentication) {
-            is DPoPTokenAuthentication -> {
-                AuthenticationDetails(
-                    authentication.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull(),
-                    authentication.principal?.attributes?.get(OAuth2TokenIntrospectionClaimNames.CLIENT_ID),
-                    authentication.name,
-                    authentication.accessToken,
-                    authentication.principal?.attributes?.get(TS3.CLIENT_STATUS),
-                )
+            val value = authentication.authorities.mapNotNull { fromSpring(it) }.toNonEmptySetOrNull()
+            requireNotNull(value) { "OAuth2 scopes are expected" }
+        }
+    val clientId =
+        run {
+            val value = authentication.principal?.attributes?.get(OAuth2TokenIntrospectionClaimNames.CLIENT_ID)
+            if (null != value) {
+                require(value is String) { "Unexpected client_id claim type '${value::class.java }'" }
             }
+            value
+        }
+    val clientStatus =
+        run {
+            val value = authentication.principal?.attributes?.get(TS3.CLIENT_STATUS)
+            require(value is Map<*, *>) { "Unexpected client_status claim type '${value?.let { it::class.java }}'" }
 
-            else -> {
-                error("Unexpected Authentication type '${authentication::class.java}'")
-            }
+            @Suppress("UNCHECKED_CAST")
+            jsonSupport.decodeFromString<ClientStatus>(JSONObjectUtils.toJSONString(value as Map<String, Any?>))
         }
 
-    requireNotNull(scopes) { "OAuth2 scopes are expected" }
-    require(clientId is String) { "Unexpected client_id claim type '${clientId?.let { it::class.java }}'" }
-    require(username is String) { "Unexpected username claim type '${username?.let { it::class.java }}'" }
-    require(clientStatus is Map<*, *>) { "Unexpected client_status claim type '${clientStatus?.let { it::class.java }}'" }
-
-    return AuthorizationContext(username, accessToken, scopes, clientId, clientStatus.toClientStatus())
+    return AuthorizationContext(authentication.name, authentication.accessToken, scopes, clientId, clientStatus)
 }
 
 private enum class JsonOrJwt {
