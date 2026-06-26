@@ -106,14 +106,14 @@ data class ClaimDefinition(
     val nested: List<ClaimDefinition> = emptyList(),
 ) {
     init {
-        require(path.last() is ClaimPathElement.Claim) { "The provided ClaimPath does not correspond to an Attribute" }
+        require(path.value.last() is ClaimPathElement.Claim) { "The provided ClaimPath does not correspond to an Attribute" }
         require(nested.all { path == it.path.parent() }) {
             "'nested' contains Claims with ClaimPaths that are not nested under this Claim"
         }
     }
 
     val name: String
-        get() = (path.last() as ClaimPathElement.Claim).name
+        get() = (path.value.last() as ClaimPathElement.Claim).name
 
     companion object
 }
