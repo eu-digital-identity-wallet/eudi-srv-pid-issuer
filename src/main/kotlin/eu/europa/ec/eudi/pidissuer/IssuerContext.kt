@@ -15,12 +15,14 @@
  */
 package eu.europa.ec.eudi.pidissuer
 
+import arrow.core.nonEmptySetOf
 import arrow.core.recover
 import arrow.core.some
 import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
+import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64
@@ -540,17 +542,11 @@ fun beans(
     }
 
     val dPoPConfigurationProperties =
-        run {
-            val algorithms =
-                runBlocking {
-                    val authorizationServerMetadata =
-                        URI.create(env.getRequiredProperty("issuer.authorizationServer.metadata"))
-                    webClient.authorizationServerSupportedDPoPJWSAlgorithms(authorizationServerMetadata)
-                }
-
-            val realm = env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() }
-            DPoPConfigurationProperties(algorithms, realm)
-        }
+        DPoPConfigurationProperties(
+            nonEmptySetOf(JWSAlgorithm.ES256, JWSAlgorithm.ES384, JWSAlgorithm.ES512),
+            env.getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() },
+            env.getProperty<Boolean>("issuer.dpop.nonce.enabled") ?: true,
+        )
 
     registerBean {
         GetProtectedResourceMetadata(
@@ -581,7 +577,6 @@ fun beans(
     //
     // Security
     //
-
     registerBean {
         /*
          * This is a Spring naming convention
@@ -646,9 +641,8 @@ fun beans(
 
             log.info("Enabling DPoP AccessToken support")
 
-            val enableDPoPNonce = env.getProperty<Boolean>("issuer.dpop.nonce.enabled") ?: true
             val dpopNonce =
-                if (enableDPoPNonce) {
+                if (dPoPConfigurationProperties.dPoPNonceEnabled) {
                     val dpopNonceExpiresIn = env.duration("issuer.dpop.nonce.expiration") ?: 5.minutes
                     DPoPNoncePolicy.Enforcing(bean(), bean(), dpopNonceExpiresIn)
                 } else {
