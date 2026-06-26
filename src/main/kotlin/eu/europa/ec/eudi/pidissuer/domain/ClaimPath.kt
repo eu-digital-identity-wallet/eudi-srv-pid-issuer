@@ -92,7 +92,7 @@ value class ClaimPath(
     fun tail(): ClaimPath? {
         val tailElements = value.drop(1)
         return if (tailElements.isEmpty())
-            return null
+            null
         else
             ClaimPath(tailElements)
     }
