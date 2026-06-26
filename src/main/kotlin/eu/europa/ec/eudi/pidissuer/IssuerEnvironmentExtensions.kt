@@ -22,6 +22,7 @@ import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.*
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.IssueMdoc
@@ -31,6 +32,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.MobileDrivingLice
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.RandomMobileDrivingLicence
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.SdJwtVcSerialization
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateAttestationProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateJwtProofWithKeyAttestation
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.VerifyKeyAttestation
@@ -55,6 +57,7 @@ import org.springframework.web.util.UriComponentsBuilder
 import java.net.URL
 import java.security.KeyStore
 import java.security.cert.X509Certificate
+import java.util.UUID
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
@@ -146,6 +149,82 @@ internal fun credentialReusePolicy(
 
         else -> {
             CredentialReusePolicy.None
+        }
+    }
+}
+
+internal fun Environment.credentialRequestEncryption(issuerKeystore: () -> KeyStore): CredentialRequestEncryption {
+    val isSupported = getProperty<Boolean>("issuer.credentialRequestEncryption.supported") ?: false
+    return if (!isSupported) {
+        CredentialRequestEncryption.NotSupported
+    } else {
+        val key =
+            when (getProperty<KeyOption>("issuer.credentialRequestEncryption.jwks")) {
+                null, KeyOption.GenerateRandom -> {
+                    extensionLogger.info("Generating random encryption key for Credential Request Encryption")
+                    ECKeyGenerator(Curve.P_256)
+                        .keyID(UUID.randomUUID().toString())
+                        .keyUse(KeyUse.ENCRYPTION)
+                        .algorithm(JWEAlgorithm.ECDH_ES)
+                        .generate()
+                }
+
+                KeyOption.LoadFromKeystore -> {
+                    extensionLogger.info("Loading encryption key for Credential Request Encryption from keystore")
+                    val keyAlgorithm =
+                        getProperty<String>("issuer.credentialRequestEncryption.jwks.algorithm")?.let {
+                            JWEAlgorithm.parse(it)
+                        }
+                            ?: error("Missing or invalid 'issuer.credentialRequestEncryption.jwks.algorithm' property")
+
+                    when (
+                        val loadedJwk =
+                            issuerKeystore().loadJwk(this, "issuer.credentialRequestEncryption.jwks")
+                    ) {
+                        is ECKey -> {
+                            require(keyAlgorithm in loadedJwk.supportedJWEAlgorithms) {
+                                "${keyAlgorithm.name} cannot be used with an ECKey"
+                            }
+                            ECKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
+                        }
+
+                        is RSAKey -> {
+                            require(keyAlgorithm in loadedJwk.supportedJWEAlgorithms) {
+                                "${keyAlgorithm.name} cannot be used with an RSAKey"
+                            }
+                            RSAKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
+                        }
+
+                        else -> {
+                            error("unsupported key type '${loadedJwk.javaClass}'")
+                        }
+                    }
+                }
+            }
+
+        val encryptionMethods =
+            readNonEmptySet(
+                "issuer.credentialRequestEncryption.encryptionMethods",
+                EncryptionMethod::parse,
+            )
+        require(key.supportedEncryptionMethods.containsAll(encryptionMethods)) {
+            "Encryption methods: ${encryptionMethods.joinToString { it.name }} cannot be used with the configured encryption key"
+        }
+
+        val parameters =
+            CredentialRequestEncryptionSupportedParameters(
+                encryptionKeys = JWKSet(key),
+                methodsSupported = encryptionMethods,
+                zipAlgorithmsSupported =
+                    readNullableNonEmptySet(
+                        "issuer.credentialRequestEncryption.zipAlgorithmsSupported",
+                    ) { algorithm -> algorithm.takeIf { it.isNotBlank() }?.let { CompressionAlgorithm(it) } },
+            )
+        val isRequired = getProperty<Boolean>("issuer.credentialRequestEncryption.required") ?: false
+        if (!isRequired) {
+            CredentialRequestEncryption.Optional(parameters)
+        } else {
+            CredentialRequestEncryption.Required(parameters)
         }
     }
 }

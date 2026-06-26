@@ -19,11 +19,10 @@ import arrow.core.nonEmptySetOf
 import arrow.core.recover
 import arrow.core.some
 import arrow.core.toNonEmptyListOrNull
-import com.nimbusds.jose.CompressionAlgorithm
-import com.nimbusds.jose.EncryptionMethod
-import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.jwk.*
+import com.nimbusds.jose.jwk.Curve
+import com.nimbusds.jose.jwk.ECKey
+import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPProtectedResourceRequestVerifier
@@ -69,6 +68,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.BeanRegistrarDsl
 import org.springframework.boot.http.codec.CodecCustomizer
 import org.springframework.boot.security.oauth2.server.resource.autoconfigure.OAuth2ResourceServerProperties
+import org.springframework.core.env.Environment
 import org.springframework.core.env.getProperty
 import org.springframework.core.io.DefaultResourceLoader
 import org.springframework.core.io.FileSystemResource
@@ -170,82 +170,6 @@ fun beans(
         return IssuerSigningKey(signingKey)
     }
 
-    fun credentialRequestEncryption(): CredentialRequestEncryption {
-        val isSupported = env.getProperty<Boolean>("issuer.credentialRequestEncryption.supported") ?: false
-        return if (!isSupported) {
-            CredentialRequestEncryption.NotSupported
-        } else {
-            val key =
-                when (env.getProperty<KeyOption>("issuer.credentialRequestEncryption.jwks")) {
-                    null, KeyOption.GenerateRandom -> {
-                        log.info("Generating random encryption key for Credential Request Encryption")
-                        ECKeyGenerator(Curve.P_256)
-                            .keyID(UUID.randomUUID().toString())
-                            .keyUse(KeyUse.ENCRYPTION)
-                            .algorithm(JWEAlgorithm.ECDH_ES)
-                            .generate()
-                    }
-
-                    KeyOption.LoadFromKeystore -> {
-                        log.info("Loading encryption key for Credential Request Encryption from keystore")
-                        val keyAlgorithm =
-                            env.getProperty<String>("issuer.credentialRequestEncryption.jwks.algorithm")?.let {
-                                JWEAlgorithm.parse(it)
-                            }
-                                ?: error("Missing or invalid 'issuer.credentialRequestEncryption.jwks.algorithm' property")
-
-                        when (
-                            val loadedJwk =
-                                issuerKeystore.loadJwk(env, "issuer.credentialRequestEncryption.jwks")
-                        ) {
-                            is ECKey -> {
-                                require(keyAlgorithm in loadedJwk.supportedJWEAlgorithms) {
-                                    "${keyAlgorithm.name} cannot be used with an ECKey"
-                                }
-                                ECKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
-                            }
-
-                            is RSAKey -> {
-                                require(keyAlgorithm in loadedJwk.supportedJWEAlgorithms) {
-                                    "${keyAlgorithm.name} cannot be used with an RSAKey"
-                                }
-                                RSAKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
-                            }
-
-                            else -> {
-                                error("unsupported key type '${loadedJwk.javaClass}'")
-                            }
-                        }
-                    }
-                }
-
-            val encryptionMethods =
-                env.readNonEmptySet(
-                    "issuer.credentialRequestEncryption.encryptionMethods",
-                    EncryptionMethod::parse,
-                )
-            require(key.supportedEncryptionMethods.containsAll(encryptionMethods)) {
-                "Encryption methods: ${encryptionMethods.joinToString { it.name }} cannot be used with the configured encryption key"
-            }
-
-            val parameters =
-                CredentialRequestEncryptionSupportedParameters(
-                    encryptionKeys = JWKSet(key),
-                    methodsSupported = encryptionMethods,
-                    zipAlgorithmsSupported =
-                        env.readNullableNonEmptySet(
-                            "issuer.credentialRequestEncryption.zipAlgorithmsSupported",
-                        ) { algorithm -> algorithm.takeIf { it.isNotBlank() }?.let { CompressionAlgorithm(it) } },
-                )
-            val isRequired = env.getProperty<Boolean>("issuer.credentialRequestEncryption.required") ?: false
-            if (!isRequired) {
-                CredentialRequestEncryption.Optional(parameters)
-            } else {
-                CredentialRequestEncryption.Required(parameters)
-            }
-        }
-    }
-
     fun accessCertificate(): AccessCertificate {
         val key =
             when (env.getProperty<KeyOption>("issuer.access-certificate")) {
@@ -269,24 +193,7 @@ fun beans(
     //
     // Nonce encryption key
     //
-    val nonceEncryptionKey =
-        run {
-            val encryptionKey: ECKey =
-                when (env.getProperty<KeyOption>("issuer.nonce.encryption-key")) {
-                    null, KeyOption.GenerateRandom -> {
-                        log.info("Generating random encryption key for Nonce")
-                        ECKeyGenerator(Curve.P_256).keyUse(KeyUse.ENCRYPTION).generate()
-                    }
-
-                    KeyOption.LoadFromKeystore -> {
-                        log.info("Loading Nonce encryption key from keystore")
-                        val nonceEncryptionKey = issuerKeystore.loadJwk(env, "issuer.nonce.encryption-key")
-                        require(nonceEncryptionKey is ECKey) { "Only ECKey are supported for encryption" }
-                        nonceEncryptionKey
-                    }
-                }
-            NonceEncryptionKey(encryptionKey)
-        }
+    val nonceEncryptionKey = loadNonceEncryptionKey(env) { issuerKeystore }
 
     //
     // Signed metadata signing key
@@ -490,21 +397,10 @@ fun beans(
             notificationEndpoint = issuerPublicUrl.appendPath(WalletApi.NOTIFICATION_ENDPOINT),
             nonceEndpoint = issuerPublicUrl.appendPath(WalletApi.NONCE_ENDPOINT),
             authorizationServers = listOf(env.readRequiredUrl("issuer.authorizationServer.publicUrl")),
-            credentialRequestEncryption = credentialRequestEncryption(),
+            credentialRequestEncryption = env.credentialRequestEncryption { issuerKeystore },
             credentialResponseEncryption = env.credentialResponseEncryption(),
             attestationIssuers = attestationIssuers,
-            batchCredentialIssuance =
-                run {
-                    val enabled =
-                        env.getProperty<Boolean>("issuer.credentialEndpoint.batchIssuance.enabled") ?: true
-                    if (enabled) {
-                        val batchSize =
-                            env.getProperty<Int>("issuer.credentialEndpoint.batchIssuance.batchSize") ?: 10
-                        BatchCredentialIssuance.Supported(batchSize)
-                    } else {
-                        BatchCredentialIssuance.NotSupported
-                    }
-                },
+            batchCredentialIssuance = env.batchCredentialIssuance(),
             display =
                 bean<IssuerMetadataProperties>()
                     .display
@@ -576,14 +472,6 @@ fun beans(
     // Security
     //
     registerBean {
-        /*
-         * This is a Spring naming convention
-         * A prefix of SCOPE_xyz will grant a SimpleAuthority(xyz)
-         * if there is a scope xyz
-         *
-         * Note that on the OAUTH2 server we set xyz as the scope
-         * and not SCOPE_xyz
-         */
         fun Scope.springConvention() = "SCOPE_$value"
         val metaData = bean<CredentialIssuerMetaData>()
         val scopes =
@@ -619,23 +507,7 @@ fun beans(
                 disable()
             }
 
-            val introspectionProperties = bean<OAuth2ResourceServerProperties>()
-            val introspectionEndpoint =
-                checkNotNull(introspectionProperties.opaquetoken.introspectionUri) {
-                    "missing spring.security.oauth2.resourceserver.opaquetoken.introspection-uri configuration property"
-                }
-            val introspector =
-                SpringReactiveOpaqueTokenIntrospector(
-                    introspectionEndpoint,
-                    webClient
-                        .mutate()
-                        .defaultHeaders {
-                            it.setBasicAuth(
-                                introspectionProperties.opaquetoken.clientId!!,
-                                introspectionProperties.opaquetoken.clientSecret!!,
-                            )
-                        }.build(),
-                )
+            val introspector = createTokenIntrospector(bean<OAuth2ResourceServerProperties>(), webClient)
 
             log.info("Enabling DPoP AccessToken support")
 
@@ -650,27 +522,7 @@ fun beans(
             val entryPoint = DPoPTokenServerAuthenticationEntryPoint(dPoPConfigurationProperties.realm, dpopNonce, bean())
             val tokenConverter = ServerDPoPAuthenticationTokenAuthenticationConverter()
 
-            val dpopFilter =
-                run {
-                    val dPoPVerifier =
-                        DPoPProtectedResourceRequestVerifier(
-                            dPoPConfigurationProperties.algorithms,
-                            15.seconds.inWholeSeconds,
-                            30.seconds.inWholeSeconds,
-                            InMemoryDPoPSingleUseChecker(
-                                60.seconds.inWholeSeconds,
-                                10.minutes.inWholeSeconds,
-                            ),
-                        )
-
-                    val authenticationManager =
-                        DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier, dpopNonce, bean())
-
-                    AuthenticationWebFilter(authenticationManager).apply {
-                        setServerAuthenticationConverter(tokenConverter)
-                        setAuthenticationFailureHandler(ServerAuthenticationEntryPointFailureHandler(entryPoint))
-                    }
-                }
+            val dpopFilter = createDpopFilter(dPoPConfigurationProperties, introspector, dpopNonce, tokenConverter, entryPoint, clock)
             http.addFilterAfter(dpopFilter, SecurityWebFiltersOrder.AUTHENTICATION)
 
             if (dpopNonce is DPoPNoncePolicy.Enforcing) {
@@ -733,5 +585,85 @@ fun beans(
             val maxInMemorySize = DataSize.parse(env.getProperty("spring.webflux.codecs.max-in-memory-size", "1MB"))
             it.defaultCodecs().maxInMemorySize(maxInMemorySize.toBytes().toInt())
         }
+    }
+}
+
+private fun loadNonceEncryptionKey(
+    env: Environment,
+    issuerKeystore: () -> KeyStore,
+): NonceEncryptionKey {
+    val encryptionKey: ECKey =
+        when (env.getProperty<KeyOption>("issuer.nonce.encryption-key")) {
+            null, KeyOption.GenerateRandom -> {
+                log.info("Generating random encryption key for Nonce")
+                ECKeyGenerator(Curve.P_256).keyUse(KeyUse.ENCRYPTION).generate()
+            }
+
+            KeyOption.LoadFromKeystore -> {
+                log.info("Loading Nonce encryption key from keystore")
+                val nonceEncryptionKey = issuerKeystore().loadJwk(env, "issuer.nonce.encryption-key")
+                require(nonceEncryptionKey is ECKey) { "Only ECKey are supported for encryption" }
+                nonceEncryptionKey
+            }
+        }
+    return NonceEncryptionKey(encryptionKey)
+}
+
+private fun createTokenIntrospector(
+    introspectionProperties: OAuth2ResourceServerProperties,
+    webClient: org.springframework.web.reactive.function.client.WebClient,
+): SpringReactiveOpaqueTokenIntrospector {
+    val introspectionEndpoint =
+        checkNotNull(introspectionProperties.opaquetoken.introspectionUri) {
+            "missing spring.security.oauth2.resourceserver.opaquetoken.introspection-uri configuration property"
+        }
+    return SpringReactiveOpaqueTokenIntrospector(
+        introspectionEndpoint,
+        webClient
+            .mutate()
+            .defaultHeaders {
+                it.setBasicAuth(
+                    introspectionProperties.opaquetoken.clientId!!,
+                    introspectionProperties.opaquetoken.clientSecret!!,
+                )
+            }.build(),
+    )
+}
+
+private fun createDpopFilter(
+    dPoPConfigurationProperties: DPoPConfigurationProperties,
+    introspector: SpringReactiveOpaqueTokenIntrospector,
+    dpopNonce: DPoPNoncePolicy,
+    tokenConverter: ServerDPoPAuthenticationTokenAuthenticationConverter,
+    entryPoint: DPoPTokenServerAuthenticationEntryPoint,
+    clock: Clock,
+): AuthenticationWebFilter {
+    val dPoPVerifier =
+        DPoPProtectedResourceRequestVerifier(
+            dPoPConfigurationProperties.algorithms,
+            15.seconds.inWholeSeconds,
+            30.seconds.inWholeSeconds,
+            InMemoryDPoPSingleUseChecker(
+                60.seconds.inWholeSeconds,
+                10.minutes.inWholeSeconds,
+            ),
+        )
+
+    val authenticationManager =
+        DPoPTokenReactiveAuthenticationManager(introspector, dPoPVerifier, dpopNonce, clock)
+
+    return AuthenticationWebFilter(authenticationManager).apply {
+        setServerAuthenticationConverter(tokenConverter)
+        setAuthenticationFailureHandler(ServerAuthenticationEntryPointFailureHandler(entryPoint))
+    }
+}
+
+private fun Environment.batchCredentialIssuance(): BatchCredentialIssuance {
+    val enabled = getProperty<Boolean>("issuer.credentialEndpoint.batchIssuance.enabled") ?: true
+    return if (enabled) {
+        val batchSize = getProperty<Int>("issuer.credentialEndpoint.batchIssuance.batchSize") ?: 10
+        BatchCredentialIssuance.Supported(batchSize)
+    } else {
+        BatchCredentialIssuance.NotSupported
     }
 }
