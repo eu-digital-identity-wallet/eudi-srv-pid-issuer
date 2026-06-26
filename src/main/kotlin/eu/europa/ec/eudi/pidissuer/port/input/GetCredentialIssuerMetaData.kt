@@ -28,11 +28,11 @@ import kotlinx.serialization.json.*
 
 class GetCredentialIssuerMetaData constructor(
     private val credentialIssuerMetaData: CredentialIssuerMetaData,
-    private val generateSignedMetadata: GenerateSignedMetadata?,
+    private val generateSignedMetadata: GenerateSignedMetadata,
 ) {
     fun unsigned() = credentialIssuerMetaData.toTransferObject()
 
-    suspend fun signed(): String? = generateSignedMetadata?.invoke(Json.encodeToJsonElement(unsigned()).jsonObject)
+    suspend fun signed(): String = generateSignedMetadata.invoke(Json.encodeToJsonElement(unsigned()).jsonObject)
 }
 
 @Serializable

@@ -77,15 +77,12 @@ class MetaDataApi(
         }
 
     private suspend fun handleGetSignedCredentialIssuerMetaData(): ServerResponse =
-        getCredentialIssuerMetaData
-            .signed()
-            ?.let { metaData ->
-                ServerResponse
-                    .ok()
-                    .contentType(MEDIA_TYPE_APPLICATION_JWT)
-                    .bodyValueAndAwait(metaData)
-            }
-            ?: handleGetUnsignedCredentialIssuerMetaData()
+        getCredentialIssuerMetaData.signed().let { metaData ->
+            ServerResponse
+                .ok()
+                .contentType(MEDIA_TYPE_APPLICATION_JWT)
+                .bodyValueAndAwait(metaData)
+        }
 
     private suspend fun handleGetJwtVcIssuerMetadata(): ServerResponse =
         ServerResponse
