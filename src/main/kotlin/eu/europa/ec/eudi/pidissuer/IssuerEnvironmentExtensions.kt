@@ -15,28 +15,21 @@
  */
 package eu.europa.ec.eudi.pidissuer
 
-import arrow.core.*
+import arrow.core.NonEmptySet
+import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.util.Base64
-import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.IssueMdoc
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.learningcredential.IssueLearningCredential
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.IssueMobileDrivingLicence
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.MobileDrivingLicence
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.RandomMobileDrivingLicence
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.AdministrationClient
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.Credentials
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.GetPidDataFromKeyCloak
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.IsoCountry
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.IssueMsoMdocPid
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.IssueSdJwtVcPid
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidAttributes
-import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.Realm
+import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.SdJwtVcSerialization
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateAttestationProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateJwtProofWithKeyAttestation
@@ -51,18 +44,14 @@ import eu.europa.ec.eudi.pidissuer.port.out.proof.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
 import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
-import io.ktor.http.Url
-import kotlinx.coroutines.reactor.awaitSingle
+import io.ktor.http.*
 import kotlinx.datetime.TimeZone
 import org.slf4j.LoggerFactory
 import org.springframework.core.env.Environment
 import org.springframework.core.env.getProperty
 import org.springframework.core.env.getRequiredProperty
-import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.client.WebClient
-import org.springframework.web.reactive.function.client.bodyToMono
 import org.springframework.web.util.UriComponentsBuilder
-import java.net.URI
 import java.net.URL
 import java.security.KeyStore
 import java.security.cert.X509Certificate
@@ -70,7 +59,6 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 
 private val extensionLogger = LoggerFactory.getLogger("eu.europa.ec.eudi.pidissuer.IssuerEnvironmentExtensions")
 
@@ -301,23 +289,6 @@ internal fun KeyStore.loadJwk(
         else -> jwk
     }
 }
-
-internal suspend fun WebClient.authorizationServerSupportedDPoPJWSAlgorithms(authorizationServerMetadata: URI): NonEmptySet<JWSAlgorithm>? =
-    Either
-        .catch {
-            val metadata =
-                get()
-                    .uri(authorizationServerMetadata)
-                    .accept(MediaType.APPLICATION_JSON)
-                    .retrieve()
-                    .bodyToMono<String>()
-                    .timeout(5.seconds.toJavaDuration())
-                    .awaitSingle()
-            OIDCProviderMetadata.parse(metadata).dPoPJWSAlgs?.toNonEmptySetOrNull()
-        }.getOrElse {
-            extensionLogger.warn("Unable to fetch Authorization Server metadata. DPoP support will be disabled.", it)
-            null
-        }
 
 internal fun Environment.getPropertyOrEnvVariable(property: String): String? =
     getProperty(property) ?: getProperty(toEnvironmentVariable(property))

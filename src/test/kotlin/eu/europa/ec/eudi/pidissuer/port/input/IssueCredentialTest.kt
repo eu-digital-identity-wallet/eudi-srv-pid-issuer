@@ -22,7 +22,7 @@ import arrow.core.raise.Raise
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
-import com.nimbusds.oauth2.sdk.token.BearerAccessToken
+import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidMsoMdocScope
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidMsoMdocV1CredentialConfigurationId
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.pidMsoMdocV1
@@ -96,7 +96,7 @@ class IssueCredentialTest {
     ): AuthorizationContext =
         AuthorizationContext(
             username = "test-user",
-            accessToken = BearerAccessToken.parse("Bearer test-token"),
+            accessToken = DPoPAccessToken("test-token"),
             scopes = scopes,
             clientStatus =
                 ClientStatus(

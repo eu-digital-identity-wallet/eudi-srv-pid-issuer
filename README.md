@@ -18,35 +18,34 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 
 An implementation of a credential issuing service, according to [OpenId4VCI - v1.0](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html).
 
-The service provides generic support for `mso_mdoc` and `SD-JWT-VC` formats using PID, mDL, European Health Insurance Card, and Learning Credential
+The service provides generic support for `mso_mdoc` and `SD-JWT-VC` formats using PID, mDL, and Learning Credential
 as an example and requires the use of a suitable OAuth 2.0 server.
 
 | Credential/Attestation         | Format    |
 |--------------------------------|-----------|
 | PID                            | mso_mdoc  |
 | PID                            | SD-JWT VC |
-| mDL                            | mso_mdoc  | 
-| European Health Insurance Card | SD-JWT VC |
+| mDL                            | mso_mdoc  |
 | Learning Credential            | SD-JWT VC |
 
 ### OpenId4VCI coverage
 
-| Feature                                                   | Coverage                                                                 |
-|-----------------------------------------------------------|--------------------------------------------------------------------------|
-| Authorization Code flow                                   | ✅ Using a suitable OAuth 2.0 server                                      |
-| Pre-authorized code flow                                  | ❌                                                                        |
-| mso_mdoc format                                           | ✅                                                                        |
-| SD-JWT-VC format                                          | ✅ Except revocation list & meta                                          |
-| W3C VC DM                                                 | ❌                                                                        |
-| Credential Offer                                          | ✅ `authorization_code` , ❌ `pre-authorized_code`                         |
-| [Credential Endpoint](#credential-endpoint)               | Yes, including proofs, encryption, repeatable invocations                |
-| [Credential Issuer MetaData](#credential-issuer-metadata) | Yes, using `scopes`, and `signed_metadata`                               | 
-| Deferred Endpoint                                         | ✅                                                                        |
-| Nonce Endpoint                                            | ✅                                                                        |
-| Notification Endpoint                                     | ✅                                                                        |
-| Proof                                                     | ✅ JWT (`key-attestation` required, as per TS3 (see Proofs section below) |
-|                                                           | ✅ attestation                                                            |
-|                                                           | ❌ Data Integrity Proof                                                   |
+| Feature                                                   | Coverage                                                                            |
+|-----------------------------------------------------------|-------------------------------------------------------------------------------------|
+| Authorization Code flow                                   | ✅ Using a suitable OAuth 2.0 server that supports DPoP using ES256, ES384, or ES512 |
+| Pre-authorized code flow                                  | ❌                                                                                   |
+| mso_mdoc format                                           | ✅                                                                                   |
+| SD-JWT-VC format                                          | ✅ Except revocation list & meta                                                     |
+| W3C VC DM                                                 | ❌                                                                                   |
+| Credential Offer                                          | ✅ `authorization_code` , ❌ `pre-authorized_code`                                    |
+| [Credential Endpoint](#credential-endpoint)               | Yes, including proofs, encryption, repeatable invocations                           |
+| [Credential Issuer MetaData](#credential-issuer-metadata) | Yes, using `scopes`, and `signed_metadata`                                          | 
+| Deferred Endpoint                                         | ✅                                                                                   |
+| Nonce Endpoint                                            | ✅                                                                                   |
+| Notification Endpoint                                     | ✅                                                                                   |
+| Proof                                                     | ✅ JWT (`key-attestation` required, as per TS3 (see Proofs section below)            |
+|                                                           | ✅ attestation                                                                       |
+|                                                           | ❌ Data Integrity Proof                                                              |
 
 #### Proofs
 
@@ -513,15 +512,6 @@ Variable: `ISSUER_ACCESS_CERTIFICATE_PASSWORD`
 Description: Password of the key-pair for signing metadata.       
 Default value: N/A
 
-Variable: `ISSUER_ACCESS_TOKEN_TYPE`  
-Description: Access tokens accepted by the Credential Issuer.  
-Possible values:
-- `Bearer` - Enables support for Bearer access tokens.
-- `DPoP` - Enables support for DPoP access tokens. The configured Authorization Server must support DPoP access tokens.
-- `BearerAndDPoPIfAvailable` - Enables support for Bearer access tokens, and if the configured Authorization Server supports DPoP access tokens, enables support for DPoP access tokens as well. 
-
-Default value: `DPoP` 
-
 Variable: `ISSUER_KEYCLOAK_SERVER_URL`  
 Description: URL of the Keycloak authorization server  
 Default value: N/A  
@@ -766,9 +756,8 @@ pid-issuer supports [RFC9728: Protected Resource Metadata](https://www.rfc-edito
 * `resource`: The public URL of pid-issuer
 * `authorization_servers`: URLs of the Authorization Servers used by pid-issuer
 * `scopes_supported`: OAuth 2.0 client scopes supported by pid-issuer
-* `bearer_methods_supported`: Methods supported by pid-issuer for sending an OAuth 2.0 Bearer Access Token
-* `dpop_signing_alg_values_supported`: DPoP Access Token JWS Algorithms supported by pid-issuer
-* `dpop_bound_access_tokens_required`: Whether pid-issuer requires DPoP Access Tokens
+* `dpop_signing_alg_values_supported`: DPoP Access Token JWS Algorithms supported by pid-issuer. Currently set to `ES256`, `ES384`, and `ES512`.
+* `dpop_bound_access_tokens_required`: Whether pid-issuer requires DPoP Access Tokens. Current set to `true`.
 
 pid-issuer exposes Protected Resource Metadata at `/.well-known/oauth-protected-resource`. Per Section 3 of [RFC9728: Protected Resource Metadata](https://www.rfc-editor.org/rfc/rfc9728.html):
 

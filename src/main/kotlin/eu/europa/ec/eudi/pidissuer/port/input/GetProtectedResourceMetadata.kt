@@ -18,7 +18,6 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.NonEmptyList
-import arrow.core.nonEmptyListOf
 import arrow.core.serialization.NonEmptyListSerializer
 import arrow.core.toNonEmptyListOrNull
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPConfigurationProperties
@@ -29,51 +28,30 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 
-@Suppress("unused")
-@Serializable
-enum class BearerMethodTO {
-    @SerialName(RFC9728.BEARER_METHOD_HEADER)
-    HEADER,
-
-    @SerialName(RFC9728.BEARER_METHOD_BODY)
-    BODY,
-
-    @SerialName(RFC9728.BEARER_METHOD_QUERY)
-    QUERY,
-}
-
 @Serializable
 data class ProtectedResourceMetadataTO(
     @Required @SerialName(RFC9728.RESOURCE) val resource: String,
     @SerialName(RFC9728.AUTHORIZATION_SERVERS) val authorizationServers: NonEmptyList<String>? = null,
     @SerialName(RFC9728.SCOPES_SUPPORTED) val scopesSupported: NonEmptyList<String>? = null,
-    @SerialName(RFC9728.BEARER_METHODS_SUPPORTED) val bearerMethodsSupported: NonEmptyList<BearerMethodTO>? = null,
     @SerialName(RFC9728.DPOP_SIGNING_ALGORITHMS_SUPPORTED) val dpopSigningAlgorithmsSupported: NonEmptyList<String>? = null,
     @SerialName(RFC9728.DPOP_BOUND_ACCESS_TOKEN_REQUIRED) val dpopBoundAccessTokenRequired: Boolean? = null,
 )
 
 class GetProtectedResourceMetadata(
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
-    private val bearerTokenAuthenticationEnabled: Boolean,
-    private val dPoPConfigurationProperties: DPoPConfigurationProperties?,
+    private val dPoPConfigurationProperties: DPoPConfigurationProperties,
 ) {
-    fun unsigned(): ProtectedResourceMetadataTO {
-        val bearerMethodsSupported = if (bearerTokenAuthenticationEnabled) nonEmptyListOf(BearerMethodTO.HEADER) else null
-        val dPoPSigningAlgorithmsSupported = dPoPConfigurationProperties?.algorithms?.map { it.name }
-        val dPoPBoundAccessTokenRequired = dPoPConfigurationProperties?.let { !bearerTokenAuthenticationEnabled }
-
-        return ProtectedResourceMetadataTO(
-            resource = credentialIssuerMetadata.id.externalForm,
-            authorizationServers = credentialIssuerMetadata.authorizationServers.map { it.externalForm }.toNonEmptyListOrNull(),
-            scopesSupported =
-                credentialIssuerMetadata.attestationIssuers
-                    .map {
-                        it.configuration.scope.value
-                    }.distinct()
-                    .toNonEmptyListOrNull(),
-            bearerMethodsSupported = bearerMethodsSupported,
-            dpopSigningAlgorithmsSupported = dPoPSigningAlgorithmsSupported,
-            dpopBoundAccessTokenRequired = dPoPBoundAccessTokenRequired,
-        )
-    }
+    fun unsigned(): ProtectedResourceMetadataTO =
+        with(credentialIssuerMetadata) {
+            val authorizationServers = authorizationServers.map { it.externalForm }.toNonEmptyListOrNull()
+            val scopes = attestationIssuers.map { it.configuration.scope.value }.distinct().toNonEmptyListOrNull()
+            val dpopAlgs = dPoPConfigurationProperties.algorithms.map { it.name }
+            ProtectedResourceMetadataTO(
+                resource = id.externalForm,
+                authorizationServers = authorizationServers,
+                scopesSupported = scopes,
+                dpopSigningAlgorithmsSupported = dpopAlgs,
+                dpopBoundAccessTokenRequired = true,
+            )
+        }
 }

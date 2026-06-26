@@ -18,7 +18,7 @@ package eu.europa.ec.eudi.pidissuer.port.input
 import arrow.core.NonEmptySet
 import arrow.core.raise.Raise
 import arrow.core.raise.context.ensure
-import com.nimbusds.oauth2.sdk.token.AccessToken
+import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import eu.europa.ec.eudi.pidissuer.domain.ClientStatus
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.Scope
@@ -30,7 +30,7 @@ typealias ClientId = String
 
 data class AuthorizationContext(
     val username: Username,
-    val accessToken: AccessToken,
+    val accessToken: DPoPAccessToken,
     val scopes: NonEmptySet<Scope>,
     val clientId: ClientId? = null,
     val clientStatus: ClientStatus,

@@ -717,19 +717,20 @@
       "protocol": "openid-connect",
       "attributes": {
         "oauth2.device.authorization.grant.enabled": "false",
-        "access.token.signed.response.alg": "ES256",
         "backchannel.logout.revoke.offline.tokens": "false",
         "use.refresh.tokens": "true",
         "oidc.ciba.grant.enabled": "false",
-        "id.token.signed.response.alg": "ES256",
         "backchannel.logout.session.required": "true",
         "client_credentials.use_refresh_token": "false",
         "tls.client.certificate.bound.access.tokens": "false",
-        "require.pushed.authorization.requests": "true",
         "acr.loa.map": "{}",
         "display.on.consent.screen": "false",
+        "token.response.type.bearer.lower-case": "false",
         "pkce.code.challenge.method": "S256",
-        "token.response.type.bearer.lower-case": "false"
+        "require.pushed.authorization.requests": "true",
+        "dpop.bound.access.tokens": "true",
+        "access.token.signed.response.alg": "ES256",
+        "id.token.signed.response.alg": "ES256"
       },
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,
@@ -1044,9 +1045,11 @@
         "oauth2.device.authorization.grant.enabled": "false",
         "display.on.consent.screen": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
-        "require.pushed.authorization.requests": "true",
         "pkce.code.challenge.method": "S256",
-        "dpop.bound.access.tokens": "false"
+        "require.pushed.authorization.requests": "true",
+        "dpop.bound.access.tokens": "true",
+        "access.token.signed.response.alg": "ES256",
+        "id.token.signed.response.alg": "ES256"
       },
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,
@@ -1064,7 +1067,7 @@
     },
     {
       "clientId": "eudiw-abca",
-      "name": "Eudiw ABCA",
+      "name": "EUDI Wallet Attested",
       "rootUrl": "",
       "description": "",
       "adminUrl": "",
@@ -1100,13 +1103,15 @@
         "oauth2.device.authorization.grant.enabled": "false",
         "display.on.consent.screen": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
-        "require.pushed.authorization.requests": "true",
-        "pkce.code.challenge.method": "S256",
-        "dpop.bound.access.tokens": "true",
         "trustValidator.serviceUrl": "https://dev.trust-validator.eudiw.dev/trust",
         "clock.skew": "5",
         "clientAttestation.maxAge": "86400",
-        "clientAttestationPoP.maxAge": "15"
+        "clientAttestationPoP.maxAge": "15",
+        "pkce.code.challenge.method": "S256",
+        "require.pushed.authorization.requests": "true",
+        "dpop.bound.access.tokens": "true",
+        "access.token.signed.response.alg": "ES256",
+        "id.token.signed.response.alg": "ES256"
       },
       "authenticationFlowBindingOverrides": {
       },

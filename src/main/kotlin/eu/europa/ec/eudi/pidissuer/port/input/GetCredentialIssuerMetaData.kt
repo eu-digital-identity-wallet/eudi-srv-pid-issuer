@@ -26,7 +26,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 
-class GetCredentialIssuerMetaData(
+class GetCredentialIssuerMetaData constructor(
     private val credentialIssuerMetaData: CredentialIssuerMetaData,
     private val generateSignedMetadata: GenerateSignedMetadata?,
 ) {
