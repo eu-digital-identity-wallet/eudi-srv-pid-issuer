@@ -523,9 +523,7 @@ fun beans(
     // In Ports (use cases)
     //
     registerBean {
-        val enableSignedMetadata = env.getProperty<Boolean>("issuer.metadata.signed-metadata.enabled") ?: true
-        val generateSignedMetadata = if (enableSignedMetadata) bean<GenerateSignedMetadata>() else null
-        GetCredentialIssuerMetaData(bean(), generateSignedMetadata)
+        GetCredentialIssuerMetaData(bean(), bean())
     }
     registerBean {
         IssueCredential(
