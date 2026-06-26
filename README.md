@@ -491,10 +491,6 @@ Variable: `ISSUER_CREDENTIALOFFER_URI`
 Description: URI to use when generating Credential Offers.    
 Default value: `openid-credential-offer://`
 
-Variable: `ISSUER_METADATA_SIGNED_METADATA_ENABLED`  
-Description: Whether to enable support for signed metadata or not.  
-Default value: `true`  
-
 Variable: `ISSUER_SIGNED_METADATA_ISSUER`  
 Description: Value of the `iss` claim of the signed metadata. **Must be a valid Https URL**.  
 Default value: Value of `ISSUER_PUBLICURL`
