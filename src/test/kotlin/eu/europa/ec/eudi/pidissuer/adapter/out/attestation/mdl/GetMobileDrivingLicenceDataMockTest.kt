@@ -18,7 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl
 import arrow.core.getOrElse
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
-import com.nimbusds.oauth2.sdk.token.BearerAccessToken
+import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import eu.europa.ec.eudi.pidissuer.domain.ClientStatus
 import eu.europa.ec.eudi.pidissuer.domain.Scope
 import eu.europa.ec.eudi.pidissuer.domain.StatusClaim
@@ -54,7 +54,7 @@ internal class GetMobileDrivingLicenceDataMockTest {
             val authorizationContext =
                 AuthorizationContext(
                     "username",
-                    BearerAccessToken.parse("Bearer token"),
+                    DPoPAccessToken("token"),
                     nonEmptySetOf(Scope("test")),
                     clientStatus = clientStatus,
                 )

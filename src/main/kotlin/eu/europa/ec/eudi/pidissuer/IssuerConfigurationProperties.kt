@@ -21,12 +21,6 @@ import java.net.URI
 import java.net.URL
 import java.time.Duration as JavaDuration
 
-internal enum class AccessTokenType {
-    DPoP,
-    Bearer,
-    BearerAndDPoPIfAvailable,
-}
-
 data class KeycloakConfigurationProperties(
     val serverUrl: URL,
     val authenticationRealm: String,

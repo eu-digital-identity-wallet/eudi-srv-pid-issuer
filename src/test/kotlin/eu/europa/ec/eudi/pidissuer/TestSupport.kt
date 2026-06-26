@@ -37,7 +37,6 @@ import kotlin.time.Clock
     classes = [PidIssuerApplication::class],
     webEnvironment = SpringBootTest.WebEnvironment.MOCK,
     properties = [
-        "issuer.access-token.type=Bearer",
         "spring.r2dbc.url=r2dbc:h2:mem:///pid_issuer;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=FALSE",
         "spring.r2dbc.username=sa",
         "spring.r2dbc.password=",

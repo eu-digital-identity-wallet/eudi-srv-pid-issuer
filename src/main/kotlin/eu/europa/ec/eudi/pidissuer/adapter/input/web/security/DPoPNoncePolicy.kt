@@ -15,24 +15,10 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
-import arrow.core.NonEmptySet
-import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.pidissuer.port.out.nonce.GenerateNonce
 import eu.europa.ec.eudi.pidissuer.port.out.nonce.VerifyNonce
 import kotlin.time.Duration
 import kotlin.time.Instant
-
-/**
- * Properties for configuring DPoP.
- */
-data class DPoPConfigurationProperties(
-    val algorithms: NonEmptySet<JWSAlgorithm>,
-    val realm: String?,
-) {
-    init {
-        require(JWSAlgorithm.Family.SIGNATURE.containsAll(algorithms)) { "'algorithms' contains invalid values" }
-    }
-}
 
 /**
  * Policy for DPoP Nonce.
