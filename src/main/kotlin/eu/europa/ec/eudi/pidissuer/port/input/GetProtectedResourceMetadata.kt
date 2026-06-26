@@ -28,25 +28,11 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 
-@Suppress("unused")
-@Serializable
-enum class BearerMethodTO {
-    @SerialName(RFC9728.BEARER_METHOD_HEADER)
-    HEADER,
-
-    @SerialName(RFC9728.BEARER_METHOD_BODY)
-    BODY,
-
-    @SerialName(RFC9728.BEARER_METHOD_QUERY)
-    QUERY,
-}
-
 @Serializable
 data class ProtectedResourceMetadataTO(
     @Required @SerialName(RFC9728.RESOURCE) val resource: String,
     @SerialName(RFC9728.AUTHORIZATION_SERVERS) val authorizationServers: NonEmptyList<String>? = null,
     @SerialName(RFC9728.SCOPES_SUPPORTED) val scopesSupported: NonEmptyList<String>? = null,
-    @SerialName(RFC9728.BEARER_METHODS_SUPPORTED) val bearerMethodsSupported: NonEmptyList<BearerMethodTO>? = null,
     @SerialName(RFC9728.DPOP_SIGNING_ALGORITHMS_SUPPORTED) val dpopSigningAlgorithmsSupported: NonEmptyList<String>? = null,
     @SerialName(RFC9728.DPOP_BOUND_ACCESS_TOKEN_REQUIRED) val dpopBoundAccessTokenRequired: Boolean? = null,
 )
