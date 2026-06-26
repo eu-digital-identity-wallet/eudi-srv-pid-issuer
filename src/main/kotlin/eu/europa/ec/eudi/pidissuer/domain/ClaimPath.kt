@@ -44,7 +44,7 @@ import kotlin.contracts.contract
 @JvmInline
 value class ClaimPath(
     val value: List<ClaimPathElement>,
-) : List<ClaimPathElement> by value {
+) {
     init {
         require(value.isNotEmpty())
     }
@@ -92,7 +92,7 @@ value class ClaimPath(
     fun tail(): ClaimPath? {
         val tailElements = value.drop(1)
         return if (tailElements.isEmpty())
-            return null
+            null
         else
             ClaimPath(tailElements)
     }
