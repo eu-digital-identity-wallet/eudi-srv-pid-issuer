@@ -68,13 +68,13 @@ fun beans(
     val credentialsOfferUri = env.getRequiredProperty("issuer.credentialOffer.uri")
     val issuerKeystore: KeyStore by lazy { keystore(env) }
     val getIssuerSigningKey = loadOrGenerateIssuerSigningKey(clock, env, issuerPublicUrl) { issuerKeystore }
-    val proxy = env.httpProxy()
 
     registerBean { env.dPoPConfigurationProperties() }
     registerBean(lazyInit = true) { loadOrGenerateAccessCertificate(env) { issuerKeystore } }
     registerBean { clock }
     registerBean { timeZone }
-    registerBean { WebClients(proxy, secure = "insecure" !in env.activeProfiles) }
+    registerBean { env.httpProxy() }
+    registerBean { WebClients(bean(), secure = "insecure" !in env.activeProfiles) }
     registerBean { trustValidatorService(env, bean()) }
     registerBean { DefaultGenerateQrCode() }
     registerBean { HandleNotificationRequest(bean()) }
@@ -99,7 +99,7 @@ fun beans(
         )
     }
     registerBean<GetStatusListTokenStatus> {
-        val httpClient = KtorHttpClients(proxy, secure = "insecure" !in env.activeProfiles)
+        val httpClient = KtorHttpClients(bean(), secure = "insecure" !in env.activeProfiles)
         GetStatusListTokenWithStatium(
             httpClient,
             clock = clock,

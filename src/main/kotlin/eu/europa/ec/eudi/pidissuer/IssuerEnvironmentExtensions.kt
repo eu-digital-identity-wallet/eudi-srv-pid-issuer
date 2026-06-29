@@ -15,11 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer
 
-import arrow.core.NonEmptySet
-import arrow.core.nonEmptySetOf
-import arrow.core.recover
-import arrow.core.some
-import arrow.core.toNonEmptySetOrNull
+import arrow.core.*
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
@@ -38,7 +34,9 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.MobileDrivingLice
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.RandomMobileDrivingLicence
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.SdJwtVcSerialization
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.*
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.AccessCertificate
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.supportedEncryptionMethods
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.supportedJWEAlgorithms
 import eu.europa.ec.eudi.pidissuer.adapter.out.nonce.NonceEncryptionKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateAttestationProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateJwtProofWithKeyAttestation
@@ -46,6 +44,7 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.proof.VerifyKeyAttestation
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.usingTrustValidatorService
 import eu.europa.ec.eudi.pidissuer.adapter.out.webclient.HttpProxy
+import eu.europa.ec.eudi.pidissuer.adapter.out.webclient.HttpProxyOption
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.port.out.nonce.VerifyNonce
@@ -69,7 +68,7 @@ import java.net.URI
 import java.net.URL
 import java.security.KeyStore
 import java.security.cert.X509Certificate
-import java.util.UUID
+import java.util.*
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
@@ -611,13 +610,16 @@ internal fun validateProof(
     )
 }
 
-internal fun Environment.httpProxy(): HttpProxy? =
-    getProperty("issuer.http.proxy.url")?.let {
-        val url = Url(it)
-        val username = getProperty("issuer.http.proxy.username")
-        val password = getProperty("issuer.http.proxy.password")
-        HttpProxy(url, username, password)
-    }
+internal fun Environment.httpProxy(): HttpProxyOption {
+    val proxy =
+        getProperty("issuer.http.proxy.url")?.let {
+            val url = Url(it)
+            val username = getProperty("issuer.http.proxy.username")
+            val password = getProperty("issuer.http.proxy.password")
+            HttpProxy(url, username, password)
+        }
+    return proxy?.let { HttpProxyOption.Using(it) } ?: HttpProxyOption.None
+}
 
 internal fun Environment.batchCredentialIssuance(): BatchCredentialIssuance {
     val enabled = getProperty<Boolean>("issuer.credentialEndpoint.batchIssuance.enabled") ?: true
