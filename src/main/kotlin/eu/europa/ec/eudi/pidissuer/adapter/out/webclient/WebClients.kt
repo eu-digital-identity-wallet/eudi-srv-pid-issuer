@@ -31,9 +31,10 @@ import reactor.netty.transport.ProxyProvider
  */
 internal object WebClients {
     operator fun invoke(
-        proxy: HttpProxy?,
+        proxyOption: HttpProxyOption,
         secure: Boolean = true,
     ): WebClient {
+        val proxy = proxyOption.proxy()
         val httpClient =
             when (secure) {
                 true -> {
@@ -57,9 +58,9 @@ internal object WebClients {
             .build()
     }
 
-    fun default(proxy: HttpProxy?): WebClient = invoke(proxy, true)
+    fun default(proxyOption: HttpProxyOption): WebClient = invoke(proxyOption, true)
 
-    fun insecure(proxy: HttpProxy?): WebClient = invoke(proxy, false)
+    fun insecure(proxyOption: HttpProxyOption): WebClient = invoke(proxyOption, false)
 }
 
 private fun httpClient(proxy: HttpProxy? = null): HttpClient {

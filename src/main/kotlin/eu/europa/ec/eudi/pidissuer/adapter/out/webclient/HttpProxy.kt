@@ -15,10 +15,21 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.webclient
 
-import eu.europa.ec.eudi.pidissuer.log
-import io.ktor.client.engine.java.JavaHttpConfig
-import io.ktor.http.URLProtocol
-import io.ktor.http.Url
+import io.ktor.http.*
+
+sealed interface HttpProxyOption {
+    data object None : HttpProxyOption
+
+    data class Using(
+        val proxy: HttpProxy,
+    ) : HttpProxyOption
+
+    fun proxy(): HttpProxy? =
+        when (this) {
+            None -> null
+            is Using -> proxy
+        }
+}
 
 data class HttpProxy(
     val url: Url,
