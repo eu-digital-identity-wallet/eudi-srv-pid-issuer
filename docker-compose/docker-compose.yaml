@@ -6,7 +6,7 @@ networks:
 
 services:
   postgres:
-    image: postgres:16
+    image: postgres:18.4-alpine3.24
     container_name: postgres
     ports:
       - "5432:5432"
@@ -14,6 +14,8 @@ services:
       - POSTGRES_DB=pid_issuer
       - POSTGRES_USER=pid_issuer
       - POSTGRES_PASSWORD=pid_issuer
+    volumes:
+      - postgres:/var/lib/postgresql
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U pid_issuer -d pid_issuer" ]
       interval: 5s
@@ -161,3 +163,4 @@ services:
 volumes:
   status-lists:
   status-lists-backups:
+  postgres:
