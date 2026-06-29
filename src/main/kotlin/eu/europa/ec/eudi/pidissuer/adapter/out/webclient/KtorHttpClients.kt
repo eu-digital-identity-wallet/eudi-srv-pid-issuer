@@ -27,9 +27,10 @@ import io.ktor.client.engine.java.Java as JavaEngine
  */
 internal object KtorHttpClients {
     operator fun invoke(
-        proxy: HttpProxy? = null,
+        proxyOption: HttpProxyOption,
         secure: Boolean = true,
     ) = KtorHttpClient(JavaEngine) {
+        val proxy = proxyOption.proxy()
         engine {
             configureProxy(proxy)
             config { sslCtx(secure) }
@@ -39,12 +40,12 @@ internal object KtorHttpClients {
     /**
      * A [KtorHttpClient] with default settings.
      */
-    fun default(proxy: HttpProxy?): KtorHttpClient = invoke(proxy, true)
+    fun default(proxyOption: HttpProxyOption): KtorHttpClient = invoke(proxyOption, true)
 
     /**
      * A [KtorHttpClient] that trusts *all* certificates.
      */
-    fun insecure(proxy: HttpProxy?): KtorHttpClient = invoke(proxy, false)
+    fun insecure(proxyOption: HttpProxyOption): KtorHttpClient = invoke(proxyOption, false)
 }
 
 private fun HttpClient.Builder.sslCtx(secure: Boolean = true) {

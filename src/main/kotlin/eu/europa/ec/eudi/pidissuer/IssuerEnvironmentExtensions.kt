@@ -15,14 +15,17 @@
  */
 package eu.europa.ec.eudi.pidissuer
 
-import arrow.core.NonEmptySet
-import arrow.core.toNonEmptySetOrNull
+import arrow.core.*
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.*
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64
+import com.nimbusds.oauth2.sdk.id.Issuer
+import com.nimbusds.oauth2.sdk.util.X509CertificateUtils
+import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPConfigurationProperties
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.IssueMdoc
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.learningcredential.IssueLearningCredential
@@ -31,10 +34,17 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.MobileDrivingLice
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl.RandomMobileDrivingLicence
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.SdJwtVcSerialization
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.AccessCertificate
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.supportedEncryptionMethods
+import eu.europa.ec.eudi.pidissuer.adapter.out.jose.supportedJWEAlgorithms
+import eu.europa.ec.eudi.pidissuer.adapter.out.nonce.NonceEncryptionKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateAttestationProof
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.ValidateJwtProofWithKeyAttestation
 import eu.europa.ec.eudi.pidissuer.adapter.out.proof.VerifyKeyAttestation
+import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
+import eu.europa.ec.eudi.pidissuer.adapter.out.trust.usingTrustValidatorService
 import eu.europa.ec.eudi.pidissuer.adapter.out.webclient.HttpProxy
+import eu.europa.ec.eudi.pidissuer.adapter.out.webclient.HttpProxyOption
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.port.out.nonce.VerifyNonce
@@ -50,11 +60,15 @@ import org.slf4j.LoggerFactory
 import org.springframework.core.env.Environment
 import org.springframework.core.env.getProperty
 import org.springframework.core.env.getRequiredProperty
+import org.springframework.core.io.DefaultResourceLoader
+import org.springframework.core.io.FileSystemResource
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.util.UriComponentsBuilder
+import java.net.URI
 import java.net.URL
 import java.security.KeyStore
 import java.security.cert.X509Certificate
+import java.util.*
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
@@ -146,6 +160,82 @@ internal fun credentialReusePolicy(
 
         else -> {
             CredentialReusePolicy.None
+        }
+    }
+}
+
+internal fun Environment.credentialRequestEncryption(issuerKeystore: () -> KeyStore): CredentialRequestEncryption {
+    val isSupported = getProperty<Boolean>("issuer.credentialRequestEncryption.supported") ?: false
+    return if (!isSupported) {
+        CredentialRequestEncryption.NotSupported
+    } else {
+        val key =
+            when (getProperty<KeyOption>("issuer.credentialRequestEncryption.jwks")) {
+                null, KeyOption.GenerateRandom -> {
+                    extensionLogger.info("Generating random encryption key for Credential Request Encryption")
+                    ECKeyGenerator(Curve.P_256)
+                        .keyID(UUID.randomUUID().toString())
+                        .keyUse(KeyUse.ENCRYPTION)
+                        .algorithm(JWEAlgorithm.ECDH_ES)
+                        .generate()
+                }
+
+                KeyOption.LoadFromKeystore -> {
+                    extensionLogger.info("Loading encryption key for Credential Request Encryption from keystore")
+                    val keyAlgorithm =
+                        getProperty<String>("issuer.credentialRequestEncryption.jwks.algorithm")?.let {
+                            JWEAlgorithm.parse(it)
+                        }
+                            ?: error("Missing or invalid 'issuer.credentialRequestEncryption.jwks.algorithm' property")
+
+                    when (
+                        val loadedJwk =
+                            issuerKeystore().loadJwk(this, "issuer.credentialRequestEncryption.jwks")
+                    ) {
+                        is ECKey -> {
+                            require(keyAlgorithm in loadedJwk.supportedJWEAlgorithms) {
+                                "${keyAlgorithm.name} cannot be used with an ECKey"
+                            }
+                            ECKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
+                        }
+
+                        is RSAKey -> {
+                            require(keyAlgorithm in loadedJwk.supportedJWEAlgorithms) {
+                                "${keyAlgorithm.name} cannot be used with an RSAKey"
+                            }
+                            RSAKey.Builder(loadedJwk).algorithm(keyAlgorithm).build()
+                        }
+
+                        else -> {
+                            error("unsupported key type '${loadedJwk.javaClass}'")
+                        }
+                    }
+                }
+            }
+
+        val encryptionMethods =
+            readNonEmptySet(
+                "issuer.credentialRequestEncryption.encryptionMethods",
+                EncryptionMethod::parse,
+            )
+        require(key.supportedEncryptionMethods.containsAll(encryptionMethods)) {
+            "Encryption methods: ${encryptionMethods.joinToString { it.name }} cannot be used with the configured encryption key"
+        }
+
+        val parameters =
+            CredentialRequestEncryptionSupportedParameters(
+                encryptionKeys = JWKSet(key),
+                methodsSupported = encryptionMethods,
+                zipAlgorithmsSupported =
+                    readNullableNonEmptySet(
+                        "issuer.credentialRequestEncryption.zipAlgorithmsSupported",
+                    ) { algorithm -> algorithm.takeIf { it.isNotBlank() }?.let { CompressionAlgorithm(it) } },
+            )
+        val isRequired = getProperty<Boolean>("issuer.credentialRequestEncryption.required") ?: false
+        if (!isRequired) {
+            CredentialRequestEncryption.Optional(parameters)
+        } else {
+            CredentialRequestEncryption.Required(parameters)
         }
     }
 }
@@ -520,10 +610,156 @@ internal fun validateProof(
     )
 }
 
-internal fun httpProxy(env: Environment): HttpProxy? =
-    env.getProperty("issuer.http.proxy.url")?.let {
-        val url = Url(it)
-        val username = env.getProperty("issuer.http.proxy.username")
-        val password = env.getProperty("issuer.http.proxy.password")
-        HttpProxy(url, username, password)
+internal fun Environment.httpProxy(): HttpProxyOption {
+    val proxy =
+        getProperty("issuer.http.proxy.url")?.let {
+            val url = Url(it)
+            val username = getProperty("issuer.http.proxy.username")
+            val password = getProperty("issuer.http.proxy.password")
+            HttpProxy(url, username, password)
+        }
+    return proxy?.let { HttpProxyOption.Using(it) } ?: HttpProxyOption.None
+}
+
+internal fun Environment.batchCredentialIssuance(): BatchCredentialIssuance {
+    val enabled = getProperty<Boolean>("issuer.credentialEndpoint.batchIssuance.enabled") ?: true
+    return if (enabled) {
+        val batchSize = getProperty<Int>("issuer.credentialEndpoint.batchIssuance.batchSize") ?: 10
+        BatchCredentialIssuance.Supported(batchSize)
+    } else {
+        BatchCredentialIssuance.NotSupported
     }
+}
+
+fun Environment.dPoPConfigurationProperties() =
+    DPoPConfigurationProperties(
+        nonEmptySetOf(JWSAlgorithm.ES256, JWSAlgorithm.ES384, JWSAlgorithm.ES512),
+        getProperty("issuer.dpop.realm")?.takeIf { it.isNotBlank() },
+        getProperty<Boolean>("issuer.dpop.nonce.enabled") ?: true,
+    )
+
+private const val KEYSTORE_DEFAULT_LOCATION = "/keystore.jks"
+
+internal fun keystore(env: Environment): KeyStore {
+    val keystoreLocation = env.getRequiredProperty("issuer.keystore.file")
+    log.info("Will try to load Keystore from: '{}'", keystoreLocation)
+    val keystoreResource =
+        DefaultResourceLoader()
+            .getResource(keystoreLocation)
+            .some()
+            .filter { it.exists() }
+            .recover {
+                log.warn(
+                    "Could not find Keystore at '{}'. Fallback to '{}'",
+                    keystoreLocation,
+                    KEYSTORE_DEFAULT_LOCATION,
+                )
+                FileSystemResource(KEYSTORE_DEFAULT_LOCATION)
+                    .some()
+                    .filter { it.exists() }
+                    .bind()
+            }.getOrNull()
+    checkNotNull(keystoreResource) { "Could not load Keystore either from '$keystoreLocation' or '$KEYSTORE_DEFAULT_LOCATION'" }
+
+    val keystoreType = env.getProperty("issuer.keystore.type", KeyStore.getDefaultType())
+    val keystorePassword = env.getProperty("issuer.keystore.password")?.takeIf { it.isNotBlank() }
+
+    return keystoreResource.inputStream.use { inputStream ->
+        val keystore = KeyStore.getInstance(keystoreType)
+        keystore.load(inputStream, keystorePassword?.toCharArray())
+        keystore
+    }
+}
+
+fun loadOrGenerateAccessCertificate(
+    env: Environment,
+    issuerKeystore: () -> KeyStore,
+): AccessCertificate {
+    val key =
+        when (env.getProperty<KeyOption>("issuer.access-certificate")) {
+            null, KeyOption.GenerateRandom -> {
+                log.info("Generating random access certificate key for metadata signing")
+                ECKeyGenerator(Curve.P_256)
+                    .keyID("issuer-kid-1")
+                    .keyUse(KeyUse.SIGNATURE)
+                    .generate()
+            }
+
+            KeyOption.LoadFromKeystore -> {
+                log.info("Loading access certificate for metadata signing from keystore")
+                issuerKeystore().loadJwk(env, "issuer.access-certificate")
+            }
+        }
+
+    return AccessCertificate(key)
+}
+
+internal fun loadOrGenerateIssuerSigningKey(
+    clock: Clock,
+    env: Environment,
+    issuerPublicUrl: HttpsUrl,
+    issuerKeystore: () -> KeyStore,
+): (String) -> IssuerSigningKey =
+    { prefix ->
+        val signingKey =
+            when (env.getProperty<KeyOption>(prefix)) {
+                null, KeyOption.GenerateRandom -> {
+                    log.info("Generating random signing key and self-signed certificate for '$prefix'")
+                    val key = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-$prefix").generate()
+                    val certificate =
+                        X509CertificateUtils.generateSelfSigned(
+                            Issuer(issuerPublicUrl.value.host),
+                            clock.now().toJavaDate(),
+                            (clock.now() + 365.days).toJavaDate(),
+                            key.toECPublicKey(),
+                            key.toECPrivateKey(),
+                        )
+                    ECKey
+                        .Builder(key)
+                        .x509CertChain(listOf(Base64.encode(certificate.encoded)))
+                        .build()
+                }
+
+                KeyOption.LoadFromKeystore -> {
+                    log.info("Loading signing key and certificate for issuance from keystore for '$prefix'")
+                    issuerKeystore().loadJwk(env, prefix)
+                }
+            }
+        require(signingKey is ECKey) { "Only ECKeys are supported for signing" }
+        IssuerSigningKey(signingKey)
+    }
+
+internal fun loadNonceEncryptionKey(
+    env: Environment,
+    issuerKeystore: () -> KeyStore,
+): NonceEncryptionKey {
+    val encryptionKey: ECKey =
+        when (env.getProperty<KeyOption>("issuer.nonce.encryption-key")) {
+            null, KeyOption.GenerateRandom -> {
+                log.info("Generating random encryption key for Nonce")
+                ECKeyGenerator(Curve.P_256).keyUse(KeyUse.ENCRYPTION).generate()
+            }
+
+            KeyOption.LoadFromKeystore -> {
+                log.info("Loading Nonce encryption key from keystore")
+                val nonceEncryptionKey = issuerKeystore().loadJwk(env, "issuer.nonce.encryption-key")
+                require(nonceEncryptionKey is ECKey) { "Only ECKey are supported for encryption" }
+                nonceEncryptionKey
+            }
+        }
+    return NonceEncryptionKey(encryptionKey)
+}
+
+internal fun trustValidatorService(
+    env: Environment,
+    webClient: WebClient,
+): IsTrustedKeyAttestationIssuer {
+    val trustValidatorServiceUrl = env.getProperty<String>("issuer.trust.service-url")
+    return if (trustValidatorServiceUrl.isNullOrBlank()) {
+        log.warn("Trust Validator Service has not been configured. Trusting all Wallet Providers.")
+        IsTrustedKeyAttestationIssuer.Ignored
+    } else {
+        log.info("Using Trust Validator Service '{}'", trustValidatorServiceUrl)
+        IsTrustedKeyAttestationIssuer.usingTrustValidatorService(webClient, URI.create(trustValidatorServiceUrl))
+    }
+}
