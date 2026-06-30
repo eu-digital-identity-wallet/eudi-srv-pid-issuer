@@ -15,7 +15,7 @@ services:
       - POSTGRES_USER=pid_issuer
       - POSTGRES_PASSWORD=pid_issuer
     volumes:
-      - ./postgresql:/docker-entrypoint-initdb.d:RO
+      - ./postgresql/schema:/docker-entrypoint-initdb.d:RO
       - postgres:/var/lib/postgresql
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U pid_issuer -d pid_issuer" ]
