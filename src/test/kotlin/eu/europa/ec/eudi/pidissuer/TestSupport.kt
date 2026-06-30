@@ -40,7 +40,7 @@ import kotlin.time.Clock
         "spring.r2dbc.url=r2dbc:h2:mem:///pid_issuer;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=FALSE",
         "spring.r2dbc.username=sa",
         "spring.r2dbc.password=",
-        "spring.sql.init.schema-locations=classpath:schema.sql",
+        "spring.sql.init.schema-locations=file:docker-compose/postgresql/schema/V1.sql",
         "spring.sql.init.mode=embedded",
     ],
 )
