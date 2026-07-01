@@ -18,10 +18,11 @@ package eu.europa.ec.eudi.pidissuer.port.input
 import arrow.core.Either
 import arrow.core.NonEmptySet
 import arrow.core.getOrElse
-import arrow.core.raise.Raise
-import arrow.core.raise.either
-import arrow.core.raise.ensure
-import arrow.core.raise.ensureNotNull
+import arrow.core.raise.context.Raise
+import arrow.core.raise.context.either
+import arrow.core.raise.context.ensure
+import arrow.core.raise.context.ensureNotNull
+import arrow.core.raise.context.raise
 import arrow.core.toNonEmptySetOrNull
 import com.eygraber.uri.Uri
 import com.eygraber.uri.toURI

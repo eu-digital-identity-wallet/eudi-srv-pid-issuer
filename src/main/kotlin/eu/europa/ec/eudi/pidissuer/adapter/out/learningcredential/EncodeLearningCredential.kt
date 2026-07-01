@@ -17,7 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential
 
 import arrow.core.Either
 import arrow.core.raise.catch
-import arrow.core.raise.either
+import arrow.core.raise.context.either
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey

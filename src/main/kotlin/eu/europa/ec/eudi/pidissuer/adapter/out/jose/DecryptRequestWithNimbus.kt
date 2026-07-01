@@ -15,10 +15,10 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.raise.Raise
+import arrow.core.raise.context.Raise
 import arrow.core.raise.catch
-import arrow.core.raise.ensure
-import arrow.core.raise.ensureNotNull
+import arrow.core.raise.context.ensure
+import arrow.core.raise.context.ensureNotNull
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet

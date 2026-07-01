@@ -17,8 +17,8 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.Either
 import arrow.core.NonEmptyList
-import arrow.core.raise.Raise
-import arrow.core.raise.ensure
+import arrow.core.raise.context.Raise
+import arrow.core.raise.context.ensure
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm

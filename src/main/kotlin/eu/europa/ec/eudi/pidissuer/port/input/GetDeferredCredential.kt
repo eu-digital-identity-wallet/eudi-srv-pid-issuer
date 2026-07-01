@@ -18,9 +18,9 @@ package eu.europa.ec.eudi.pidissuer.port.input
 import arrow.core.Either
 import arrow.core.getOrElse
 import arrow.core.left
-import arrow.core.raise.Raise
-import arrow.core.raise.either
-import arrow.core.raise.ensure
+import arrow.core.raise.context.Raise
+import arrow.core.raise.context.either
+import arrow.core.raise.context.ensure
 import arrow.core.right
 import com.nimbusds.jwt.EncryptedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.decryptCredentialRequest

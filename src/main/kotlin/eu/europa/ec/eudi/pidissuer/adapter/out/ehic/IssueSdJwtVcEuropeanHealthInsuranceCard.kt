@@ -18,8 +18,8 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.ehic
 import arrow.core.Either
 import arrow.core.NonEmptySet
 import arrow.core.nonEmptySetOf
-import arrow.core.raise.either
-import arrow.core.raise.ensureNotNull
+import arrow.core.raise.context.either
+import arrow.core.raise.context.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm

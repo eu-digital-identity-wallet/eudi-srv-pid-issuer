@@ -16,8 +16,8 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.*
-import arrow.core.raise.either
-import arrow.core.raise.ensureNotNull
+import arrow.core.raise.context.either
+import arrow.core.raise.context.ensureNotNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK

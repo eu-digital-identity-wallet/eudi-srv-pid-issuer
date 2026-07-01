@@ -17,9 +17,8 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.Either
 import arrow.core.NonEmptyList
-import arrow.core.getOrElse
-import arrow.core.raise.either
-import arrow.core.raise.ensure
+import arrow.core.raise.context.either
+import arrow.core.raise.context.ensure
 import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration

@@ -16,7 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.port.out
 
 import arrow.core.Either
-import arrow.core.raise.either
+import arrow.core.raise.context.either
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext

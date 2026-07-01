@@ -17,8 +17,8 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptyList
 import arrow.core.NonEmptySet
-import arrow.core.raise.Raise
-import arrow.core.raise.ensure
+import arrow.core.raise.context.Raise
+import arrow.core.raise.context.ensure
 
 //
 // Credential MetaData

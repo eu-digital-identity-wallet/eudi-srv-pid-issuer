@@ -16,8 +16,8 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.Either
-import arrow.core.raise.either
-import arrow.core.raise.ensureNotNull
+import arrow.core.raise.context.either
+import arrow.core.raise.context.ensureNotNull
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.Username

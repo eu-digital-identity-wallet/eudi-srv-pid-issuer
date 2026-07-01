@@ -16,7 +16,8 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.Either
-import arrow.core.raise.either
+import arrow.core.raise.context.either
+import arrow.core.raise.context.raise
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK

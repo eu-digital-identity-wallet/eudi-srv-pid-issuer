@@ -16,8 +16,8 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.Either
-import arrow.core.raise.either
-import arrow.core.raise.ensureNotNull
+import arrow.core.raise.context.either
+import arrow.core.raise.context.ensureNotNull
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
