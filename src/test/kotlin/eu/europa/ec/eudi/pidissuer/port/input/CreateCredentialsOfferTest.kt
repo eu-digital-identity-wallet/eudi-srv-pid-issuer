@@ -23,6 +23,8 @@ import eu.europa.ec.eudi.pidissuer.PidIssuerApplicationTest
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import kotlinx.coroutines.test.runTest
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.PropertySource
+import org.springframework.test.context.TestPropertySource
 import kotlin.test.Test
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
@@ -30,6 +32,11 @@ import kotlin.test.assertTrue
 import kotlin.test.fail
 
 @PidIssuerApplicationTest
+@TestPropertySource(
+    properties = [
+        "issuer.credentialOffer.allowedSchemes=https,openid-credential-offer,haip-vci,eu-eaa-offer",
+    ],
+)
 class CreateCredentialsOfferTest {
     @Autowired
     private lateinit var credentialIssuerMetadata: CredentialIssuerMetaData
