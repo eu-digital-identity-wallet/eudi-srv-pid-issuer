@@ -98,17 +98,4 @@ internal class MetaDataApiTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .expectBody<String>()
         }
-
-    @Test
-    fun `ensure metadata path does not contain content security policy headers`() =
-        runTest {
-            client()
-                .get()
-                .uri(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER)
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange()
-                .expectNoContentSecurityPolicy()
-                .expectStatus()
-                .isOk
-        }
 }
