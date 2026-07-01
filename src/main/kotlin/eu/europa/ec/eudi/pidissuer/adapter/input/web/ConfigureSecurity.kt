@@ -39,18 +39,49 @@ import org.springframework.security.web.server.authentication.HttpStatusServerEn
 import org.springframework.security.web.server.authentication.ServerAuthenticationEntryPointFailureHandler
 import org.springframework.security.web.server.authorization.HttpStatusServerAccessDeniedHandler
 import org.springframework.security.web.server.authorization.ServerWebExchangeDelegatingServerAccessDeniedHandler
+import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers
+import org.springframework.web.reactive.function.client.WebClient
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
-fun configureSecurity(
+fun configureUiSecurity(
+    environment: Environment,
+    http: ServerHttpSecurity,
+): SecurityWebFilterChain =
+    http {
+        val static = environment.getRequiredProperty("spring.webflux.static-path-pattern")
+        val webJars = environment.getRequiredProperty("spring.webflux.webjars-path-pattern")
+        val pathMatcher =
+            ServerWebExchangeMatchers.pathMatchers(
+                static,
+                webJars,
+                "",
+                "/",
+                IssuerUi.GENERATE_CREDENTIALS_OFFER,
+            )
+
+        securityMatcher(pathMatcher)
+        authorizeExchange {
+            authorize(pathMatcher, permitAll)
+            authorize(anyExchange, denyAll)
+        }
+
+        // enable csrf
+        csrf { }
+
+        // enable cors
+        cors { }
+    }
+
+fun configureApiSecurity(
     clock: Clock,
     env: Environment,
     http: ServerHttpSecurity,
     oAuth2ResourceServerProperties: OAuth2ResourceServerProperties,
     metadata: CredentialIssuerMetaData,
     dPoPConfigurationProperties: DPoPConfigurationProperties,
-    webClient: org.springframework.web.reactive.function.client.WebClient,
+    webClient: WebClient,
     verifyNonce: VerifyNonce,
     generateNonce: GenerateNonce,
 ): SecurityWebFilterChain {
@@ -71,12 +102,7 @@ fun configureSecurity(
             authorize(MetaDataApi.PUBLIC_KEYS, permitAll)
             authorize(MetaDataApi.TYPE_METADATA, permitAll)
             authorize(MetaDataApi.WELL_KNOWN_PROTECTED_RESOURCE_METADATA, permitAll)
-            authorize(IssuerUi.GENERATE_CREDENTIALS_OFFER, permitAll)
             authorize(IssuerApi.CREATE_CREDENTIALS_OFFER, permitAll)
-            authorize("", permitAll)
-            authorize("/", permitAll)
-            authorize(env.getRequiredProperty("spring.webflux.static-path-pattern"), permitAll)
-            authorize(env.getRequiredProperty("spring.webflux.webjars-path-pattern"), permitAll)
             authorize(anyExchange, denyAll)
         }
 
@@ -88,10 +114,7 @@ fun configureSecurity(
             disable()
         }
 
-        val introspector = createTokenIntrospector(oAuth2ResourceServerProperties, webClient)
-
         log.info("Enabling DPoP AccessToken support")
-
         val dpopNonce =
             if (dPoPConfigurationProperties.dPoPNonceEnabled) {
                 val dpopNonceExpiresIn = env.duration("issuer.dpop.nonce.expiration")
@@ -104,6 +127,7 @@ fun configureSecurity(
         val entryPoint = DPoPTokenServerAuthenticationEntryPoint(dPoPConfigurationProperties.realm, dpopNonce, clock)
         val tokenConverter = ServerDPoPAuthenticationTokenAuthenticationConverter()
 
+        val introspector = createTokenIntrospector(oAuth2ResourceServerProperties, webClient)
         val dpopFilter =
             createDpopFilter(clock, dPoPConfigurationProperties, introspector, dpopNonce, tokenConverter, entryPoint)
         http.addFilterAfter(dpopFilter, SecurityWebFiltersOrder.AUTHENTICATION)
@@ -181,7 +205,7 @@ private fun createDpopFilter(
 
 private fun createTokenIntrospector(
     introspectionProperties: OAuth2ResourceServerProperties,
-    webClient: org.springframework.web.reactive.function.client.WebClient,
+    webClient: WebClient,
 ): SpringReactiveOpaqueTokenIntrospector {
     val introspectionEndpoint =
         checkNotNull(introspectionProperties.opaquetoken.introspectionUri) {
