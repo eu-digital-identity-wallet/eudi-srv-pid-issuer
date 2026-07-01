@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.qr
 
+import com.eygraber.uri.Uri
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.client.j2se.MatrixToImageConfig
@@ -46,7 +47,7 @@ class DefaultGenerateQrCode : GenerateQqCode {
         )
 
     private fun matrix(
-        content: URI,
+        content: Uri,
         dimensions: Dimensions,
     ): BitMatrix =
         QRCodeWriter().encode(
@@ -58,7 +59,7 @@ class DefaultGenerateQrCode : GenerateQqCode {
         )
 
     override suspend fun invoke(
-        content: URI,
+        content: Uri,
         format: Format,
         dimensions: Dimensions,
     ): ByteArray =

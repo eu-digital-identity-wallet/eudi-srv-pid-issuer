@@ -35,15 +35,22 @@ import java.net.URI
  */
 class CreateCredentialsOffer(
     private val metadata: CredentialIssuerMetaData,
-    private val credentialsOfferUri: String,
-    private val allowedSchemes: NonEmptySet<String>,
+    val defaultCredentialOfferUri: Uri,
+    private val allowedSchemes: NonEmptySet<SupportedCredentialOfferUriScheme>,
 ) {
+    init {
+        val scheme = defaultCredentialOfferUri.scheme?.let { SupportedCredentialOfferUriScheme.ofOrNull(it) }
+        require(null != scheme && scheme in allowedSchemes) {
+            "defaultCredentialOfferUri must use one of the following schemes: ${allowedSchemes.joinToString { it.scheme }}, got: $scheme"
+        }
+    }
+
     context(_: Raise<Error>)
-    operator fun invoke(request: Request): URI =
-        context(metadata, credentialsOfferUri, allowedSchemes) {
-            validate(request.credentialConfigurationIds)
-                .authorizationCodeGrantOffer()
-                .toUri(request.customCredentialsOfferUri ?: credentialsOfferUri)
+    operator fun invoke(request: Request): Uri =
+        context(metadata, defaultCredentialOfferUri, allowedSchemes) {
+            val credentialOffer = validate(request.credentialConfigurationIds).authorizationCodeGrantOffer()
+            val credentialOfferUri = request.customCredentialsOfferUri?.toUri() ?: defaultCredentialOfferUri
+            credentialOfferUri.append(credentialOffer)
         }
 
     data class Request(
@@ -116,18 +123,35 @@ private fun NonEmptySet<CredentialConfigurationId>.authorizationCodeGrantOffer()
     )
 }
 
-context(_: Raise<CreateCredentialsOffer.Error.InvalidCredentialsOfferUri>, allowedSchemes: NonEmptySet<String>)
-private fun CredentialsOfferTO.toUri(credentialsOfferUri: String): URI =
+context(_: Raise<CreateCredentialsOffer.Error.InvalidCredentialsOfferUri>, allowedSchemes: NonEmptySet<SupportedCredentialOfferUriScheme>)
+private fun String.toUri(): Uri =
     catch({
-        val uri =
-            Uri
-                .parse(credentialsOfferUri)
-                .buildUpon()
-                .appendQueryParameter("credential_offer", Json.encodeToString(this))
-                .build()
-        require(allowedSchemes.any { it.equals(uri.scheme, ignoreCase = true) }) {
+        val uri = Uri.parse(this)
+        val scheme = uri.scheme?.let { SupportedCredentialOfferUriScheme.ofOrNull(it) }
+        require(null != scheme && scheme in allowedSchemes) {
             "credentialsOfferUri must use one of the following schemes: ${allowedSchemes.joinToString()}, got: ${uri.scheme}"
         }
-
-        uri.toURI()
+        uri
     }) { raise(CreateCredentialsOffer.Error.InvalidCredentialsOfferUri(it)) }
+
+private fun Uri.append(credentialOffer: CredentialsOfferTO): Uri =
+    buildUpon()
+        .appendQueryParameter("credential_offer", Json.encodeToString(credentialOffer))
+        .build()
+
+enum class SupportedCredentialOfferUriScheme(
+    val scheme: String,
+) {
+    OPENID_CREDENTIAL_OFFER("openid-credential-offer"),
+    HAIP_VCI("haip-vci"),
+    EU_EAA_OFFER("eu-eaa-offer"),
+    HTTPS("https"),
+    ;
+
+    companion object {
+        fun of(value: String): SupportedCredentialOfferUriScheme =
+            ofOrNull(value) ?: throw IllegalArgumentException("Unsupported Credential Offer URI scheme: $value")
+
+        fun ofOrNull(value: String): SupportedCredentialOfferUriScheme? = entries.firstOrNull { it.scheme.equals(value, ignoreCase = true) }
+    }
+}

@@ -16,8 +16,8 @@
 package eu.europa.ec.eudi.pidissuer
 
 import arrow.core.toNonEmptyListOrNull
-import arrow.core.toNonEmptySetOrNull
 import arrow.core.toNonEmptySetOrThrow
+import com.eygraber.uri.Uri
 import eu.europa.ec.eudi.pidissuer.adapter.input.scheduler.CredentialRevocationJob
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.*
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.csrf.CsrfTokenSubscriberWebFilter
@@ -70,7 +70,6 @@ fun beans(
     timeZone: TimeZone,
 ) = BeanRegistrarDsl {
     val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl", removeTrailingSlash = true)
-    val credentialsOfferUri = env.getRequiredProperty("issuer.credentialOffer.uri")
     val issuerKeystore: KeyStore by lazy { keystore(env) }
     val getIssuerSigningKey = loadOrGenerateIssuerSigningKey(clock, env, issuerPublicUrl) { issuerKeystore }
 
@@ -294,8 +293,13 @@ fun beans(
         GetDeferredCredential(bean(), bean(), bean())
     }
     registerBean {
-        val allowedSchemes = env.getRequiredProperty<Set<String>>("issuer.credentialOffer.allowedSchemes").toNonEmptySetOrThrow()
-        CreateCredentialsOffer(bean(), credentialsOfferUri, allowedSchemes)
+        val defaultCredentialOfferUri = Uri.parse(env.getRequiredProperty("issuer.credentialOffer.defaultUri"))
+        val allowedSchemes =
+            env
+                .getRequiredProperty<Set<String>>("issuer.credentialOffer.allowedSchemes")
+                .map { SupportedCredentialOfferUriScheme.of(it) }
+                .toNonEmptySetOrThrow()
+        CreateCredentialsOffer(bean(), defaultCredentialOfferUri, allowedSchemes)
     }
 
     registerBean {
@@ -316,7 +320,7 @@ fun beans(
                 .mapValues { it.value.resource }
         val metaDataApi = MetaDataApi(bean(), bean(), typeMetadata, bean())
         val walletApi = WalletApi(bean(), bean(), bean(), bean())
-        val issuerUi = IssuerUi(credentialsOfferUri, bean(), bean(), bean())
+        val issuerUi = IssuerUi(bean(), bean(), bean())
         val issuerApi = IssuerApi(bean())
         metaDataApi.route
             .and(walletApi.route)
