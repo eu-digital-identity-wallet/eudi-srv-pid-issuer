@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import eu.europa.ec.eudi.pidissuer.PidIssuerApplicationTest
+import eu.europa.ec.eudi.pidissuer.expectNoContentSecurityPolicy
 import kotlinx.coroutines.test.runTest
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.ApplicationContext
@@ -45,6 +46,7 @@ internal class MetaDataApiTest {
                 .uri(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER)
                 .accept(MediaType.ALL)
                 .exchange()
+                .expectNoContentSecurityPolicy()
                 .expectStatus()
                 .isOk()
                 .expectHeader()
@@ -59,6 +61,7 @@ internal class MetaDataApiTest {
                 .get()
                 .uri(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER)
                 .exchange()
+                .expectNoContentSecurityPolicy()
                 .expectStatus()
                 .isOk()
                 .expectHeader()
@@ -74,6 +77,7 @@ internal class MetaDataApiTest {
                 .uri(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER)
                 .accept(applicationJwt)
                 .exchange()
+                .expectNoContentSecurityPolicy()
                 .expectStatus()
                 .isOk()
                 .expectHeader()
@@ -89,8 +93,22 @@ internal class MetaDataApiTest {
                 .uri(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER)
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
+                .expectNoContentSecurityPolicy()
                 .expectHeader()
                 .contentType(MediaType.APPLICATION_JSON)
                 .expectBody<String>()
+        }
+
+    @Test
+    fun `ensure metadata path does not contain content security policy headers`() =
+        runTest {
+            client()
+                .get()
+                .uri(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER)
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectNoContentSecurityPolicy()
+                .expectStatus()
+                .isOk
         }
 }
