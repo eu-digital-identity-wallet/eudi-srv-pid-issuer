@@ -16,6 +16,8 @@
 package eu.europa.ec.eudi.pidissuer
 
 import arrow.core.toNonEmptyListOrNull
+import arrow.core.toNonEmptySetOrNull
+import arrow.core.toNonEmptySetOrThrow
 import eu.europa.ec.eudi.pidissuer.adapter.input.scheduler.CredentialRevocationJob
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.*
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.csrf.CsrfTokenSubscriberWebFilter
@@ -48,6 +50,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.BeanRegistrarDsl
 import org.springframework.boot.http.codec.CodecCustomizer
 import org.springframework.core.Ordered
+import org.springframework.core.env.getRequiredProperty
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
 import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
 import org.springframework.scheduling.annotation.SchedulingConfigurer
@@ -291,7 +294,8 @@ fun beans(
         GetDeferredCredential(bean(), bean(), bean())
     }
     registerBean {
-        CreateCredentialsOffer(bean(), credentialsOfferUri)
+        val allowedSchemes = env.getRequiredProperty<Set<String>>("issuer.credentialOffer.allowedSchemes").toNonEmptySetOrThrow()
+        CreateCredentialsOffer(bean(), credentialsOfferUri, allowedSchemes)
     }
 
     registerBean {

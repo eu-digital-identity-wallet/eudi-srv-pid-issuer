@@ -36,10 +36,11 @@ import java.net.URI
 class CreateCredentialsOffer(
     private val metadata: CredentialIssuerMetaData,
     private val credentialsOfferUri: String,
+    private val allowedSchemes: NonEmptySet<String>,
 ) {
     context(_: Raise<Error>)
     operator fun invoke(request: Request): URI =
-        context(metadata, credentialsOfferUri) {
+        context(metadata, credentialsOfferUri, allowedSchemes) {
             validate(request.credentialConfigurationIds)
                 .authorizationCodeGrantOffer()
                 .toUri(request.customCredentialsOfferUri ?: credentialsOfferUri)
@@ -115,18 +116,18 @@ private fun NonEmptySet<CredentialConfigurationId>.authorizationCodeGrantOffer()
     )
 }
 
-context(_: Raise<CreateCredentialsOffer.Error.InvalidCredentialsOfferUri>)
+context(_: Raise<CreateCredentialsOffer.Error.InvalidCredentialsOfferUri>, allowedSchemes: NonEmptySet<String>)
 private fun CredentialsOfferTO.toUri(credentialsOfferUri: String): URI =
-    catch(
-        block = {
+    catch({
+        val uri =
             Uri
                 .parse(credentialsOfferUri)
                 .buildUpon()
                 .appendQueryParameter("credential_offer", Json.encodeToString(this))
                 .build()
-                .toURI()
-        },
-        catch = {
-            raise(CreateCredentialsOffer.Error.InvalidCredentialsOfferUri(it))
-        },
-    )
+        require(allowedSchemes.any { it.equals(uri.scheme, ignoreCase = true) }) {
+            "credentialsOfferUri must use one of the following schemes: ${allowedSchemes.joinToString()}, got: ${uri.scheme}"
+        }
+
+        uri.toURI()
+    }) { raise(CreateCredentialsOffer.Error.InvalidCredentialsOfferUri(it)) }
