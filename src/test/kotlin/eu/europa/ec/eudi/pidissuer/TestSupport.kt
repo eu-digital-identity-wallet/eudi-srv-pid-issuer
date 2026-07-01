@@ -13,14 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@file:Suppress("ktlint:standard:filename")
+
 package eu.europa.ec.eudi.pidissuer
 
-import eu.europa.ec.eudi.pidissuer.domain.Clock
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
-import org.springframework.context.support.GenericApplicationContext
 import org.springframework.core.annotation.AliasFor
 import org.springframework.test.context.ContextConfiguration
 import kotlin.reflect.KClass
@@ -35,7 +34,7 @@ import kotlin.reflect.KClass
     webEnvironment = SpringBootTest.WebEnvironment.MOCK,
     properties = ["issuer.access-token.type=Bearer"],
 )
-@ContextConfiguration(initializers = [BeansDslApplicationContextInitializer::class])
+@ContextConfiguration
 internal annotation class PidIssuerApplicationTest(
 
     /**
@@ -44,14 +43,4 @@ internal annotation class PidIssuerApplicationTest(
      */
     @get:AliasFor(annotation = ContextConfiguration::class)
     val classes: Array<KClass<*>> = [],
-
 )
-
-/**
- * [ApplicationContextInitializer] for use with [SpringBootTest]/[ContextConfiguration]
- */
-internal class BeansDslApplicationContextInitializer : ApplicationContextInitializer<GenericApplicationContext> {
-    override fun initialize(applicationContext: GenericApplicationContext) {
-        applicationContext.register(beans(Clock.System))
-    }
-}
