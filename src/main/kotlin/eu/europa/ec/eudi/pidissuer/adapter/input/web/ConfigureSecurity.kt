@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
+import arrow.core.nonEmptyListOf
 import com.nimbusds.oauth2.sdk.dpop.verifiers.DPoPProtectedResourceRequestVerifier
 import com.nimbusds.oauth2.sdk.dpop.verifiers.InMemoryDPoPSingleUseChecker
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.*
@@ -72,6 +73,26 @@ fun configureUiSecurity(
 
         // enable cors
         cors { }
+
+        // configure scp
+        headers {
+            contentSecurityPolicy {
+                // policies
+                policyDirectives =
+                    nonEmptyListOf(
+                        "default-src 'self'",
+                        "script-src 'self'",
+                        "style-src 'self' 'unsafe-inline'",
+                        "img-src 'self' data:",
+                        "object-src 'none'",
+                        "base-uri 'self'",
+                        "frame-ancestors 'none'",
+                    ).joinToString(separator = "; ")
+
+                // set enforcing mode
+                reportOnly = false
+            }
+        }
     }
 
 fun configureApiSecurity(
