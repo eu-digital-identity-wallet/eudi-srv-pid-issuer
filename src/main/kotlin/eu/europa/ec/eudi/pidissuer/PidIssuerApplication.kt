@@ -15,25 +15,19 @@
  */
 package eu.europa.ec.eudi.pidissuer
 
-import eu.europa.ec.eudi.pidissuer.domain.Clock
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
-import org.springframework.context.ApplicationContextInitializer
-import org.springframework.context.support.GenericApplicationContext
+import org.springframework.context.annotation.Import
 import org.springframework.scheduling.annotation.EnableScheduling
 
 @SpringBootApplication
 @EnableConfigurationProperties(IssuerMetadataProperties::class, SdJwtVcProperties::class)
 @EnableScheduling
+@Import(AppBeans::class)
 class PidIssuerApplication
 
 fun main(args: Array<String>) {
     runApplication<PidIssuerApplication>(*args) {
-        addInitializers(
-            ApplicationContextInitializer<GenericApplicationContext> {
-                it.register(beans(Clock.System))
-            },
-        )
     }
 }
