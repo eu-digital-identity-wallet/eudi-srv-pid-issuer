@@ -119,11 +119,11 @@ Variable: `SERVER_PORT`
 Description: Port for the HTTP listener of the PID Issuer application  
 Default value: `8080`
 
-Variable: `SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENT_ID`  
+Variable: `SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENTID`  
 Description: Client Id of the OAuth 2.0 client registered in the Authorization Server  
 Default value: N/A
 
-Variable: `SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENT_SECRET`  
+Variable: `SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENTSECRET`  
 Description: Client Server of the OAuth 2.0 client registered in the Authorization Server  
 Default value: N/A
 
@@ -133,7 +133,7 @@ set this to `FRAMEWORK`.
 Possible values: `FRAMEWORK`, `NONE`  
 Default value: `FRAMEWORK`  
 
-Variable: `SPRING_WEBFLUX_CODECS_MAX_IN_MEMORY_SIZE`  
+Variable: `SPRING_HTTP_CODECS_MAXINMEMORYSIZE`  
 Description: Configure a limit on the number of bytes that can be buffered whenever the input stream needs to be aggregated. Uses Spring Framework's DataSize notation.         
 Default value: `1MB`
 
@@ -210,30 +210,30 @@ Variable: `ISSUER_PID_MSO_MDOC_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`
 Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
 Default value: `ES256`
 
-Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_ENABLED`
-Description: Whether to enable support for Credential Reuse Policy for PIDs issued in *MSO MDOC*.
-Default value: `false`
+Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_ENABLED`  
+Description: Whether to enable support for Credential Reuse Policy for PIDs issued in *MSO MDOC*.  
+Default value: `false`  
 
-Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_TYPE`
-Description: The type of Credential Reuse Policy.
-Default value: `ArfAnnex2`
+Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_TYPE`  
+Description: The type of Credential Reuse Policy.  
+Default value: `ArfAnnex2`  
 
-Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_OPTIONS_XX_DETAILS`
-Description: Comma separated list of policy types. 
-Possible values: `once_only`, `limited_time`, `rotating_batch`, `per_relying_party`
-Default value: N/A
+Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_OPTIONS_XX_DETAILS`  
+Description: Comma separated list of policy types.   
+Possible values: `once_only`, `limited_time`, `rotating_batch`, `per_relying_party`  
+Default value: N/A  
 
-Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_OPTIONS_XX_BATCHSIZE`
-Description: The size of the batch of credentials to be issued.
-Default value: N/A
+Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_OPTIONS_XX_BATCHSIZE`  
+Description: The size of the batch of credentials to be issued.  
+Default value: N/A  
 
-Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERUNUSED`
-Description: The number of unused credentials that triggers a reissue.
-Default value: N/A
+Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERUNUSED`  
+Description: The number of unused credentials that triggers a reissue.  
+Default value: N/A  
 
-Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`
-Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.
-Default value: N/A
+Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`  
+Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.  
+Default value: N/A  
 
 Variable: `ISSUER_PID_SD_JWT_VC_ENABLED`  
 Description: Whether to enable support for PID issuance in *SD JWT VC* format.  
@@ -273,30 +273,30 @@ Variable: `ISSUER_PID_SD_JWT_VC_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`
 Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
 Default value: `ES256`
 
-Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_ENABLED`
-Description: Whether to enable support for Credential Reuse Policy for PIDs issued in *SD JWT VC*.
-Default value: `false`
+Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_ENABLED`  
+Description: Whether to enable support for Credential Reuse Policy for PIDs issued in *SD JWT VC*.  
+Default value: `false`  
 
-Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_TYPE`
-Description: The type of Credential Reuse Policy.
-Default value: `ArfAnnex2`
+Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_TYPE`  
+Description: The type of Credential Reuse Policy.  
+Default value: `ArfAnnex2`  
 
-Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_OPTIONS_XX_DETAILS`
-Description: Comma separated list of policy types. 
-Possible values: `once_only`, `limited_time`, `rotating_batch`, `per_relying_party`
-Default value: N/A
+Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_OPTIONS_XX_DETAILS`  
+Description: Comma separated list of policy types.   
+Possible values: `once_only`, `limited_time`, `rotating_batch`, `per_relying_party`  
+Default value: N/A  
 
-Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_OPTIONS_XX_BATCHSIZE`
-Description: The size of the batch of credentials to be issued.
-Default value: N/A
+Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_OPTIONS_XX_BATCHSIZE`  
+Description: The size of the batch of credentials to be issued.  
+Default value: N/A  
 
-Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERUNUSED`
-Description: The number of unused credentials that triggers a reissue.
-Default value: N/A
+Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERUNUSED`  
+Description: The number of unused credentials that triggers a reissue.  
+Default value: N/A  
 
-Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`
-Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.
-Default value: N/A
+Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`  
+Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.  
+Default value: N/A  
 
 Variable: `ISSUER_PID_ISSUINGCOUNTRY`  
 Description: Code of the Country issuing the PID  
@@ -336,30 +336,30 @@ Variable: `ISSUER_MDL_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`
 Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
 Default value: `ES256`
 
-Variable: `ISSUER_MDL_REUSEPOLICY_ENABLED`
-Description: Whether to enable support for Credential Reuse Policy for mDLs.
-Default value: `false`
+Variable: `ISSUER_MDL_REUSEPOLICY_ENABLED`  
+Description: Whether to enable support for Credential Reuse Policy for mDLs.    
+Default value: `false`    
 
-Variable: `ISSUER_MDL_REUSEPOLICY_TYPE`
-Description: The type of Credential Reuse Policy.
-Default value: `ArfAnnex2`
+Variable: `ISSUER_MDL_REUSEPOLICY_TYPE`  
+Description: The type of Credential Reuse Policy.  
+Default value: `ArfAnnex2`  
 
-Variable: `ISSUER_MDL_REUSEPOLICY_OPTIONS_XX_DETAILS`
-Description: Comma separated list of policy types. 
-Possible values: `once_only`, `limited_time`, `rotating_batch`, `per_relying_party`
-Default value: N/A
+Variable: `ISSUER_MDL_REUSEPOLICY_OPTIONS_XX_DETAILS`  
+Description: Comma separated list of policy types.   
+Possible values: `once_only`, `limited_time`, `rotating_batch`, `per_relying_party`  
+Default value: N/A  
 
-Variable: `ISSUER_MDL_REUSEPOLICY_OPTIONS_XX_BATCHSIZE`
-Description: The size of the batch of credentials to be issued.
-Default value: N/A
+Variable: `ISSUER_MDL_REUSEPOLICY_OPTIONS_XX_BATCHSIZE`  
+Description: The size of the batch of credentials to be issued.  
+Default value: N/A  
 
-Variable: `ISSUER_MDL_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERUNUSED`
-Description: The number of unused credentials that triggers a reissue.
-Default value: N/A
+Variable: `ISSUER_MDL_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERUNUSED`  
+Description: The number of unused credentials that triggers a reissue.  
+Default value: N/A  
 
-Variable: `ISSUER_MDL_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`
-Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.
-Default value: N/A
+Variable: `ISSUER_MDL_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`  
+Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.  
+Default value: N/A  
 
 Variable: `ISSUER_EHIC_COMPACT_ENABLED`    
 Description: Whether to enabled support for issuing European Health Insurance Cards in *SD-JWT VC* format.    
@@ -403,33 +403,33 @@ Variable: `ISSUER_EHIC_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`
 Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
 Default value: `ES256`  
 
-Variable: `ISSUER_EHIC_REUSEPOLICY_ENABLED`
-Description: Whether to enable support for Credential Reuse Policy for EHICs.
-Default value: `false`
+Variable: `ISSUER_EHIC_REUSEPOLICY_ENABLED`  
+Description: Whether to enable support for Credential Reuse Policy for EHICs.  
+Default value: `false`  
 
-Variable: `ISSUER_EHIC_REUSEPOLICY_TYPE`
-Description: The type of Credential Reuse Policy.
-Default value: `ArfAnnex2`
+Variable: `ISSUER_EHIC_REUSEPOLICY_TYPE`  
+Description: The type of Credential Reuse Policy.  
+Default value: `ArfAnnex2`  
 
-Variable: `ISSUER_EHIC_REUSEPOLICY_OPTIONS_XX_DETAILS`
-Description: Comma separated list of policy types. 
-Possible values: `once_only`, `limited_time`, `rotating_batch`, `per_relying_party`
-Default value: N/A
+Variable: `ISSUER_EHIC_REUSEPOLICY_OPTIONS_XX_DETAILS`  
+Description: Comma separated list of policy types.   
+Possible values: `once_only`, `limited_time`, `rotating_batch`, `per_relying_party`  
+Default value: N/A  
 
-Variable: `ISSUER_EHIC_REUSEPOLICY_OPTIONS_XX_BATCHSIZE`
-Description: The size of the batch of credentials to be issued.
-Default value: N/A
+Variable: `ISSUER_EHIC_REUSEPOLICY_OPTIONS_XX_BATCHSIZE`  
+Description: The size of the batch of credentials to be issued.  
+Default value: N/A  
 
-Variable: `ISSUER_EHIC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERUNUSED`
-Description: The number of unused credentials that triggers a reissue.
-Default value: N/A
+Variable: `ISSUER_EHIC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERUNUSED`  
+Description: The number of unused credentials that triggers a reissue.  
+Default value: N/A  
 
-Variable: `ISSUER_EHIC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`
-Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.
-Default value: N/A
+Variable: `ISSUER_EHIC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`  
+Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.  
+Default value: N/A  
 
-Variable: `ISSUER_LEARNINGCREDENTIAL_ENABLED`    
-Description: Whether to enabled support for issuing Learning Credentials.    
+Variable: `ISSUER_LEARNINGCREDENTIAL_ENABLED`      
+Description: Whether to enabled support for issuing Learning Credentials.      
 Default value: `true`  
 
 Variable: `ISSUER_LEARNINGCREDENTIAL_SIGNING_KEY`  
@@ -462,33 +462,33 @@ Variable: `ISSUER_LEARNINGCREDENTIAL_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`
 Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
 Example: `ES256`
 
-Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_ENABLED`
-Description: Whether to enable support for Credential Reuse Policy for Learning Credentials.
-Default value: `false`
+Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_ENABLED`  
+Description: Whether to enable support for Credential Reuse Policy for Learning Credentials.  
+Default value: `false`  
 
-Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_TYPE`
-Description: The type of Credential Reuse Policy.
-Default value: `ArfAnnex2`
+Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_TYPE`  
+Description: The type of Credential Reuse Policy.  
+Default value: `ArfAnnex2`  
 
-Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_OPTIONS_XX_DETAILS`
-Description: Comma separated list of policy types. 
-Possible values: `once_only`, `limited_time`, `rotating_batch`, `per_relying_party`
-Default value: N/A
+Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_OPTIONS_XX_DETAILS`  
+Description: Comma separated list of policy types.   
+Possible values: `once_only`, `limited_time`, `rotating_batch`, `per_relying_party`  
+Default value: N/A  
 
-Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_OPTIONS_XX_BATCHSIZE`
-Description: The size of the batch of credentials to be issued.
-Default value: N/A
+Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_OPTIONS_XX_BATCHSIZE`  
+Description: The size of the batch of credentials to be issued.  
+Default value: N/A  
 
-Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERUNUSED`
-Description: The number of unused credentials that triggers a reissue.
-Default value: N/A
+Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERUNUSED`  
+Description: The number of unused credentials that triggers a reissue.  
+Default value: N/A  
 
-Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`
-Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.
-Default value: N/A
+Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`  
+Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.  
+Default value: N/A  
 
-Variable: `ISSUER_CREDENTIALOFFER_URI`    
-Description: URI to use when generating Credential Offers.    
+Variable: `ISSUER_CREDENTIALOFFER_URI`      
+Description: URI to use when generating Credential Offers.      
 Default value: `openid-credential-offer://`
 
 Variable: `ISSUER_SIGNED_METADATA_ISSUER`  
