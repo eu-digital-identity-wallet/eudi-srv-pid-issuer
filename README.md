@@ -68,7 +68,6 @@ The Realm *pid-issuer-realm*:
 - defines *eu.europa.ec.eudi.pid_vc_sd_jwt* scope for requesting PID issuance in SD-JWT VC format
 - defines *eu.europa.ec.eudi.pid_mso_mdoc* scope for requesting PID issuance in MSO MDOC format
 - defines *org.iso.18013.5.1.mDL* scope for requesting mDL issuance in MSO MDOC format
-- defines *urn:eudi:ehic:1:dc+sd-jwt* scope for requesting European Health Insurance Card issuance in SD-JWT VC format
 - defines *urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt* scope for requesting Learning Credential issuance in SD-JWT VC format
 - defines *wallet-dev* and *pid-issuer-srv* clients
 - contains sample user with credentials: tneal / password
@@ -361,73 +360,6 @@ Variable: `ISSUER_MDL_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`
 Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.  
 Default value: N/A  
 
-Variable: `ISSUER_EHIC_COMPACT_ENABLED`    
-Description: Whether to enabled support for issuing European Health Insurance Cards in *SD-JWT VC* format.    
-Default value: `true`
-
-Variable: `ISSUER_EHIC_JWSJSONFLATTENED_ENABLED`    
-Description: Whether to enabled support for issuing European Health Insurance Cards in *SD-JWT VC* format using JWS Json Flattened serialization.      
-Default value: `false`
-
-Variable: `ISSUER_EHIC_SIGNING_KEY`  
-Description: Whether to generate a new, or use an existing key-pair for signing EHICs.    
-Possible values: `GenerateRandom`, `LoadFromKeystore`  
-Default value: `GenerateRandom`
-
-Variable: `ISSUER_EHIC_SIGNING_KEY_ALIAS`  
-Description: Alias of the key-pair for signing EHICs.       
-Default value: N/A
-
-Variable: `ISSUER_EHIC_SIGNING_KEY_PASSWORD`  
-Description: Password of the key-pair for signing EHICs.       
-Default value: N/A
-
-Variable: `ISSUER_EHIC_VALIDITY`    
-Description: Validity of European Health Insurance Cards issued in *SD-JWT VC* format. Uses Period syntax.      
-Default value: `P31D`
-
-Variable: `ISSUER_EHIC_ENCODER_DIGESTS_HASHALGORITHM`  
-Description: Hash algorithm used to calculate the disclosure digests of European Health Insurance Cards issued in *SD-JWT VC* format.    
-Allowed values: `sha-256`, `sha-384`, `sha-512`, `sha3-256`, `sha3-384`, `sha3-512`   
-Default value: `sha-256`  
-
-Variable: `ISSUER_EHIC_NOTIFICATIONS_ENABLED`    
-Description: Whether to enabled Notifications Endpoint support for European Health Insurance Cards issued in *SD-JWT VC* format.    
-Default value: `true`
-
-Variable: `ISSUER_EHIC_ISSUINGCOUNTRY`      
-Description: Issuing Country used for European Health Insurance Cards issued in *SD-JWT VC* format. 2-letter ISO Country Code.      
-Default value: `GR`  
-
-Variable: `ISSUER_EHIC_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`      
-Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
-Default value: `ES256`  
-
-Variable: `ISSUER_EHIC_REUSEPOLICY_ENABLED`  
-Description: Whether to enable support for Credential Reuse Policy for EHICs.  
-Default value: `false`  
-
-Variable: `ISSUER_EHIC_REUSEPOLICY_TYPE`  
-Description: The type of Credential Reuse Policy.  
-Default value: `ArfAnnex2`  
-
-Variable: `ISSUER_EHIC_REUSEPOLICY_OPTIONS_XX_DETAILS`  
-Description: Comma separated list of policy types.   
-Possible values: `once_only`, `limited_time`, `rotating_batch`, `per_relying_party`  
-Default value: N/A  
-
-Variable: `ISSUER_EHIC_REUSEPOLICY_OPTIONS_XX_BATCHSIZE`  
-Description: The size of the batch of credentials to be issued.  
-Default value: N/A  
-
-Variable: `ISSUER_EHIC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERUNUSED`  
-Description: The number of unused credentials that triggers a reissue.  
-Default value: N/A  
-
-Variable: `ISSUER_EHIC_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETIMELEFT`  
-Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.  
-Default value: N/A  
-
 Variable: `ISSUER_LEARNINGCREDENTIAL_ENABLED`      
 Description: Whether to enabled support for issuing Learning Credentials.      
 Default value: `true`  
@@ -714,6 +646,39 @@ password *654321*.
 
 __Note__: When loading an EC Key and certificate from a keystore, make sure the certificate chain is associated with
 the EC Key alias.
+
+### Database configuration
+
+PID-Issuer is compatible with PostgreSQL and supports connection pooling.  
+It uses Spring Data with [R2DBC](https://r2dbc.io/).  
+
+The schema must be created manually before starting the server.    
+DDL scripts are located in `docker-compose/postgresql/schema`.  
+
+When running the server with the provided Docker Compose yaml file, the database is initialized automatically.    
+
+To configure the database, use the following environment variables:  
+
+Variable: `SPRING_R2DBC_URL`   
+Description: R2DBC URL used to connect to the database.   
+Allowed protocols: `r2dbc`  
+
+Available database drivers are:  
+- postgresql  
+- pool  
+
+Connection pooling can be configured using the [r2dbc-pool](https://github.com/r2dbc/r2dbc-pool) driver.  
+
+Default value: `r2dbc:pool:postgresql://pid_issuer:pid_issuer@localhost:5432/pid_issuer`  
+Example value: `r2dbc:pool:postgresql://localhost:5432/pid_issuer`  
+
+Variable: `SPRING_R2DBC_USERNAME`  
+Description: Username of the database user.  
+Example value: `pid_issuer`  
+
+Variable: `SPRING_R2DBC_PASSWORD`    
+Description: Password of the database user.   
+Example value: `pid_issuer` 
 
 ## Endpoints
 
