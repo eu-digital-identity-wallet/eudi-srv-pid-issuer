@@ -205,9 +205,13 @@ Variable: `ISSUER_PID_MSO_MDOC_NOTIFICATIONS_ENABLED`
 Description: Whether to enabled Notifications Endpoint support for PIDs issued in *MSO MDOC*.     
 Default value: `true`
 
-Variable: `ISSUER_PID_MSO_MDOC_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`      
-Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
-Default value: `ES256`
+Variable: `ISSUER_PID_MSO_MDOC_PROOFS_SUPPORTEDSIGNINGALGORITHMS`      
+Description: Comma separated list of the signing algorithms that can be used with JWT or Attestation Proofs.      
+Default value: `ES256`  
+Allowed values:
+* `ES256`
+* `ES384`
+* `ES512`
 
 Variable: `ISSUER_PID_MSO_MDOC_REUSEPOLICY_ENABLED`  
 Description: Whether to enable support for Credential Reuse Policy for PIDs issued in *MSO MDOC*.  
@@ -268,9 +272,13 @@ Description: Hash algorithm used to calculate the disclosure digests of PIDs iss
 Allowed values: `sha-256`, `sha-384`, `sha-512`, `sha3-256`, `sha3-384`, `sha3-512`   
 Default value: `sha-256`
 
-Variable: `ISSUER_PID_SD_JWT_VC_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`      
-Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
-Default value: `ES256`
+Variable: `ISSUER_PID_SD_JWT_VC_PROOFS_SUPPORTEDSIGNINGALGORITHMS`      
+Description: Comma separated list of the signing algorithms that can be used with JWT or Attestation Proofs.      
+Default value: `ES256`  
+Allowed values:
+* `ES256`
+* `ES384`
+* `ES512`
 
 Variable: `ISSUER_PID_SD_JWT_VC_REUSEPOLICY_ENABLED`  
 Description: Whether to enable support for Credential Reuse Policy for PIDs issued in *SD JWT VC*.  
@@ -331,9 +339,13 @@ Variable: `ISSUER_MDL_NOTIFICATIONS_ENABLED`
 Description: Whether to enabled Notifications Endpoint support for mDLs.    
 Default value: `true`
 
-Variable: `ISSUER_MDL_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`      
-Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
-Default value: `ES256`
+Variable: `ISSUER_MDL_PROOFS_SUPPORTEDSIGNINGALGORITHMS`      
+Description: Comma separated list of the signing algorithms that can be used with JWT or Attestation Proofs.      
+Default value: `ES256`  
+Allowed values:
+* `ES256`
+* `ES384`
+* `ES512`
 
 Variable: `ISSUER_MDL_REUSEPOLICY_ENABLED`  
 Description: Whether to enable support for Credential Reuse Policy for mDLs.    
@@ -390,9 +402,13 @@ Variable: `ISSUER_LEARNINGCREDENTIAL_NOTIFICATIONS_ENABLED`
 Description: Whether to enabled Notifications Endpoint support for issued Learning Credentials.    
 Default value: `true`
 
-Variable: `ISSUER_LEARNINGCREDENTIAL_JWTPROOFS_SUPPORTEDSIGNINGALGORITHMS`      
-Description: Comma separated list of the signing algorithms that can be used with JWT Proofs.      
-Example: `ES256`
+Variable: `ISSUER_LEARNINGCREDENTIAL_PROOFS_SUPPORTEDSIGNINGALGORITHMS`      
+Description: Comma separated list of the signing algorithms that can be used with JWT or Attestation Proofs.      
+Example: `ES256`  
+Allowed values:
+* `ES256`
+* `ES384`
+* `ES512`
 
 Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_ENABLED`  
 Description: Whether to enable support for Credential Reuse Policy for Learning Credentials.  

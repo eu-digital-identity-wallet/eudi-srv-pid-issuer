@@ -57,9 +57,9 @@ internal class ValidateJwtProofWithKeyAttestationTest {
         mdlV1Cfg(
             CoseAlgorithm(-7),
             deviceBinding =
-                DeviceBinding.Required(
-                    checkNotNull(ECDSASigner.SUPPORTED_ALGORITHMS.toNonEmptySetOrNull()),
-                    KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(60.days)),
+                DeviceBinding.Required.ts3(
+                    nonEmptySetOf(JWSAlgorithm.ES256, JWSAlgorithm.ES384, JWSAlgorithm.ES512),
+                    PreferredKeyStorageStatusPeriod(60.days),
                 ),
             validity = 24.hours,
         )
@@ -188,9 +188,9 @@ internal class ValidateJwtProofWithKeyAttestationTest {
             val credentialConfiguration =
                 mdlV1Cfg(
                     CoseAlgorithm(-7),
-                    DeviceBinding.Required(
+                    DeviceBinding.Required.ts3(
                         nonEmptySetOf(JWSAlgorithm.ES512),
-                        KeyAttestationRequirement.ts3(PreferredKeyStorageStatusPeriod(60.days)),
+                        PreferredKeyStorageStatusPeriod(60.days),
                     ),
                     validity = 24.hours,
                 )
