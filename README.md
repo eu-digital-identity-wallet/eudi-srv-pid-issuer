@@ -142,10 +142,6 @@ Default value: `http://localhost:8080`
 
 Variable: `ISSUER_AUTHORIZATIONSERVER_PUBLICURL`  
 Description: URL of the Authorization Server advertised via the issuer metadata    
-Default value: N/A  
-
-Variable: `ISSUER_AUTHORIZATIONSERVER_METADATA`  
-Description: URL used to fetch the metadata of the Authorization Server      
 Default value: N/A
 
 Variable: `ISSUER_AUTHORIZATIONSERVER_INTROSPECTION`  
