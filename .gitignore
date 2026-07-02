@@ -36,3 +36,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Other ###
+application-prod.properties
