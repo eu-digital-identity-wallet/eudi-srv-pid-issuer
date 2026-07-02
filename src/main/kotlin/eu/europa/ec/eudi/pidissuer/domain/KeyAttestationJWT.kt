@@ -23,6 +23,7 @@ import arrow.core.raise.catch
 import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
 import arrow.core.serialization.NonEmptyListSerializer
+import com.eygraber.uri.Url
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSObject
 import com.nimbusds.jose.jwk.ECKey
@@ -90,7 +91,7 @@ data class KeyAttestationClaims(
     val keyStorage: NonEmptyList<AttackPotentialResistance>,
     @Required @SerialName(OpenId4VciSpec.KEY_ATTESTATION_USER_AUTHENTICATION)
     val userAuthentication: NonEmptyList<AttackPotentialResistance>,
-    @Required @SerialName(OpenId4VciSpec.CERTIFICATION) val certification: StringUrl,
+    @Required @SerialName(OpenId4VciSpec.CERTIFICATION) val certification: Url,
     @SerialName(OpenId4VciSpec.NONCE) val nonce: Nonce? = null,
     @SerialName(TokenStatusListSpec.STATUS) val status: Status? = null,
     @Required @SerialName(TS3.KEY_STORAGE_STATUS) val keyStorageStatus: KeyStorageStatus,

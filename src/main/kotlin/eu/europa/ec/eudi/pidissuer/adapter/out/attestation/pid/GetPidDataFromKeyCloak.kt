@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid
 import arrow.core.nonEmptyListOf
 import arrow.core.raise.Raise
 import arrow.core.raise.context.ensure
+import com.eygraber.uri.Url
 import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.util.JSONObjectUtils
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcAssurancePlaceOfBirth
@@ -176,18 +177,20 @@ class GetPidDataFromKeyCloak(
     private suspend fun getUserByUsername(username: String): UserRepresentation {
         val accessToken = getAdminAccessToken()
         val url =
-            URLBuilder()
-                .takeFrom(keyCloak)
-                .appendPathSegments("admin", "realms", users.value, "users")
-                .apply {
-                    parameters.append("username", username)
-                    parameters.append("exact", "true")
-                }.build()
+            keyCloak
+                .buildUpon()
+                .appendPath("admin")
+                .appendPath("realms")
+                .appendPath(users.value)
+                .appendPath("users")
+                .appendQueryParameter("username", username)
+                .appendQueryParameter("exact", "true")
+                .build()
 
         val users =
             webClient
                 .get()
-                .uri(url.toURI())
+                .uri(url.toString())
                 .accept(MediaType.APPLICATION_JSON)
                 .headers {
                     it[HttpHeaders.AUTHORIZATION] = accessToken.toAuthorizationHeader()
@@ -203,14 +206,18 @@ class GetPidDataFromKeyCloak(
      */
     private suspend fun getAdminAccessToken(): AccessToken {
         val tokenEndpoint =
-            URLBuilder()
-                .takeFrom(keyCloak)
-                .appendPathSegments("realms", administrationClient.realm.value, "protocol", "openid-connect", "token")
+            keyCloak
+                .buildUpon()
+                .appendPath("realms")
+                .appendPath(administrationClient.realm.value)
+                .appendPath("protocol")
+                .appendPath("openid-connect")
+                .appendPath("token")
                 .build()
         val response =
             webClient
                 .post()
-                .uri(tokenEndpoint.toURI())
+                .uri(tokenEndpoint.toString())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .accept(MediaType.APPLICATION_JSON)
                 .body(

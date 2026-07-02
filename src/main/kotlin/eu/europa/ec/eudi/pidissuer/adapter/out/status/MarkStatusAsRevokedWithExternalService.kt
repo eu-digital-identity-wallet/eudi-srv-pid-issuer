@@ -17,24 +17,24 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.status
 
 import arrow.core.raise.Raise
 import arrow.core.raise.context.ensure
+import com.eygraber.uri.Url
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.out.status.MarkStatusAsRevoked
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitExchange
-import java.net.URL
 
 internal class MarkStatusAsRevokedWithExternalService(
     private val webClient: WebClient,
-    private val serviceUrl: URL,
+    private val serviceUrl: Url,
     private val apiKey: String,
 ) : MarkStatusAsRevoked {
     context(_: Raise<MarkStatusAsRevoked.Error>)
     override suspend fun invoke(status: StatusListToken) {
         webClient
             .post()
-            .uri(serviceUrl.toExternalForm())
+            .uri(serviceUrl.toString())
             .headers { it.set(API_KEY_HEADER, apiKey) }
             .body(
                 BodyInserters.fromFormData(

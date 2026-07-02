@@ -18,7 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl
 import eu.europa.ec.eudi.pidissuer.domain.ClaimDefinition
 import eu.europa.ec.eudi.pidissuer.domain.MsoNameSpace
 import eu.europa.ec.eudi.pidissuer.domain.invoke
-import java.util.Locale
+import java.util.*
 
 object MsoMdocMdlV1Claims {
     val nameSpace: MsoNameSpace = mdlNamespace(1u)

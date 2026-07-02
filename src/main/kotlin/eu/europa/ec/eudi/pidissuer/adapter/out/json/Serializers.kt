@@ -15,10 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.json
 
-import arrow.core.NonEmptyList
-import arrow.core.serialization.NonEmptyListSerializer
 import com.nimbusds.jose.jwk.ECKey
-import com.nimbusds.jose.jwk.JWK
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -26,8 +23,6 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonObject
-import java.net.URI
-import java.net.URL
 import kotlin.time.Instant
 
 object InstantEpochSecondsSerializer : KSerializer<Instant> {
@@ -42,32 +37,6 @@ object InstantEpochSecondsSerializer : KSerializer<Instant> {
     }
 
     override fun deserialize(decoder: Decoder): Instant = Instant.fromEpochSeconds(decoder.decodeLong())
-}
-
-object UriStringSerializer : KSerializer<URI> {
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("UriStringSerializer", PrimitiveKind.STRING)
-
-    override fun serialize(
-        encoder: Encoder,
-        value: URI,
-    ) {
-        encoder.encodeString(value.toString())
-    }
-
-    override fun deserialize(decoder: Decoder): URI = URI.create(decoder.decodeString())
-}
-
-object UrlStringSerializer : KSerializer<URL> {
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("UrlStringSerializer", PrimitiveKind.STRING)
-
-    override fun serialize(
-        encoder: Encoder,
-        value: URL,
-    ) {
-        encoder.encodeString(value.toString())
-    }
-
-    override fun deserialize(decoder: Decoder): URL = URI.create(decoder.decodeString()).toURL()
 }
 
 object ECKeyJsonObjectSerializer : KSerializer<ECKey> {

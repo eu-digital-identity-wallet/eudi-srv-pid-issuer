@@ -16,12 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.port.out.attestation
 
 import arrow.core.raise.Raise
-import eu.europa.ec.eudi.pidissuer.domain.AuthorizedCredentialRequest
-import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
-import eu.europa.ec.eudi.pidissuer.domain.CredentialConfigurationId
-import eu.europa.ec.eudi.pidissuer.domain.CredentialResponse
-import eu.europa.ec.eudi.pidissuer.domain.MsoMdocCredentialConfiguration
-import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcCredentialConfiguration
+import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateTransactionId

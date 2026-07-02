@@ -16,6 +16,8 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
 import arrow.core.NonFatal
+import com.eygraber.uri.Uri
+import com.eygraber.uri.toUri
 import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.oauth2.sdk.token.AccessTokenType
 import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
@@ -26,9 +28,7 @@ import org.springframework.security.core.Authentication
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException
 import org.springframework.security.web.server.authentication.ServerAuthenticationConverter
 import org.springframework.web.server.ServerWebExchange
-import org.springframework.web.util.UriComponentsBuilder
 import reactor.core.publisher.Mono
-import java.net.URI
 
 /**
  * [ServerAuthenticationConverter] for [DPoPTokenAuthentication].
@@ -119,11 +119,10 @@ private fun ServerHttpRequest.authorization(): DPoPAccessToken? =
 /**
  * Gets the uri of the current [ServerHttpRequest]. The uri does not contain query parameters or fragments.
  */
-private fun ServerHttpRequest.uri(): URI =
-    URI.create(
-        UriComponentsBuilder
-            .fromUri(uri)
-            .replaceQuery(null)
-            .fragment(null)
-            .toUriString(),
-    )
+private fun ServerHttpRequest.uri(): Uri =
+    uri
+        .toUri()
+        .buildUpon()
+        .query(null)
+        .fragment(null)
+        .build()

@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.trust
 
 import arrow.core.NonEmptyList
 import arrow.core.serialization.NonEmptyListSerializer
+import com.eygraber.uri.Url
 import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.trust.TrustResult
 import kotlinx.serialization.KSerializer
@@ -31,20 +32,19 @@ import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
 import java.io.ByteArrayInputStream
-import java.net.URI
 import java.security.cert.CertificateFactory
 import java.security.cert.TrustAnchor
 import java.security.cert.X509Certificate
 
 fun IsTrustedKeyAttestationIssuer.Companion.usingTrustValidatorService(
     webClient: WebClient,
-    service: URI,
+    service: Url,
 ): IsTrustedKeyAttestationIssuer =
     IsTrustedKeyAttestationIssuer { x5c ->
         val body = TrustQueryRequest(x5c, "WalletUnitAttestation")
         val configClient =
             webClient.post().apply {
-                uri(service)
+                uri(service.toString())
                 bodyValue(body)
                 contentType(MediaType.APPLICATION_JSON)
                 accept(MediaType.APPLICATION_JSON)

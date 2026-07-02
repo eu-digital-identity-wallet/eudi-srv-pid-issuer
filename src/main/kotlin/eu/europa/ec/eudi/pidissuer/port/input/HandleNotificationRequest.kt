@@ -23,9 +23,6 @@ import arrow.core.raise.effect
 import arrow.core.raise.fold
 import eu.europa.ec.eudi.pidissuer.domain.NotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadIssuedCredentialsByNotificationId
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import org.slf4j.LoggerFactory

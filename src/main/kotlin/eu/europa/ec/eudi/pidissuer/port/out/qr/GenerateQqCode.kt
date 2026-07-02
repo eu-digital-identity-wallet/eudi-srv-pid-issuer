@@ -15,9 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out.qr
 
-import arrow.core.Either
 import com.eygraber.uri.Uri
-import java.net.URI
 
 enum class Format {
     JPG,

@@ -15,12 +15,12 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
+import com.eygraber.uri.Uri
 import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import org.springframework.http.HttpMethod
 import org.springframework.security.authentication.AbstractAuthenticationToken
 import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal
-import java.net.URI
 
 /**
  * A DPoP authentication token.
@@ -29,7 +29,7 @@ class DPoPTokenAuthentication private constructor(
     val dpop: SignedJWT,
     val accessToken: DPoPAccessToken,
     val method: HttpMethod,
-    val uri: URI,
+    val uri: Uri,
     private val _principal: OAuth2AuthenticatedPrincipal?,
 ) : AbstractAuthenticationToken(_principal?.authorities ?: emptySet()) {
     init {
@@ -56,7 +56,7 @@ class DPoPTokenAuthentication private constructor(
             dpop: SignedJWT,
             accessToken: DPoPAccessToken,
             method: HttpMethod,
-            uri: URI,
+            uri: Uri,
         ): DPoPTokenAuthentication = DPoPTokenAuthentication(dpop, accessToken, method, uri, null)
     }
 }

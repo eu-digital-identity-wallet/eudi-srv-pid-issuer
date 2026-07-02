@@ -30,7 +30,6 @@ import eu.europa.ec.eudi.pidissuer.port.out.qr.Pixels
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
-import java.net.URI
 
 /**
  * [GenerateQqCode] implementation using QRGen.

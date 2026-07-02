@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.mdl
 import arrow.core.getOrElse
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
+import com.eygraber.uri.Uri
 import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import eu.europa.ec.eudi.pidissuer.domain.ClientStatus
 import eu.europa.ec.eudi.pidissuer.domain.Scope
@@ -25,7 +26,6 @@ import eu.europa.ec.eudi.pidissuer.domain.StatusClaim
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import kotlinx.coroutines.test.runTest
-import java.net.URI
 import kotlin.test.Test
 import kotlin.test.fail
 import kotlin.time.Clock
@@ -44,7 +44,7 @@ internal class GetMobileDrivingLicenceDataMockTest {
                         StatusClaim(
                             statusList =
                                 StatusListToken(
-                                    statusList = URI.create("https://revocation_url/wia-statuslists/42"),
+                                    statusList = Uri.parse("https://revocation_url/wia-statuslists/42"),
                                     index = 1337u,
                                 ),
                         ),

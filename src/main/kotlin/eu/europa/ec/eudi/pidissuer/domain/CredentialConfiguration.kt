@@ -18,7 +18,6 @@ package eu.europa.ec.eudi.pidissuer.domain
 import arrow.core.NonEmptySet
 import arrow.core.nonEmptySetOf
 import com.nimbusds.jose.JWSAlgorithm
-import eu.europa.ec.eudi.pidissuer.domain.DeviceBinding.Required.ProofOption
 import kotlinx.serialization.Serializable
 import kotlin.time.Duration
 

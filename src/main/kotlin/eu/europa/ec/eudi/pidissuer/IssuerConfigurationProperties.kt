@@ -15,14 +15,13 @@
  */
 package eu.europa.ec.eudi.pidissuer
 
+import com.eygraber.uri.Url
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.core.io.Resource
-import java.net.URI
-import java.net.URL
 import java.time.Duration as JavaDuration
 
 data class KeycloakConfigurationProperties(
-    val serverUrl: URL,
+    val serverUrl: Url,
     val authenticationRealm: String,
     val clientId: String,
     val username: String,
@@ -50,7 +49,7 @@ internal data class IssuerMetadataProperties(
     )
 
     data class LogoProperties(
-        val uri: URI,
+        val uri: String,
         val alternativeText: String? = null,
     )
 }
