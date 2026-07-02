@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.json
 
 import arrow.core.NonEmptyList
 import arrow.core.serialization.NonEmptyListSerializer
+import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -69,23 +70,21 @@ object UrlStringSerializer : KSerializer<URL> {
     override fun deserialize(decoder: Decoder): URL = URI.create(decoder.decodeString()).toURL()
 }
 
-object JWKNonEmptyListSerializer : KSerializer<NonEmptyList<JWK>> by NonEmptyListSerializer(JWKJsonObjectSerializer)
-
-object JWKJsonObjectSerializer : KSerializer<JWK> {
+object ECKeyJsonObjectSerializer : KSerializer<ECKey> {
     private val serializer = JsonObject.serializer()
 
-    override val descriptor: SerialDescriptor = SerialDescriptor("JWKJsonObjectSerializer", serializer.descriptor)
+    override val descriptor: SerialDescriptor = SerialDescriptor("ECKeyJsonObject", serializer.descriptor)
 
     override fun serialize(
         encoder: Encoder,
-        value: JWK,
+        value: ECKey,
     ) {
-        val serialized = jsonSupport.decodeFromString<JsonObject>(value.toJSONString())
-        encoder.encodeSerializableValue(serializer, serialized)
+        val asJsonObject = jsonSupport.decodeFromString<JsonObject>(value.toJSONString())
+        encoder.encodeSerializableValue(serializer, asJsonObject)
     }
 
-    override fun deserialize(decoder: Decoder): JWK {
-        val serialized = decoder.decodeSerializableValue(serializer)
-        return JWK.parse(jsonSupport.encodeToString(serialized))
+    override fun deserialize(decoder: Decoder): ECKey {
+        val asJsonObject = decoder.decodeSerializableValue(serializer)
+        return ECKey.parse(jsonSupport.encodeToString(asJsonObject))
     }
 }
