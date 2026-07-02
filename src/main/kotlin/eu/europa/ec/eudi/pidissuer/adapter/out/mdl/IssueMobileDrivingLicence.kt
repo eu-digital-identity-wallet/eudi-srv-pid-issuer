@@ -15,19 +15,23 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
-import arrow.core.*
-import arrow.core.raise.context.either
+import arrow.core.NonEmptySet
+import arrow.core.getOrElse
+import arrow.core.nonEmptySetOf
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensureNotNull
+import arrow.core.raise.context.raise
+import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.jwkExtensions
+import eu.europa.ec.eudi.pidissuer.adapter.out.util.eitherOrRaise
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
@@ -349,17 +353,18 @@ internal class IssueMobileDrivingLicence(
     override val publicKey: JWK?
         get() = null
 
+    context(_: Raise<IssueCredentialError>)
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): Either<IssueCredentialError, CredentialResponse> = either {
+    ): CredentialResponse = run {
         log.info("Issuing mDL")
         val holderKeys = with(jwkExtensions()) {
-            validateProofs(request.unvalidatedProofs, supportedCredential, clock.now()).bind()
+            validateProofs(request.unvalidatedProofs, supportedCredential, clock.now())
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
         }
-        val licence = getMobileDrivingLicenceData(authorizationContext).bind()
+        val licence = getMobileDrivingLicenceData(authorizationContext)
         ensureNotNull(licence) {
             IssueCredentialError.Unexpected("Unable to fetch mDL data")
         }
@@ -369,13 +374,15 @@ internal class IssueMobileDrivingLicence(
 
         val issuedCredentials = holderKeys.parMap(Dispatchers.Default, 4) { holderKey ->
             val statusListToken = generateStatusListToken?.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
-                it(supportedCredential.docType, expiresAt)
-                    .getOrElse { error ->
-                        raise(Unexpected("Unable to generate Status List Token", error))
-                    }
+                eitherOrRaise({
+                    it(supportedCredential.docType, expiresAt)
+                })
+                { error ->
+                    raise(IssueCredentialError.Unexpected("Unable to generate Status List Token", error))
+                }
             }
 
-            encodeMobileDrivingLicenceInCbor(licence, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken).bind()
+            encodeMobileDrivingLicenceInCbor(licence, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)
         }.toNonEmptyListOrNull()
         ensureNotNull(issuedCredentials) {
             IssueCredentialError.Unexpected("Unable to issue mDL")

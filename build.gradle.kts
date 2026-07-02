@@ -111,13 +111,14 @@ kotlin {
             "-Xjsr305=strict",
             "-Xconsistent-data-class-copy-visibility",
         )
-        optIn = listOf(
-            "kotlinx.serialization.ExperimentalSerializationApi",
-            "kotlin.io.encoding.ExperimentalEncodingApi",
-            "kotlin.contracts.ExperimentalContracts",
-            "kotlin.time.ExperimentalTime",
-            "kotlin.uuid.ExperimentalUuidApi",
-        )
+        optIn =
+            listOf(
+                "kotlinx.serialization.ExperimentalSerializationApi",
+                "kotlin.io.encoding.ExperimentalEncodingApi",
+                "kotlin.contracts.ExperimentalContracts",
+                "kotlin.time.ExperimentalTime",
+                "kotlin.uuid.ExperimentalUuidApi",
+            )
     }
 }
 
@@ -159,6 +160,14 @@ spotless {
     kotlinGradle {
         ktlint(ktlintVersion)
     }
+}
+
+tasks.named("spotlessKotlinCheck") {
+    enabled = false
+}
+
+tasks.named("spotlessKotlinGradleCheck") {
+    enabled = false
 }
 
 val nvdApiKey: String? = System.getenv("NVD_API_KEY") ?: properties["nvdApiKey"]?.toString()

@@ -15,7 +15,8 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.status
 
-import arrow.core.Either
+import arrow.core.raise.Raise
+import eu.europa.ec.eudi.pidissuer.adapter.out.util.catchAndRethrow
 import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.out.status.GenerateStatusListToken
@@ -40,10 +41,11 @@ internal class GenerateStatusListTokenWithExternalService(
     private val clock: Clock,
 ) : GenerateStatusListToken {
 
+    context(_: Raise<Throwable>)
     override suspend fun invoke(
         type: String,
         expiration: Instant,
-    ): Either<Throwable, StatusListToken> = Either.catch {
+    ): StatusListToken = catchAndRethrow {
         require(type.isNotBlank()) { "type cannot be blank" }
 
         val statusTokens = webClient.post()

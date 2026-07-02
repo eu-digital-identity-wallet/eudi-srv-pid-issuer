@@ -15,11 +15,16 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.input
 
+import arrow.core.Ior
+import arrow.core.NonEmptyList
 import arrow.core.NonEmptySet
+import arrow.core.getOrElse
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
 import arrow.core.raise.context.ensure
 import arrow.core.raise.context.ensureNotNull
+import arrow.core.raise.context.withError
+import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
@@ -285,8 +290,9 @@ class IssueCredential(
     private val encryptCredentialResponse: EncryptCredentialResponse,
 ) {
 
-    private fun Raise<IssueCredentialError>.services(): Services =
-        Services(this, credentialIssuerMetadata, resolveCredentialRequestByCredentialIdentifier)
+    context(r: Raise<IssueCredentialError>)
+    private fun services(): Services =
+        Services(r, credentialIssuerMetadata, resolveCredentialRequestByCredentialIdentifier)
 
     suspend fun fromEncryptedRequest(
         authorizationContext: AuthorizationContext,
@@ -380,17 +386,18 @@ private class Services(
             request.credentialRequest to issued
         }
 
+        context(_: Raise<InvalidCredentialIdentifier>)
         private suspend fun resolve(
             unresolvedRequest: UnresolvedCredentialRequest.ByCredentialIdentifier,
         ): ResolvedCredentialRequest =
-            either {
+            run {
                 val resolvedRequest = resolveCredentialRequestByCredentialIdentifier(
                     unresolvedRequest.credentialIdentifier,
                     unresolvedRequest.unvalidatedProofs,
                     unresolvedRequest.credentialResponseEncryption,
                 )
                 ensureNotNull(resolvedRequest) { InvalidCredentialIdentifier(unresolvedRequest.credentialIdentifier) }
-            }.bind()
+            }
 
         private suspend fun issue(
             authorizationContext: AuthorizationContext,
@@ -401,7 +408,7 @@ private class Services(
                 authorizationContext,
                 resolvedCredentialRequest.credentialRequest,
                 resolvedCredentialRequest.credentialIdentifier,
-            ).bind()
+            )
         }
 
         private fun specificIssuerFor(
@@ -549,12 +556,15 @@ private interface Validations : Raise<IssueCredentialError> {
     /**
      * Gets the [RequestedResponseEncryption] that corresponds to the provided values.
      */
+    context(_: Raise<InvalidEncryptionParameters>)
     fun CredentialResponseEncryptionTO.toDomain(): RequestedResponseEncryption.Required =
-        RequestedResponseEncryption.Required(
-            Json.encodeToString(key),
-            method,
-            zipAlgorithm,
-        ).getOrElse { raise(InvalidEncryptionParameters(it)) }
+        withError(IssueCredentialError::InvalidEncryptionParameters) {
+            RequestedResponseEncryption.Required(
+                Json.encodeToString(key),
+                method,
+                zipAlgorithm,
+            )
+        }
 
     /**
      * Verifies this [RequestedResponseEncryption] is supported by the provided [CredentialResponseEncryption], otherwise

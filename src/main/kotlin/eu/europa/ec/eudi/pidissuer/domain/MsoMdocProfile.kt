@@ -88,7 +88,8 @@ data class MsoMdocCredentialRequest(
     override val format: Format = MSO_MDOC_FORMAT
 }
 
-internal fun Raise<String>.validate(msoMdocCredentialRequest: MsoMdocCredentialRequest, meta: MsoMdocCredentialConfiguration) {
+context(_: Raise<String>)
+internal fun validate(msoMdocCredentialRequest: MsoMdocCredentialRequest, meta: MsoMdocCredentialConfiguration) {
     ensure(msoMdocCredentialRequest.docType == meta.docType) {
         "doctype is ${msoMdocCredentialRequest.docType} but was expecting ${meta.docType}"
     }

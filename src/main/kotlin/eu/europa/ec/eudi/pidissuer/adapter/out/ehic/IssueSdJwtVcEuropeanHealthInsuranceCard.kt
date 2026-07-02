@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.ehic
 import arrow.core.Either
 import arrow.core.NonEmptySet
 import arrow.core.nonEmptySetOf
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
 import arrow.core.raise.context.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
@@ -207,21 +208,22 @@ internal class IssueSdJwtVcEuropeanHealthInsuranceCard private constructor(
         require(validity.isPositive())
     }
 
+    context(_: Raise<IssueCredentialError>)
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): Either<IssueCredentialError, CredentialResponse> = either {
+    ): CredentialResponse = run {
         log.info("Issuing DC4EU EHIC")
 
         val now = clock.now()
-        val holderPublicKeys = validateProofs(request.unvalidatedProofs, supportedCredential, now).bind()
+        val holderPublicKeys = validateProofs(request.unvalidatedProofs, supportedCredential, now)
         val ehic = getEuropeanHealthInsuranceCardData()
         val dateOfIssuance = now
         val dateOfExpiry = dateOfIssuance + validity
 
         val issuedCredentials = holderPublicKeys.parMap(Dispatchers.Default, 4) {
-            encode(ehic, authorizationContext.username, it, dateOfIssuance = dateOfIssuance, dateOfExpiry = dateOfExpiry).bind()
+            encode(ehic, authorizationContext.username, it, dateOfIssuance = dateOfIssuance, dateOfExpiry = dateOfExpiry)
         }.toNonEmptyListOrNull()
         ensureNotNull(issuedCredentials) {
             IssueCredentialError.Unexpected("Unable to issue DC4EU EHIC")

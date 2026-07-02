@@ -15,9 +15,11 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.Either
-import arrow.core.raise.context.either
+import arrow.core.raise.catch
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensureNotNull
+import arrow.core.raise.context.raise
+import arrow.core.raise.context.withError
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
@@ -47,39 +49,45 @@ internal class ValidateJwtProof(
     private val credentialIssuerId: CredentialIssuerId,
     private val verifyKeyAttestation: VerifyKeyAttestation,
 ) {
+    context(_: Raise<IssueCredentialError.InvalidProof>)
     suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof.Jwt,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
-    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey, String>> = either {
+    ): Pair<CredentialKey, String> = run {
         val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.JWT]
         ensureNotNull(proofType) {
             IssueCredentialError.InvalidProof("credential configuration '${credentialConfiguration.id.value}' doesn't support 'jwt' proofs")
         }
         check(proofType is ProofType.Jwt)
-        credentialKeyAndNonce(unvalidatedProof, proofType, at).bind()
+        credentialKeyAndNonce(unvalidatedProof, proofType, at)
     }
 
+    context(_: Raise<IssueCredentialError.InvalidProof>)
     private suspend fun credentialKeyAndNonce(
         unvalidatedProof: UnvalidatedProof.Jwt,
         proofType: ProofType.Jwt,
         at: Instant,
-    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey, String>> = Either.catch {
+    ): Pair<CredentialKey, String> = catch({
         val signedJwt = SignedJWT.parse(unvalidatedProof.jwt)
         val nonce = requireNotNull(signedJwt.jwtClaimsSet.getStringClaim("nonce")) { "Missing 'nonce'" }
         require(signedJwt.header.algorithm in proofType.signingAlgorithmsSupported) {
             "JWT proof signing algorithm '${signedJwt.header.algorithm}' is not supported, " +
                 "must be one of: ${proofType.signingAlgorithmsSupported.joinToString(", ") { it.name }}"
         }
-        val (algorithm, credentialKey) = algorithmAndCredentialKey(signedJwt, proofType, verifyKeyAttestation, nonce, at)
+        val (algorithm, credentialKey) =
+            withError({ th -> IssueCredentialError.InvalidProof("Invalid proof JWT", th) }) {
+                algorithmAndCredentialKey(signedJwt, proofType, verifyKeyAttestation, nonce, at)
+            }
         val keySelector = keySelector(signedJwt, credentialKey, algorithm)
         val processor = processor(credentialIssuerId, keySelector)
         processor.process(signedJwt, null)
 
         credentialKey to nonce
-    }.mapLeft { IssueCredentialError.InvalidProof("Invalid proof JWT", it) }
+    }) { raise(IssueCredentialError.InvalidProof("Invalid proof JWT", it)) }
 }
 
+context(_: Raise<Throwable>)
 private suspend fun algorithmAndCredentialKey(
     signedJwt: SignedJWT,
     proofType: ProofType.Jwt,
@@ -108,9 +116,9 @@ private suspend fun algorithmAndCredentialKey(
     }
 
     val key = when {
-        kid != null && jwk == null && keyAttestation == null && x5c.isNullOrEmpty() -> CredentialKey.DIDUrl(kid).getOrThrow()
+        kid != null && jwk == null && keyAttestation == null && x5c.isNullOrEmpty() -> CredentialKey.DIDUrl(kid)
         kid == null && jwk != null && keyAttestation == null && x5c.isNullOrEmpty() -> CredentialKey.Jwk(jwk)
-        kid == null && jwk == null && keyAttestation == null && !x5c.isNullOrEmpty() -> CredentialKey.X5c.parseDer(x5c).getOrThrow()
+        kid == null && jwk == null && keyAttestation == null && !x5c.isNullOrEmpty() -> CredentialKey.X5c.parseDer(x5c)
         jwk == null && keyAttestation != null && x5c.isNullOrEmpty() -> {
             CredentialKey.AttestedKeys.fromKeyAttestation(keyAttestation, proofType, verifyKeyAttestation, expectedKeyAttestationNonce, at)
         }

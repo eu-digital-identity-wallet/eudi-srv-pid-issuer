@@ -16,10 +16,14 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.NonEmptySet
+import arrow.core.getOrElse
 import arrow.core.nonEmptySetOf
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
 import arrow.core.raise.context.ensure
 import arrow.core.raise.context.ensureNotNull
+import arrow.core.raise.context.raise
+import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
@@ -27,11 +31,11 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.oauth.*
 import eu.europa.ec.eudi.pidissuer.adapter.out.signingAlgorithm
+import eu.europa.ec.eudi.pidissuer.adapter.out.util.eitherOrRaise
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
@@ -224,40 +228,42 @@ internal class IssueSdJwtVcPid(
         supportedCredential.type,
     )
 
+    context(_: Raise<IssueCredentialError>)
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): Either<IssueCredentialError, CredentialResponse> = either {
+    ): CredentialResponse = run {
         log.info("Handling issuance request ...")
 
-        val holderPubKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.now()).bind()
-        val (pid, pidMetaData) = getPidData(authorizationContext).bind()
+        val holderPubKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.now())
+        val (pid, pidMetaData) = getPidData(authorizationContext)
         val issuedAt = clock.now()
         val expiresAt = calculateExpiresAt(issuedAt)
         val notBefore = calculateNotUseBefore?.invoke(issuedAt)
 
         ensure(expiresAt > issuedAt) {
-            Unexpected("exp should be after iat")
+            IssueCredentialError.Unexpected("exp should be after iat")
         }
         notBefore?.let {
             ensure(it > issuedAt) {
-                Unexpected("nbf should be after iat")
+                IssueCredentialError.Unexpected("nbf should be after iat")
             }
         }
         if (null != pidMetaData.issuanceDate && null != notBefore) {
             val issuanceDateAtStartOfDay = with(clock) { pidMetaData.issuanceDate.atStartOfDay() }
             ensure(issuanceDateAtStartOfDay <= notBefore) {
-                Unexpected("date_of_issuance must not be after nbf")
+                IssueCredentialError.Unexpected("date_of_issuance must not be after nbf")
             }
         }
 
         val issuedCredentials = holderPubKeys.parMap(Dispatchers.Default, 4) { holderPubKey ->
             val statusListToken = generateStatusListToken?.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
-                it(supportedCredential.type.value, expiresAt)
-                    .getOrElse { error ->
-                        raise(Unexpected("Unable to generate Status List Token", error))
-                    }
+                eitherOrRaise({
+                    it(supportedCredential.type.value, expiresAt)
+                }) { th ->
+                    IssueCredentialError.Unexpected("Unable to generate Status List Token", th)
+                }
             }
             encodePidInSdJwt(
                 pid,
@@ -267,10 +273,10 @@ internal class IssueSdJwtVcPid(
                 expiresAt = expiresAt,
                 notBefore = notBefore,
                 statusListToken,
-            ).bind()
+            )
         }.toNonEmptyListOrNull()
         ensureNotNull(issuedCredentials) {
-            Unexpected("Unable to issue PID")
+            IssueCredentialError.Unexpected("Unable to issue PID")
         }
 
         val notificationId =

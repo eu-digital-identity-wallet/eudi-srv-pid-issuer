@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
-import arrow.core.Either
+import arrow.core.raise.context.Raise
 import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.pidissuer.domain.CoseAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
@@ -28,11 +28,12 @@ import kotlin.time.Instant
 interface EncodeMobileDrivingLicenceInCbor {
     val signingAlgorithm: CoseAlgorithm
 
+    context(_: Raise<IssueCredentialError.Unexpected>)
     suspend operator fun invoke(
         licence: MobileDrivingLicence,
         holderKey: ECKey,
         issuedAt: Instant,
         expiresAt: Instant,
         statusListToken: StatusListToken?,
-    ): Either<IssueCredentialError.Unexpected, String>
+    ): String
 }

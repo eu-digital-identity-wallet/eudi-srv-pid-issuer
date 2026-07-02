@@ -16,18 +16,19 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
 import arrow.core.*
-import arrow.core.raise.context.either
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensureNotNull
+import arrow.core.raise.context.raise
 import arrow.fx.coroutines.parMap
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.ValidateProofs
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.jwkExtensions
+import eu.europa.ec.eudi.pidissuer.adapter.out.util.eitherOrRaise
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.Unexpected
 import eu.europa.ec.eudi.pidissuer.port.out.IssueSpecificCredential
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredentials
@@ -313,30 +314,32 @@ internal class IssueMsoMdocPid(
 
     override val publicKey: JWK? = null
 
+    context(_: Raise<IssueCredentialError>)
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): Either<IssueCredentialError, CredentialResponse> = either {
+    ): CredentialResponse = run {
         log.info("Handling issuance request ...")
         val holderPubKeys = with(jwkExtensions()) {
             validateProofs(request.unvalidatedProofs, supportedCredential, clock.now())
-                .bind()
                 .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
         }
 
         val pidData = getPidData(authorizationContext)
-        val (pid, pidMetaData) = pidData.bind()
+        val (pid, pidMetaData) = pidData
 
         val issuedAt = clock.now()
         val expiresAt = issuedAt + validityDuration
 
         val issuedCredentials = holderPubKeys.parMap(Dispatchers.Default, 4) { holderKey ->
             val statusListToken = generateStatusListToken?.takeIf { credentialReusePolicy.shouldIncludeStatusList }?.let {
-                it(supportedCredential.docType, expiresAt)
-                    .getOrElse { error ->
-                        raise(Unexpected("Unable to generate Status List Token", error))
-                    }
+                eitherOrRaise({
+                    it(supportedCredential.docType, expiresAt)
+                })
+                { error ->
+                    raise(IssueCredentialError.Unexpected("Unable to generate Status List Token", error))
+                }
             }
 
             encodePidInCbor(pid, pidMetaData, holderKey, issuedAt = issuedAt, expiresAt = expiresAt, statusListToken)

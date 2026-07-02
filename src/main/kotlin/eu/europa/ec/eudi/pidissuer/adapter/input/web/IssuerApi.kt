@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
+import eu.europa.ec.eudi.pidissuer.adapter.out.util.handleAppError
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfigurationId
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOffer
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOfferError
@@ -44,14 +45,15 @@ class IssuerApi(
             .map(::CredentialConfigurationId)
             .toSet()
 
-        return createCredentialsOffer(credentialIds).fold(
-            ifRight = { credentialsOffer ->
+        return handleAppError(
+            {
+                createCredentialsOffer(credentialIds)
+            },
+            left = { ServerResponse.badRequest().json().bodyValueAndAwait(CreateCredentialsOfferResponseTO.error(it)) },
+            right = { credentialsOffer ->
                 ServerResponse.ok().json()
                     .bodyValueAndAwait(CreateCredentialsOfferResponseTO.success(credentialsOffer))
                     .also { log.info("Successfully generated Credentials Offer. URI: '{}'", credentialsOffer) }
-            },
-            ifLeft = { error ->
-                ServerResponse.badRequest().json().bodyValueAndAwait(CreateCredentialsOfferResponseTO.error(error))
             },
         )
     }

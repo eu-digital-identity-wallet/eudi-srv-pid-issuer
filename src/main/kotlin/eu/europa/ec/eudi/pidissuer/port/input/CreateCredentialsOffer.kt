@@ -127,10 +127,11 @@ class CreateCredentialsOffer(
     private val credentialsOfferUri: String,
 ) {
 
+    context(_: Raise<CreateCredentialsOfferError>)
     operator fun invoke(
         unvalidatedCredentialConfigurationIds: Set<CredentialConfigurationId>,
         customCredentialsOfferUri: String? = null,
-    ): Either<CreateCredentialsOfferError, URI> = either {
+    ): URI = run {
         val offer = run {
             val credentialConfigurationIds =
                 validate(metadata, unvalidatedCredentialConfigurationIds)
@@ -147,7 +148,8 @@ class CreateCredentialsOffer(
     }
 }
 
-private fun Raise<CreateCredentialsOfferError>.validate(
+context(_: Raise<CreateCredentialsOfferError>)
+private fun validate(
     metadata: CredentialIssuerMetaData,
     unvalidatedIds: Set<CredentialConfigurationId>,
 ): NonEmptySet<CredentialConfigurationId> {

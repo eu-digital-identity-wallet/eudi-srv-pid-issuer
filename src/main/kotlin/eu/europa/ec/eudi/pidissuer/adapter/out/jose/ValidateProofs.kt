@@ -17,10 +17,13 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.Either
 import arrow.core.NonEmptyList
-import arrow.core.raise.context.either
+import arrow.core.raise.catch
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
+import arrow.core.raise.context.raise
 import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.jwk.JWK
+import eu.europa.ec.eudi.pidissuer.adapter.out.util.eitherOrRaise
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
 import eu.europa.ec.eudi.pidissuer.domain.CredentialReusePolicy
 import eu.europa.ec.eudi.pidissuer.domain.EudiReusePolicy
@@ -41,18 +44,18 @@ internal class ValidateProofs(
     private val extractJwkFromCredentialKey: ExtractJwkFromCredentialKey,
 ) {
 
+    context(_: Raise<IssueCredentialError>)
     suspend operator fun invoke(
         unvalidatedProofs: NonEmptyList<UnvalidatedProof>,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
-    ): Either<IssueCredentialError, NonEmptyList<JWK>> = coroutineScope {
-        either {
+    ): NonEmptyList<JWK> = coroutineScope {
             val credentialKeysAndCNonces = unvalidatedProofs.map {
                 when (it) {
                     is UnvalidatedProof.Jwt ->
-                        validateJwtProof(it, credentialConfiguration, at).bind()
+                        validateJwtProof(it, credentialConfiguration, at)
                     is UnvalidatedProof.Attestation ->
-                        validateAttestationProof(it, credentialConfiguration, at).bind()
+                        validateAttestationProof(it, credentialConfiguration, at)
                     is UnvalidatedProof.DiVp -> raise(InvalidProof("Supporting only JWT proof"))
                 }
             }
@@ -64,8 +67,9 @@ internal class ValidateProofs(
             }
 
             val jwks = credentialKeysAndCNonces.map {
-                extractJwkFromCredentialKey(it.first).getOrElse { error ->
-                    raise(InvalidProof("Unable to extract JWK from CredentialKey", error))
+                eitherOrRaise({ extractJwkFromCredentialKey(it.first) })
+                { th ->
+                    raise(InvalidProof("Unable to extract JWK from CredentialKey", th))
                 }
             }.flatten()
                 .distinct()
@@ -73,7 +77,6 @@ internal class ValidateProofs(
                 .toNonEmptyListOrNull()
 
             checkNotNull(jwks)
-        }
     }
 
     private fun List<JWK>.limitTo(policy: CredentialReusePolicy): List<JWK> = when (policy) {

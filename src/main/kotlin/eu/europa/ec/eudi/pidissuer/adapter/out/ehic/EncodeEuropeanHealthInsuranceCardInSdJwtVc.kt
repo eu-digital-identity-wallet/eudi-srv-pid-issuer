@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.ehic
 
 import arrow.core.Either
 import arrow.core.raise.catch
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
 import arrow.core.raise.context.raise
 import com.nimbusds.jose.jwk.JWK
@@ -42,13 +43,14 @@ import kotlin.time.Instant
 import kotlin.time.toJavaInstant
 
 sealed interface EncodeEuropeanHealthInsuranceCardInSdJwtVc {
+    context(_: Raise<IssueCredentialError>)
     suspend operator fun invoke(
         ehic: EuropeanHealthInsuranceCard,
         holder: Username,
         holderPublicKey: JWK,
         dateOfIssuance: Instant,
         dateOfExpiry: Instant,
-    ): Either<IssueCredentialError, JsonElement>
+    ): JsonElement
 
     companion object {
         fun jwsJsonFlattened(
@@ -85,13 +87,14 @@ private class JwsJsonFlattenedEncoder(
 ) : EncodeEuropeanHealthInsuranceCardInSdJwtVc {
     private val issuer: SdJwtIssuer<SignedJWT> by lazy { issuerSigningKey.sdJwtVcIssuer(digestsHashAlgorithm) }
 
+    context(_: Raise<IssueCredentialError>)
     override suspend operator fun invoke(
         ehic: EuropeanHealthInsuranceCard,
         holder: Username,
         holderPublicKey: JWK,
         dateOfIssuance: Instant,
         dateOfExpiry: Instant,
-    ): Either<IssueCredentialError, JsonElement> = either {
+    ): JsonElement = run {
         val sdJwt = catch({
             issuer.createSdJwt(vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
         }) { raise(IssueCredentialError.Unexpected("Unable to create SD-JWT VC", it)) }
@@ -108,13 +111,14 @@ private class CompactEncoder(
 ) : EncodeEuropeanHealthInsuranceCardInSdJwtVc {
     private val issuer: SdJwtIssuer<SignedJWT> by lazy { issuerSigningKey.sdJwtVcIssuer(digestsHashAlgorithm) }
 
+    context(_: Raise<IssueCredentialError>)
     override suspend operator fun invoke(
         ehic: EuropeanHealthInsuranceCard,
         holder: Username,
         holderPublicKey: JWK,
         dateOfIssuance: Instant,
         dateOfExpiry: Instant,
-    ): Either<IssueCredentialError, JsonElement> = either {
+    ): JsonElement = run {
         val sdJwt = catch({
             issuer.createSdJwt(vct, ehic, holder, holderPublicKey, credentialIssuerId, dateOfIssuance, dateOfExpiry)
         }) { raise(IssueCredentialError.Unexpected("Unable to create SD-JWT VC", it)) }

@@ -15,7 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.json
 
-import arrow.core.Either
+import arrow.core.raise.catch
+import arrow.core.raise.context.Raise
+import arrow.core.raise.context.raise
 import com.nimbusds.jose.util.JSONObjectUtils
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.json.Json
@@ -28,10 +30,11 @@ internal val jsonSupport = Json {
     ignoreUnknownKeys = true
 }
 
-internal inline fun <reified T> JsonElement.decodeAs(deserializer: DeserializationStrategy<T> = serializer()): Either<Throwable, T> =
-    Either.catch {
+context(_: Raise<Throwable>)
+internal inline fun <reified T> JsonElement.decodeAs(deserializer: DeserializationStrategy<T> = serializer()): T =
+    catch({
         jsonSupport.decodeFromJsonElement(deserializer, this)
-    }
+    }) { raise(it) }
 
 internal fun Map<String, Any?>.toJsonObject(): JsonObject {
     val jsonString = JSONObjectUtils.toJSONString(this)

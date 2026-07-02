@@ -15,11 +15,12 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.Either
 import arrow.core.NonEmptyList
+import arrow.core.raise.Raise
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.CredentialKey
 
 fun interface ExtractJwkFromCredentialKey {
-    suspend operator fun invoke(key: CredentialKey): Either<Throwable, NonEmptyList<JWK>>
+    context(_: Raise<Throwable>)
+    suspend operator fun invoke(key: CredentialKey): NonEmptyList<JWK>
 }

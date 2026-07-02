@@ -15,8 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.port.out
 
-import arrow.core.Either
-import arrow.core.raise.context.either
+import arrow.core.raise.context.Raise
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
@@ -33,11 +32,12 @@ interface IssueSpecificCredential {
     val publicKey: JWK?
     val keyAttestationRequirement: KeyAttestationRequirement
 
+    context(_: Raise<IssueCredentialError>)
     suspend operator fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): Either<IssueCredentialError, CredentialResponse>
+    ): CredentialResponse
 }
 
 fun IssueSpecificCredential.asDeferred(
@@ -74,13 +74,14 @@ private class DeferredIssuer(
 
     private val log = LoggerFactory.getLogger(DeferredIssuer::class.java)
 
+    context(_: Raise<IssueCredentialError>)
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): Either<IssueCredentialError, CredentialResponse> = either {
+    ): CredentialResponse = run {
         val credentialResponse =
-            issuer.invoke(authorizationContext, request, credentialIdentifier).bind()
+            issuer.invoke(authorizationContext, request, credentialIdentifier)
 
         require(credentialResponse is CredentialResponse.Issued) { "Actual issuer should return issued credentials" }
 

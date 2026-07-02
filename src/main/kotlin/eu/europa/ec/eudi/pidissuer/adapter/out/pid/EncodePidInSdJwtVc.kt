@@ -15,8 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.pid
 
-import arrow.core.Either
-import arrow.core.raise.context.either
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.ECKey
@@ -59,6 +58,7 @@ class EncodePidInSdJwtVc(
      */
     private val issuer: SdJwtIssuer<SignedJWT> by lazy { issuerSigningKey.sdJwtVcIssuer(hashAlgorithm) }
 
+    context(_: Raise<IssueCredentialError>)
     suspend operator fun invoke(
         pid: Pid,
         pidMetaData: PidMetaData,
@@ -67,7 +67,7 @@ class EncodePidInSdJwtVc(
         expiresAt: Instant,
         notBefore: Instant?,
         statusListToken: StatusListToken?,
-    ): Either<IssueCredentialError, String> = either {
+    ): String = run {
         val sdJwtSpec = selectivelyDisclosed(
             pid = pid,
             pidMetaData = pidMetaData,

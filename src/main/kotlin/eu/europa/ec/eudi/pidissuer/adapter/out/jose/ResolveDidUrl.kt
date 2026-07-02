@@ -15,7 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.Either
+import arrow.core.raise.catch
+import arrow.core.raise.context.Raise
+import arrow.core.raise.context.raise
 import com.nimbusds.jose.crypto.bc.BouncyCastleProviderSingleton
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.util.Base64URL
@@ -44,7 +46,8 @@ import org.bouncycastle.asn1.pkcs.RSAPublicKey as ANS1RSAPublicKey
  *
  * methods are supported.
  */
-fun resolveDidUrl(uri: URI): Either<Throwable, JWK> = Either.catch {
+context(_: Raise<Throwable>)
+fun resolveDidUrl(uri: URI): JWK = catch({
     val (scheme, methodName, _) = uri.toString().split(":")
     require("did" == scheme) { "Unexpected scheme $scheme" }
     when (methodName) {
@@ -52,7 +55,7 @@ fun resolveDidUrl(uri: URI): Either<Throwable, JWK> = Either.catch {
         "jwk" -> resolveDidJwk(uri)
         else -> error("Unsupported DID method '$methodName'")
     }
-}
+}) { raise(it) }
 
 private val supportedDidKeyTypes = setOf(
     Multicodec.SECP256K1_PUB,

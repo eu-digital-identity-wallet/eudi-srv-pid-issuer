@@ -17,7 +17,9 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential
 
 import arrow.core.Either
 import arrow.core.raise.catch
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
+import arrow.core.raise.context.raise
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
@@ -42,12 +44,13 @@ interface EncodeLearningCredential {
     val format: Format
     val type: String
 
+    context(_: Raise<IssueCredentialError>)
     suspend operator fun invoke(
         learningCredential: LearningCredential,
         holderKey: JWK,
         issuedAt: Instant,
         expiresAt: Instant,
-    ): Either<IssueCredentialError, JsonElement>
+    ): JsonElement
 
     companion object {
         fun sdJwtVcCompact(
@@ -72,12 +75,13 @@ private class EncodeLearningCredentialInSdJwtVcCompact(
 
     private val issuer: SdJwtIssuer<SignedJWT> by lazy { issuerSigningKey.sdJwtVcIssuer(digestsHashAlgorithm) }
 
+    context(_: Raise<IssueCredentialError>)
     override suspend fun invoke(
         learningCredential: LearningCredential,
         holderKey: JWK,
         issuedAt: Instant,
         expiresAt: Instant,
-    ): Either<IssueCredentialError, JsonElement> = either {
+    ): JsonElement = run {
         val formatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
 
         val spec = sdJwt {

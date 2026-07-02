@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 import arrow.core.Either
 import arrow.core.NonEmptyList
 import arrow.core.NonEmptySet
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
 import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JOSEObjectType
@@ -34,7 +35,6 @@ import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
-import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationJWT
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
@@ -82,6 +82,7 @@ internal class VerifyKeyAttestation(
         }
     }
 
+    context(_: Raise<Throwable>)
     private fun KeyAttestationJWT.extractSigningKey(): WalletProviderSigningKey {
         val header = jwt.header
         val kid: String? = header.keyID
@@ -90,7 +91,7 @@ internal class VerifyKeyAttestation(
         return when {
             kid != null && x5c.isNullOrEmpty() -> {
                 val didUrl = URI.create(kid)
-                val jwk = resolveDidUrl(didUrl).getOrThrow()
+                val jwk = resolveDidUrl(didUrl)
                 WalletProviderSigningKey.DIDUrl(jwk, didUrl)
             }
             kid == null && !x5c.isNullOrEmpty() -> {

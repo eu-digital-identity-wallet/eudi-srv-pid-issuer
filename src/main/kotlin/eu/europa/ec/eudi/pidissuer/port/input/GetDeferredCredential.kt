@@ -21,6 +21,8 @@ import arrow.core.left
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
 import arrow.core.raise.context.ensure
+import arrow.core.raise.context.raise
+import arrow.core.raise.context.withError
 import arrow.core.right
 import com.nimbusds.jwt.EncryptedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.decryptCredentialRequest
@@ -207,14 +209,18 @@ class GetDeferredCredential(
         error.toTO()
     }
 
-    fun Raise<GetDeferredCredentialError>.toDomain(requestTO: CredentialResponseEncryptionTO) =
-        RequestedResponseEncryption.Required(
-            Json.encodeToString(requestTO.key),
-            requestTO.method,
-            requestTO.zipAlgorithm,
-        ).getOrElse { raise(GetDeferredCredentialError.InvalidEncryptionParameters(it)) }
+    context(_: Raise<GetDeferredCredentialError>)
+    fun toDomain(requestTO: CredentialResponseEncryptionTO) =
+        withError(GetDeferredCredentialError::InvalidEncryptionParameters) {
+            RequestedResponseEncryption.Required(
+                Json.encodeToString(requestTO.key),
+                requestTO.method,
+                requestTO.zipAlgorithm,
+            )
+        }
 
-    private fun Raise<GetDeferredCredentialError>.toTo(
+    context(_: Raise<GetDeferredCredentialError>)
+    private fun toTo(
         loadDeferredCredentialResult: LoadDeferredCredentialResult,
         credentialResponseEncryption: RequestedResponseEncryption,
     ): DeferredCredentialResponse =

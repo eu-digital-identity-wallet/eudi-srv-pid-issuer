@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.Either
 import arrow.core.NonEmptyList
 import arrow.core.nonEmptyListOf
 import arrow.core.nonEmptySetOf
@@ -32,6 +31,7 @@ import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.pid.pidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
+import eu.europa.ec.eudi.pidissuer.adapter.out.util.toEither
 import eu.europa.ec.eudi.pidissuer.domain.Clock
 import eu.europa.ec.eudi.pidissuer.domain.CoseAlgorithm
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
@@ -67,15 +67,17 @@ class ValidateProofTest {
         val proof = UnvalidatedProof.DiVp("foo")
 
         val result =
-            validateProofs(
-                nonEmptyListOf(proof),
-                pidMsoMdocV1(
-                    CoseAlgorithm(-7),
-                    nonEmptySetOf(JWSAlgorithm.ES256),
-                    KeyAttestationRequirement.NotRequired,
-                ),
-                clock.now(),
-            )
+            toEither {
+                validateProofs(
+                    nonEmptyListOf(proof),
+                    pidMsoMdocV1(
+                        CoseAlgorithm(-7),
+                        nonEmptySetOf(JWSAlgorithm.ES256),
+                        KeyAttestationRequirement.NotRequired,
+                    ),
+                    clock.now(),
+                )
+            }
 
         assert(result.isLeft())
 
@@ -161,9 +163,8 @@ class ValidateProofTest {
         val extract = ExtractJwkFromCredentialKey { credentialKey ->
             // For our generated proofs the credential key is always a Jwk; look it up by thumbprint
             val jwk = (credentialKey as eu.europa.ec.eudi.pidissuer.domain.CredentialKey.Jwk).value
-            val match = keysByProofKey[jwk.computeThumbprint().toString()]
+            keysByProofKey[jwk.computeThumbprint().toString()]
                 ?: error("Unexpected credential key in test")
-            Either.Right<NonEmptyList<JWK>>(match)
         }
 
         val validator = ValidateProofs(
@@ -180,11 +181,13 @@ class ValidateProofTest {
             credentialReusePolicy = policy,
         )
 
-        val result = validator(
-            checkNotNull(proofs.map { it.first }.toNonEmptyListOrNull()),
-            configuration,
-            clock.now(),
-        )
+        val result = toEither {
+            validator(
+                checkNotNull(proofs.map { it.first }.toNonEmptyListOrNull()),
+                configuration,
+                clock.now(),
+            )
+        }
         return result.fold({ fail("Expected success but got $it") }, { it })
     }
 

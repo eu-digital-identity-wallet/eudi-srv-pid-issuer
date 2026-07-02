@@ -15,10 +15,11 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.raise.context.Raise
 import arrow.core.raise.catch
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
 import arrow.core.raise.context.ensureNotNull
+import arrow.core.raise.context.raise
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
@@ -36,7 +37,8 @@ import eu.europa.ec.eudi.pidissuer.port.input.RequestEncryptionError.*
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.serializer
 
-internal inline fun <reified T> Raise<RequestEncryptionError>.decryptCredentialRequest(
+context(r: Raise<RequestEncryptionError>)
+internal inline fun <reified T> decryptCredentialRequest(
     jwt: String,
     credentialIssuerMetadata: CredentialIssuerMetaData,
 ): T {
@@ -46,7 +48,7 @@ internal inline fun <reified T> Raise<RequestEncryptionError>.decryptCredentialR
             is CredentialRequestEncryption.Required -> requestEncryption.parameters
             is CredentialRequestEncryption.NotSupported -> raise(RequestEncryptionNotSupported)
         }
-    return encryptionParameters.decrypt(this, jwt, serializer<T>())
+    return encryptionParameters.decrypt(r, jwt, serializer<T>())
 }
 
 private fun <T> CredentialRequestEncryptionSupportedParameters.decrypt(

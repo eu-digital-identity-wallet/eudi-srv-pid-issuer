@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
 import arrow.core.Either
 import arrow.core.NonEmptyList
+import arrow.core.mapOrAccumulate
 import arrow.core.raise.context.mapOrAccumulate
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement

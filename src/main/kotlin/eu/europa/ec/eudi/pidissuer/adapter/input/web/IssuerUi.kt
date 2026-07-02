@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.getOrElse
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
+import eu.europa.ec.eudi.pidissuer.adapter.out.util.toEither
 import eu.europa.ec.eudi.pidissuer.appendPath
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfigurationId
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerId
@@ -92,7 +93,7 @@ class IssuerUi(
             .toSet()
         val credentialsOfferUri = formData["credentialsOfferUri"]?.firstOrNull { it.isNotBlank() }
 
-        return createCredentialsOffer(credentialIds, credentialsOfferUri).map { credentialsOffer ->
+        return toEither { createCredentialsOffer(credentialIds, credentialsOfferUri) }.map { credentialsOffer ->
             log.info("Successfully generated Credentials Offer. URI: '{}'", credentialsOffer)
 
             val qrCode =

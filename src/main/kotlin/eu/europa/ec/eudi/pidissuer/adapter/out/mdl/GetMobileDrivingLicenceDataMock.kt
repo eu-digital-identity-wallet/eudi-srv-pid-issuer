@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.mdl
 
 import arrow.core.Either
 import arrow.core.nonEmptySetOf
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
 import arrow.core.raise.context.raise
 import eu.europa.ec.eudi.pidissuer.adapter.out.mdl.DrivingPrivilege.Restriction.GenericRestriction
@@ -33,7 +34,8 @@ import java.time.Month
  */
 class GetMobileDrivingLicenceDataMock : GetMobileDrivingLicenceData {
 
-    override suspend fun invoke(context: AuthorizationContext): Either<IssueCredentialError.Unexpected, MobileDrivingLicence> = either {
+    context(_: Raise<IssueCredentialError.Unexpected>)
+    override suspend fun invoke(context: AuthorizationContext): MobileDrivingLicence = run {
         log.info("Getting mock data for Mobile Driving Licence")
 
         val portrait = loadResource("/eu/europa/ec/eudi/pidissuer/adapter/out/mdl/Portrait.jpg") { message, cause ->

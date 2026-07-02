@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
-import arrow.core.Either
 import arrow.core.NonEmptyList
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
@@ -25,7 +24,7 @@ import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.AsymmetricJWK
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.resolveDidUrl
-import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
+import eu.europa.ec.eudi.pidissuer.adapter.out.util.catchAndRethrow
 import java.net.URI
 import java.security.cert.X509Certificate
 
@@ -73,10 +72,11 @@ sealed interface CredentialKey {
             /**
              * Resolves the provided DID url. Currently, it supports 'key' and 'jwk' methods.
              */
-            operator fun invoke(value: String): Either<Throwable, DIDUrl> = Either.catch {
-                val url = URI.create(value)
-                val jwk = resolveDidUrl(url).getOrThrow()
-                DIDUrl(url, jwk)
+            context(_: Raise<Throwable>)
+            operator fun invoke(value: String): DIDUrl {
+                val url = catchAndRethrow{ URI.create(value) }
+                val jwk = resolveDidUrl(url)
+                return DIDUrl(url, jwk)
             }
         }
     }
@@ -154,12 +154,13 @@ sealed interface RequestedResponseEncryption {
             get() = JWEAlgorithm(encryptionJwk.algorithm.name)
 
         companion object {
+            context(_: Raise<Throwable>)
             operator fun invoke(
                 encryptionKey: String,
                 encryptionMethod: String,
                 compressionAlgorithm: String? = null,
-            ): Either<Throwable, Required> =
-                Either.catch {
+            ): Required =
+                catchAndRethrow{
                     val key = JWK.parse(encryptionKey)
                     requireNotNull(key.algorithm) {
                         "encryptionJwk must have an 'alg' parameter present"
@@ -181,7 +182,8 @@ sealed interface CredentialRequest {
     val credentialResponseEncryption: RequestedResponseEncryption
 }
 
-fun Raise<String>.assertIsSupported(credentialRequest: CredentialRequest, meta: CredentialConfiguration) {
+context(_: Raise<String>)
+fun assertIsSupported(credentialRequest: CredentialRequest, meta: CredentialConfiguration) {
     when (credentialRequest) {
         is MsoMdocCredentialRequest -> {
             ensure(meta is MsoMdocCredentialConfiguration) { "Was expecting a ${MSO_MDOC_FORMAT.value}" }

@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.learningcredential
 
 import arrow.core.Either
 import arrow.core.NonEmptySet
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
 import arrow.core.raise.context.ensureNotNull
 import arrow.core.toNonEmptyListOrNull
@@ -58,14 +59,15 @@ internal class IssueLearningCredential(
         require(validity.isPositive())
     }
 
+    context(_: Raise<IssueCredentialError>)
     override suspend fun invoke(
         authorizationContext: AuthorizationContext,
         request: CredentialRequest,
         credentialIdentifier: CredentialIdentifier?,
-    ): Either<IssueCredentialError, CredentialResponse> = either {
+    ): CredentialResponse = run {
         log.info("Issuing Learning Credential")
 
-        val holderKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.now()).bind()
+        val holderKeys = validateProofs(request.unvalidatedProofs, supportedCredential, clock.now())
         val learningCredential = getLearningCredential(authorizationContext)
         val issuedAt = clock.now()
         val expiresAt = run {
@@ -75,7 +77,7 @@ internal class IssueLearningCredential(
         }
 
         val issuedCredentials = holderKeys.parMap(Dispatchers.Default, 4) {
-            encodeLearningCredential(learningCredential, it, issuedAt = issuedAt, expiresAt = expiresAt).bind()
+            encodeLearningCredential(learningCredential, it, issuedAt = issuedAt, expiresAt = expiresAt)
         }.toNonEmptyListOrNull()
         ensureNotNull(issuedCredentials) {
             IssueCredentialError.Unexpected("Unable to issue Learning Credential")

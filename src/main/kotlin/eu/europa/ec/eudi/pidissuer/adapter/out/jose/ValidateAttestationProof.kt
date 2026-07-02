@@ -15,7 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.Either
+import arrow.core.raise.catch
+import arrow.core.raise.context.Raise
+import arrow.core.raise.context.raise
 import eu.europa.ec.eudi.pidissuer.adapter.out.util.getOrThrow
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
@@ -24,11 +26,13 @@ import kotlin.time.Instant
 internal class ValidateAttestationProof(
     private val verifyKeyAttestation: VerifyKeyAttestation,
 ) {
+
+    context(_: Raise<IssueCredentialError.InvalidProof>)
     suspend operator fun invoke(
         unvalidatedProof: UnvalidatedProof.Attestation,
         credentialConfiguration: CredentialConfiguration,
         at: Instant,
-    ): Either<IssueCredentialError.InvalidProof, Pair<CredentialKey.AttestedKeys, String>> = Either.catch {
+    ): Pair<CredentialKey.AttestedKeys, String> = catch({
         val proofType = credentialConfiguration.proofTypesSupported[ProofTypeEnum.ATTESTATION]
         requireNotNull(proofType) {
             "Credential configuration '${credentialConfiguration.id.value}' doesn't support 'attestation' proofs"
@@ -42,7 +46,7 @@ internal class ValidateAttestationProof(
         }
 
         credentialKeyAndNonce(keyAttestationJWT, proofType, at)
-    }.mapLeft { IssueCredentialError.InvalidProof("Invalid proof Attestation", it) }
+    }) { raise(IssueCredentialError.InvalidProof("Invalid proof Attestation", it)) }
 
     private suspend fun credentialKeyAndNonce(
         keyAttestationJWT: KeyAttestationJWT,
