@@ -119,11 +119,11 @@ Variable: `SERVER_PORT`
 Description: Port for the HTTP listener of the PID Issuer application  
 Default value: `8080`
 
-Variable: `SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENT_ID`  
+Variable: `SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENTID`  
 Description: Client Id of the OAuth 2.0 client registered in the Authorization Server  
 Default value: N/A
 
-Variable: `SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENT_SECRET`  
+Variable: `SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENTSECRET`  
 Description: Client Server of the OAuth 2.0 client registered in the Authorization Server  
 Default value: N/A
 
