@@ -57,7 +57,7 @@ class VerifyKeyAttestation(
     suspend operator fun invoke(
         keyAttestation: KeyAttestationJWT,
         at: Instant,
-    ): Pair<NonEmptyList<JWK>, String?> =
+    ): Pair<NonEmptyList<ECKey>, String?> =
         invoke(
             keyAttestation,
             proofType.signingAlgorithmsSupported,
@@ -70,7 +70,7 @@ class VerifyKeyAttestation(
     suspend operator fun invoke(
         keyAttestation: KeyAttestationJWT,
         at: Instant,
-    ): Pair<NonEmptyList<JWK>, String?> =
+    ): Pair<NonEmptyList<ECKey>, String?> =
         invoke(
             keyAttestation,
             proofType.signingAlgorithmsSupported,
@@ -86,7 +86,7 @@ class VerifyKeyAttestation(
         keyAttestationRequirement: KeyAttestationRequirement,
         expectExpirationClaim: Boolean,
         at: Instant,
-    ): Pair<NonEmptyList<JWK>, String?> =
+    ): Pair<NonEmptyList<ECKey>, String?> =
         with(keyAttestation) {
             val nonce = claims.nonce
             val algorithm = extractSupportedAlgorithm(signingAlgorithmsSupported)

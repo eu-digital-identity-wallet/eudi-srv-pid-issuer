@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@file:UseSerializers(NonEmptyListSerializer::class)
+
 package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptyList
@@ -23,14 +25,15 @@ import arrow.core.raise.context.raise
 import arrow.core.serialization.NonEmptyListSerializer
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSObject
-import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.pidissuer.adapter.out.json.JWKNonEmptyListSerializer
+import eu.europa.ec.eudi.pidissuer.adapter.out.json.ECKeyJsonObjectSerializer
 import eu.europa.ec.eudi.pidissuer.adapter.out.json.jsonSupport
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.UseSerializers
 
 data class KeyAttestationJWT private constructor(
     val jwt: SignedJWT,
@@ -83,9 +86,9 @@ data class KeyAttestationClaims(
     @Required @SerialName(RFC7519.ISSUED_AT) val issuedAt: EpochSecondsInstant,
     @Required @SerialName(RFC7519.EXPIRES_AT) val expiresAt: EpochSecondsInstant,
     @Required @SerialName(OpenId4VciSpec.KEY_ATTESTATION_ATTESTED_KEYS) val attestedKeys: AttestedKeys,
-    @Required @Serializable(with = NonEmptyListSerializer::class) @SerialName(OpenId4VciSpec.KEY_ATTESTATION_KEY_STORAGE)
+    @Required @SerialName(OpenId4VciSpec.KEY_ATTESTATION_KEY_STORAGE)
     val keyStorage: NonEmptyList<AttackPotentialResistance>,
-    @Required @Serializable(with = NonEmptyListSerializer::class) @SerialName(OpenId4VciSpec.KEY_ATTESTATION_USER_AUTHENTICATION)
+    @Required @SerialName(OpenId4VciSpec.KEY_ATTESTATION_USER_AUTHENTICATION)
     val userAuthentication: NonEmptyList<AttackPotentialResistance>,
     @Required @SerialName(OpenId4VciSpec.CERTIFICATION) val certification: StringUrl,
     @SerialName(OpenId4VciSpec.NONCE) val nonce: Nonce? = null,
@@ -96,7 +99,10 @@ data class KeyAttestationClaims(
 @JvmInline
 @Serializable
 value class AttestedKeys(
-    @Serializable(with = JWKNonEmptyListSerializer::class) val value: NonEmptyList<JWK>,
+    val value: NonEmptyList<
+        @Serializable(with = ECKeyJsonObjectSerializer::class)
+        ECKey,
+    >,
 ) {
     init {
         value.forEachIndexed { index, jwk ->

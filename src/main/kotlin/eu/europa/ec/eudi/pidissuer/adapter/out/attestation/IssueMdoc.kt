@@ -22,11 +22,9 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestationAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.mdoc.encodeAttestationAttributesInMdoc
-import eu.europa.ec.eudi.pidissuer.adapter.out.jose.toECKeyOrFail
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidProof
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.allocateStatusWithPolicy
@@ -58,10 +56,7 @@ class IssueMdoc<Attr>(
         log.info("Handling issuance request ...")
         val issuedAt = clock.now()
         val keyAttestation = context(validateProof) { keyAttestation(request, issuedAt) }
-        val deviceKeys =
-            keyAttestation.keys.value
-                .map { jwk -> jwk.toECKeyOrFail { InvalidProof("Only EC Key is supported") } }
-
+        val deviceKeys = keyAttestation.keys.value
         val attributes = getAttestationAttributes()
         val notificationId = generateNotificationId?.invoke()
         val clientStatus = authorizationContext.clientStatus
