@@ -348,9 +348,6 @@ fun beans(
             it.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
             it.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
             it.defaultCodecs().enableLoggingRequestDetails(true)
-
-            val maxInMemorySize = DataSize.parse(env.getProperty("spring.webflux.codecs.max-in-memory-size", "1MB"))
-            it.defaultCodecs().maxInMemorySize(maxInMemorySize.toBytes().toInt())
         }
     }
 }
