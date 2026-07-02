@@ -116,13 +116,9 @@ class DefaultValidateProofTest {
             pidMsoMdocV1(
                 CoseAlgorithm(-7),
                 deviceBinding =
-                    DeviceBinding.Required(
+                    DeviceBinding.Required.ts3(
                         nonEmptySetOf(JWSAlgorithm.ES256),
-                        KeyAttestationRequirement(
-                            keyStorage = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
-                            userAuthentication = nonEmptySetOf(AttackPotentialResistance.Iso18045EnhancedBasic),
-                            preferredKeyStorageStatusPeriod = PreferredKeyStorageStatusPeriod(31.days),
-                        ),
+                        PreferredKeyStorageStatusPeriod(31.days),
                     ),
                 credentialReusePolicy = policy,
                 validity = 365.days,
@@ -139,8 +135,8 @@ class DefaultValidateProofTest {
         val keyAttestationJwt =
             keyAttestationJWT(
                 proofSigningKey = jwtProofSigningKey,
-                keyStorageConstraints = listOf("iso_18045_enhanced-basic"),
-                userAuthorizationConstraints = listOf("iso_18045_enhanced-basic"),
+                keyStorageConstraints = listOf("iso_18045_high"),
+                userAuthorizationConstraints = listOf("iso_18045_high"),
                 clock = clock,
             ) {
                 (0..<extraKeysNo).map {
