@@ -190,6 +190,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                 .bodyValue(requestByCredentialConfigurationId())
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
+                .expectNoContentSecurityPolicy()
                 .expectStatus()
                 .isUnauthorized()
         }
@@ -216,6 +217,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                         ),
                     ).accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isBadRequest
                     .expectBody<IssueCredentialResponse.FailedTO>()
@@ -247,6 +249,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                     ),
                 ).accept(MediaType.APPLICATION_JSON)
                 .exchange()
+                .expectNoContentSecurityPolicy()
                 .expectStatus()
                 .is5xxServerError
                 .returnResult()
@@ -273,6 +276,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                         ),
                     ).accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isBadRequest
                     .expectBody<IssueCredentialResponse.FailedTO>()
@@ -304,6 +308,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                     .bodyValue(requestByCredentialConfigurationId())
                     .accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isEqualTo(HttpStatus.BAD_REQUEST)
                     .expectBody<IssueCredentialResponse.FailedTO>()
@@ -346,6 +351,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                         ),
                     ).accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isEqualTo(HttpStatus.BAD_REQUEST)
                     .expectBody<IssueCredentialResponse.FailedTO>()
@@ -373,6 +379,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isBadRequest
                     .expectBody<IssueCredentialResponse.FailedTO>()
@@ -444,6 +451,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isOk()
                     .expectBody<IssueCredentialResponse.PlainTO>()
@@ -476,6 +484,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isOk()
                     .expectBody<IssueCredentialResponse.PlainTO>()
@@ -506,6 +515,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                         ),
                     ).accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isBadRequest()
                     .expectBody<IssueCredentialResponse.FailedTO>()
@@ -534,6 +544,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                             .encrypt(credentialRequestEncryption.parameters),
                     ).accept(MediaType.parseMediaType("application/jwt"))
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isOk()
                     .expectBody<IssueCredentialResponse.PlainTO>()
@@ -594,6 +605,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isBadRequest()
                     .expectBody<IssueCredentialResponse.FailedTO>()
@@ -634,6 +646,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isBadRequest()
                     .expectBody<IssueCredentialResponse.FailedTO>()
@@ -682,6 +695,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isBadRequest()
                     .expectBody<IssueCredentialResponse.FailedTO>()
@@ -719,6 +733,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isBadRequest()
                     .expectBody<IssueCredentialResponse.FailedTO>()
@@ -757,6 +772,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isOk()
                     .expectBody<IssueCredentialResponse.PlainTO>()
@@ -794,6 +810,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .is2xxSuccessful()
                     .expectBody<IssueCredentialResponse.PlainTO>()
@@ -833,6 +850,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isBadRequest()
                     .expectBody<IssueCredentialResponse.FailedTO>()
@@ -869,6 +887,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isBadRequest()
                     .expectBody<IssueCredentialResponse.FailedTO>()
@@ -909,6 +928,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isBadRequest()
                     .expectBody<IssueCredentialResponse.FailedTO>()
@@ -941,6 +961,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                     .bodyValue(requestByCredentialConfigurationId(proofs = keyAttestationJwt.toAttestationProofs()))
                     .accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isBadRequest()
                     .expectBody<IssueCredentialResponse.FailedTO>()
@@ -988,6 +1009,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                             .encrypt(credentialRequestEncryption.parameters),
                     ).accept(MediaType.parseMediaType("application/jwt"))
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isOk()
                     .expectBody<IssueCredentialResponse.PlainTO>()
@@ -1029,6 +1051,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isBadRequest()
                     .expectBody<IssueCredentialResponse.FailedTO>()
@@ -1068,6 +1091,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isBadRequest()
                     .expectBody<IssueCredentialResponse.FailedTO>()
@@ -1126,6 +1150,7 @@ internal class WalletApiResponseEncryptionRequiredTest : BaseWalletApiTest() {
                             .encrypt(credentialRequestEncryption.parameters),
                     ).accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isBadRequest()
                     .expectBody<IssueCredentialResponse.FailedTO>()
@@ -1170,6 +1195,7 @@ internal class WalletApiResponseEncryptionRequiredTest : BaseWalletApiTest() {
                         ).encrypt(credentialRequestEncryption.parameters),
                     ).accept(MediaType.parseMediaType("application/jwt"))
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isOk()
                     .expectBody<String>()
@@ -1227,6 +1253,7 @@ internal class WalletApiResponseEncryptionRequiredTest : BaseWalletApiTest() {
                         ).encrypt(credentialRequestEncryption.parameters),
                     ).accept(MediaType.parseMediaType("application/jwt"))
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isOk()
                     .expectBody<String>()
@@ -1280,6 +1307,7 @@ internal class WalletApiResponseEncryptionRequiredTest : BaseWalletApiTest() {
                         ),
                     ).accept(MediaType.parseMediaType("application/jwt"))
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isBadRequest()
                     .expectBody<IssueCredentialResponse.FailedTO>()
@@ -1318,6 +1346,7 @@ internal class WalletApiDeferredIssuanceResponseEncryptionOptionalTest : BaseWal
                         ),
                     ).accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isAccepted()
                     .expectBody<IssueCredentialResponse.PlainTO>()
@@ -1336,6 +1365,7 @@ internal class WalletApiDeferredIssuanceResponseEncryptionOptionalTest : BaseWal
                     .bodyValue(DeferredCredentialRequestTO(transactionId))
                     .accept(MediaType.APPLICATION_JSON)
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isAccepted()
                     .expectBody<IssuancePendingTO>()
@@ -1378,6 +1408,7 @@ internal class WalletApiDeferredIssuanceResponseEncryptionRequiredTest : BaseWal
                         ).encrypt(credentialRequestEncryption.parameters),
                     ).accept(MediaType.parseMediaType("application/jwt"))
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isOk()
                     .expectBody<String>()
@@ -1416,6 +1447,7 @@ internal class WalletApiDeferredIssuanceResponseEncryptionRequiredTest : BaseWal
                         ).encrypt(credentialRequestEncryption.parameters),
                     ).accept(MediaType.parseMediaType("application/jwt"))
                     .exchange()
+                    .expectNoContentSecurityPolicy()
                     .expectStatus()
                     .isAccepted()
                     .expectBody<String>()

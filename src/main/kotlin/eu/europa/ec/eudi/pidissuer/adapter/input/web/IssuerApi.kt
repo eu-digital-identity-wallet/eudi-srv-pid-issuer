@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.raise.effect
 import arrow.core.raise.fold
+import com.eygraber.uri.Uri
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfigurationId
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOffer
 import kotlinx.serialization.SerialName
@@ -64,7 +65,7 @@ private suspend fun ServerRequest.createCredentialOfferRequest(): CreateCredenti
     return awaitBody<CreateCredentialsOfferRequestTO>().asRequest()
 }
 
-private suspend fun URI.credentialOfferSuccessResponse(): ServerResponse {
+private suspend fun Uri.credentialOfferSuccessResponse(): ServerResponse {
     val dto = CreateCredentialsOfferResponseTO.success(this)
     return ServerResponse
         .ok()
@@ -83,7 +84,7 @@ private data class CreateCredentialsOfferResponseTO(
     @SerialName("error") val error: String? = null,
 ) {
     companion object {
-        fun success(credentialsOffer: URI) = CreateCredentialsOfferResponseTO(credentialsOffer = credentialsOffer.toString())
+        fun success(credentialsOffer: Uri) = CreateCredentialsOfferResponseTO(credentialsOffer = credentialsOffer.toString())
 
         fun error(error: CreateCredentialsOffer.Error) = CreateCredentialsOfferResponseTO(error = error::class.java.simpleName)
     }
