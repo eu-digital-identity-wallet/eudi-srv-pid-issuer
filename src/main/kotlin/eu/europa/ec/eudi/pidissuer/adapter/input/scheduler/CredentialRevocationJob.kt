@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.input.scheduler
 
+import arrow.core.raise.context.result
 import eu.europa.ec.eudi.pidissuer.port.input.RevokeCredentialsWithRevokedStatus
 import org.slf4j.LoggerFactory
 
@@ -33,7 +34,7 @@ class CredentialRevocationJob(
     suspend fun run() {
         log.info("Starting credential revocation job")
 
-        runCatching { revokeCredentialsWithRevokedStatus() }
+        result { revokeCredentialsWithRevokedStatus() }
             .onFailure { log.error("Credential revocation job failed", it) }
             .onSuccess { log.info("Credential revocation job completed successfully") }
     }
