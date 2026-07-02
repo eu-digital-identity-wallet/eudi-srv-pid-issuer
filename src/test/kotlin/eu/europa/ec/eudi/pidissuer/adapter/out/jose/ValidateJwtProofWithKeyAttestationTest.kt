@@ -15,8 +15,11 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.*
+import arrow.core.NonEmptyList
+import arrow.core.getOrElse
+import arrow.core.nonEmptySetOf
 import arrow.core.raise.either
+import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader

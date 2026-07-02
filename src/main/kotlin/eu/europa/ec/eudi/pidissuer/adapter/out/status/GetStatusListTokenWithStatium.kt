@@ -18,12 +18,12 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.status
 import arrow.core.raise.Raise
 import arrow.core.raise.catch
 import arrow.core.raise.context.raise
+import com.eygraber.uri.Uri
 import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
 import eu.europa.ec.eudi.statium.*
 import io.ktor.client.*
 import org.slf4j.LoggerFactory
-import java.net.URI
 import kotlin.time.Clock
 import kotlin.time.Duration
 
@@ -37,7 +37,7 @@ class GetStatusListTokenWithStatium(
 ) : GetStatusListTokenStatus {
     context(_: Raise<GetStatusListTokenStatus.Error>)
     override suspend fun invoke(
-        uri: URI,
+        uri: Uri,
         index: UInt,
     ): StatusListTokenStatus = catch({ getStatus.read(uri, index) }) { raise(GetStatusListTokenStatus.Error(it)) }
 
@@ -60,7 +60,7 @@ class GetStatusListTokenWithStatium(
         }
 
         private suspend fun GetStatus.read(
-            uri: URI,
+            uri: Uri,
             index: UInt,
         ): StatusListTokenStatus {
             val statusReference =

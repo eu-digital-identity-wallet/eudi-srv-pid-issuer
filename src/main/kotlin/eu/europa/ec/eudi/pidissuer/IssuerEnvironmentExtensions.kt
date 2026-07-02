@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer
 
 import arrow.core.*
+import com.eygraber.uri.Url
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
@@ -54,7 +55,6 @@ import eu.europa.ec.eudi.pidissuer.port.out.proof.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
 import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
-import io.ktor.http.*
 import kotlinx.datetime.TimeZone
 import org.slf4j.LoggerFactory
 import org.springframework.core.env.Environment
@@ -63,9 +63,6 @@ import org.springframework.core.env.getRequiredProperty
 import org.springframework.core.io.DefaultResourceLoader
 import org.springframework.core.io.FileSystemResource
 import org.springframework.web.reactive.function.client.WebClient
-import org.springframework.web.util.UriComponentsBuilder
-import java.net.URI
-import java.net.URL
 import java.security.KeyStore
 import java.security.cert.X509Certificate
 import java.util.*
@@ -319,11 +316,15 @@ internal fun Environment.duration(key: String): Duration? = getProperty(key)?.le
 
 internal fun HttpsUrl.appendPath(path: String): HttpsUrl =
     HttpsUrl.unsafe(
-        UriComponentsBuilder
-            .fromUriString(externalForm)
-            .path(path)
-            .build()
-            .toUriString(),
+        value
+            .buildUpon()
+            .apply {
+                path
+                    .split("/")
+                    .filterNot { it.isBlank() }
+                    .forEach { segment -> appendPath(segment) }
+            }.build()
+            .toString(),
     )
 
 /**
@@ -564,7 +565,8 @@ internal fun getPidDataFromKeyCloak(
 ): GetAttestationAttributes<PidAttributes> {
     val keycloakProperties =
         KeycloakConfigurationProperties(
-            env.getRequiredProperty<URL>("issuer.keycloak.server-url"),
+            com.eygraber.uri.Url
+                .parse(env.getRequiredProperty("issuer.keycloak.server-url")),
             env.getRequiredProperty("issuer.keycloak.authentication-realm"),
             env.getRequiredProperty("issuer.keycloak.client-id"),
             env.getRequiredProperty("issuer.keycloak.username"),
@@ -577,7 +579,7 @@ internal fun getPidDataFromKeyCloak(
         clock = clock,
         timeZone = timeZone,
         webClient = webClient,
-        keyCloak = Url(keycloakProperties.serverUrl.toExternalForm()),
+        keyCloak = keycloakProperties.serverUrl,
         administrationClient =
             AdministrationClient(
                 realm = Realm(keycloakProperties.authenticationRealm),
@@ -611,7 +613,7 @@ internal fun validateProof(
 internal fun Environment.httpProxy(): HttpProxyOption {
     val proxy =
         getProperty("issuer.http.proxy.url")?.let {
-            val url = Url(it)
+            val url = Url.parse(it)
             val username = getProperty("issuer.http.proxy.username")
             val password = getProperty("issuer.http.proxy.password")
             HttpProxy(url, username, password)
@@ -758,6 +760,6 @@ internal fun trustValidatorService(
         IsTrustedKeyAttestationIssuer.Ignored
     } else {
         log.info("Using Trust Validator Service '{}'", trustValidatorServiceUrl)
-        IsTrustedKeyAttestationIssuer.usingTrustValidatorService(webClient, URI.create(trustValidatorServiceUrl))
+        IsTrustedKeyAttestationIssuer.usingTrustValidatorService(webClient, Url.parse(trustValidatorServiceUrl))
     }
 }

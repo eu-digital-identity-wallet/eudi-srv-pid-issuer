@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer
 import arrow.core.toNonEmptyListOrNull
 import arrow.core.toNonEmptySetOrThrow
 import com.eygraber.uri.Uri
+import com.eygraber.uri.Url
 import eu.europa.ec.eudi.pidissuer.adapter.input.scheduler.CredentialRevocationJob
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.*
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.csrf.CsrfTokenSubscriberWebFilter
@@ -54,7 +55,6 @@ import org.springframework.core.env.getRequiredProperty
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
 import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
 import org.springframework.scheduling.annotation.SchedulingConfigurer
-import java.net.URI
 import java.security.KeyStore
 import java.util.*
 import kotlin.time.Clock
@@ -132,7 +132,7 @@ fun beans(
     }
 
     registerBean<AllocateStatus> {
-        val serviceUrl = URI.create(env.getRequiredProperty("issuer.statusList.service.generate-uri")).toURL()
+        val serviceUrl = Url.parse(env.getRequiredProperty("issuer.statusList.service.generate-uri"))
         GenerateStatusListTokenWithExternalService(
             webClient = bean(),
             serviceUrl = serviceUrl,
@@ -142,7 +142,7 @@ fun beans(
     }
 
     registerBean<MarkStatusAsRevoked> {
-        val serviceUrl = URI.create(env.getRequiredProperty("issuer.statusList.service.revoke-uri")).toURL()
+        val serviceUrl = Url.parse(env.getRequiredProperty("issuer.statusList.service.revoke-uri"))
         MarkStatusAsRevokedWithExternalService(
             webClient = bean(),
             serviceUrl = serviceUrl,
@@ -268,7 +268,7 @@ fun beans(
                         CredentialIssuerDisplay(
                             name = display.name,
                             locale = display.locale?.let { Locale.forLanguageTag(it) },
-                            logo = display.logo?.let { ImageUri(it.uri, it.alternativeText) },
+                            logo = display.logo?.let { ImageUri(Uri.parse(it.uri), it.alternativeText) },
                         )
                     },
             preferredClientStatusPeriod = PreferredClientStatusPeriod(preferredClientStatusPeriod),

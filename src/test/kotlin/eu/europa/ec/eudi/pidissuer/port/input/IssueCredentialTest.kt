@@ -19,6 +19,7 @@ import arrow.core.NonEmptySet
 import arrow.core.nonEmptyListOf
 import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
+import com.eygraber.uri.Uri
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
@@ -32,7 +33,6 @@ import eu.europa.ec.eudi.pidissuer.port.out.attestation.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonPrimitive
-import java.net.URI
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -102,7 +102,7 @@ class IssueCredentialTest {
                         StatusClaim(
                             statusList =
                                 StatusListToken(
-                                    statusList = URI.create("https://example.com/issuer-status"),
+                                    statusList = Uri.parse("https://example.com/issuer-status"),
                                     index = 0u,
                                 ),
                         ),

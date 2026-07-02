@@ -15,16 +15,14 @@
  */
 package eu.europa.ec.eudi.pidissuer.domain
 
+import com.eygraber.uri.Uri
+import com.eygraber.uri.Url
 import eu.europa.ec.eudi.pidissuer.adapter.out.json.InstantEpochSecondsSerializer
-import eu.europa.ec.eudi.pidissuer.adapter.out.json.UriStringSerializer
-import eu.europa.ec.eudi.pidissuer.adapter.out.json.UrlStringSerializer
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import java.net.MalformedURLException
-import java.net.URI
-import java.net.URL
 import java.util.*
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
@@ -33,26 +31,26 @@ private val logHttpsUrl = LoggerFactory.getLogger(HttpsUrl::class.java)
 
 @JvmInline
 value class HttpsUrl private constructor(
-    val value: URL,
+    val value: Url,
 ) {
     val externalForm: String
-        get() = value.toExternalForm()!!
+        get() = value.toString()
 
     companion object {
-        fun of(url: URL): HttpsUrl? = url.takeIf { it.protocol == "https" }?.run { HttpsUrl(this) }
+        fun of(url: Url): HttpsUrl? = url.takeIf { "https".equals(it.scheme, ignoreCase = true) }?.let { HttpsUrl(it) }
 
         fun of(url: String): HttpsUrl? =
             try {
-                of(URI.create(url).toURL())
+                of(Url.parse(url))
             } catch (_: MalformedURLException) {
                 null
             }
 
-        fun unsafe(url: String): HttpsUrl =
-            URI.create(url).toURL().run {
-                logHttpsUrl.warn("Using unsafe URL $url")
-                HttpsUrl(this)
-            }
+        fun unsafe(url: String): HttpsUrl {
+            val parsed = Url.parse(url)
+            logHttpsUrl.warn("Using unsafe URL $url")
+            return HttpsUrl(parsed)
+        }
     }
 }
 
@@ -69,13 +67,13 @@ value class Format(
 typealias CredentialIssuerId = HttpsUrl
 
 data class ImageUri(
-    val uri: URI,
+    val uri: Uri,
     val alternativeText: String? = null,
 )
 
 @JvmInline
 value class BackgroundImage(
-    val uri: URI,
+    val uri: Uri,
 )
 
 data class DisplayName(
@@ -177,8 +175,7 @@ value class CredentialIdentifier(
 @Serializable
 data class StatusListToken(
     @Required @SerialName(TokenStatusListSpec.URI)
-    @Serializable(with = UriStringSerializer::class)
-    val statusList: StringUri,
+    val statusList: Uri,
     @Required @SerialName(TokenStatusListSpec.IDX)
     val index: UInt,
 )
@@ -203,11 +200,3 @@ value class NonBlankString(
 typealias EpochSecondsInstant =
     @Serializable(with = InstantEpochSecondsSerializer::class)
     Instant
-
-typealias StringUrl =
-    @Serializable(with = UrlStringSerializer::class)
-    URL
-
-typealias StringUri =
-    @Serializable(with = UriStringSerializer::class)
-    URI

@@ -35,7 +35,6 @@ import id.walt.mdoc.dataelement.toDataElement
 import id.walt.mdoc.doc.MDocBuilder
 import kotlinx.datetime.toKotlinLocalDate
 import java.time.ZoneOffset
-import java.util.*
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.toKotlinInstant

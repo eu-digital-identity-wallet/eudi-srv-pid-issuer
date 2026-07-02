@@ -18,6 +18,8 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.status
 import arrow.core.raise.catch
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
+import com.eygraber.uri.Uri
+import com.eygraber.uri.Url
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.domain.toZonedDateTime
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
@@ -31,14 +33,12 @@ import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
 import org.springframework.web.reactive.function.client.awaitExchange
-import java.net.URI
-import java.net.URL
 import java.time.format.DateTimeFormatter
 import kotlin.time.Instant
 
 class GenerateStatusListTokenWithExternalService(
     private val webClient: WebClient,
-    private val serviceUrl: URL,
+    private val serviceUrl: Url,
     private val apiKey: String,
     private val timeZone: TimeZone,
 ) : AllocateStatus {
@@ -57,7 +57,7 @@ class GenerateStatusListTokenWithExternalService(
         val statusTokens =
             webClient
                 .post()
-                .uri(serviceUrl.toExternalForm())
+                .uri(serviceUrl.toString())
                 .headers {
                     it.contentType = MediaType.APPLICATION_FORM_URLENCODED
                     it.accept = listOf(MediaType.APPLICATION_JSON)
@@ -76,8 +76,8 @@ class GenerateStatusListTokenWithExternalService(
                 ).awaitExchange { it.awaitBody<StatusTokensTO>() }
 
         return StatusListToken(
-            statusList = URI.create(statusTokens.statusListToken.statusList),
-            index = statusTokens.statusListToken.index.toUInt(),
+            statusList = statusTokens.statusListToken.statusList,
+            index = statusTokens.statusListToken.index,
         )
     }
 }
@@ -89,6 +89,6 @@ private data class StatusTokensTO(
 
 @Serializable
 private data class StatusListTokenTO(
-    @Required @SerialName("idx") val index: Int,
-    @Required @SerialName("uri") val statusList: String,
+    @Required @SerialName("idx") val index: UInt,
+    @Required @SerialName("uri") val statusList: Uri,
 )

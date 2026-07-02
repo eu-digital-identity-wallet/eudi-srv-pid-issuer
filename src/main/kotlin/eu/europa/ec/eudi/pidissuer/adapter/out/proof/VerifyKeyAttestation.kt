@@ -22,6 +22,7 @@ import arrow.core.raise.Raise
 import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
 import arrow.core.toNonEmptyListOrNull
+import com.eygraber.uri.Uri
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
@@ -42,7 +43,6 @@ import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
 import eu.europa.ec.eudi.pidissuer.domain.ProofType
 import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.trust.TrustResult
-import java.net.URI
 import java.security.cert.X509Certificate
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -120,7 +120,7 @@ class VerifyKeyAttestation(
 
         return when {
             kid != null && x5c.isNullOrEmpty() -> {
-                val didUrl = URI.create(kid)
+                val didUrl = Uri.parse(kid)
                 val jwk = resolveDidUrl(didUrl).getOrElse { throw it }
                 WalletProviderSigningKey.DIDUrl(jwk, didUrl)
             }
@@ -222,7 +222,7 @@ private sealed interface WalletProviderSigningKey {
 
     data class DIDUrl(
         override val key: JWK,
-        val didUrl: URI,
+        val didUrl: Uri,
     ) : WalletProviderSigningKey
 
     data class X5C(
