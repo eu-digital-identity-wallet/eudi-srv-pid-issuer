@@ -419,9 +419,18 @@ Variable: `ISSUER_LEARNINGCREDENTIAL_REUSEPOLICY_OPTIONS_XX_REISSUETRIGGERLIFETI
 Description: The remaining lifetime of the credential (in seconds) that triggers a reissue.  
 Default value: N/A  
 
-Variable: `ISSUER_CREDENTIALOFFER_URI`      
-Description: URI to use when generating Credential Offers.      
-Default value: `openid-credential-offer://`
+Variable: `ISSUER_CREDENTIALOFFER_DEFAULTURI`    
+Description: URI to use when generating Credential Offers.    
+Default value: `eu-eaa-offer://`
+
+Variable: `ISSUER_CREDENTIALOFFER_ALLOWEDSCHEMES`    
+Description: Comma-separated list of allowed schemes for using custom URIs for Credential Offers.       
+Default value: `https,eu-eaa-offer`   
+Allowed values:
+* `openid-credential-offer`
+* `haip-vci`
+* `eu-eaa-offer`
+* `https`
 
 Variable: `ISSUER_SIGNED_METADATA_ISSUER`  
 Description: Value of the `iss` claim of the signed metadata. **Must be a valid Https URL**.  

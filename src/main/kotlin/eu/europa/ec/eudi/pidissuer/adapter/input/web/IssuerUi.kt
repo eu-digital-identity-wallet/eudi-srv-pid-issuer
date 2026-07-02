@@ -17,6 +17,8 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.raise.effect
 import arrow.core.raise.fold
+import com.eygraber.uri.Uri
+import com.eygraber.uri.toURI
 import eu.europa.ec.eudi.pidissuer.appendPath
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOffer
@@ -33,7 +35,6 @@ import java.net.URI
 import kotlin.io.encoding.Base64
 
 class IssuerUi(
-    private val credentialsOfferUri: String,
     private val metadata: CredentialIssuerMetaData,
     private val createCredentialsOffer: CreateCredentialsOffer,
     private val generateQrCode: GenerateQqCode,
@@ -77,7 +78,7 @@ class IssuerUi(
                 "generate-credentials-offer-form",
                 mapOf(
                     "credentialConfigurationIds" to credentialConfigurationIds,
-                    "credentialsOfferUri" to credentialsOfferUri,
+                    "credentialsOfferUri" to createCredentialsOffer.defaultCredentialOfferUri.toString(),
                     "openid4VciVersion" to OpenId4VciSpec.VERSION,
                     "usefulLinks" to usefulLinks,
                 ),
@@ -145,8 +146,8 @@ private suspend fun ServerRequest.createCredentialOfferRequest(): CreateCredenti
 }
 
 context(generateQrCode: GenerateQqCode)
-private suspend fun URI.credentialOfferSuccessResponse(): ServerResponse {
-    val uri = this
+private suspend fun Uri.credentialOfferSuccessResponse(): ServerResponse {
+    val uri = this@credentialOfferSuccessResponse
     val qrCode = generateQrCode(uri, Format.PNG, Dimensions(Pixels(300u), Pixels(300u)))
     return ServerResponse
         .ok()

@@ -22,11 +22,13 @@ import org.springframework.boot.runApplication
 import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.scheduling.annotation.EnableScheduling
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import kotlin.time.Clock
 
 @SpringBootApplication
 @EnableConfigurationProperties(IssuerMetadataProperties::class, SdJwtVcProperties::class)
 @EnableScheduling
+@EnableWebFluxSecurity
 class PidIssuerApplication
 
 fun main(args: Array<String>) {

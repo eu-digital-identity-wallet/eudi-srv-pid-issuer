@@ -16,8 +16,11 @@
 package eu.europa.ec.eudi.pidissuer
 
 import arrow.core.toNonEmptyListOrNull
+import arrow.core.toNonEmptySetOrThrow
+import com.eygraber.uri.Uri
 import eu.europa.ec.eudi.pidissuer.adapter.input.scheduler.CredentialRevocationJob
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.*
+import eu.europa.ec.eudi.pidissuer.adapter.input.web.csrf.CsrfTokenSubscriberWebFilter
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptCredentialResponseNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.EncryptDeferredResponseNimbus
 import eu.europa.ec.eudi.pidissuer.adapter.out.jose.GenerateSignedMetadataWithNimbus
@@ -46,6 +49,8 @@ import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.BeanRegistrarDsl
 import org.springframework.boot.http.codec.CodecCustomizer
+import org.springframework.core.Ordered
+import org.springframework.core.env.getRequiredProperty
 import org.springframework.http.codec.json.KotlinSerializationJsonDecoder
 import org.springframework.http.codec.json.KotlinSerializationJsonEncoder
 import org.springframework.scheduling.annotation.SchedulingConfigurer
@@ -65,7 +70,6 @@ fun beans(
     timeZone: TimeZone,
 ) = BeanRegistrarDsl {
     val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl", removeTrailingSlash = true)
-    val credentialsOfferUri = env.getRequiredProperty("issuer.credentialOffer.uri")
     val issuerKeystore: KeyStore by lazy { keystore(env) }
     val getIssuerSigningKey = loadOrGenerateIssuerSigningKey(clock, env, issuerPublicUrl) { issuerKeystore }
 
@@ -289,7 +293,13 @@ fun beans(
         GetDeferredCredential(bean(), bean(), bean())
     }
     registerBean {
-        CreateCredentialsOffer(bean(), credentialsOfferUri)
+        val defaultCredentialOfferUri = Uri.parse(env.getRequiredProperty("issuer.credentialOffer.defaultUri"))
+        val allowedSchemes =
+            env
+                .getRequiredProperty<Set<String>>("issuer.credentialOffer.allowedSchemes")
+                .map { SupportedCredentialOfferUriScheme.of(it) }
+                .toNonEmptySetOrThrow()
+        CreateCredentialsOffer(bean(), defaultCredentialOfferUri, allowedSchemes)
     }
 
     registerBean {
@@ -310,7 +320,7 @@ fun beans(
                 .mapValues { it.value.resource }
         val metaDataApi = MetaDataApi(bean(), bean(), typeMetadata, bean())
         val walletApi = WalletApi(bean(), bean(), bean(), bean())
-        val issuerUi = IssuerUi(credentialsOfferUri, bean(), bean(), bean())
+        val issuerUi = IssuerUi(bean(), bean(), bean())
         val issuerApi = IssuerApi(bean())
         metaDataApi.route
             .and(walletApi.route)
@@ -321,8 +331,16 @@ fun beans(
     //
     // Security
     //
-    registerBean {
-        configureSecurity(
+
+    // UI Security
+    registerBean(order = Ordered.HIGHEST_PRECEDENCE) {
+        configureUiSecurity(env, bean())
+    }
+    registerBean<CsrfTokenSubscriberWebFilter>()
+
+    // API Security
+    registerBean(order = Ordered.HIGHEST_PRECEDENCE + 10) {
+        configureApiSecurity(
             http = bean(),
             metadata = bean(),
             oAuth2ResourceServerProperties = bean(),

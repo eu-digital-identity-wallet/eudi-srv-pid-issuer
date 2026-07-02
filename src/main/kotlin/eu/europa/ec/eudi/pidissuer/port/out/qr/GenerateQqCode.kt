@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.port.out.qr
 
 import arrow.core.Either
+import com.eygraber.uri.Uri
 import java.net.URI
 
 enum class Format {
@@ -47,7 +48,7 @@ fun interface GenerateQqCode {
      * @param dimensions the dimensions of the generated QR Code
      */
     suspend operator fun invoke(
-        content: URI,
+        content: Uri,
         format: Format,
         dimensions: Dimensions,
     ): ByteArray
