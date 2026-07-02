@@ -16,7 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.port.out.persistence
 
 import eu.europa.ec.eudi.pidissuer.domain.NotificationId
-import java.util.UUID
+import java.util.*
 
 fun interface GenerateNotificationId {
     suspend operator fun invoke(): NotificationId

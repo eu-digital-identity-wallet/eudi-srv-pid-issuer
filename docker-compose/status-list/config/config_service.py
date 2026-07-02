@@ -16,8 +16,8 @@
 #
 ###############################################################################
 import logging
-from logging.handlers import TimedRotatingFileHandler
 import os
+from logging.handlers import TimedRotatingFileHandler
 
 
 class ConfService:

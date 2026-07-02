@@ -17,7 +17,8 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.learningcredential
 
 import arrow.core.NonEmptyList
 import arrow.core.nonEmptyListOf
-import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.domain.ClaimDefinition
+import eu.europa.ec.eudi.pidissuer.domain.ClaimPath
 import java.util.*
 
 object SdJwtVcClaims {

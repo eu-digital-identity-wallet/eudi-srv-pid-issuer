@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer
 
-import com.eygraber.uri.Uri
 import com.eygraber.uri.Url
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.core.io.Resource
