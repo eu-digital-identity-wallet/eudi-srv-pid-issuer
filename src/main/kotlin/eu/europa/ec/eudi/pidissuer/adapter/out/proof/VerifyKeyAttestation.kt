@@ -121,7 +121,7 @@ class VerifyKeyAttestation(
         return when {
             kid != null && x5c.isNullOrEmpty() -> {
                 val didUrl = Uri.parse(kid)
-                val jwk = resolveDidUrl(didUrl).getOrElse { throw it }
+                val jwk = resolveDidUrl(didUrl)
                 WalletProviderSigningKey.DIDUrl(jwk, didUrl)
             }
 
