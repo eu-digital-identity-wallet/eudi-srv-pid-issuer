@@ -47,11 +47,9 @@ class GetDeferredCredentialTest {
         pidMsoMdocV1(
             credentialSigningAlgorithm = CoseAlgorithm(-7),
             deviceBinding =
-                DeviceBinding.Required(
+                DeviceBinding.Required.ts3(
                     nonEmptySetOf(JWSAlgorithm.ES256),
-                    KeyAttestationRequirement.ts3(
-                        PreferredKeyStorageStatusPeriod(60.days),
-                    ),
+                    PreferredKeyStorageStatusPeriod(60.days),
                 ),
             validity = 24.hours,
         )

@@ -83,7 +83,7 @@ sealed interface ProofType {
 sealed interface DeviceBinding {
     data object None : DeviceBinding
 
-    data class Required(
+    data class Required private constructor(
         val algorithmsSupported: NonEmptySet<JWSAlgorithm>,
         val keyStorageRequirement: KeyAttestationRequirement,
         val proofType: ProofOption = ProofOption.Either,
@@ -104,23 +104,23 @@ sealed interface DeviceBinding {
                 ProofOption.Either -> nonEmptySetOf(jwtWithKA(), attestation())
             }
         }
-    }
 
-    companion object {
-        val AllowedAlgorithms = nonEmptySetOf(JWSAlgorithm.ES256, JWSAlgorithm.ES384, JWSAlgorithm.ES512)
+        companion object {
+            val AllowedAlgorithms = nonEmptySetOf(JWSAlgorithm.ES256, JWSAlgorithm.ES384, JWSAlgorithm.ES512)
 
-        fun ts3(
-            algorithmsSupported: NonEmptySet<JWSAlgorithm> = AllowedAlgorithms,
-            preferredKeyStorageStatusPeriod: PreferredKeyStorageStatusPeriod,
-        ): Required {
-            require(algorithmsSupported.all { it in AllowedAlgorithms }) {
-                "Only EC signing algorithms are supported."
+            fun ts3(
+                algorithmsSupported: NonEmptySet<JWSAlgorithm> = AllowedAlgorithms,
+                preferredKeyStorageStatusPeriod: PreferredKeyStorageStatusPeriod,
+            ): Required {
+                require(algorithmsSupported.all { it in AllowedAlgorithms }) {
+                    "Only EC signing algorithms are supported."
+                }
+                return Required(
+                    algorithmsSupported,
+                    KeyAttestationRequirement.ts3(preferredKeyStorageStatusPeriod),
+                    ProofOption.Either,
+                )
             }
-            return Required(
-                algorithmsSupported,
-                KeyAttestationRequirement.ts3(preferredKeyStorageStatusPeriod),
-                ProofOption.Either,
-            )
         }
     }
 }

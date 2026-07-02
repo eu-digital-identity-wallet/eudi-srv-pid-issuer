@@ -410,14 +410,14 @@ internal object IssuerFactory {
     context(ctx: Ctx)
     fun mdl(issuerSigningKey: IssuerSigningKey): IssueMdoc<MobileDrivingLicence> {
         val validity = ctx.env.duration("issuer.mdl.mso_mdoc.encoder.duration") ?: 31.days
-        val jwtProofsSupportedSigningAlgorithms =
+        val proofsSupportedSigningAlgorithms =
             ctx.env.readNonEmptySet(
-                "issuer.mdl.jwtProofs.supportedSigningAlgorithms",
+                "issuer.mdl.proofs.supportedSigningAlgorithms",
                 JWSAlgorithm::parse,
             )
         val deviceBinding =
-            DeviceBinding.ts3(
-                jwtProofsSupportedSigningAlgorithms,
+            DeviceBinding.Required.ts3(
+                proofsSupportedSigningAlgorithms,
                 PreferredKeyStorageStatusPeriod(validity),
             )
         val mdlIssuerReusePolicy = credentialReusePolicy(ctx.env, "issuer.mdl")
@@ -445,9 +445,9 @@ internal object IssuerFactory {
         getAttestationAttributes: GetAttestationAttributes<PidAttributes>,
     ): IssueMdoc<PidAttributes> {
         val duration = ctx.env.duration("issuer.pid.mso_mdoc.encoder.duration") ?: 31.days
-        val jwtProofsSupportedSigningAlgorithms =
+        val proofsSupportedSigningAlgorithms =
             ctx.env.readNonEmptySet(
-                "issuer.pid.mso_mdoc.jwtProofs.supportedSigningAlgorithms",
+                "issuer.pid.mso_mdoc.proofs.supportedSigningAlgorithms",
                 JWSAlgorithm::parse,
             )
         val pidMsoMdocReusePolicy = credentialReusePolicy(ctx.env, "issuer.pid.mso_mdoc")
@@ -457,8 +457,8 @@ internal object IssuerFactory {
             getAttestationAttributes = getAttestationAttributes,
             issuerSigningKey = issuerSigningKey,
             deviceBinding =
-                DeviceBinding.ts3(
-                    jwtProofsSupportedSigningAlgorithms,
+                DeviceBinding.Required.ts3(
+                    proofsSupportedSigningAlgorithms,
                     PreferredKeyStorageStatusPeriod(duration),
                 ),
             credentialReusePolicy = pidMsoMdocReusePolicy,
@@ -484,8 +484,8 @@ internal object IssuerFactory {
 
         val digestsHashAlgorithm =
             ctx.env.getProperty<HashAlgorithm>("issuer.pid.sd_jwt_vc.digests.hashAlgorithm") ?: HashAlgorithm.SHA_256
-        val jwtProofsSupportedSigningAlgorithms =
-            ctx.env.readNonEmptySet("issuer.pid.sd_jwt_vc.jwtProofs.supportedSigningAlgorithms", JWSAlgorithm::parse)
+        val proofsSupportedSigningAlgorithms =
+            ctx.env.readNonEmptySet("issuer.pid.sd_jwt_vc.proofs.supportedSigningAlgorithms", JWSAlgorithm::parse)
 
         return IssueSdJwtVcPid(
             clock = ctx.clock,
@@ -494,8 +494,8 @@ internal object IssuerFactory {
             credentialIssuerId = ctx.credentialIssuerId,
             digestsHashAlgorithm = digestsHashAlgorithm,
             deviceBinding =
-                DeviceBinding.ts3(
-                    jwtProofsSupportedSigningAlgorithms,
+                DeviceBinding.Required.ts3(
+                    proofsSupportedSigningAlgorithms,
                     PreferredKeyStorageStatusPeriod(expiresIn),
                 ),
             credentialReusePolicy = pidSdJwtVcReusePolicy,
@@ -516,9 +516,9 @@ internal object IssuerFactory {
         issuerSigningKey: IssuerSigningKey,
         getPidData: GetAttestationAttributes<PidAttributes>,
     ): IssueLearningCredential {
-        val jwtProofsSupportedSigningAlgorithms =
+        val proofsSupportedSigningAlgorithms =
             ctx.env.readNonEmptySet(
-                "issuer.learningCredential.jwtProofs.supportedSigningAlgorithms",
+                "issuer.learningCredential.proofs.supportedSigningAlgorithms",
                 JWSAlgorithm::parse,
             )
         val learningCredentialReusePolicy =
@@ -543,11 +543,9 @@ internal object IssuerFactory {
             issuerSigningKey = issuerSigningKey,
             digestsHashAlgorithm = digestHashAlgorithm,
             deviceBinding =
-                DeviceBinding.Required(
-                    jwtProofsSupportedSigningAlgorithms,
-                    KeyAttestationRequirement.ts3(
-                        PreferredKeyStorageStatusPeriod(validity),
-                    ),
+                DeviceBinding.Required.ts3(
+                    proofsSupportedSigningAlgorithms,
+                    PreferredKeyStorageStatusPeriod(validity),
                 ),
             credentialReusePolicy = learningCredentialReusePolicy,
             validity = validity,
