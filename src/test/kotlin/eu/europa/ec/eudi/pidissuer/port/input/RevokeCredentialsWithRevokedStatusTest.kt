@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.raise.context.raise
+import arrow.core.raise.context.result
 import arrow.core.right
 import com.eygraber.uri.Uri
 import eu.europa.ec.eudi.pidissuer.domain.Format
@@ -253,7 +254,8 @@ internal class RevokeCredentialsWithRevokedStatusTest {
                     deleteIssuedCredential = { },
                 )
 
-            assertEquals("DB error", runCatching { useCase() }.exceptionOrNull()?.message)
+            val error = result { useCase() }.exceptionOrNull()?.message
+            assertEquals("DB error", error)
         }
 
     @Test

@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.jose
 
-import arrow.core.Either
 import arrow.core.getOrElse
 import arrow.core.raise.either
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -127,7 +126,7 @@ internal class EncryptCredentialResponseWithNimbusTest {
                     )
             }
 
-        val claims = Either.catch { processor.process(encrypted.jwt, null) }.getOrElse { fail(it.message, it) }
+        val claims = processor.process(encrypted.jwt, null)
         val credential =
             claims
                 .getListClaim("credentials")
@@ -135,12 +134,9 @@ internal class EncryptCredentialResponseWithNimbusTest {
                     it.map { credential ->
                         when (credential) {
                             is Map<*, *> -> {
-                                Either
-                                    .catch {
-                                        Json.decodeFromString<IssueCredentialResponse.PlainTO.CredentialTO>(
-                                            jacksonObjectMapper.writeValueAsString(credential),
-                                        )
-                                    }.getOrElse { error -> fail(error.message, error) }
+                                Json.decodeFromString<IssueCredentialResponse.PlainTO.CredentialTO>(
+                                    jacksonObjectMapper.writeValueAsString(credential),
+                                )
                             }
 
                             else -> {

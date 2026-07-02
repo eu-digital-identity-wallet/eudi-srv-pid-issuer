@@ -15,11 +15,12 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.x509
 
+import arrow.core.raise.context.result
 import java.security.cert.X509Certificate
 
 fun X509Certificate.isSelfSigned(): Boolean =
     subjectX500Principal == issuerX500Principal &&
-        runCatching {
+        result {
             verify(publicKey)
             true
         }.getOrElse { false }
