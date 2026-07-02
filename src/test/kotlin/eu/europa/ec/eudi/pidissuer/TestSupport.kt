@@ -13,20 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:Suppress("ktlint:standard:max-line-length")
+@file:Suppress("ktlint:standard:max-line-length", "ktlint:standard:filename")
 
 package eu.europa.ec.eudi.pidissuer
 
-import kotlinx.datetime.TimeZone
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
-import org.springframework.context.support.GenericApplicationContext
 import org.springframework.core.annotation.AliasFor
 import org.springframework.test.context.ContextConfiguration
 import kotlin.reflect.KClass
-import kotlin.time.Clock
 
 /**
  * Meta annotation to be used with integration tests of [PidIssuerApplication].
@@ -52,22 +49,4 @@ internal annotation class PidIssuerApplicationTest(
      */
     @get:AliasFor(annotation = ContextConfiguration::class)
     val classes: Array<KClass<*>> = [],
-    /**
-     * Custom [ApplicationContextInitializer] classes.
-     * Defaults to [BeansDslApplicationContextInitializer] for production beans.
-     * When overriding, the custom initializer MUST invoke [BeansDslApplicationContextInitializer]
-     * internally (e.g. test mocks).
-     */
-    @get:AliasFor(annotation = ContextConfiguration::class)
-    val initializers: Array<KClass<out ApplicationContextInitializer<*>>> =
-        [BeansDslApplicationContextInitializer::class],
 )
-
-/**
- * [ApplicationContextInitializer] for use with [SpringBootTest]/[ContextConfiguration]
- */
-internal class BeansDslApplicationContextInitializer : ApplicationContextInitializer<GenericApplicationContext> {
-    override fun initialize(applicationContext: GenericApplicationContext) {
-        applicationContext.register(beans(Clock.System, TimeZone.currentSystemDefault()))
-    }
-}

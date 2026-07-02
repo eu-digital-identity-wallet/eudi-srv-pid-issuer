@@ -49,6 +49,7 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.ApplicationContext
 import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Primary
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.http.HttpMethod
@@ -61,6 +62,7 @@ import org.springframework.security.oauth2.core.OAuth2AccessToken.TokenType
 import org.springframework.security.oauth2.core.OAuth2TokenIntrospectionClaimNames
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockAuthentication
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.springSecurity
+import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.reactive.server.WebTestClient
 import org.springframework.test.web.reactive.server.expectBody
@@ -77,8 +79,7 @@ import kotlin.time.Instant
  */
 @Suppress("SpringJavaInjectionPointsAutowiringInspection", "ProtectedInFinal")
 @PidIssuerApplicationTest(
-    classes = [BaseWalletApiTest.WalletApiTestConfig::class],
-    initializers = [TestMocksInitializer::class],
+    classes = [BaseWalletApiTest.WalletApiTestConfig::class, AppBeans::class],
 )
 class BaseWalletApiTest {
     @Autowired
@@ -156,12 +157,6 @@ class BaseWalletApiTest {
                     index = 0u,
                 )
             }
-    }
-}
-
-internal class TestMocksInitializer : ApplicationContextInitializer<GenericApplicationContext> {
-    override fun initialize(applicationContext: GenericApplicationContext) {
-        BeansDslApplicationContextInitializer().initialize(applicationContext)
     }
 }
 

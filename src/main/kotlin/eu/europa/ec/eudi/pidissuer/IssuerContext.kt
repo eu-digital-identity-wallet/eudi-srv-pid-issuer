@@ -64,307 +64,306 @@ import kotlin.time.toKotlinDuration
 
 val log = LoggerFactory.getLogger(PidIssuerApplication::class.java)
 
-fun beans(
-    clock: Clock,
-    timeZone: TimeZone,
-) = BeanRegistrarDsl {
-    val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl", removeTrailingSlash = true)
-    val issuerKeystore: KeyStore by lazy { keystore(env) }
-    val getIssuerSigningKey = loadOrGenerateIssuerSigningKey(clock, env, issuerPublicUrl) { issuerKeystore }
+internal class AppBeans :
+    BeanRegistrarDsl({
+        val clock: Clock.System = Clock.System
+        registerBean { clock }
+        registerBean { TimeZone.currentSystemDefault() }
+        val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl", removeTrailingSlash = true)
+        val issuerKeystore: KeyStore by lazy { keystore(env) }
+        val getIssuerSigningKey = loadOrGenerateIssuerSigningKey(clock, env, issuerPublicUrl) { issuerKeystore }
 
-    registerBean { env.dPoPConfigurationProperties() }
-    registerBean(lazyInit = true) { loadOrGenerateAccessCertificate(env) { issuerKeystore } }
-    registerBean { clock }
-    registerBean { timeZone }
-    registerBean { env.httpProxy() }
-    registerBean { WebClients(bean(), secure = "insecure" !in env.activeProfiles) }
-    registerBean { trustValidatorService(env, bean()) }
-    registerBean { DefaultGenerateQrCode() }
-    registerBean { HandleNotificationRequest(bean()) }
-    registerBean {
-        val cNonceExpiresIn = env.duration("issuer.cnonce.expiration") ?: 5.minutes
-        HandleNonceRequest(clock, cNonceExpiresIn, bean())
-    }
-    registerBean(lazyInit = true) {
-        val signedMetadataIssuer =
-            env
-                .getProperty("issuer.signed-metadata.issuer")
-                ?.takeIf { it.isNotBlank() }
-                ?.trim()
-                ?.let { requireNotNull(HttpsUrl.of(it)) { "'issuer.signed-metadata.issuer' is not a valid HttpsUrl" } }
-                ?: issuerPublicUrl
-
-        GenerateSignedMetadataWithNimbus(
-            clock = bean(),
-            signedMetadataIssuer = signedMetadataIssuer,
-            credentialIssuerId = bean<CredentialIssuerMetaData>().id,
-            accessCertificate = bean(),
-        )
-    }
-    registerBean<GetStatusListTokenStatus> {
-        val httpClient = KtorHttpClients(bean(), secure = "insecure" !in env.activeProfiles)
-        GetStatusListTokenWithStatium(
-            httpClient,
-            clock = clock,
-            allowedClockSkew = 5.seconds,
-        )
-    }
-    registerBean {
-        RevokeCredentialsWithRevokedStatus(
-            clock = clock,
-            deleteExpiredIssuedCredentials = bean(),
-            getNonExpiredIssuedCredentials = bean(),
-            getStatusListTokenStatus = bean(),
-            markStatusAsRevoked = bean(),
-            deleteIssuedCredential = bean(),
-        )
-    }
-    registerBean { CredentialRevocationJob(bean()) }
-    registerBean {
-        val cron = env.getProperty("issuer.revocationJob.cron", "0 0 */8 * * *")
-        SchedulingConfigurer { taskRegistrar ->
-            taskRegistrar.addCronTask({
-                runBlocking {
-                    bean<CredentialRevocationJob>().run()
-                }
-            }, cron)
+        registerBean { env.dPoPConfigurationProperties() }
+        registerBean(lazyInit = true) { loadOrGenerateAccessCertificate(env) { issuerKeystore } }
+        registerBean { env.httpProxy() }
+        registerBean { WebClients(bean(), secure = "insecure" !in env.activeProfiles) }
+        registerBean { trustValidatorService(env, bean()) }
+        registerBean { DefaultGenerateQrCode() }
+        registerBean { HandleNotificationRequest(bean()) }
+        registerBean {
+            val cNonceExpiresIn = env.duration("issuer.cnonce.expiration") ?: 5.minutes
+            HandleNonceRequest(bean(), cNonceExpiresIn, bean())
         }
-    }
+        registerBean(lazyInit = true) {
+            val signedMetadataIssuer =
+                env
+                    .getProperty("issuer.signed-metadata.issuer")
+                    ?.takeIf { it.isNotBlank() }
+                    ?.trim()
+                    ?.let { requireNotNull(HttpsUrl.of(it)) { "'issuer.signed-metadata.issuer' is not a valid HttpsUrl" } }
+                    ?: issuerPublicUrl
 
-    registerBean<AllocateStatus> {
-        val serviceUrl = Url.parse(env.getRequiredProperty("issuer.statusList.service.generate-uri"))
-        GenerateStatusListTokenWithExternalService(
-            webClient = bean(),
-            serviceUrl = serviceUrl,
-            apiKey = env.getRequiredProperty("issuer.statusList.service.apiKey"),
-            timeZone = timeZone,
-        )
-    }
-
-    registerBean<MarkStatusAsRevoked> {
-        val serviceUrl = Url.parse(env.getRequiredProperty("issuer.statusList.service.revoke-uri"))
-        MarkStatusAsRevokedWithExternalService(
-            webClient = bean(),
-            serviceUrl = serviceUrl,
-            apiKey = env.getRequiredProperty("issuer.statusList.service.apiKey"),
-        )
-    }
-
-    //
-    // Encryption of credential response
-    //
-    registerBean(lazyInit = true) {
-        EncryptDeferredResponseNimbus(bean<CredentialIssuerMetaData>().id, clock)
-    }
-    registerBean(lazyInit = true) {
-        EncryptCredentialResponseNimbus(bean<CredentialIssuerMetaData>().id, clock)
-    }
-
-    //
-    // Nonce
-    //
-    registerBean { loadNonceEncryptionKey(env) { issuerKeystore } }
-    registerBean { GenerateNonceAndEncryptWithNimbus(issuerPublicUrl, bean()) }
-    registerBean { DecryptNonceWithNimbusAndVerify(issuerPublicUrl, bean()) }
-
-    //
-    // Credentials
-    //
-    registerBean { GenerateNotificationId.Random }
-    registerBean { R2dbcIssuedCredentialRepository(bean()) }
-    registerBean { bean<R2dbcIssuedCredentialRepository>().storeIssuedCredential }
-    registerBean { bean<R2dbcIssuedCredentialRepository>().loadIssuedCredentialsByNotificationId }
-    registerBean { bean<R2dbcIssuedCredentialRepository>().getNonExpiredIssuedCredentials }
-    registerBean { bean<R2dbcIssuedCredentialRepository>().deleteExpiredIssuedCredentials }
-    registerBean { bean<R2dbcIssuedCredentialRepository>().deleteIssuedCredential }
-
-    //
-    // Deferred Credentials
-    //
-    with(InMemoryDeferredCredentialRepository(mutableMapOf(), clock)) {
-        registerBean { GenerateTransactionId.Random }
-        registerBean { storeDeferredCredential }
-        registerBean { loadDeferredCredentialByTransactionId }
-    }
-
-    //
-    // Specific Issuers
-    //
-
-    registerBean {
-        getPidDataFromKeyCloak(clock, timeZone, env, webClient = bean())
-    }
-    registerBean {
-        val ctx =
-            IssuerFactory.Ctx(
-                clock,
-                timeZone,
-                env,
-                credentialIssuerId = issuerPublicUrl,
-                validateProof = validateProof(issuerPublicUrl, bean(), bean()),
-                storeIssuedCredential = bean(),
-                allocateStatus = bean(),
-                generateNotificationId = bean(),
+            GenerateSignedMetadataWithNimbus(
+                clock = bean(),
+                signedMetadataIssuer = signedMetadataIssuer,
+                credentialIssuerId = bean<CredentialIssuerMetaData>().id,
+                accessCertificate = bean(),
             )
-        val attestationIssuers =
-            context(ctx) {
-                buildList {
-                    if (env.getBoolean("issuer.pid.mso_mdoc.enabled") ?: true) {
-                        val issueMsoMdocPid =
-                            IssuerFactory.pidInMdoc(
-                                issuerSigningKey = getIssuerSigningKey("issuer.pid.mso_mdoc.signing-key"),
-                                getAttestationAttributes = bean(),
-                            )
-                        add(issueMsoMdocPid)
-                        add(issueMsoMdocPid.asDeferred(bean(), bean(), clock))
-                    }
-
-                    if (env.getBoolean("issuer.pid.sd_jwt_vc.enabled") ?: true) {
-                        val issueSdJwtVcPid =
-                            IssuerFactory.pidInSdJwtVc(
-                                issuerSigningKey = getIssuerSigningKey("issuer.pid.sd_jwt_vc.signing-key"),
-                                getAttestationAttributes = bean(),
-                            )
-                        add(issueSdJwtVcPid)
-                        add(issueSdJwtVcPid.asDeferred(bean(), bean(), clock))
-                    }
-
-                    if (env.getBoolean("issuer.mdl.enabled", true)) {
-                        val mdlIssuer = IssuerFactory.mdl(getIssuerSigningKey("issuer.mdl.signing-key"))
-                        add(mdlIssuer)
-                        add(mdlIssuer.asDeferred(bean(), bean(), clock))
-                    }
-                    if (env.getBoolean("issuer.learningCredential.enabled") ?: true) {
-                        val issueLearningCredential =
-                            IssuerFactory.learningCredentialInSdJwtVc(
-                                issuerSigningKey = getIssuerSigningKey("issuer.learningCredential.signing-key"),
-                                getPidData = bean(),
-                            )
-                        add(issueLearningCredential)
-                        add(issueLearningCredential.asDeferred(bean(), bean(), bean()))
-                    }
-                }.toNonEmptyListOrNull()
-            }
-        checkNotNull(attestationIssuers) { "At least one credential issuer must be configured" }
-
-        val preferredClientStatusPeriod =
-            bean<IssuerMetadataProperties>().preferredClientStatusPeriod.toKotlinDuration()
-
-        CredentialIssuerMetaData(
-            id = issuerPublicUrl,
-            credentialEndPoint = issuerPublicUrl.appendPath(WalletApi.CREDENTIAL_ENDPOINT),
-            deferredCredentialEndpoint = issuerPublicUrl.appendPath(WalletApi.DEFERRED_ENDPOINT),
-            notificationEndpoint = issuerPublicUrl.appendPath(WalletApi.NOTIFICATION_ENDPOINT),
-            nonceEndpoint = issuerPublicUrl.appendPath(WalletApi.NONCE_ENDPOINT),
-            authorizationServers = listOf(env.readRequiredUrl("issuer.authorizationServer.publicUrl")),
-            credentialRequestEncryption = env.credentialRequestEncryption { issuerKeystore },
-            credentialResponseEncryption = env.credentialResponseEncryption(),
-            attestationIssuers = attestationIssuers,
-            batchCredentialIssuance = env.batchCredentialIssuance(),
-            display =
-                bean<IssuerMetadataProperties>()
-                    .display
-                    .map { display ->
-                        CredentialIssuerDisplay(
-                            name = display.name,
-                            locale = display.locale?.let { Locale.forLanguageTag(it) },
-                            logo = display.logo?.let { ImageUri(Uri.parse(it.uri), it.alternativeText) },
-                        )
-                    },
-            preferredClientStatusPeriod = PreferredClientStatusPeriod(preferredClientStatusPeriod),
-        )
-    }
-
-    //
-    // In Ports (use cases)
-    //
-    registerBean {
-        GetCredentialIssuerMetaData(bean(), bean())
-    }
-    registerBean {
-        IssueCredential(
-            credentialIssuerMetadata = bean(),
-            encryptCredentialResponse = bean(),
-            clock = bean(),
-        )
-    }
-    registerBean {
-        GetDeferredCredential(bean(), bean(), bean())
-    }
-    registerBean {
-        val defaultCredentialOfferUri = Uri.parse(env.getRequiredProperty("issuer.credentialOffer.defaultUri"))
-        val allowedSchemes =
-            env
-                .getRequiredProperty<Set<String>>("issuer.credentialOffer.allowedSchemes")
-                .map { SupportedCredentialOfferUriScheme.of(it) }
-                .toNonEmptySetOrThrow()
-        CreateCredentialsOffer(bean(), defaultCredentialOfferUri, allowedSchemes)
-    }
-
-    registerBean {
-        GetProtectedResourceMetadata(
-            credentialIssuerMetadata = bean(),
-            dPoPConfigurationProperties = bean(),
-        )
-    }
-
-    //
-    // Routes
-    //
-    registerBean {
-        val typeMetadata =
-            bean<SdJwtVcProperties>()
-                .typeMetadata
-                .associateBy { Vct(it.vct) }
-                .mapValues { it.value.resource }
-        val metaDataApi = MetaDataApi(bean(), bean(), typeMetadata, bean())
-        val walletApi = WalletApi(bean(), bean(), bean(), bean())
-        val issuerUi = IssuerUi(bean(), bean(), bean())
-        val issuerApi = IssuerApi(bean())
-        metaDataApi.route
-            .and(walletApi.route)
-            .and(issuerUi.router)
-            .and(issuerApi.router)
-    }
-
-    //
-    // Security
-    //
-
-    // UI Security
-    registerBean(order = Ordered.HIGHEST_PRECEDENCE) {
-        configureUiSecurity(env, bean())
-    }
-    registerBean<CsrfTokenSubscriberWebFilter>()
-
-    // API Security
-    registerBean(order = Ordered.HIGHEST_PRECEDENCE + 10) {
-        configureApiSecurity(
-            http = bean(),
-            metadata = bean(),
-            oAuth2ResourceServerProperties = bean(),
-            dPoPConfigurationProperties = bean(),
-            webClient = bean(),
-            env = env,
-            clock = clock,
-            verifyNonce = bean(),
-            generateNonce = bean(),
-        )
-    }
-
-    //
-    // Other
-    //
-    registerBean {
-        CodecCustomizer {
-            val json =
-                Json {
-                    explicitNulls = false
-                    ignoreUnknownKeys = true
-                }
-            it.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
-            it.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
-            it.defaultCodecs().enableLoggingRequestDetails(true)
         }
-    }
-}
+        registerBean<GetStatusListTokenStatus> {
+            val httpClient = KtorHttpClients(bean(), secure = "insecure" !in env.activeProfiles)
+            GetStatusListTokenWithStatium(
+                httpClient,
+                clock = bean(),
+                allowedClockSkew = 5.seconds,
+            )
+        }
+        registerBean {
+            RevokeCredentialsWithRevokedStatus(
+                clock = bean(),
+                deleteExpiredIssuedCredentials = bean(),
+                getNonExpiredIssuedCredentials = bean(),
+                getStatusListTokenStatus = bean(),
+                markStatusAsRevoked = bean(),
+                deleteIssuedCredential = bean(),
+            )
+        }
+        registerBean { CredentialRevocationJob(bean()) }
+        registerBean {
+            val cron = env.getProperty("issuer.revocationJob.cron", "0 0 */8 * * *")
+            SchedulingConfigurer { taskRegistrar ->
+                taskRegistrar.addCronTask({
+                    runBlocking {
+                        bean<CredentialRevocationJob>().run()
+                    }
+                }, cron)
+            }
+        }
+
+        registerBean<AllocateStatus> {
+            val serviceUrl = Url.parse(env.getRequiredProperty("issuer.statusList.service.generate-uri"))
+            GenerateStatusListTokenWithExternalService(
+                webClient = bean(),
+                serviceUrl = serviceUrl,
+                apiKey = env.getRequiredProperty("issuer.statusList.service.apiKey"),
+                timeZone = bean(),
+            )
+        }
+
+        registerBean<MarkStatusAsRevoked> {
+            val serviceUrl = Url.parse(env.getRequiredProperty("issuer.statusList.service.revoke-uri"))
+            MarkStatusAsRevokedWithExternalService(
+                webClient = bean(),
+                serviceUrl = serviceUrl,
+                apiKey = env.getRequiredProperty("issuer.statusList.service.apiKey"),
+            )
+        }
+
+        //
+        // Encryption of credential response
+        //
+        registerBean(lazyInit = true) {
+            EncryptDeferredResponseNimbus(bean<CredentialIssuerMetaData>().id, bean())
+        }
+        registerBean(lazyInit = true) {
+            EncryptCredentialResponseNimbus(bean<CredentialIssuerMetaData>().id, bean())
+        }
+
+        //
+        // Nonce
+        //
+        registerBean { loadNonceEncryptionKey(env) { issuerKeystore } }
+        registerBean { GenerateNonceAndEncryptWithNimbus(issuerPublicUrl, bean()) }
+        registerBean { DecryptNonceWithNimbusAndVerify(issuerPublicUrl, bean()) }
+
+        //
+        // Credentials
+        //
+        registerBean { GenerateNotificationId.Random }
+        registerBean { R2dbcIssuedCredentialRepository(bean()) }
+        registerBean { bean<R2dbcIssuedCredentialRepository>().storeIssuedCredential }
+        registerBean { bean<R2dbcIssuedCredentialRepository>().loadIssuedCredentialsByNotificationId }
+        registerBean { bean<R2dbcIssuedCredentialRepository>().getNonExpiredIssuedCredentials }
+        registerBean { bean<R2dbcIssuedCredentialRepository>().deleteExpiredIssuedCredentials }
+        registerBean { bean<R2dbcIssuedCredentialRepository>().deleteIssuedCredential }
+
+        //
+        // Deferred Credentials
+        //
+        with(InMemoryDeferredCredentialRepository(mutableMapOf(), clock)) {
+            registerBean { GenerateTransactionId.Random }
+            registerBean { storeDeferredCredential }
+            registerBean { loadDeferredCredentialByTransactionId }
+        }
+
+        //
+        // Specific Issuers
+        //
+
+        registerBean {
+            getPidDataFromKeyCloak(bean(), bean(), env, webClient = bean())
+        }
+        registerBean {
+            val ctx =
+                IssuerFactory.Ctx(
+                    bean(),
+                    bean(),
+                    env,
+                    credentialIssuerId = issuerPublicUrl,
+                    validateProof = validateProof(issuerPublicUrl, bean(), bean()),
+                    storeIssuedCredential = bean(),
+                    allocateStatus = bean(),
+                    generateNotificationId = bean(),
+                )
+            val attestationIssuers =
+                context(ctx) {
+                    buildList {
+                        if (env.getBoolean("issuer.pid.mso_mdoc.enabled") ?: true) {
+                            val issueMsoMdocPid =
+                                IssuerFactory.pidInMdoc(
+                                    issuerSigningKey = getIssuerSigningKey("issuer.pid.mso_mdoc.signing-key"),
+                                    getAttestationAttributes = bean(),
+                                )
+                            add(issueMsoMdocPid)
+                            add(issueMsoMdocPid.asDeferred(bean(), bean(), bean()))
+                        }
+
+                        if (env.getBoolean("issuer.pid.sd_jwt_vc.enabled") ?: true) {
+                            val issueSdJwtVcPid =
+                                IssuerFactory.pidInSdJwtVc(
+                                    issuerSigningKey = getIssuerSigningKey("issuer.pid.sd_jwt_vc.signing-key"),
+                                    getAttestationAttributes = bean(),
+                                )
+                            add(issueSdJwtVcPid)
+                            add(issueSdJwtVcPid.asDeferred(bean(), bean(), bean()))
+                        }
+
+                        if (env.getBoolean("issuer.mdl.enabled", true)) {
+                            val mdlIssuer = IssuerFactory.mdl(getIssuerSigningKey("issuer.mdl.signing-key"))
+                            add(mdlIssuer)
+                            add(mdlIssuer.asDeferred(bean(), bean(), bean()))
+                        }
+                        if (env.getBoolean("issuer.learningCredential.enabled") ?: true) {
+                            val issueLearningCredential =
+                                IssuerFactory.learningCredentialInSdJwtVc(
+                                    issuerSigningKey = getIssuerSigningKey("issuer.learningCredential.signing-key"),
+                                    getPidData = bean(),
+                                )
+                            add(issueLearningCredential)
+                            add(issueLearningCredential.asDeferred(bean(), bean(), bean()))
+                        }
+                    }.toNonEmptyListOrNull()
+                }
+            checkNotNull(attestationIssuers) { "At least one credential issuer must be configured" }
+
+            val preferredClientStatusPeriod =
+                bean<IssuerMetadataProperties>().preferredClientStatusPeriod.toKotlinDuration()
+
+            CredentialIssuerMetaData(
+                id = issuerPublicUrl,
+                credentialEndPoint = issuerPublicUrl.appendPath(WalletApi.CREDENTIAL_ENDPOINT),
+                deferredCredentialEndpoint = issuerPublicUrl.appendPath(WalletApi.DEFERRED_ENDPOINT),
+                notificationEndpoint = issuerPublicUrl.appendPath(WalletApi.NOTIFICATION_ENDPOINT),
+                nonceEndpoint = issuerPublicUrl.appendPath(WalletApi.NONCE_ENDPOINT),
+                authorizationServers = listOf(env.readRequiredUrl("issuer.authorizationServer.publicUrl")),
+                credentialRequestEncryption = env.credentialRequestEncryption { issuerKeystore },
+                credentialResponseEncryption = env.credentialResponseEncryption(),
+                attestationIssuers = attestationIssuers,
+                batchCredentialIssuance = env.batchCredentialIssuance(),
+                display =
+                    bean<IssuerMetadataProperties>()
+                        .display
+                        .map { display ->
+                            CredentialIssuerDisplay(
+                                name = display.name,
+                                locale = display.locale?.let { Locale.forLanguageTag(it) },
+                                logo = display.logo?.let { ImageUri(Uri.parse(it.uri), it.alternativeText) },
+                            )
+                        },
+                preferredClientStatusPeriod = PreferredClientStatusPeriod(preferredClientStatusPeriod),
+            )
+        }
+
+        //
+        // In Ports (use cases)
+        //
+        registerBean {
+            GetCredentialIssuerMetaData(bean(), bean())
+        }
+        registerBean {
+            IssueCredential(
+                credentialIssuerMetadata = bean(),
+                encryptCredentialResponse = bean(),
+                clock = bean(),
+            )
+        }
+        registerBean {
+            GetDeferredCredential(bean(), bean(), bean())
+        }
+        registerBean {
+            val defaultCredentialOfferUri = Uri.parse(env.getRequiredProperty("issuer.credentialOffer.defaultUri"))
+            val allowedSchemes =
+                env
+                    .getRequiredProperty<Set<String>>("issuer.credentialOffer.allowedSchemes")
+                    .map { SupportedCredentialOfferUriScheme.of(it) }
+                    .toNonEmptySetOrThrow()
+            CreateCredentialsOffer(bean(), defaultCredentialOfferUri, allowedSchemes)
+        }
+
+        registerBean {
+            GetProtectedResourceMetadata(
+                credentialIssuerMetadata = bean(),
+                dPoPConfigurationProperties = bean(),
+            )
+        }
+
+        //
+        // Routes
+        //
+        registerBean {
+            val typeMetadata =
+                bean<SdJwtVcProperties>()
+                    .typeMetadata
+                    .associateBy { Vct(it.vct) }
+                    .mapValues { it.value.resource }
+            val metaDataApi = MetaDataApi(bean(), bean(), typeMetadata, bean())
+            val walletApi = WalletApi(bean(), bean(), bean(), bean())
+            val issuerUi = IssuerUi(bean(), bean(), bean())
+            val issuerApi = IssuerApi(bean())
+            metaDataApi.route
+                .and(walletApi.route)
+                .and(issuerUi.router)
+                .and(issuerApi.router)
+        }
+
+        //
+        // Security
+        //
+
+        // UI Security
+        registerBean(order = Ordered.HIGHEST_PRECEDENCE) {
+            configureUiSecurity(env, bean())
+        }
+        registerBean<CsrfTokenSubscriberWebFilter>()
+
+        // API Security
+        registerBean(order = Ordered.HIGHEST_PRECEDENCE + 10) {
+            configureApiSecurity(
+                http = bean(),
+                metadata = bean(),
+                oAuth2ResourceServerProperties = bean(),
+                dPoPConfigurationProperties = bean(),
+                webClient = bean(),
+                env = env,
+                clock = bean(),
+                verifyNonce = bean(),
+                generateNonce = bean(),
+            )
+        }
+
+        //
+        // Other
+        //
+        registerBean {
+            CodecCustomizer {
+                val json =
+                    Json {
+                        explicitNulls = false
+                        ignoreUnknownKeys = true
+                    }
+                it.defaultCodecs().kotlinSerializationJsonDecoder(KotlinSerializationJsonDecoder(json))
+                it.defaultCodecs().kotlinSerializationJsonEncoder(KotlinSerializationJsonEncoder(json))
+                it.defaultCodecs().enableLoggingRequestDetails(true)
+            }
+        }
+    })
