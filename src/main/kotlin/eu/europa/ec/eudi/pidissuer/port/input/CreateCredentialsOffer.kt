@@ -23,12 +23,10 @@ import arrow.core.raise.context.ensureNotNull
 import arrow.core.raise.context.raise
 import arrow.core.toNonEmptySetOrNull
 import com.eygraber.uri.Uri
-import com.eygraber.uri.toURI
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfiguration
 import eu.europa.ec.eudi.pidissuer.domain.CredentialConfigurationId
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import kotlinx.serialization.json.Json
-import java.net.URI
 
 /**
  * Generates a Credential Offer and a QR Code in PNG format.

@@ -15,11 +15,11 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.persistence
 
+import com.eygraber.uri.Uri
 import eu.europa.ec.eudi.pidissuer.domain.*
 import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
-import java.net.URI
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
@@ -69,7 +69,7 @@ data class IssuedCredentialEntity(
             status =
                 if (statusListUri != null && statusListIndex != null) {
                     StatusListToken(
-                        statusList = URI.create(statusListUri),
+                        statusList = Uri.parse(statusListUri),
                         index = statusListIndex.toUInt(),
                     )
                 } else {
@@ -77,13 +77,13 @@ data class IssuedCredentialEntity(
                 },
             clientStatus =
                 StatusListToken(
-                    statusList = URI.create(clientStatusListUri),
+                    statusList = Uri.parse(clientStatusListUri),
                     index = clientStatusListIndex.toUInt(),
                 ),
             keyStorageStatus =
                 if (keyStorageStatusListUri != null && keyStorageStatusListIndex != null) {
                     StatusListToken(
-                        statusList = URI.create(keyStorageStatusListUri),
+                        statusList = Uri.parse(keyStorageStatusListUri),
                         index = keyStorageStatusListIndex.toUInt(),
                     )
                 } else {

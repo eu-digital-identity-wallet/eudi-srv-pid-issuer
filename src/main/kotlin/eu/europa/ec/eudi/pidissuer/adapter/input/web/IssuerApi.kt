@@ -25,7 +25,6 @@ import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.server.*
-import java.net.URI
 
 class IssuerApi(
     private val createCredentialsOffer: CreateCredentialsOffer,

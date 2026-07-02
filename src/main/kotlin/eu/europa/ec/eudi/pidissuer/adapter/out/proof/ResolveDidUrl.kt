@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.proof
 
 import arrow.core.Either
+import com.eygraber.uri.Uri
 import com.nimbusds.jose.crypto.bc.BouncyCastleProviderSingleton
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.util.Base64URL
@@ -27,7 +28,6 @@ import org.erwinkok.multiformat.util.readUnsignedVarInt
 import org.erwinkok.result.flatMap
 import org.erwinkok.result.getOrThrow
 import java.io.ByteArrayInputStream
-import java.net.URI
 import java.security.KeyFactory
 import java.security.interfaces.ECPublicKey
 import java.security.interfaces.RSAPublicKey
@@ -44,7 +44,7 @@ import org.bouncycastle.asn1.pkcs.RSAPublicKey as ANS1RSAPublicKey
  *
  * methods are supported.
  */
-fun resolveDidUrl(uri: URI): Either<Throwable, JWK> =
+fun resolveDidUrl(uri: Uri): Either<Throwable, JWK> =
     Either.catch {
         val (scheme, methodName, _) = uri.toString().split(":")
         require("did" == scheme) { "Unexpected scheme $scheme" }
@@ -75,7 +75,7 @@ private val expectedDidKeySizes =
         Multicodec.P384_PUB to 49,
     )
 
-private fun resolveDidKey(uri: URI): JWK {
+private fun resolveDidKey(uri: Uri): JWK {
     val (_, _, methodSpecificId) = uri.toString().split(":")
     require(methodSpecificId[0] == 'z') {
         "Expected 'z' multi-base. Got '${methodSpecificId[0]}' instead."
@@ -178,7 +178,7 @@ private fun resolveDidKey(uri: URI): JWK {
     }
 }
 
-private fun resolveDidJwk(uri: URI): JWK {
+private fun resolveDidJwk(uri: Uri): JWK {
     require(uri.fragment == "0") {
         "Invalid fragment. Expected '0' but got '${uri.fragment}' instead."
     }

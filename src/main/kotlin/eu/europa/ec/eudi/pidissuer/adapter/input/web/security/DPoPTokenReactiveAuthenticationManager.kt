@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web.security
 
 import arrow.core.NonFatal
+import com.eygraber.uri.toURI
 import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.oauth2.sdk.dpop.JWKThumbprintConfirmation
 import com.nimbusds.oauth2.sdk.dpop.verifiers.AccessTokenValidationException
@@ -105,7 +106,7 @@ class DPoPTokenReactiveAuthenticationManager(
         try {
             verifier.verify(
                 authentication.method.name(),
-                authentication.uri,
+                authentication.uri.toURI(),
                 issuer,
                 authentication.dpop,
                 authentication.accessToken,

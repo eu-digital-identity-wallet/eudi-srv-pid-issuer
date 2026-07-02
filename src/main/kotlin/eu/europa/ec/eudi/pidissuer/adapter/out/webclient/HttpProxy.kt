@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.webclient
 
-import io.ktor.http.*
+import com.eygraber.uri.Url
 
 sealed interface HttpProxyOption {
     data object None : HttpProxyOption
@@ -40,13 +40,13 @@ data class HttpProxy(
         require(password == null || username != null) {
             "Password cannot be set if username is null"
         }
-        require(url.protocol == URLProtocol.HTTP) {
+        require("http".equals(url.scheme, ignoreCase = true)) {
             "Url should be Http"
         }
-        require(url.encodedPathAndQuery.isBlank()) {
+        require(url.query.isNullOrBlank() && url.path.isNullOrBlank()) {
             "No path or query params should be present in the Url"
         }
-        require(url.fragment.isEmpty()) {
+        require(url.fragment.isNullOrBlank()) {
             "No fragment should be present in the Url"
         }
     }

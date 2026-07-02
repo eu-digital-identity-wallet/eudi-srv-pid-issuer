@@ -16,7 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.port.out.status
 
 import arrow.core.raise.Raise
-import java.net.URI
+import com.eygraber.uri.Uri
 
 /**
  * The status of a single entry in a Token Status List.
@@ -36,7 +36,7 @@ fun interface GetStatusListTokenStatus {
      */
     context(_: Raise<Error>)
     suspend operator fun invoke(
-        uri: URI,
+        uri: Uri,
         index: UInt,
     ): StatusListTokenStatus
 

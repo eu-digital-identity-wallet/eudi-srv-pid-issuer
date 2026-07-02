@@ -18,7 +18,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.input.web
 import arrow.core.raise.effect
 import arrow.core.raise.fold
 import com.eygraber.uri.Uri
-import com.eygraber.uri.toURI
 import eu.europa.ec.eudi.pidissuer.appendPath
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.port.input.CreateCredentialsOffer
@@ -31,7 +30,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.server.*
-import java.net.URI
 import kotlin.io.encoding.Base64
 
 class IssuerUi(
@@ -106,10 +104,16 @@ class IssuerUi(
     ): Map<String, String> {
         fun HttpsUrl.wellKnown(path: String): HttpsUrl =
             HttpsUrl.unsafe(
-                URLBuilder(value.toExternalForm())
+                value
+                    .buildUpon()
+                    .appendPath(".well-known")
+                    .appendPath(path)
                     .apply {
-                        pathSegments = listOf(".well-known", path) + pathSegments.filterNot { it.isBlank() }
-                    }.buildString(),
+                        value.pathSegments
+                            .filterNot { it.isBlank() }
+                            .forEach { appendPath(it) }
+                    }.build()
+                    .toString(),
             )
 
         val credentialIssuerMetadata = credentialIssuer.wellKnown("openid-credential-issuer")

@@ -18,6 +18,7 @@
 package eu.europa.ec.eudi.pidissuer.adapter.input.web
 
 import arrow.core.nonEmptyListOf
+import com.eygraber.uri.Uri
 import com.nimbusds.jose.*
 import com.nimbusds.jose.crypto.ECDHEncrypter
 import com.nimbusds.jose.crypto.factories.DefaultJWEDecrypterFactory
@@ -63,7 +64,6 @@ import org.springframework.security.test.web.reactive.server.SecurityMockServerC
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.reactive.server.WebTestClient
 import org.springframework.test.web.reactive.server.expectBody
-import java.net.URI
 import java.util.*
 import kotlin.test.*
 import kotlin.time.Clock
@@ -152,7 +152,7 @@ class BaseWalletApiTest {
         fun generateStatusListToken(): AllocateStatus =
             AllocateStatus { _, _ ->
                 StatusListToken(
-                    statusList = URI.create("https://example.com/status-list"),
+                    statusList = Uri.parse("https://example.com/status-list"),
                     index = 0u,
                 )
             }
@@ -1530,7 +1530,7 @@ private fun dPoPTokenAuthentication(
             SignedJWT(JWSHeader.Builder(JWSAlgorithm.ES256).build(), JWTClaimsSet.Builder().build()),
             accessToken,
             HttpMethod.GET,
-            URI.create("/"),
+            Uri.parse("/"),
         ).authenticate(principal)
 }
 

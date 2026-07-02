@@ -17,13 +17,13 @@ package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.raise.context.raise
 import arrow.core.right
+import com.eygraber.uri.Uri
 import eu.europa.ec.eudi.pidissuer.domain.Format
 import eu.europa.ec.eudi.pidissuer.domain.IssuedCredential
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
 import kotlinx.coroutines.test.runTest
-import java.net.URI
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -36,9 +36,9 @@ internal class RevokeCredentialsWithRevokedStatusTest {
     private val clock = Clock.System
 
     private fun credential(
-        clientStatusUri: URI = URI.create("https://example.com/status"),
+        clientStatusUri: Uri = Uri.parse("https://example.com/status"),
         clientStatusIndex: UInt = 0u,
-        keyStorageUri: URI = URI.create("https://example.com/key-status"),
+        keyStorageUri: Uri = Uri.parse("https://example.com/key-status"),
         keyStorageIndex: UInt = 0u,
     ) = IssuedCredential(
         format = Format("vc+sd-jwt"),
@@ -47,7 +47,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
         expiresAt = clock.now() + 24.hours,
         status =
             StatusListToken(
-                statusList = URI.create("https://example.com/issuer-status"),
+                statusList = Uri.parse("https://example.com/issuer-status"),
                 index = 0u,
             ),
         clientStatus =
@@ -106,7 +106,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
         runTest {
             val credential = credential()
             val revoked = mutableListOf<IssuedCredential>()
-            val clientStatusUri = URI.create("https://example.com/status")
+            val clientStatusUri = Uri.parse("https://example.com/status")
             val useCase =
                 RevokeCredentialsWithRevokedStatus(
                     clock = clock,
@@ -130,7 +130,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
     @Test
     fun `credential with INVALID key storage status is revoked`() =
         runTest {
-            val keyStorageUri = URI.create("https://example.com/key-status")
+            val keyStorageUri = Uri.parse("https://example.com/key-status")
             val credential = credential(keyStorageUri = keyStorageUri)
             val revoked = mutableListOf<IssuedCredential>()
             val useCase =
@@ -177,8 +177,8 @@ internal class RevokeCredentialsWithRevokedStatusTest {
     @Test
     fun `error revoking one credential does not prevent processing of remaining credentials`() =
         runTest {
-            val credential1 = credential(clientStatusUri = URI.create("https://example.com/status/1"))
-            val credential2 = credential(clientStatusUri = URI.create("https://example.com/status/2"))
+            val credential1 = credential(clientStatusUri = Uri.parse("https://example.com/status/1"))
+            val credential2 = credential(clientStatusUri = Uri.parse("https://example.com/status/2"))
             val revoked = mutableListOf<IssuedCredential>()
             val markStatusAsRevokedCallCount = AtomicInteger(0)
             val useCase =
@@ -253,9 +253,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
                     deleteIssuedCredential = { },
                 )
 
-            assertTrue(
-                runCatching { useCase() }.exceptionOrNull()?.message == "DB error",
-            )
+            assertEquals("DB error", runCatching { useCase() }.exceptionOrNull()?.message)
         }
 
     @Test
@@ -271,7 +269,7 @@ internal class RevokeCredentialsWithRevokedStatusTest {
                     status = null,
                     clientStatus =
                         StatusListToken(
-                            statusList = URI.create("https://example.com/status"),
+                            statusList = Uri.parse("https://example.com/status"),
                             index = 0u,
                         ),
                     keyStorageStatus = null,
@@ -305,12 +303,12 @@ internal class RevokeCredentialsWithRevokedStatusTest {
                     status = null,
                     clientStatus =
                         StatusListToken(
-                            statusList = URI.create("https://example.com/status"),
+                            statusList = Uri.parse("https://example.com/status"),
                             index = 0u,
                         ),
                     keyStorageStatus =
                         StatusListToken(
-                            statusList = URI.create("https://example.com/key-status"),
+                            statusList = Uri.parse("https://example.com/key-status"),
                             index = 0u,
                         ),
                 )

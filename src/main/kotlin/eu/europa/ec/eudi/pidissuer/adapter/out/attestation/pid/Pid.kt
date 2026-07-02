@@ -16,8 +16,8 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid
 
 import arrow.core.NonEmptyList
+import com.eygraber.uri.Uri
 import kotlinx.datetime.LocalDate
-import java.net.URI
 import java.util.regex.Pattern
 
 @JvmInline
@@ -240,7 +240,7 @@ data class PidMetaData(
     val documentNumber: DocumentNumber? = null,
     val issuingJurisdiction: IsoCountrySubdivision? = null,
     val issuanceDate: LocalDate? = null,
-    val trustAnchor: URI? = null,
+    val trustAnchor: Uri? = null,
     val attestationLegalCategory: AttestationLegalCategory? = null,
 ) {
     init {
