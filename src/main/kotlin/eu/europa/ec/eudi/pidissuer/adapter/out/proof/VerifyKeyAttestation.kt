@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.proof
 
 import arrow.core.NonEmptyList
 import arrow.core.NonEmptySet
-import arrow.core.getOrElse
 import arrow.core.raise.Raise
 import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
