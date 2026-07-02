@@ -649,13 +649,13 @@ the EC Key alias.
 
 ### Database configuration
 
-PID-Issuer is compatible with PostgreSQL and supports pooling.  
+PID-Issuer is compatible with PostgreSQL and supports connection pooling.  
 It uses Spring Data with [R2DBC](https://r2dbc.io/).  
 
 The schema must be created manually before starting the server.    
 DDL scripts are located in `docker-compose/postgresql/schema`.  
 
-When running the server with Docker Compose, the database is initialized automatically.  
+When running the server with the provided Docker Compose yaml file, the database is initialized automatically.    
 
 To configure the database, use the following environment variables:  
 
@@ -664,7 +664,7 @@ Description: R2DBC URL used to connect to the database.
 Allowed protocols: `r2dbc`  
 
 Available database drivers are:  
-- PostgreSQL  
+- postgresql  
 - pool  
 
 Connection pooling can be configured using the [r2dbc-pool](https://github.com/r2dbc/r2dbc-pool) driver.  
