@@ -73,8 +73,3 @@ internal data class SdJwtVcProperties(
         }
     }
 }
-
-internal enum class KeyOption {
-    GenerateRandom,
-    LoadFromKeystore,
-}
