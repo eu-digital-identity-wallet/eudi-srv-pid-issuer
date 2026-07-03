@@ -97,10 +97,12 @@ services:
     volumes:
       - ./pid-issuer/issuer-keys.jks:/issuer-keys.jks
     environment:
+      - JAVA_TOOL_OPTIONS=-XX:MaxDirectMemorySize=64M
       - SPRING_PROFILES_ACTIVE=insecure
       - SPRING_WEBFLUX_BASE_PATH=/pid-issuer
       - SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENTID=pid-issuer-srv
       - SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUETOKEN_CLIENTSECRET=zIKAV9DIIIaJCzHCVBPlySgU8KgY68U2
+      - SPRING_HTTP_CODECS_MAXINMEMORYSIZE=8MB
       - ISSUER_PUBLICURL=https://localhost/pid-issuer
       - ISSUER_AUTHORIZATIONSERVER_PUBLICURL=https://localhost/idp/realms/pid-issuer-realm
       - ISSUER_AUTHORIZATIONSERVER_INTROSPECTION=https://keycloak:8443/idp/realms/pid-issuer-realm/protocol/openid-connect/token/introspect
