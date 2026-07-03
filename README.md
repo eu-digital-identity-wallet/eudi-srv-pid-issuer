@@ -318,8 +318,7 @@ Description: Password of the key-pair for signing mDLs.
 Default value: N/A
 
 Variable: `ISSUER_MDL_MSO_MDOC_ENCODER_DURATION`    
-Description: Configures the validity of issued mDLs when using the internal encoder. Uses Period syntax. 
-Required when `ISSUER_MDL_MSO_MDOC_ENCODER` is set to `Internal`.  
+Description: Configures the validity of issued mDLs when using the internal encoder. Uses Period syntax.   
 Default value: `P31D`
 
 Variable: `ISSUER_MDL_NOTIFICATIONS_ENABLED`    
