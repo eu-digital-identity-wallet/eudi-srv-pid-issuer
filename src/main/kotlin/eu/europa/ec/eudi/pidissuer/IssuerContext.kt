@@ -180,11 +180,10 @@ internal class AppBeans :
         //
         // Deferred Credentials
         //
-        with(InMemoryDeferredCredentialRepository(mutableMapOf(), clock)) {
-            registerBean { GenerateTransactionId.Random }
-            registerBean { storeDeferredCredential }
-            registerBean { loadDeferredCredentialByTransactionId }
-        }
+        registerBean { InMemoryDeferredCredentialRepository(mutableMapOf(), bean()) }
+        registerBean { GenerateTransactionId.Random }
+        registerBean { bean<InMemoryDeferredCredentialRepository>().storeDeferredCredential }
+        registerBean { bean<InMemoryDeferredCredentialRepository>().loadDeferredCredentialByTransactionId }
 
         //
         // Specific Issuers

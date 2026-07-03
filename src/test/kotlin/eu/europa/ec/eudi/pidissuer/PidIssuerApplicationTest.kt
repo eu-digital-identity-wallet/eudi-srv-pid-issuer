@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:Suppress("ktlint:standard:max-line-length", "ktlint:standard:filename")
+@file:Suppress("ktlint:standard:max-line-length")
 
 package eu.europa.ec.eudi.pidissuer
 
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
 import org.springframework.core.annotation.AliasFor

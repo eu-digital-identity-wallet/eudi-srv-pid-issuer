@@ -79,7 +79,7 @@ import kotlin.time.Instant
  */
 @Suppress("SpringJavaInjectionPointsAutowiringInspection", "ProtectedInFinal")
 @PidIssuerApplicationTest(
-    classes = [BaseWalletApiTest.WalletApiTestConfig::class, AppBeans::class],
+    classes = [BaseWalletApiTest.WalletApiTestConfig::class],
 )
 class BaseWalletApiTest {
     @Autowired
