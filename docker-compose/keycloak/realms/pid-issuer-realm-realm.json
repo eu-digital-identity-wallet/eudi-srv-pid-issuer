@@ -1103,7 +1103,7 @@
         "oauth2.device.authorization.grant.enabled": "false",
         "display.on.consent.screen": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
-        "trustValidator.serviceUrl": "https://dev.trust-validator.eudiw.dev/trust",
+        "trustValidator.serviceUrl": "",
         "clock.skew": "5",
         "clientAttestation.maxAge": "86400",
         "clientAttestationPoP.maxAge": "15",
