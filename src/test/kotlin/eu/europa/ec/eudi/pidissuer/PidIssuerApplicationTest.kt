@@ -38,6 +38,7 @@ import kotlin.reflect.KClass
         "spring.r2dbc.password=",
         "spring.sql.init.schema-locations=file:docker-compose/postgresql/schema/V1.sql",
         "spring.sql.init.mode=embedded",
+        "spring.profiles.active=develop",
     ],
 )
 @ContextConfiguration

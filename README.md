@@ -138,7 +138,7 @@ Default value: `1MB`
 
 Variable: `ISSUER_PUBLICURL`  
 Description: URL the PID Issuer application is accessible from  
-Default value: `http://localhost:8080`
+Default value: N/A
 
 Variable: `ISSUER_AUTHORIZATIONSERVER_PUBLICURL`  
 Description: URL of the Authorization Server advertised via the issuer metadata    
@@ -162,19 +162,19 @@ Default value: `ECDH-ES`
 
 Variable: `ISSUER_CREDENTIALRESPONSEENCRYPTION_ENCRYPTIONMETHODS`  
 Description: Comma separated list of supported encryption method for credential response encryption.      
-Default value: `A128GCM`
+Default value: `A128GCM,A256GCM`
 
 Variable: `ISSUER_KEYSTORE_FILE`  
 Description: Location of the keystore from which to load key-pairs and certificates. Uses Spring Resource URL syntax.       
-Default value: classpath:issuer-keys.jks
+Default value: N/A
 
 Variable: `ISSUER_KEYSTORE_TYPE`  
 Description: Type of the keystore from which to load key-pairs and certificates.       
-Default value: JKS
+Default value: N/A
 
 Variable: `ISSUER_KEYSTORE_PASSWORD`  
 Description: Password of the keystore from which to load key-pairs and certificates.   
-Default value: keys
+Default value: N/A
 
 Variable: `ISSUER_PID_MSO_MDOC_ENABLED`  
 Description: Whether to enable support for PID issuance in *MSO MDOC* format  
@@ -182,11 +182,11 @@ Default value: `true`
 
 Variable: `ISSUER_PID_MSO_MDOC_SIGNING_KEY_ALIAS`  
 Description: Alias of the key-pair for signing MSO MDOC PIDs.       
-Default value: `issuance`
+Default value: N/A 
 
 Variable: `ISSUER_PID_MSO_MDOC_SIGNING_KEY_PASSWORD`  
 Description: Password of the key-pair for signing MSO MDOC PIDs.       
-Default value: `issuance`
+Default value: N/A
 
 Variable: `ISSUER_PID_MSO_MDOC_ENCODER_DURATION`    
 Description: Configures the validity of issued PIDs in *MSO MDOC* format. Uses Period syntax. 
@@ -235,11 +235,11 @@ Default value: `true`
 
 Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY_ALIAS`  
 Description: Alias of the key-pair for signing SD JWT VC PIDs.       
-Default value: `issuance`
+Default value: N/A 
 
 Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY_PASSWORD`  
 Description: Password of the key-pair for signing SD JWT VC PIDs.       
-Default value: `issuance`
+Default value: N/A 
 
 Variable: `ISSUER_PID_SD_JWT_VC_DURATION`  
 Description: Configures the validity of issued PIDs in *SD JWT VC* format. Uses Period syntax.  
@@ -305,11 +305,11 @@ Default value: `true`
 
 Variable: `ISSUER_MDL_SIGNING_KEY_ALIAS`  
 Description: Alias of the key-pair for signing mDLs.       
-Default value: `issuance`
+Default value: N/A
 
 Variable: `ISSUER_MDL_SIGNING_KEY_PASSWORD`  
 Description: Password of the key-pair for signing mDLs.       
-Default value: `issuance`
+Default value: N/A
 
 Variable: `ISSUER_MDL_MSO_MDOC_ENCODER_DURATION`    
 Description: Configures the validity of issued mDLs when using the internal encoder. Uses Period syntax. 
@@ -359,11 +359,11 @@ Default value: `true`
 
 Variable: `ISSUER_LEARNINGCREDENTIAL_SIGNING_KEY_ALIAS`  
 Description: Alias of the key-pair for signing Learning Credentials.       
-Default value: `issuance`
+Default value: N/A
 
 Variable: `ISSUER_LEARNINGCREDENTIAL_SIGNING_KEY_PASSWORD`  
 Description: Password of the key-pair for signing Learning Credentials.       
-Default value: `issuance`
+Default value: N/A
 
 Variable: `ISSUER_LEARNINGCREDENTIAL_SDJWTVC_ENCODER_DIGESTS_HASHALGORITHM`  
 Description: Hash algorithm used to calculate the disclosure digests of Learning Credentials issued in *SD-JWT VC* format.    
@@ -413,11 +413,11 @@ Default value: N/A
 
 Variable: `ISSUER_CREDENTIALOFFER_DEFAULTURI`    
 Description: URI to use when generating Credential Offers.    
-Default value: `eu-eaa-offer://`
+Default value: N/A
 
 Variable: `ISSUER_CREDENTIALOFFER_ALLOWEDSCHEMES`    
 Description: Comma-separated list of allowed schemes for using custom URIs for Credential Offers.       
-Default value: `https,eu-eaa-offer`   
+Default value: N/A   
 Allowed values:
 * `openid-credential-offer`
 * `haip-vci`
@@ -430,11 +430,11 @@ Default value: Value of `ISSUER_PUBLICURL`
 
 Variable: `ISSUER_ACCESS_CERTIFICATE_ALIAS`  
 Description: Alias of the key-pair for signing metadata.       
-Default value: `access-certificate`
+Default value: N/A
 
 Variable: `ISSUER_ACCESS_CERTIFICATE_PASSWORD`  
 Description: Password of the key-pair for signing metadata.       
-Default value: `access-certificate`
+Default value: N/A
 
 Variable: `ISSUER_KEYCLOAK_SERVER_URL`  
 Description: URL of the Keycloak authorization server  
@@ -507,23 +507,23 @@ Default value: `0 * */8 * * *` (every 8 hours)
 
 Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_ALIAS`  
 Description: Alias of the key-pair for credential request encryption.    
-Default value: `request-encryption`  
+Default value: N/A  
 
 Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_PASSWORD`  
 Description: Password of the key-pair for credential request encryption.  
-Default value: `request-encryption`
+Default value: N/A
 
 Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_ALGORITHM`  
 Description: The algorithm of the key for credential request encryption.  
-Default value: `ECDH-ES`
+Default value: N/A
 
 Variable: `ISSUER_NONCE_ENCRYPTION_KEY_ALIAS`  
 Description: Alias of the EC key-pair for nonce encryption.  
-Default value: `nonce-encryption`
+Default value: N/A
 
 Variable: `ISSUER_NONCE_ENCRYPTION_KEY_PASSWORD`  
 Description: Password of the EC key-pair for nonce encryption.  
-Default value: `nonce-encryption`  
+Default value: N/A  
 
 ### Configuring trust
 
@@ -651,16 +651,13 @@ Available database drivers are:
 
 Connection pooling can be configured using the [r2dbc-pool](https://github.com/r2dbc/r2dbc-pool) driver.  
 
-Default value: `r2dbc:pool:postgresql://pid_issuer:pid_issuer@localhost:5432/pid_issuer`  
 Example value: `r2dbc:pool:postgresql://localhost:5432/pid_issuer`  
 
 Variable: `SPRING_R2DBC_USERNAME`  
 Description: Username of the database user.  
-Example value: `pid_issuer`  
 
 Variable: `SPRING_R2DBC_PASSWORD`    
 Description: Password of the database user.   
-Example value: `pid_issuer` 
 
 ## Endpoints
 
