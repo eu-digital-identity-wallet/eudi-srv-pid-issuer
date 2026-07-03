@@ -517,18 +517,13 @@ Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_ALGORITHM`
 Description: The algorithm of the key for credential request encryption.  
 Default value: `ECDH-ES`
 
-Variable: `ISSUER_NONCE_ENCRYPTION_KEY`  
-Description: Whether to generate a new, or use an existing EC key-pair for nonce encryption.      
-Possible values: `GenerateRandom`, `LoadFromKeystore`    
-Default value: `GenerateRandom`
-
 Variable: `ISSUER_NONCE_ENCRYPTION_KEY_ALIAS`  
 Description: Alias of the EC key-pair for nonce encryption.  
-Default value: N/A
+Default value: `nonce-encryption`
 
 Variable: `ISSUER_NONCE_ENCRYPTION_KEY_PASSWORD`  
 Description: Password of the EC key-pair for nonce encryption.  
-Default value: N/A  
+Default value: `nonce-encryption`  
 
 ### Configuring trust
 

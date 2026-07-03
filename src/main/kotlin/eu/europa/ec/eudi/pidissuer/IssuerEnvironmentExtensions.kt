@@ -22,7 +22,6 @@ import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.*
-import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPConfigurationProperties
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
@@ -679,21 +678,11 @@ internal fun loadNonceEncryptionKey(
     env: Environment,
     issuerKeystore: () -> KeyStore,
 ): NonceEncryptionKey {
-    val encryptionKey: ECKey =
-        when (env.getProperty<KeyOption>("issuer.nonce.encryption-key")) {
-            null, KeyOption.GenerateRandom -> {
-                log.info("Generating random encryption key for Nonce")
-                ECKeyGenerator(Curve.P_256).keyUse(KeyUse.ENCRYPTION).generate()
-            }
+    log.info("Loading Nonce encryption key from keystore")
+    val nonceEncryptionKey = issuerKeystore().loadJwk(env, "issuer.nonce.encryption-key")
+    require(nonceEncryptionKey is ECKey) { "Only ECKey are supported for encryption" }
 
-            KeyOption.LoadFromKeystore -> {
-                log.info("Loading Nonce encryption key from keystore")
-                val nonceEncryptionKey = issuerKeystore().loadJwk(env, "issuer.nonce.encryption-key")
-                require(nonceEncryptionKey is ECKey) { "Only ECKey are supported for encryption" }
-                nonceEncryptionKey
-            }
-        }
-    return NonceEncryptionKey(encryptionKey)
+    return NonceEncryptionKey(nonceEncryptionKey)
 }
 
 internal fun trustValidatorService(
