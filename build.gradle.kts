@@ -149,6 +149,14 @@ springBoot {
     buildInfo()
 }
 
+tasks.bootJar {
+    exclude("application-develop.properties", "issuer-keys.jks")
+}
+
+tasks.jar {
+    exclude("application-develop.properties", "issuer-keys.jks")
+}
+
 tasks.bootBuildImage {
     imageName = "$group/${project.name}"
     publish = false
