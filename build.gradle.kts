@@ -124,18 +124,13 @@ kotlin {
             jvmTarget = JvmTarget.fromTarget(libs.versions.java.get())
             apiVersion = KotlinVersion.DEFAULT
             languageVersion = KotlinVersion.DEFAULT
-            optIn =
-                listOf(
-                    "kotlinx.serialization.ExperimentalSerializationApi",
-                    "kotlin.io.encoding.ExperimentalEncodingApi",
-                    "kotlin.contracts.ExperimentalContracts",
-                    "kotlin.time.ExperimentalTime",
-                    "kotlin.uuid.ExperimentalUuidApi",
-                )
+            optIn.addAll(
+                "kotlin.contracts.ExperimentalContracts",
+                "kotlinx.serialization.ExperimentalSerializationApi",
+            )
             freeCompilerArgs.addAll(
                 "-Xjsr305=strict",
                 "-Xconsistent-data-class-copy-visibility",
-                "-Xcontext-parameters",
             )
         }
     }
@@ -190,7 +185,7 @@ dependencyCheck {
     formats = mutableListOf("XML", "HTML")
 
     nvd {
-        apiKey = System.getenv("NVD_API_KEY") ?: properties["nvdApiKey"]?.toString() ?: ""
+        apiKey = System.getenv("NVD_API_KEY") ?: findProperty("nvdApiKey")?.toString() ?: ""
         delay = 10000
         maxRetryCount = 2
     }
