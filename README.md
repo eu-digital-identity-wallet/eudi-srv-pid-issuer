@@ -469,7 +469,7 @@ Example: password
 Variable: `ISSUER_KEYCLOAK_USER_REALM`  
 Description: Realm of the administered users in Keycloak   
 Default value: N/A  
-Example: password
+Example: pid-issuer-realm  
 
 Variable: `ISSUER_DPOP_REALM`  
 Description: Realm to report in the WWW-Authenticate header in case of DPoP authentication/authorization failure         
