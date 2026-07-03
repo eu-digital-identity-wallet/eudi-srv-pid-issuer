@@ -16,7 +16,11 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 
 ## Overview
 
-An implementation of a credential issuing service, according to [OpenId4VCI - v1.0](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html).
+An implementation of a credential issuing service, according to [OpenId4VCI - v1.0](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html),
+aiming for compliance with:
+
+* [Specification of Wallet Unit Attestations (WUA) used in issuance of PID and Attestations](https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md)
+* [ETSI TS 119 472-3 V1.1.1](https://www.etsi.org/deliver/etsi_ts/119400_119499/11947203/01.01.01_60/ts_11947203v010101p.pdf)
 
 The service provides generic support for `mso_mdoc` and `SD-JWT-VC` formats using PID, mDL, and Learning Credential
 as an example and requires the use of a suitable OAuth 2.0 server.
@@ -47,11 +51,15 @@ as an example and requires the use of a suitable OAuth 2.0 server.
 |                                                           | ✅ attestation                                                                       |
 |                                                           | ❌ Data Integrity Proof                                                              |
 
-#### Proofs
+### Proofs
 
-The pid-issuer accepts only one proof per request, either a JWT Proof with a key attestation or a Key Attestation Proof.
-The `key_storage` and `user_authentication` attributes of the key attestation shall be `iso_18045_high`.
-These requirements are mandated by the [TS3 - Specification of Wallet Unit Attestations (WUA) used in issuance of PID and Attestations](https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md)
+> [!IMPORTANT]
+> 
+> The pid-issuer accepts only one proof per credential request, either a JWT Proof with a key attestation or an Attestation Proof.
+> 
+> The `key_storage` and `user_authentication` attributes of the key attestation shall be `iso_18045_high`.
+> 
+> These requirements are mandated by the [TS3 - Specification of Wallet Unit Attestations (WUA) used in issuance of PID and Attestations](https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md)
 
 ## How to use docker
 
@@ -69,7 +77,7 @@ The Realm *pid-issuer-realm*:
 - defines *eu.europa.ec.eudi.pid_mso_mdoc* scope for requesting PID issuance in MSO MDOC format
 - defines *org.iso.18013.5.1.mDL* scope for requesting mDL issuance in MSO MDOC format
 - defines *urn:eu.europa.ec.eudi:learning:credential:1:dc+sd-jwt* scope for requesting Learning Credential issuance in SD-JWT VC format
-- defines *wallet-dev* and *pid-issuer-srv* clients
+- defines *wallet-dev*, *eudiw*, *eudiw-abca*, and *pid-issuer-srv* clients
 - contains sample user with credentials: tneal / password
 
 The Administration console is accessible via https://localhost/idp/admin/ using the credential admin / password
@@ -488,7 +496,8 @@ Description: Whether to enable batch issuance support in the credential endpoint
 Default value: `true`
 
 Variable: `ISSUER_CREDENTIALENDPOINT_BATCHISSUANCE_BATCHSIZE`  
-Description: Maximum length of `proofs` array supported by credential endpoint when batch issuance support is enabled          
+Description: Maximum number of attested keys that will be used by credential endpoint when batch issuance support is enabled. 
+This value is overridden by any applicable Credential Reuse Policy.          
 Default value: `10`
 
 Variable: `ISSUER_CNONCE_EXPIRATION`  
