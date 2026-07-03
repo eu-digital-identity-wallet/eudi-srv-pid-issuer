@@ -105,6 +105,7 @@ class IssuerUi(
             HttpsUrl.unsafe(
                 value
                     .buildUpon()
+                    .path(null)
                     .appendPath(".well-known")
                     .appendPath(path)
                     .apply {
