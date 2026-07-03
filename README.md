@@ -413,11 +413,11 @@ Default value: N/A
 
 Variable: `ISSUER_CREDENTIALOFFER_DEFAULTURI`    
 Description: URI to use when generating Credential Offers.    
-Default value: N/A
+Default value: `eu-eaa-offer://`
 
 Variable: `ISSUER_CREDENTIALOFFER_ALLOWEDSCHEMES`    
 Description: Comma-separated list of allowed schemes for using custom URIs for Credential Offers.       
-Default value: N/A   
+Default value: `https,eu-eaa-offer`   
 Allowed values:
 * `openid-credential-offer`
 * `haip-vci`
@@ -468,7 +468,7 @@ Example: password
 
 Variable: `ISSUER_DPOP_REALM`  
 Description: Realm to report in the WWW-Authenticate header in case of DPoP authentication/authorization failure         
-Default value: `pid-issuer`
+Default value: N/A
 
 Variable: `ISSUER_DPOP_NONCE_ENABLED`  
 Description: Whether Nonce values are required for DPoP authentication    
@@ -515,7 +515,7 @@ Default value: N/A
 
 Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_ALGORITHM`  
 Description: The algorithm of the key for credential request encryption.  
-Default value: N/A
+Default value: `ECDH-ES`
 
 Variable: `ISSUER_NONCE_ENCRYPTION_KEY_ALIAS`  
 Description: Alias of the EC key-pair for nonce encryption.  
@@ -646,11 +646,10 @@ Description: R2DBC URL used to connect to the database.
 Allowed protocols: `r2dbc`  
 
 Available database drivers are:  
-- postgresql  
-- pool  
+- `postgresql`
+- `pool`  
 
-Connection pooling can be configured using the [r2dbc-pool](https://github.com/r2dbc/r2dbc-pool) driver.  
-
+Connection pooling can be configured using the [r2dbc-pool](https://github.com/r2dbc/r2dbc-pool) driver.
 Example value: `r2dbc:pool:postgresql://localhost:5432/pid_issuer`  
 
 Variable: `SPRING_R2DBC_USERNAME`  
