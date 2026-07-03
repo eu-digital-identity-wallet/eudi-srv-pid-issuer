@@ -166,32 +166,27 @@ Default value: `A128GCM`
 
 Variable: `ISSUER_KEYSTORE_FILE`  
 Description: Location of the keystore from which to load key-pairs and certificates. Uses Spring Resource URL syntax.       
-Default value: N/A
+Default value: classpath:issuer-keys.jks
 
 Variable: `ISSUER_KEYSTORE_TYPE`  
 Description: Type of the keystore from which to load key-pairs and certificates.       
-Default value: N/A
+Default value: JKS
 
 Variable: `ISSUER_KEYSTORE_PASSWORD`  
 Description: Password of the keystore from which to load key-pairs and certificates.   
-Default value: N/A
+Default value: keys
 
 Variable: `ISSUER_PID_MSO_MDOC_ENABLED`  
 Description: Whether to enable support for PID issuance in *MSO MDOC* format  
 Default value: `true`
 
-Variable: `ISSUER_PID_MSO_MDOC_SIGNING_KEY`  
-Description: Whether to generate a new, or use an existing key-pair for signing MSO MDOC PIDs.    
-Possible values: `GenerateRandom`, `LoadFromKeystore`  
-Default value: `GenerateRandom`
-
 Variable: `ISSUER_PID_MSO_MDOC_SIGNING_KEY_ALIAS`  
 Description: Alias of the key-pair for signing MSO MDOC PIDs.       
-Default value: N/A
+Default value: `issuance`
 
 Variable: `ISSUER_PID_MSO_MDOC_SIGNING_KEY_PASSWORD`  
 Description: Password of the key-pair for signing MSO MDOC PIDs.       
-Default value: N/A
+Default value: `issuance`
 
 Variable: `ISSUER_PID_MSO_MDOC_ENCODER_DURATION`    
 Description: Configures the validity of issued PIDs in *MSO MDOC* format. Uses Period syntax. 
@@ -238,18 +233,13 @@ Variable: `ISSUER_PID_SD_JWT_VC_ENABLED`
 Description: Whether to enable support for PID issuance in *SD JWT VC* format.  
 Default value: `true`
 
-Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY`  
-Description: Whether to generate a new, or use an existing key-pair for signing SD JWT VC PIDs.    
-Possible values: `GenerateRandom`, `LoadFromKeystore`  
-Default value: `GenerateRandom`
-
 Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY_ALIAS`  
 Description: Alias of the key-pair for signing SD JWT VC PIDs.       
-Default value: N/A
+Default value: `issuance`
 
 Variable: `ISSUER_PID_SD_JWT_VC_SIGNING_KEY_PASSWORD`  
 Description: Password of the key-pair for signing SD JWT VC PIDs.       
-Default value: N/A
+Default value: `issuance`
 
 Variable: `ISSUER_PID_SD_JWT_VC_DURATION`  
 Description: Configures the validity of issued PIDs in *SD JWT VC* format. Uses Period syntax.  
@@ -313,18 +303,13 @@ Variable: `ISSUER_MDL_ENABLED`
 Description: Whether to enable support for issuing mDL.    
 Default value: `true`
 
-Variable: `ISSUER_MDL_SIGNING_KEY`  
-Description: Whether to generate a new, or use an existing key-pair for signing mDLs.    
-Possible values: `GenerateRandom`, `LoadFromKeystore`  
-Default value: `GenerateRandom`
-
 Variable: `ISSUER_MDL_SIGNING_KEY_ALIAS`  
 Description: Alias of the key-pair for signing mDLs.       
-Default value: N/A
+Default value: `issuance`
 
 Variable: `ISSUER_MDL_SIGNING_KEY_PASSWORD`  
 Description: Password of the key-pair for signing mDLs.       
-Default value: N/A
+Default value: `issuance`
 
 Variable: `ISSUER_MDL_MSO_MDOC_ENCODER_DURATION`    
 Description: Configures the validity of issued mDLs when using the internal encoder. Uses Period syntax. 
@@ -372,18 +357,13 @@ Variable: `ISSUER_LEARNINGCREDENTIAL_ENABLED`
 Description: Whether to enabled support for issuing Learning Credentials.      
 Default value: `true`  
 
-Variable: `ISSUER_LEARNINGCREDENTIAL_SIGNING_KEY`  
-Description: Whether to generate a new, or use an existing key-pair for signing Learning Credentials.    
-Possible values: `GenerateRandom`, `LoadFromKeystore`  
-Default value: `GenerateRandom`
-
 Variable: `ISSUER_LEARNINGCREDENTIAL_SIGNING_KEY_ALIAS`  
 Description: Alias of the key-pair for signing Learning Credentials.       
-Default value: N/A
+Default value: `issuance`
 
 Variable: `ISSUER_LEARNINGCREDENTIAL_SIGNING_KEY_PASSWORD`  
 Description: Password of the key-pair for signing Learning Credentials.       
-Default value: N/A
+Default value: `issuance`
 
 Variable: `ISSUER_LEARNINGCREDENTIAL_SDJWTVC_ENCODER_DIGESTS_HASHALGORITHM`  
 Description: Hash algorithm used to calculate the disclosure digests of Learning Credentials issued in *SD-JWT VC* format.    
@@ -448,18 +428,13 @@ Variable: `ISSUER_SIGNED_METADATA_ISSUER`
 Description: Value of the `iss` claim of the signed metadata. **Must be a valid Https URL**.  
 Default value: Value of `ISSUER_PUBLICURL`
 
-Variable: `ISSUER_ACCESS_CERTIFICATE`  
-Description: Whether to generate a new, or use an existing key-pair for signing metadata.    
-Possible values: `GenerateRandom`, `LoadFromKeystore`  
-Default value: `GenerateRandom`
-
 Variable: `ISSUER_ACCESS_CERTIFICATE_ALIAS`  
 Description: Alias of the key-pair for signing metadata.       
-Default value: N/A
+Default value: `access-certificate`
 
 Variable: `ISSUER_ACCESS_CERTIFICATE_PASSWORD`  
 Description: Password of the key-pair for signing metadata.       
-Default value: N/A
+Default value: `access-certificate`
 
 Variable: `ISSUER_KEYCLOAK_SERVER_URL`  
 Description: URL of the Keycloak authorization server  
@@ -530,35 +505,25 @@ Variable: `ISSUER_REVOCATIONJOB_CRON`
 Description: Cron expression controlling how often the revocation job runs  
 Default value: `0 * */8 * * *` (every 8 hours)
 
-Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS`  
-Description: Whether to generate a new, or use an existing key-pair for credential request encryption.    
-Possible values: `GenerateRandom`, `LoadFromKeystore`  
-Default value: `GenerateRandom`
-
 Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_ALIAS`  
 Description: Alias of the key-pair for credential request encryption.    
-Default value: N/A  
+Default value: `request-encryption`  
 
 Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_PASSWORD`  
 Description: Password of the key-pair for credential request encryption.  
-Default value: N/A
+Default value: `request-encryption`
 
 Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_ALGORITHM`  
 Description: The algorithm of the key for credential request encryption.  
-Default value: N/A
-
-Variable: `ISSUER_NONCE_ENCRYPTION_KEY`  
-Description: Whether to generate a new, or use an existing EC key-pair for nonce encryption.      
-Possible values: `GenerateRandom`, `LoadFromKeystore`    
-Default value: `GenerateRandom`
+Default value: `ECDH-ES`
 
 Variable: `ISSUER_NONCE_ENCRYPTION_KEY_ALIAS`  
 Description: Alias of the EC key-pair for nonce encryption.  
-Default value: N/A
+Default value: `nonce-encryption`
 
 Variable: `ISSUER_NONCE_ENCRYPTION_KEY_PASSWORD`  
 Description: Password of the EC key-pair for nonce encryption.  
-Default value: N/A  
+Default value: `nonce-encryption`  
 
 ### Configuring trust
 
@@ -626,15 +591,11 @@ Example: `passwd`
 
 ### Signing Key
 
-When either PID issuance in SD-JWT is enabled, or the internal MSO MDoc encoder is used, an EC Key is required 
-for signing the issued credentials.
-
-By default, the server generates a random EC Key alongside a self-signed certificate using the *P-256/secp256r1* 
-curve on startup. If the server is restarted, a new EC Key and self-signed certificate is generated.
+EC Keys are required to sign the issued credentials.
 
 > [!TIP]
-> In case you opt to use your own EC Key and certificate, 
-> make sure to use an EC Key that uses one of the following curves:
+> Make sure to use EC Keys that use one of the following curves:
+>
 > - *P-256/secp256r1*
 > - *P-384/secp384r1*
 > - *P-521/secp521r1*

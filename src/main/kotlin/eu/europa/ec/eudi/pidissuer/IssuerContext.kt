@@ -66,15 +66,14 @@ val log = LoggerFactory.getLogger(PidIssuerApplication::class.java)
 
 internal class AppBeans :
     BeanRegistrarDsl({
-        val clock: Clock.System = Clock.System
-        registerBean { clock }
+        registerBean { Clock.System }
         registerBean { TimeZone.currentSystemDefault() }
         val issuerPublicUrl = env.readRequiredUrl("issuer.publicUrl", removeTrailingSlash = true)
         val issuerKeystore: KeyStore by lazy { keystore(env) }
-        val getIssuerSigningKey = loadOrGenerateIssuerSigningKey(clock, env, issuerPublicUrl) { issuerKeystore }
+        val getIssuerSigningKey = loadIssuerSigningKey(env) { issuerKeystore }
 
         registerBean { env.dPoPConfigurationProperties() }
-        registerBean(lazyInit = true) { loadOrGenerateAccessCertificate(env) { issuerKeystore } }
+        registerBean(lazyInit = true) { loadAccessCertificate(env) { issuerKeystore } }
         registerBean { env.httpProxy() }
         registerBean { WebClients(bean(), secure = "insecure" !in env.activeProfiles) }
         registerBean { trustValidatorService(env, bean()) }
