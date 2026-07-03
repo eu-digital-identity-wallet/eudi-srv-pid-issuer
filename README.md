@@ -164,6 +164,12 @@ Variable: `ISSUER_CREDENTIALRESPONSEENCRYPTION_ENCRYPTIONMETHODS`
 Description: Comma separated list of supported encryption method for credential response encryption.      
 Default value: `A128GCM,A256GCM`
 
+Variable: `ISSUER_CREDENTIALRESPONSEENCRYPTION_ZIPALGORITHMSSUPPORTED`  
+Description: Comma separated list of supported compression algorithms for credential response encryption.      
+Default value: N/A  
+Allowed values:
+* `DEF`
+
 Variable: `ISSUER_KEYSTORE_FILE`  
 Description: Location of the keystore from which to load key-pairs and certificates. Uses Spring Resource URL syntax.       
 Default value: N/A
@@ -193,7 +199,7 @@ Description: Configures the validity of issued PIDs in *MSO MDOC* format. Uses P
 Default value: `P31D`
 
 Variable: `ISSUER_PID_MSO_MDOC_NOTIFICATIONS_ENABLED`  
-Description: Whether to enabled Notifications Endpoint support for PIDs issued in *MSO MDOC*.     
+Description: Whether to enable Notifications Endpoint support for PIDs issued in *MSO MDOC*.     
 Default value: `true`
 
 Variable: `ISSUER_PID_MSO_MDOC_PROOFS_SUPPORTEDSIGNINGALGORITHMS`      
@@ -250,7 +256,7 @@ Description: Period after which a PID issued in *SD JWT VC* becomes valid. Used 
 Default value: `PT20S`
 
 Variable: `ISSUER_PID_SD_JWT_VC_NOTIFICATIONS_ENABLED`  
-Description: Whether to enabled Notifications Endpoint support for PIDs issued in *SD JWT VC*.  
+Description: Whether to enable Notifications Endpoint support for PIDs issued in *SD JWT VC*.  
 Default value: `true`
 
 Variable: `ISSUER_PID_SD_JWT_VC_DIGESTS_HASHALGORITHM`  
@@ -317,7 +323,7 @@ Required when `ISSUER_MDL_MSO_MDOC_ENCODER` is set to `Internal`.
 Default value: `P31D`
 
 Variable: `ISSUER_MDL_NOTIFICATIONS_ENABLED`    
-Description: Whether to enabled Notifications Endpoint support for mDLs.    
+Description: Whether to enable Notifications Endpoint support for mDLs.    
 Default value: `true`
 
 Variable: `ISSUER_MDL_PROOFS_SUPPORTEDSIGNINGALGORITHMS`      
@@ -354,7 +360,7 @@ Description: The remaining lifetime of the credential (in seconds) that triggers
 Default value: N/A  
 
 Variable: `ISSUER_LEARNINGCREDENTIAL_ENABLED`      
-Description: Whether to enabled support for issuing Learning Credentials.      
+Description: Whether to enable support for issuing Learning Credentials.      
 Default value: `true`  
 
 Variable: `ISSUER_LEARNINGCREDENTIAL_SIGNING_KEY_ALIAS`  
@@ -375,7 +381,7 @@ Description: Validity of Learning Credentials issued. Uses Period syntax.
 Default value: `P31D`
 
 Variable: `ISSUER_LEARNINGCREDENTIAL_NOTIFICATIONS_ENABLED`    
-Description: Whether to enabled Notifications Endpoint support for issued Learning Credentials.    
+Description: Whether to enable Notifications Endpoint support for issued Learning Credentials.    
 Default value: `true`
 
 Variable: `ISSUER_LEARNINGCREDENTIAL_PROOFS_SUPPORTEDSIGNINGALGORITHMS`      
@@ -516,6 +522,16 @@ Default value: N/A
 Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_JWKS_ALGORITHM`  
 Description: The algorithm of the key for credential request encryption.  
 Default value: `ECDH-ES`
+
+Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_ENCRYPTIONMETHODS`  
+Description: Comma separated list of supported encryption method for credential request encryption.      
+Default value: `A128GCM,A256GCM`
+
+Variable: `ISSUER_CREDENTIALREQUESTENCRYPTION_ZIPALGORITHMSSUPPORTED`  
+Description: Comma separated list of supported compression algorithms for credential request encryption.      
+Default value: N/A  
+Allowed values:
+* `DEF`
 
 Variable: `ISSUER_NONCE_ENCRYPTION_KEY_ALIAS`  
 Description: Alias of the EC key-pair for nonce encryption.  
