@@ -591,12 +591,12 @@ Example: `passwd`
 
 ### Signing Key
 
-When either PID issuance in SD-JWT is enabled, or the internal MSO MDoc encoder is used, an EC Key is required 
-for signing the issued credentials.
+When either PID issuance in SD-JWT is enabled, or the internal MSO MDoc encoder is used, EC Keys are required
+to sign the issued credentials.
 
 > [!TIP]
 > In case you opt to use your own EC Key and certificate, 
-> make sure to use an EC Key that uses one of the following curves:
+> make sure to use EC Keys that uses one of the following curves:
 > - *P-256/secp256r1*
 > - *P-384/secp384r1*
 > - *P-521/secp521r1*
