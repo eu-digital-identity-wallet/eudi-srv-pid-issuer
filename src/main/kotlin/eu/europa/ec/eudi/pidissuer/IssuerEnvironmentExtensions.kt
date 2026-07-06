@@ -175,9 +175,6 @@ internal fun Environment.credentialRequestEncryption(issuerKeystore: () -> KeySt
                     issuerKeystore().loadJwk(this, "issuer.credentialRequestEncryption.jwks")
             ) {
                 is ECKey -> {
-                    require(KeyUse.ENCRYPTION == loadedJwk.keyUse) {
-                        "Credential Request Encryption key must have key use 'enc'"
-                    }
                     require(keyAlgorithm in loadedJwk.supportedJWEAlgorithms) {
                         "${keyAlgorithm.name} cannot be used with an ECKey"
                     }
@@ -185,9 +182,6 @@ internal fun Environment.credentialRequestEncryption(issuerKeystore: () -> KeySt
                 }
 
                 is RSAKey -> {
-                    require(KeyUse.ENCRYPTION == loadedJwk.keyUse) {
-                        "Credential Request Encryption key must have key use 'enc'"
-                    }
                     require(keyAlgorithm in loadedJwk.supportedJWEAlgorithms) {
                         "${keyAlgorithm.name} cannot be used with an RSAKey"
                     }

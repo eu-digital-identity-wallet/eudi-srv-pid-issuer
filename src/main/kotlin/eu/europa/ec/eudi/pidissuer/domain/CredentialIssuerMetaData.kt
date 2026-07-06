@@ -23,6 +23,7 @@ import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWKSet
+import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec.ZIP_ALGORITHMS
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.AttestationIssuer
@@ -51,6 +52,7 @@ data class CredentialRequestEncryptionSupportedParameters(
 ) {
     init {
         require(encryptionKeys.keys.isNotEmpty()) { "encryptionKeys must contain at least one key" }
+        require(encryptionKeys.keys.all { KeyUse.ENCRYPTION == it.keyUse }) { "encryptionKeys must have key use 'enc'" }
         require(encryptionKeys.keys.all { it.isPrivate }) { "encryptionKeys must contain only private keys" }
         require(encryptionKeys.keys.all { !it.keyID.isNullOrBlank() }) { "encryptionKeys must contain keys with a kid value" }
         require(encryptionKeys.keys.all { it.algorithm != null }) { "encryptionKeys must contain keys with an alg value" }

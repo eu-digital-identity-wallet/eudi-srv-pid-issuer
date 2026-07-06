@@ -24,6 +24,7 @@ import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.JWKSet
+import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.EncryptedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.pidMsoMdocV1
@@ -199,6 +200,7 @@ class GetDeferredCredentialTest {
             val encryptionKey =
                 ECKeyGenerator(Curve.P_256)
                     .keyID("test-kid")
+                    .keyUse(KeyUse.ENCRYPTION)
                     .algorithm(JWEAlgorithm.ECDH_ES)
                     .generate()
             val encryptionParams =
