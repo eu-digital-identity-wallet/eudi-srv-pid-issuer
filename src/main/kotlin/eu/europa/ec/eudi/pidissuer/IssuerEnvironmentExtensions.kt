@@ -21,8 +21,12 @@ import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.JWSVerifier
+import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.util.Base64
+import com.nimbusds.jose.util.X509CertChainUtils
+import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.security.DPoPConfigurationProperties
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.IssueMdoc
@@ -62,6 +66,7 @@ import org.springframework.core.io.FileSystemResource
 import org.springframework.web.reactive.function.client.WebClient
 import java.security.KeyStore
 import java.security.cert.X509Certificate
+import java.security.interfaces.ECPublicKey
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
@@ -612,6 +617,42 @@ internal fun Environment.batchCredentialIssuance(): BatchCredentialIssuance {
     } else {
         BatchCredentialIssuance.NotSupported
     }
+}
+
+internal fun Environment.issuerInfo(): List<IssuerInfo> {
+    val data = getRequiredProperty<String>("issuer.registration-certificate")
+
+    val jwt = SignedJWT.parse(data)
+    val x5c = jwt.header.x509CertChain
+    require(!x5c.isNullOrEmpty()) { "Issuer info must contain a valid certificate chain" }
+
+    val chain = X509CertChainUtils.parse(x5c)
+    val leafCert = chain.first()
+
+    val verifier: JWSVerifier =
+        when (val publicKey = leafCert.publicKey) {
+            is ECPublicKey -> {
+                val curve =
+                    Curve.forECParameterSpec(publicKey.params)
+                        ?: error("Unsupported EC curve for leaf certificate")
+                ECDSAVerifier(ECKey.Builder(curve, publicKey).build())
+            }
+
+            else -> {
+                error("Unsupported public key type for leaf certificate")
+            }
+        }
+
+    require(jwt.verify(verifier)) {
+        "JWT signature does not match the public key of the first (leaf) certificate in 'x5c'"
+    }
+
+    return listOf(
+        IssuerInfo(
+            format = ETSI119472Part3.ISSUER_INFO_FORMAT_REGISTRATION_CERT,
+            data = data,
+        ),
+    )
 }
 
 fun Environment.dPoPConfigurationProperties() =

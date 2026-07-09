@@ -269,6 +269,7 @@ internal class AppBeans :
                             )
                         },
                 preferredClientStatusPeriod = PreferredClientStatusPeriod(preferredClientStatusPeriod),
+                issuerInfo = env.issuerInfo(),
             )
         }
 

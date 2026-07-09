@@ -27,6 +27,7 @@ import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec.ZIP_ALGORITHMS
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.AttestationIssuer
+import eu.europa.ec.eudi.sdjwt.Jwt
 import java.util.*
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
@@ -240,6 +241,7 @@ data class CredentialIssuerMetaData(
     val display: List<CredentialIssuerDisplay> = emptyList(),
     val attestationIssuers: NonEmptyList<AttestationIssuer>,
     val preferredClientStatusPeriod: PreferredClientStatusPeriod,
+    val issuerInfo: List<IssuerInfo>,
 ) {
     init {
         val displayLocales = display.map { it.locale }
@@ -301,3 +303,8 @@ value class PreferredKeyStorageStatusPeriod(
         require(value >= 31.days) { "Preferred key storage status period must be at least 31 days" }
     }
 }
+
+data class IssuerInfo(
+    val format: String,
+    val data: Jwt,
+)
