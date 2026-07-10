@@ -79,7 +79,7 @@ class IssueCredentialTest {
             attestationIssuers = nonEmptyListOf(attestationIssuer),
             preferredClientStatusPeriod = PreferredClientStatusPeriod(400.days),
             issuerInfo =
-                listOf(
+                nonEmptyListOf(
                     IssuerInfo(
                         format = "registration_cert",
                         data = loadIssuerInfo,

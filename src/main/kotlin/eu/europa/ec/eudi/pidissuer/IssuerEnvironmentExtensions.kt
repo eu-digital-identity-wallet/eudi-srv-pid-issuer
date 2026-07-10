@@ -619,7 +619,7 @@ internal fun Environment.batchCredentialIssuance(): BatchCredentialIssuance {
     }
 }
 
-internal fun Environment.issuerInfo(): List<IssuerInfo> {
+internal fun Environment.issuerInfo(): NonEmptyList<IssuerInfo> {
     val data = getRequiredProperty<String>("issuer.registration-certificate")
 
     val jwt = SignedJWT.parse(data)
@@ -647,7 +647,7 @@ internal fun Environment.issuerInfo(): List<IssuerInfo> {
         "JWT signature does not match the public key of the first (leaf) certificate in 'x5c'"
     }
 
-    return listOf(
+    return nonEmptyListOf(
         IssuerInfo(
             format = ETSI119472Part3.ISSUER_INFO_FORMAT_REGISTRATION_CERT,
             data = data,

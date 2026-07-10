@@ -240,7 +240,7 @@ data class CredentialIssuerMetaData(
     val display: List<CredentialIssuerDisplay> = emptyList(),
     val attestationIssuers: NonEmptyList<AttestationIssuer>,
     val preferredClientStatusPeriod: PreferredClientStatusPeriod,
-    val issuerInfo: List<IssuerInfo>,
+    val issuerInfo: NonEmptyList<IssuerInfo>,
 ) {
     init {
         val displayLocales = display.map { it.locale }
