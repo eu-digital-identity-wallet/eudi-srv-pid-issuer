@@ -619,42 +619,6 @@ internal fun Environment.batchCredentialIssuance(): BatchCredentialIssuance {
     }
 }
 
-internal fun Environment.issuerInfo(): NonEmptyList<IssuerInfo> {
-    val data = getRequiredProperty<String>("issuer.registration-certificate")
-
-    val jwt = SignedJWT.parse(data)
-    val x5c = jwt.header.x509CertChain
-    require(!x5c.isNullOrEmpty()) { "Issuer info must contain a valid certificate chain" }
-
-    val chain = X509CertChainUtils.parse(x5c)
-    val leafCert = chain.first()
-
-    val verifier: JWSVerifier =
-        when (val publicKey = leafCert.publicKey) {
-            is ECPublicKey -> {
-                val curve =
-                    Curve.forECParameterSpec(publicKey.params)
-                        ?: error("Unsupported EC curve for leaf certificate")
-                ECDSAVerifier(ECKey.Builder(curve, publicKey).build())
-            }
-
-            else -> {
-                error("Unsupported public key type for leaf certificate")
-            }
-        }
-
-    require(jwt.verify(verifier)) {
-        "JWT signature does not match the public key of the first (leaf) certificate in 'x5c'"
-    }
-
-    return nonEmptyListOf(
-        IssuerInfo(
-            format = ETSI119472Part3.ISSUER_INFO_FORMAT_REGISTRATION_CERT,
-            data = data,
-        ),
-    )
-}
-
 fun Environment.dPoPConfigurationProperties() =
     DPoPConfigurationProperties(
         nonEmptySetOf(JWSAlgorithm.ES256, JWSAlgorithm.ES384, JWSAlgorithm.ES512),

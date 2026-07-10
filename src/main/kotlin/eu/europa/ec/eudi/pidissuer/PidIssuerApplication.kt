@@ -23,7 +23,11 @@ import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 
 @SpringBootApplication
-@EnableConfigurationProperties(IssuerMetadataProperties::class, SdJwtVcProperties::class)
+@EnableConfigurationProperties(
+    IssuerMetadataProperties::class,
+    SdJwtVcProperties::class,
+    UserInfoProperties::class,
+)
 @EnableScheduling
 @EnableWebFluxSecurity
 @Import(AppBeans::class)
