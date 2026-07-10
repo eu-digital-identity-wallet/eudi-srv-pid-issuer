@@ -27,7 +27,6 @@ import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec.ZIP_ALGORITHMS
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.AttestationIssuer
-import eu.europa.ec.eudi.sdjwt.Jwt
 import java.util.*
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
@@ -306,5 +305,5 @@ value class PreferredKeyStorageStatusPeriod(
 
 data class IssuerInfo(
     val format: String,
-    val data: Jwt,
+    val data: String,
 )
