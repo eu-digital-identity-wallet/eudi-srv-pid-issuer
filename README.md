@@ -549,6 +549,10 @@ Variable: `ISSUER_NONCE_ENCRYPTION_KEY_PASSWORD`
 Description: Password of the EC key-pair for nonce encryption.  
 Default value: N/A  
 
+Variable: `ISSUER_VERIFIERINFO_RRREGISTRATIONCERTIFICATE_XX`  
+Description: The JWT formatted registration certificate of Credential Issuer.  
+Default value: N/A  
+
 ### Configuring trust
 
 PID Issuer verifies whether a Wallet Provider's Wallet Unit Attestation is trusted or not using an external service.  
