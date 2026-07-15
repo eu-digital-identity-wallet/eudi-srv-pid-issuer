@@ -21,12 +21,18 @@ import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
+import com.nimbusds.jose.JWSVerifier
+import com.nimbusds.jose.crypto.ECDSAVerifier
+import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
+import com.nimbusds.jose.util.X509CertChainUtils
+import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec.ZIP_ALGORITHMS
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.AttestationIssuer
+import java.security.interfaces.ECPublicKey
 import java.util.*
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
@@ -226,6 +232,7 @@ data class CredentialIssuerDisplay(
  * @param display display properties of a Credential Issuer for a certain language
  * @param attestationIssuers the list of the specific issuers supported
  * @param preferredClientStatusPeriod the preferred client status period in seconds
+ * @param registrationCertificate the registration certificate of the issuer
  */
 data class CredentialIssuerMetaData(
     val id: CredentialIssuerId,
@@ -240,7 +247,7 @@ data class CredentialIssuerMetaData(
     val display: List<CredentialIssuerDisplay> = emptyList(),
     val attestationIssuers: NonEmptyList<AttestationIssuer>,
     val preferredClientStatusPeriod: PreferredClientStatusPeriod,
-    val issuerInfo: NonEmptyList<IssuerInfo>,
+    val registrationCertificate: Wrprc,
 ) {
     init {
         val displayLocales = display.map { it.locale }
@@ -303,7 +310,37 @@ value class PreferredKeyStorageStatusPeriod(
     }
 }
 
-data class IssuerInfo(
-    val format: String,
-    val data: String,
-)
+@JvmInline
+value class Wrprc private constructor(
+    val certificate: SignedJWT,
+) {
+    companion object {
+        fun of(registrationCertificate: String): Wrprc {
+            val jwt = SignedJWT.parse(registrationCertificate)
+            val x5c = jwt.header.x509CertChain
+            require(!x5c.isNullOrEmpty()) { "WRPRC must contain a valid certificate chain" }
+
+            val chain = X509CertChainUtils.parse(x5c)
+            val leafCert = chain.first()
+
+            val verifier: JWSVerifier =
+                when (val publicKey = leafCert.publicKey) {
+                    is ECPublicKey -> {
+                        val curve =
+                            Curve.forECParameterSpec(publicKey.params)
+                                ?: error("Unsupported EC curve for WRPRC leaf certificate")
+                        ECDSAVerifier(ECKey.Builder(curve, publicKey).build())
+                    }
+
+                    else -> {
+                        error("Unsupported public key type for WRPRC leaf certificate")
+                    }
+                }
+
+            require(jwt.verify(verifier)) {
+                "WRPRC signature does not match the public key of the first leaf certificate in 'x5c'"
+            }
+            return Wrprc(jwt)
+        }
+    }
+}

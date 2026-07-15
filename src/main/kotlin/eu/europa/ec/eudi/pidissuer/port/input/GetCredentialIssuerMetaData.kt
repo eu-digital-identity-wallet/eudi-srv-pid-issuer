@@ -149,7 +149,7 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
             ),
         openid4VciVersion = OpenId4VciSpec.VERSION,
         preferredClientStatusPeriod = preferredClientStatusPeriod.value.inWholeSeconds,
-        issuerInfo = issuerInfo.map { it.toTransferObject() },
+        issuerInfo = listOf(registrationCertificate.toTransferObject()),
     )
 
 private fun CredentialRequestEncryption.toTransferObject(): Option<CredentialIssuerMetaDataTO.CredentialRequestEncryptionTO> =
@@ -231,10 +231,10 @@ private fun CredentialConfiguration.format(): Format =
         is SdJwtVcCredentialConfiguration -> SD_JWT_VC_FORMAT
     }
 
-private fun IssuerInfo.toTransferObject(): CredentialIssuerMetaDataTO.IssuerInfoTO =
+private fun Wrprc.toTransferObject(): CredentialIssuerMetaDataTO.IssuerInfoTO =
     CredentialIssuerMetaDataTO.IssuerInfoTO(
-        format = format,
-        data = data,
+        format = ETSI119472Part3.ISSUER_INFO_FORMAT_REGISTRATION_CERT,
+        data = certificate.parsedString,
     )
 
 private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject =

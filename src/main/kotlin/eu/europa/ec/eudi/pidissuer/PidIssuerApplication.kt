@@ -26,7 +26,6 @@ import org.springframework.security.config.annotation.web.reactive.EnableWebFlux
 @EnableConfigurationProperties(
     IssuerMetadataProperties::class,
     SdJwtVcProperties::class,
-    UserInfoProperties::class,
 )
 @EnableScheduling
 @EnableWebFluxSecurity

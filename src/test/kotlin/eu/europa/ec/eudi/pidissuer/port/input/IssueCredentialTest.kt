@@ -66,7 +66,7 @@ class IssueCredentialTest {
         }
 
     private val jwtResourcePath = "/eu/europa/ec/eudi/pidissuer/adapter/out/jose/x5c/registration-certificate.jwt"
-    private val loadIssuerInfo = loadResource(jwtResourcePath).readText().trim()
+    private val registrationCertificate = loadResource(jwtResourcePath).readText().trim()
 
     private val metaData =
         CredentialIssuerMetaData(
@@ -78,13 +78,7 @@ class IssueCredentialTest {
             credentialResponseEncryption = CredentialResponseEncryption.NotSupported,
             attestationIssuers = nonEmptyListOf(attestationIssuer),
             preferredClientStatusPeriod = PreferredClientStatusPeriod(400.days),
-            issuerInfo =
-                nonEmptyListOf(
-                    IssuerInfo(
-                        format = "registration_cert",
-                        data = loadIssuerInfo,
-                    ),
-                ),
+            registrationCertificate = Wrprc.of(registrationCertificate),
         )
 
     private val encryptCredentialResponse =

@@ -15,20 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer
 
-import arrow.core.NonEmptyList
-import arrow.core.toNonEmptyListOrThrow
 import com.eygraber.uri.Url
-import com.nimbusds.jose.JWSVerifier
-import com.nimbusds.jose.crypto.ECDSAVerifier
-import com.nimbusds.jose.jwk.Curve
-import com.nimbusds.jose.jwk.ECKey
-import com.nimbusds.jose.util.X509CertChainUtils
-import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.pidissuer.domain.ETSI119472Part3
-import eu.europa.ec.eudi.pidissuer.domain.IssuerInfo
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.core.io.Resource
-import java.security.interfaces.ECPublicKey
 import java.time.Duration as JavaDuration
 
 data class KeycloakConfigurationProperties(
@@ -63,50 +52,6 @@ internal data class IssuerMetadataProperties(
         val uri: String,
         val alternativeText: String? = null,
     )
-}
-
-@ConfigurationProperties("issuer.issuerinfo")
-internal data class UserInfoProperties(
-    val registrationCertificate: List<String>,
-) {
-    init {
-        registrationCertificate
-            .forEach { registrationCertificate ->
-                val jwt = SignedJWT.parse(registrationCertificate)
-                val x5c = jwt.header.x509CertChain
-                require(!x5c.isNullOrEmpty()) { "Issuer info must contain a valid certificate chain" }
-
-                val chain = X509CertChainUtils.parse(x5c)
-                val leafCert = chain.first()
-
-                val verifier: JWSVerifier =
-                    when (val publicKey = leafCert.publicKey) {
-                        is ECPublicKey -> {
-                            val curve =
-                                Curve.forECParameterSpec(publicKey.params)
-                                    ?: error("Unsupported EC curve for leaf certificate")
-                            ECDSAVerifier(ECKey.Builder(curve, publicKey).build())
-                        }
-
-                        else -> {
-                            error("Unsupported public key type for leaf certificate")
-                        }
-                    }
-
-                require(jwt.verify(verifier)) {
-                    "JWT signature does not match the public key of the first (leaf) certificate in 'x5c'"
-                }
-            }
-    }
-
-    fun issuerInfo(): NonEmptyList<IssuerInfo> =
-        registrationCertificate
-            .map { registrationCertificate ->
-                IssuerInfo(
-                    format = ETSI119472Part3.ISSUER_INFO_FORMAT_REGISTRATION_CERT,
-                    data = registrationCertificate,
-                )
-            }.toNonEmptyListOrThrow()
 }
 
 @ConfigurationProperties("issuer.sd-jwt-vc")
