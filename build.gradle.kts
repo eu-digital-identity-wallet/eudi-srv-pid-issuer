@@ -157,6 +157,9 @@ tasks.bootBuildImage {
     publish = false
     environment = System.getenv()
 
+    builder = "paketobuildpacks/builder-noble-java-tiny:latest"
+    runImage = "paketobuildpacks/ubuntu-noble-run:latest"
+
     docker {
         val environment = environment.get()
         publishRegistry {
