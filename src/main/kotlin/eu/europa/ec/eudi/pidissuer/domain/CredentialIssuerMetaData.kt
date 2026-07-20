@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.pidissuer.domain
 
 import arrow.core.NonEmptyList
 import arrow.core.NonEmptySet
-import arrow.core.raise.result
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
@@ -312,33 +311,28 @@ value class PreferredKeyStorageStatusPeriod(
 
 @JvmInline
 value class Wrprc private constructor(
-    val certificate: SignedJWT,
+    val value: SignedJWT,
 ) {
     companion object {
-        fun tryParse(registrationCertificate: String): Result<Wrprc> =
-            result {
-                val jwt = SignedJWT.parse(registrationCertificate)
-                val x5c = jwt.header.x509CertChain
-                require(!x5c.isNullOrEmpty()) { "WRPRC must contain a valid certificate chain" }
+        fun tryParse(registrationCertificate: String): Wrprc {
+            val jwt = SignedJWT.parse(registrationCertificate)
+            val x5c = jwt.header.x509CertChain
+            require(!x5c.isNullOrEmpty()) { "WRPRC must contain a valid certificate chain" }
 
-                val chain =
-                    x5c.map { certificate ->
-                        X509CertUtils.parseWithException(certificate.decode())
-                    }
-                val leafCertPublicKey = chain.first().publicKey
+            val chain =
+                x5c.map { certificate ->
+                    X509CertUtils.parseWithException(certificate.decode())
+                }
+            val leafCertPublicKey = chain.first().publicKey
 
-                require(leafCertPublicKey is ECPublicKey) {
-                    "x5c leaf certificate must contain an EC public key"
-                }
-                val verifier: JWSVerifier = ECDSAVerifier(leafCertPublicKey)
-                require(jwt.verify(verifier)) {
-                    "WRPRC signature does not match the public key of the first leaf certificate in 'x5c'"
-                }
-                Wrprc(jwt)
+            require(leafCertPublicKey is ECPublicKey) {
+                "x5c leaf certificate must contain an EC public key"
             }
-
-        fun ofOrNull(registrationCertificate: String): Wrprc? = tryParse(registrationCertificate).getOrNull()
-
-        fun of(registrationCertificate: String): Wrprc = tryParse(registrationCertificate).getOrThrow()
+            val verifier: JWSVerifier = ECDSAVerifier(leafCertPublicKey)
+            require(jwt.verify(verifier)) {
+                "WRPRC signature does not match the public key of the first leaf certificate in 'x5c'"
+            }
+            return Wrprc(jwt)
+        }
     }
 }

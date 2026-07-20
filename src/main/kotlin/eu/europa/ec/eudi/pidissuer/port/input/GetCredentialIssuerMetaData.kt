@@ -234,7 +234,7 @@ private fun CredentialConfiguration.format(): Format =
 private fun Wrprc.toTransferObject(): CredentialIssuerMetaDataTO.IssuerInfoTO =
     CredentialIssuerMetaDataTO.IssuerInfoTO(
         format = ETSI119472Part3.ISSUER_INFO_FORMAT_REGISTRATION_CERT,
-        data = certificate.parsedString,
+        data = value.parsedString,
     )
 
 private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject =

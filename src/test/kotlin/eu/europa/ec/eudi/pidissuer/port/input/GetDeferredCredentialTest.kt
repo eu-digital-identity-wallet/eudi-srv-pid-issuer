@@ -93,7 +93,7 @@ class GetDeferredCredentialTest {
             credentialResponseEncryption = CredentialResponseEncryption.NotSupported,
             attestationIssuers = nonEmptyListOf(attestationIssuer),
             preferredClientStatusPeriod = PreferredClientStatusPeriod(400.days),
-            registrationCertificate = Wrprc.of(registrationCertificate),
+            registrationCertificate = Wrprc.tryParse(registrationCertificate),
         )
 
     @Test
