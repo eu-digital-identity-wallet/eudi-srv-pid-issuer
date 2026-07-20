@@ -78,8 +78,10 @@ class GetDeferredCredentialTest {
             ): EncryptedJWT = throw UnsupportedOperationException("Not expected in this test")
         }
 
-    private val jwtResourcePath = "/eu/europa/ec/eudi/pidissuer/adapter/out/jose/x5c/registration-certificate.jwt"
-    private val registrationCertificate = loadResource(jwtResourcePath).readText().trim()
+    private val registrationCertificate =
+        loadResource(
+            "/eu/europa/ec/eudi/pidissuer/adapter/out/jose/x5c/registration-certificate.jwt",
+        ).readText().trim()
 
     private fun metadata(credentialRequestEncryption: CredentialRequestEncryption = CredentialRequestEncryption.NotSupported) =
         CredentialIssuerMetaData(

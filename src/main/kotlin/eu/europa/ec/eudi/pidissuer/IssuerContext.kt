@@ -247,8 +247,7 @@ internal class AppBeans :
             val preferredClientStatusPeriod =
                 bean<IssuerMetadataProperties>().preferredClientStatusPeriod.toKotlinDuration()
 
-            val registrationCertificateProperty = env.getRequiredProperty("issuer.wrprc")
-            val registrationCertificate = Wrprc.of(registrationCertificateProperty)
+            val registrationCertificate = Wrprc.of(env.getRequiredProperty("issuer.wrprc"))
 
             CredentialIssuerMetaData(
                 id = issuerPublicUrl,

@@ -65,8 +65,10 @@ class IssueCredentialTest {
                 CredentialResponse.Issued(nonEmptyListOf(JsonPrimitive("test-credential")))
         }
 
-    private val jwtResourcePath = "/eu/europa/ec/eudi/pidissuer/adapter/out/jose/x5c/registration-certificate.jwt"
-    private val registrationCertificate = loadResource(jwtResourcePath).readText().trim()
+    private val registrationCertificate =
+        loadResource(
+            "/eu/europa/ec/eudi/pidissuer/adapter/out/jose/x5c/registration-certificate.jwt",
+        ).readText().trim()
 
     private val metaData =
         CredentialIssuerMetaData(

@@ -550,7 +550,7 @@ Description: Password of the EC key-pair for nonce encryption.
 Default value: N/A  
 
 Variable: `ISSUER_WRPRC`  
-Description: The JWT formatted registration certificate of Credential Issuer.  
+Description: The Registration Certificate of the Credential Issuer serialized using JWS Compact Serialization.  
 Default value: N/A  
 
 ### Configuring trust
