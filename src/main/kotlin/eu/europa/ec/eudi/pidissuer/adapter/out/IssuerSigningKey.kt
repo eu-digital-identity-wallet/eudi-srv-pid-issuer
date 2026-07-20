@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out
 
-import COSE.AlgorithmID
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
@@ -27,8 +26,6 @@ import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.x509.dropRootCA
 import eu.europa.ec.eudi.pidissuer.domain.CoseAlgorithm
 import eu.europa.ec.eudi.sdjwt.*
-import id.walt.mdoc.COSECryptoProviderKeyInfo
-import id.walt.mdoc.SimpleCOSECryptoProvider
 import java.security.cert.X509Certificate
 
 @JvmInline
@@ -51,15 +48,6 @@ internal val IssuerSigningKey.signingAlgorithm: JWSAlgorithm
             else -> error("Unsupported ECKey Curve '$curve'")
         }
 
-internal val IssuerSigningKey.algorithmId: AlgorithmID
-    get() =
-        when (val curve = key.curve) {
-            Curve.P_256 -> AlgorithmID.ECDSA_256
-            Curve.P_384 -> AlgorithmID.ECDSA_384
-            Curve.P_521 -> AlgorithmID.ECDSA_512
-            else -> error("Unsupported ECKey Curve '$curve'")
-        }
-
 internal val IssuerSigningKey.coseAlgorithm: CoseAlgorithm
     get() =
         when (val curve = key.curve) {
@@ -68,24 +56,6 @@ internal val IssuerSigningKey.coseAlgorithm: CoseAlgorithm
             Curve.P_521 -> CoseAlgorithm(-36)
             else -> error("Unsupported ECKey Curve '$curve'")
         }
-
-internal fun IssuerSigningKey.cryptoProvider(includeRootCA: Boolean): SimpleCOSECryptoProvider =
-    SimpleCOSECryptoProvider(
-        listOf(
-            COSECryptoProviderKeyInfo(
-                keyID = key.keyID,
-                algorithmID = algorithmId,
-                publicKey = key.toECPublicKey(),
-                privateKey = key.toECPrivateKey(),
-                x5Chain =
-                    if (includeRootCA)
-                        key.parsedX509CertChain
-                    else
-                        key.parsedX509CertChain.dropRootCA(),
-                trustedRootCAs = emptyList(),
-            ),
-        ),
-    )
 
 internal val IssuerSigningKey.certificate: X509Certificate
     get() = X509CertUtils.parse(key.x509CertChain.first().decode())

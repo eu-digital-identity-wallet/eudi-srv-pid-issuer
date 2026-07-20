@@ -17,13 +17,11 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.format.mdoc
 
 import eu.europa.esig.dss.cbades.cbor.CBORObject
 import eu.europa.esig.dss.cbades.cbor.CBORObjectFactory
-import kotlin.time.Instant
+import kotlinx.datetime.LocalDate
 
-fun Instant.dropFractionOfSeconds(): Instant = Instant.fromEpochSeconds(epochSeconds, 0L)
-
-fun Instant.toTDate(): CBORObject {
+fun LocalDate.toFullDate(): CBORObject {
     val value = toString()
     val cborObject = CBORObjectFactory.toCBORObject(value)
-    cborObject.setTag(0L)
+    cborObject.setTag(1004L)
     return cborObject
 }

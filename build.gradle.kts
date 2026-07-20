@@ -15,11 +15,6 @@ plugins {
 
 repositories {
     mavenCentral()
-    maven {
-        url = uri("https://maven.waltid.dev/releases")
-        mavenContent {
-        }
-    }
 }
 
 dependencies {
@@ -27,6 +22,7 @@ dependencies {
     implementation(platform(libs.kotlinx.coroutines.bom))
     implementation(platform(libs.kotlinx.serialization.bom))
     implementation(platform(libs.arrow.stack))
+    implementation(platform(libs.dss.bom))
     implementation(platform(SpringBootPlugin.BOM_COORDINATES))
 
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server") {
@@ -73,15 +69,7 @@ dependencies {
     implementation(libs.nimbus.oauth2) {
         because("To support DPoP")
     }
-    implementation(libs.waltid.mdoc.credentials) {
-        because("To sign CBOR credentials")
-    }
-    implementation(libs.kotlinx.datetime) {
-        because("required by walt.id")
-    }
-    implementation(libs.cose.java) {
-        because("required by walt.id")
-    }
+    implementation(libs.kotlinx.datetime)
     implementation(libs.uri.kmp) {
         because("To generate Credentials Offer URIs using custom URIs")
     }
@@ -95,6 +83,10 @@ dependencies {
     runtimeOnly("org.postgresql:r2dbc-postgresql") {
         because("R2DBC driver for PostgreSQL")
     }
+    implementation(libs.dss.utils.apache.commons)
+    implementation(libs.dss.token)
+    implementation(libs.dss.cb.ades)
+    implementation(libs.dss.eaa.mdoc)
 
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)

@@ -44,6 +44,18 @@ operator fun ClaimDefinition.Companion.invoke(
     display: Display = emptyMap(),
 ): ClaimDefinition = ClaimDefinition(ClaimPath(nameSpace, attributeName), mandatory, display)
 
+val ClaimDefinition.nameSpace: MsoNameSpace
+    get() {
+        check(path.isMsoMDoc())
+        return (path.value.first() as ClaimPathElement.Claim).name
+    }
+
+val ClaimDefinition.attributeName: String
+    get() {
+        check(path.isMsoMDoc())
+        return (path.value.last() as ClaimPathElement.Claim).name
+    }
+
 /**
  * @param docType string identifying the credential type as defined in ISO.18013-5.
  */
