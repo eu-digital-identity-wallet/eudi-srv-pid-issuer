@@ -63,6 +63,8 @@ data class CredentialIssuerMetaDataTO(
     val openid4VciVersion: String? = null,
     @Required @SerialName(TS3.PREFERRED_CLIENT_STATUS_PERIOD)
     val preferredClientStatusPeriod: Long,
+    @Required @SerialName(ETSI119472Part3.ISSUER_INFO)
+    val issuerInfo: List<IssuerInfoTO>,
 ) {
     @Serializable
     data class CredentialRequestEncryptionTO(
@@ -91,6 +93,14 @@ data class CredentialIssuerMetaDataTO(
     @Serializable
     data class BatchCredentialIssuanceTO(
         @Required @SerialName("batch_size") val batchSize: Int,
+    )
+
+    @Serializable
+    data class IssuerInfoTO(
+        @Required @SerialName(ETSI119472Part3.ISSUER_INFO_FORMAT)
+        val format: String,
+        @Required @SerialName(ETSI119472Part3.ISSUER_INFO_DATA)
+        val data: String,
     )
 }
 
@@ -139,6 +149,7 @@ private fun CredentialIssuerMetaData.toTransferObject(): CredentialIssuerMetaDat
             ),
         openid4VciVersion = OpenId4VciSpec.VERSION,
         preferredClientStatusPeriod = preferredClientStatusPeriod.value.inWholeSeconds,
+        issuerInfo = listOf(registrationCertificate.toTransferObject()),
     )
 
 private fun CredentialRequestEncryption.toTransferObject(): Option<CredentialIssuerMetaDataTO.CredentialRequestEncryptionTO> =
@@ -219,6 +230,12 @@ private fun CredentialConfiguration.format(): Format =
         is MsoMdocCredentialConfiguration -> MSO_MDOC_FORMAT
         is SdJwtVcCredentialConfiguration -> SD_JWT_VC_FORMAT
     }
+
+private fun Wrprc.toTransferObject(): CredentialIssuerMetaDataTO.IssuerInfoTO =
+    CredentialIssuerMetaDataTO.IssuerInfoTO(
+        format = ETSI119472Part3.ISSUER_INFO_FORMAT_REGISTRATION_CERT,
+        data = value.parsedString,
+    )
 
 private fun credentialMetaDataJson(d: CredentialConfiguration): JsonObject =
     buildJsonObject {

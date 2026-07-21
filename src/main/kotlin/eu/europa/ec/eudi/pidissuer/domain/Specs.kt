@@ -83,4 +83,9 @@ object RFC7519 {
  */
 object ETSI119472Part3 {
     const val KEY_ATTESTATION_JWT_PROOF_SIGNING_KEY_INDEX: Int = 0
+
+    const val ISSUER_INFO: String = "issuer_info"
+    const val ISSUER_INFO_FORMAT: String = "format"
+    const val ISSUER_INFO_DATA: String = "data"
+    const val ISSUER_INFO_FORMAT_REGISTRATION_CERT: String = "registration_cert"
 }

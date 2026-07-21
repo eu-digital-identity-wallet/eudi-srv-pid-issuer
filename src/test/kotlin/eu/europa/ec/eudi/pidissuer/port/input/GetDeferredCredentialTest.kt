@@ -29,6 +29,7 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.EncryptedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.pidMsoMdocV1
 import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.loadResource
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.AttestationIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptDeferredResponse
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.LoadDeferredCredentialByTransactionId
@@ -77,6 +78,11 @@ class GetDeferredCredentialTest {
             ): EncryptedJWT = throw UnsupportedOperationException("Not expected in this test")
         }
 
+    private val registrationCertificate =
+        loadResource(
+            "/eu/europa/ec/eudi/pidissuer/adapter/out/jose/x5c/registration-certificate.jwt",
+        ).readText().trim()
+
     private fun metadata(credentialRequestEncryption: CredentialRequestEncryption = CredentialRequestEncryption.NotSupported) =
         CredentialIssuerMetaData(
             id = HttpsUrl.unsafe("https://issuer.example.com"),
@@ -87,6 +93,7 @@ class GetDeferredCredentialTest {
             credentialResponseEncryption = CredentialResponseEncryption.NotSupported,
             attestationIssuers = nonEmptyListOf(attestationIssuer),
             preferredClientStatusPeriod = PreferredClientStatusPeriod(400.days),
+            registrationCertificate = Wrprc.tryParse(registrationCertificate),
         )
 
     @Test
