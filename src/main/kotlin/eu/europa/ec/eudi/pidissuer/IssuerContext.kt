@@ -247,6 +247,8 @@ internal class AppBeans :
             val preferredClientStatusPeriod =
                 bean<IssuerMetadataProperties>().preferredClientStatusPeriod.toKotlinDuration()
 
+            val registrationCertificate = Wrprc.tryParse(env.getRequiredProperty("issuer.wrprc"))
+
             CredentialIssuerMetaData(
                 id = issuerPublicUrl,
                 credentialEndPoint = issuerPublicUrl.appendPath(WalletApi.CREDENTIAL_ENDPOINT),
@@ -269,6 +271,7 @@ internal class AppBeans :
                             )
                         },
                 preferredClientStatusPeriod = PreferredClientStatusPeriod(preferredClientStatusPeriod),
+                registrationCertificate = registrationCertificate,
             )
         }
 
