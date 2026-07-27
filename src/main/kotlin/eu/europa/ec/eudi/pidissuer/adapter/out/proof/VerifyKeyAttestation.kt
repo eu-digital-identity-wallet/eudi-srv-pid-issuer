@@ -19,6 +19,7 @@ import arrow.core.NonEmptyList
 import arrow.core.NonEmptySet
 import arrow.core.raise.Raise
 import arrow.core.raise.context.ensure
+import arrow.core.raise.context.ensureNotNull
 import arrow.core.raise.context.raise
 import arrow.core.toNonEmptyListOrNull
 import com.eygraber.uri.Uri
@@ -33,6 +34,7 @@ import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jose.proc.SingleKeyJWSKeySelector
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.X509CertChainUtils
+import com.nimbusds.jose.util.X509CertUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
@@ -96,15 +98,13 @@ class VerifyKeyAttestation(
                     .ensureIsPublicAsymmetricKey()
             verifySignature(key, algorithm, expectExpirationClaim)
             ensureMeetsKeyAttestationRequirements(keyAttestationRequirement)
-            if (walletProviderSigningKey is WalletProviderSigningKey.X5C) {
-                walletProviderSigningKey.ensureTrustWalletProvider()
-            }
+            walletProviderSigningKey.ensureTrustWalletProvider()
 
             keyAttestation.claims.attestedKeys.value to nonce
         }
 
     context(_: Raise<String>)
-    private suspend fun WalletProviderSigningKey.X5C.ensureTrustWalletProvider() {
+    private suspend fun WalletProviderSigningKey.ensureTrustWalletProvider() {
         val result = isTrustedKeyAttestationIssuer(x5c)
         ensure(result is TrustResult.IsTrusted) {
             "Key attestation is not issued by a trusted wallet provider"
@@ -114,27 +114,12 @@ class VerifyKeyAttestation(
     context(_: Raise<String>)
     private fun KeyAttestationJWT.extractSigningKey(): WalletProviderSigningKey {
         val header = jwt.header
-        val kid: String? = header.keyID
-        val x5c: List<Base64>? = header.x509CertChain
-
-        return when {
-            kid != null && x5c.isNullOrEmpty() -> {
-                val didUrl = Uri.parse(kid)
-                val jwk = resolveDidUrl(didUrl)
-                WalletProviderSigningKey.DIDUrl(jwk, didUrl)
-            }
-
-            kid == null && !x5c.isNullOrEmpty() -> {
-                val chain = X509CertChainUtils.parse(x5c).toNonEmptyListOrNull()
-                requireNotNull(chain) { "x5c chain cannot be empty" }
-                val jwk = JWK.parse(chain.head)
-                WalletProviderSigningKey.X5C(jwk, chain)
-            }
-
-            else -> {
-                raise("Invalid Key attestation : No signing key found in one of 'kid' or 'x5c'. 'trust_chain not yet supported'")
-            }
-        }
+        val chain =
+            ensureNotNull(header.x509CertChain?.toNonEmptyListOrNull()) {
+                "Invalid Key attestation: x5c chain cannot be empty"
+            }.map { X509CertUtils.parseWithException(it.decode()) }
+        val jwk = JWK.parse(chain.head)
+        return WalletProviderSigningKey(jwk, chain)
     }
 
     private fun KeyAttestationJWT.verifySignature(
@@ -216,16 +201,7 @@ private fun JWK.ensureIsPublicAsymmetricKey(): AsymmetricJWK {
     return this
 }
 
-private sealed interface WalletProviderSigningKey {
-    val key: JWK
-
-    data class DIDUrl(
-        override val key: JWK,
-        val didUrl: Uri,
-    ) : WalletProviderSigningKey
-
-    data class X5C(
-        override val key: JWK,
-        val x5c: NonEmptyList<X509Certificate>,
-    ) : WalletProviderSigningKey
-}
+private data class WalletProviderSigningKey(
+    val key: JWK,
+    val x5c: NonEmptyList<X509Certificate>,
+)

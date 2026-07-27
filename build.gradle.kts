@@ -64,12 +64,6 @@ dependencies {
     implementation(libs.zxing) {
         because("To generate a QR Code for Credentials Offer URI")
     }
-    implementation(libs.multiformat) {
-        because("To support resolution of did:key")
-    }
-    implementation(libs.result.monad) {
-        because("Optional dependency from org.erwinkok.multiformat:multiformat that we require")
-    }
     implementation(libs.nimbus.oauth2) {
         because("To support DPoP")
     }
