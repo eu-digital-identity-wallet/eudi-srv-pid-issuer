@@ -20,6 +20,7 @@ import arrow.core.NonEmptySet
 import arrow.core.toNonEmptySetOrNull
 import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
+import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSVerifier
 import com.nimbusds.jose.crypto.ECDSAVerifier
@@ -316,6 +317,12 @@ value class Wrprc private constructor(
     companion object {
         fun tryParse(registrationCertificate: String): Wrprc {
             val jwt = SignedJWT.parse(registrationCertificate)
+
+            val type = JOSEObjectType(ETSI119475.WALLET_RELYING_PARTY_REGISTRATION_CERTIFICATE_TYPE)
+            require(type == jwt.header.type) {
+                "Incorrect WRPRC 'typ'. Expected ${type.type}, but found ${jwt.header.type?.type} instead."
+            }
+
             val x5c = jwt.header.x509CertChain
             require(!x5c.isNullOrEmpty()) { "WRPRC must contain a valid certificate chain" }
 
