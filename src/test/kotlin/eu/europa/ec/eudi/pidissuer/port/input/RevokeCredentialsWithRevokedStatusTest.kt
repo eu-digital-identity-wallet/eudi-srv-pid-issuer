@@ -113,8 +113,8 @@ internal class RevokeCredentialsWithRevokedStatusTest {
                     clock = clock,
                     deleteExpiredIssuedCredentials = { _ -> },
                     getNonExpiredIssuedCredentials = { _ -> listOf(credential) },
-                    getStatusListTokenStatus = { uri, _ ->
-                        if (uri == clientStatusUri)
+                    getStatusListTokenStatus = { statusListToken, _ ->
+                        if (statusListToken.statusList == clientStatusUri)
                             StatusListTokenStatus.INVALID
                         else
                             StatusListTokenStatus.VALID
@@ -139,8 +139,8 @@ internal class RevokeCredentialsWithRevokedStatusTest {
                     clock = clock,
                     deleteExpiredIssuedCredentials = { _ -> },
                     getNonExpiredIssuedCredentials = { _ -> listOf(credential) },
-                    getStatusListTokenStatus = { uri, _ ->
-                        if (uri == keyStorageUri)
+                    getStatusListTokenStatus = { statusListToken, _ ->
+                        if (statusListToken.statusList == keyStorageUri)
                             StatusListTokenStatus.INVALID
                         else
                             StatusListTokenStatus.VALID

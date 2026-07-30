@@ -16,7 +16,8 @@
 package eu.europa.ec.eudi.pidissuer.port.out.status
 
 import arrow.core.raise.Raise
-import com.eygraber.uri.Uri
+import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
+import eu.europa.ec.eudi.pidissuer.port.out.trust.VerificationContext
 
 /**
  * The status of a single entry in a Token Status List.
@@ -31,13 +32,12 @@ fun interface GetStatusListTokenStatus {
     /**
      * Checks the status of a single entry in a Token Status List.
      *
-     * @param uri the URI of the status list token
-     * @param index the index of the entry within the status list
+     * @param statusListToken the reference to the status list entry to check
      */
     context(_: Raise<Error>)
     suspend operator fun invoke(
-        uri: Uri,
-        index: UInt,
+        statusListToken: StatusListToken,
+        verificationContext: VerificationContext,
     ): StatusListTokenStatus
 
     @JvmInline

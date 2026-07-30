@@ -50,7 +50,8 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.GenerateNotificationId
 import eu.europa.ec.eudi.pidissuer.port.out.persistence.StoreIssuedCredential
 import eu.europa.ec.eudi.pidissuer.port.out.proof.ValidateProof
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
-import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
+import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedIssuer
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import kotlinx.datetime.TimeZone
 import org.slf4j.LoggerFactory
@@ -579,10 +580,15 @@ internal fun getPidDataFromKeyCloak(
 
 internal fun validateProof(
     credentialIssuerId: CredentialIssuerId,
-    isTrustedKeyAttestationIssuer: IsTrustedKeyAttestationIssuer,
+    isTrustedIssuer: IsTrustedIssuer,
     verifyNonce: VerifyNonce,
+    getStatusListTokenStatus: GetStatusListTokenStatus,
 ): ValidateProof {
-    val verifyKeyAttestation = VerifyKeyAttestation(isTrustedKeyAttestationIssuer = isTrustedKeyAttestationIssuer)
+    val verifyKeyAttestation =
+        VerifyKeyAttestation(
+            isTrustedIssuer = isTrustedIssuer,
+            getStatusListTokenStatus = getStatusListTokenStatus,
+        )
     val validateJwtProofWithKeyAttestation =
         ValidateJwtProofWithKeyAttestation(credentialIssuerId, verifyKeyAttestation)
     val validateAttestationProof = ValidateAttestationProof(verifyKeyAttestation)
@@ -688,13 +694,13 @@ internal fun loadNonceEncryptionKey(
 internal fun trustValidatorService(
     env: Environment,
     webClient: WebClient,
-): IsTrustedKeyAttestationIssuer {
+): IsTrustedIssuer {
     val trustValidatorServiceUrl = env.getProperty<String>("issuer.trust.service-url")
     return if (trustValidatorServiceUrl.isNullOrBlank()) {
         log.warn("Trust Validator Service has not been configured. Trusting all Wallet Providers.")
-        IsTrustedKeyAttestationIssuer.Ignored
+        IsTrustedIssuer.Ignored
     } else {
         log.info("Using Trust Validator Service '{}'", trustValidatorServiceUrl)
-        IsTrustedKeyAttestationIssuer.usingTrustValidatorService(webClient, Url.parse(trustValidatorServiceUrl))
+        IsTrustedIssuer.usingTrustValidatorService(webClient, Url.parse(trustValidatorServiceUrl))
     }
 }

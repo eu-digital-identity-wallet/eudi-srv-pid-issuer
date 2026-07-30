@@ -33,6 +33,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.jose.EncryptCredentialResponse
 import eu.europa.ec.eudi.pidissuer.port.out.jose.RequestEncryptionError
 import eu.europa.ec.eudi.pidissuer.port.out.jose.RequestEncryptionError.*
 import eu.europa.ec.eudi.pidissuer.port.out.jose.decryptCredentialRequest
+import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -91,6 +92,11 @@ sealed interface IssueCredentialError {
         val cause: Throwable? = null,
     ) : IssueCredentialError
 
+    data class InvalidClientStatus(
+        val msg: String,
+        val cause: Throwable? = null,
+    ) : IssueCredentialError
+
     data class WrongScope(
         val expected: Scope,
     ) : IssueCredentialError
@@ -109,6 +115,7 @@ class IssueCredential(
     private val credentialIssuerMetadata: CredentialIssuerMetaData,
     private val encryptCredentialResponse: EncryptCredentialResponse,
     private val clock: Clock,
+    private val getStatusListTokenStatus: GetStatusListTokenStatus,
 ) {
     suspend fun fromEncryptedRequest(
         authorizationContext: AuthorizationContext,
@@ -150,6 +157,9 @@ class IssueCredential(
         logRequest(request)
         context(credentialIssuerMetadata, clock) {
             authorizationContext.checkClientStatusExpiration()
+        }
+        context(getStatusListTokenStatus) {
+            authorizationContext.checkClientStatusIsValid()
         }
         return context(authorizationContext, credentialIssuerMetadata) {
             val validatedRequest = request.validate()
@@ -424,6 +434,11 @@ private fun IssueCredentialError.response(): IssueCredentialResponse.FailedTO {
             }
 
             is InvalidClientStatusExpiration -> {
+                CredentialErrorTypeTo.CREDENTIAL_REQUEST_DENIED to
+                    errorDescriptionWithErrorCauseDescription("Invalid Client Status: $msg", cause)
+            }
+
+            is InvalidClientStatus -> {
                 CredentialErrorTypeTo.CREDENTIAL_REQUEST_DENIED to
                     errorDescriptionWithErrorCauseDescription("Invalid Client Status: $msg", cause)
             }

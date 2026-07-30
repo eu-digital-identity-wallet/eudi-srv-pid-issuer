@@ -31,7 +31,9 @@ import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.jwtProof
 import eu.europa.ec.eudi.pidissuer.keyAttestationJWT
 import eu.europa.ec.eudi.pidissuer.port.out.proof.ValidateProof
-import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
+import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
+import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedIssuer
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -43,8 +45,12 @@ import kotlin.time.Duration.Companion.minutes
 class DefaultValidateProofTest {
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.System
+    private val validKeyStorageStatus = GetStatusListTokenStatus { _, _ -> StatusListTokenStatus.VALID }
     private val verifyKeyAttestation =
-        VerifyKeyAttestation(isTrustedKeyAttestationIssuer = IsTrustedKeyAttestationIssuer.Ignored)
+        VerifyKeyAttestation(
+            isTrustedIssuer = IsTrustedIssuer.Ignored,
+            getStatusListTokenStatus = validKeyStorageStatus,
+        )
 
     @Test
     internal fun `keys are not truncated when reuse policy is None`() =
@@ -105,29 +111,33 @@ class DefaultValidateProofTest {
     ): KeyAttestation? {
         val (unvalidatedProof, _) = proof
 
-        val validator =
-            ValidateProof(
-                validateJwtProofWithKeyAttestation = ValidateJwtProofWithKeyAttestation(issuer, verifyKeyAttestation),
-                validateAttestationProof = ValidateAttestationProof(verifyKeyAttestation),
-                verifyNonce = { _, _ -> true },
-            )
-
-        val configuration =
-            pidMsoMdocV1(
-                CoseAlgorithm(-7),
-                deviceBinding =
-                    DeviceBinding.Required.ts3(
-                        nonEmptySetOf(JWSAlgorithm.ES256),
-                        PreferredKeyStorageStatusPeriod(31.days),
-                    ),
-                credentialReusePolicy = policy,
-                validity = 365.days,
-            )
+        val validator = validator()
+        val configuration = configuration(policy)
 
         return context(configuration) {
             either { validator(unvalidatedProof, clock.now()) } getOrElse { fail("Expected success but got $it") }
         }
     }
+
+    private fun validator(): ValidateProof =
+        ValidateProof(
+            validateJwtProofWithKeyAttestation =
+                ValidateJwtProofWithKeyAttestation(issuer, verifyKeyAttestation),
+            validateAttestationProof = ValidateAttestationProof(verifyKeyAttestation),
+            verifyNonce = { _, _ -> true },
+        )
+
+    private fun configuration(policy: CredentialReusePolicy) =
+        pidMsoMdocV1(
+            CoseAlgorithm(-7),
+            deviceBinding =
+                DeviceBinding.Required.ts3(
+                    nonEmptySetOf(JWSAlgorithm.ES256),
+                    PreferredKeyStorageStatusPeriod(31.days),
+                ),
+            credentialReusePolicy = policy,
+            validity = 365.days,
+        )
 
     private suspend fun generateJwtProofWithAttestation(extraKeysNo: Int): Pair<UnvalidatedProof.Jwt, ECKey> {
         val clock = Clock.System

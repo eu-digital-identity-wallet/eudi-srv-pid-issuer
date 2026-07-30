@@ -21,8 +21,8 @@ import arrow.core.raise.Raise
 import arrow.core.raise.context.ensure
 import arrow.core.raise.context.ensureNotNull
 import arrow.core.raise.context.raise
+import arrow.core.raise.context.withError
 import arrow.core.toNonEmptyListOrNull
-import com.eygraber.uri.Uri
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
@@ -32,18 +32,16 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jose.proc.SingleKeyJWSKeySelector
-import com.nimbusds.jose.util.Base64
-import com.nimbusds.jose.util.X509CertChainUtils
 import com.nimbusds.jose.util.X509CertUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
-import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationJWT
-import eu.europa.ec.eudi.pidissuer.domain.KeyAttestationRequirement
-import eu.europa.ec.eudi.pidissuer.domain.OpenId4VciSpec
-import eu.europa.ec.eudi.pidissuer.domain.ProofType
-import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
+import eu.europa.ec.eudi.pidissuer.domain.*
+import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
+import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
+import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.trust.TrustResult
+import eu.europa.ec.eudi.pidissuer.port.out.trust.VerificationContext
 import java.security.cert.X509Certificate
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -52,7 +50,8 @@ import kotlin.time.Instant
 
 class VerifyKeyAttestation(
     private val maxSkew: Duration = 30.seconds,
-    private val isTrustedKeyAttestationIssuer: IsTrustedKeyAttestationIssuer,
+    private val isTrustedIssuer: IsTrustedIssuer,
+    private val getStatusListTokenStatus: GetStatusListTokenStatus,
 ) {
     context(_: Raise<String>, proofType: ProofType.Jwt)
     suspend operator fun invoke(
@@ -100,12 +99,14 @@ class VerifyKeyAttestation(
             ensureMeetsKeyAttestationRequirements(keyAttestationRequirement)
             walletProviderSigningKey.ensureTrustWalletProvider()
 
+            keyAttestation.claims.keyStorageStatus.ensureIsValid()
+
             keyAttestation.claims.attestedKeys.value to nonce
         }
 
     context(_: Raise<String>)
     private suspend fun WalletProviderSigningKey.ensureTrustWalletProvider() {
-        val result = isTrustedKeyAttestationIssuer(x5c)
+        val result = isTrustedIssuer(x5c, verificationContext = VerificationContext.WalletProviderAttestation)
         ensure(result is TrustResult.IsTrusted) {
             "Key attestation is not issued by a trusted wallet provider"
         }
@@ -168,6 +169,19 @@ class VerifyKeyAttestation(
             }
         }
         claims.attestedKeys
+    }
+
+    context(_: Raise<String>)
+    private suspend fun KeyStorageStatus.ensureIsValid() {
+        val keyStorageStatus =
+            withError({ error: GetStatusListTokenStatus.Error ->
+                "Unable to verify Key Storage Status: ${error.value.message}"
+            }) {
+                getStatusListTokenStatus(status.statusList, VerificationContext.WalletOrKeyStorageStatus)
+            }
+        ensure(StatusListTokenStatus.VALID == keyStorageStatus) {
+            "Key Storage Status is not valid"
+        }
     }
 }
 

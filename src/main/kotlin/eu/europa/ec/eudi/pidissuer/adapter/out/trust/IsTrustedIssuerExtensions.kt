@@ -18,8 +18,9 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.trust
 import arrow.core.NonEmptyList
 import arrow.core.serialization.NonEmptyListSerializer
 import com.eygraber.uri.Url
-import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.trust.TrustResult
+import eu.europa.ec.eudi.pidissuer.port.out.trust.VerificationContext
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
@@ -36,12 +37,12 @@ import java.security.cert.CertificateFactory
 import java.security.cert.TrustAnchor
 import java.security.cert.X509Certificate
 
-fun IsTrustedKeyAttestationIssuer.Companion.usingTrustValidatorService(
+fun IsTrustedIssuer.Companion.usingTrustValidatorService(
     webClient: WebClient,
     service: Url,
-): IsTrustedKeyAttestationIssuer =
-    IsTrustedKeyAttestationIssuer { x5c ->
-        val body = TrustQueryRequest(x5c, "WalletUnitAttestation")
+): IsTrustedIssuer =
+    IsTrustedIssuer { x5c, verificationContext ->
+        val body = TrustQueryRequest(x5c, verificationContext)
         val configClient =
             webClient.post().apply {
                 uri(service.toString())
@@ -61,8 +62,8 @@ fun IsTrustedKeyAttestationIssuer.Companion.usingTrustValidatorService(
         }
     }
 
-val IsTrustedKeyAttestationIssuer.Companion.Ignored: IsTrustedKeyAttestationIssuer get() =
-    IsTrustedKeyAttestationIssuer { chain ->
+val IsTrustedIssuer.Companion.Ignored: IsTrustedIssuer get() =
+    IsTrustedIssuer { chain, _ ->
         TrustResult.IsTrusted(TrustAnchor(chain.last(), null))
     }
 
@@ -70,7 +71,7 @@ val IsTrustedKeyAttestationIssuer.Companion.Ignored: IsTrustedKeyAttestationIssu
 private data class TrustQueryRequest(
     @Serializable(with = X509CertificateChainSerializer::class)
     val chain: NonEmptyList<X509Certificate>,
-    val verificationContext: String,
+    val verificationContext: VerificationContext,
 )
 
 private object X509CertificateSerializer : KSerializer<X509Certificate> {

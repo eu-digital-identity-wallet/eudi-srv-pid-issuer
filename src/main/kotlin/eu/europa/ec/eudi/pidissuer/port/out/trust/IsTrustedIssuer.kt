@@ -27,8 +27,16 @@ sealed interface TrustResult {
     object IsUntrusted : TrustResult
 }
 
-fun interface IsTrustedKeyAttestationIssuer {
-    suspend operator fun invoke(x5c: NonEmptyList<X509Certificate>): TrustResult
+enum class VerificationContext {
+    WalletProviderAttestation,
+    WalletOrKeyStorageStatus,
+}
+
+fun interface IsTrustedIssuer {
+    suspend operator fun invoke(
+        x5c: NonEmptyList<X509Certificate>,
+        verificationContext: VerificationContext,
+    ): TrustResult
 
     companion object
 }

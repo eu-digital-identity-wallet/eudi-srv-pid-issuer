@@ -38,6 +38,10 @@ import eu.europa.ec.eudi.pidissuer.port.input.*
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.port.out.nonce.GenerateNonce
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
+import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
+import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
+import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.trust.TrustResult
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Month
@@ -47,11 +51,8 @@ import kotlinx.serialization.json.Json
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.ApplicationContext
-import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Primary
-import org.springframework.context.support.GenericApplicationContext
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -62,10 +63,10 @@ import org.springframework.security.oauth2.core.OAuth2AccessToken.TokenType
 import org.springframework.security.oauth2.core.OAuth2TokenIntrospectionClaimNames
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockAuthentication
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.springSecurity
-import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.reactive.server.WebTestClient
 import org.springframework.test.web.reactive.server.expectBody
+import java.security.cert.TrustAnchor
 import java.util.*
 import kotlin.test.*
 import kotlin.time.Clock
@@ -156,6 +157,17 @@ class BaseWalletApiTest {
                     statusList = Uri.parse("https://example.com/status-list"),
                     index = 0u,
                 )
+            }
+
+        @Bean
+        @Primary
+        fun getStatusListTokenStatus(): GetStatusListTokenStatus = GetStatusListTokenStatus { _, _ -> StatusListTokenStatus.VALID }
+
+        @Bean
+        @Primary
+        fun isTrustedIssuer(): IsTrustedIssuer =
+            IsTrustedIssuer { chain, _ ->
+                TrustResult.IsTrusted(TrustAnchor(chain.last(), null))
             }
     }
 }
