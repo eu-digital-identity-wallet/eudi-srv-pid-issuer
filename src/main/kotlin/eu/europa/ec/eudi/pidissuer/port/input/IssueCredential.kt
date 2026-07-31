@@ -34,6 +34,8 @@ import eu.europa.ec.eudi.pidissuer.port.out.jose.RequestEncryptionError
 import eu.europa.ec.eudi.pidissuer.port.out.jose.RequestEncryptionError.*
 import eu.europa.ec.eudi.pidissuer.port.out.jose.decryptCredentialRequest
 import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
+import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
+import eu.europa.ec.eudi.pidissuer.port.out.trust.VerificationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -523,3 +525,31 @@ private fun RequestEncryptionError.toVCI(): Pair<CredentialErrorTypeTo, String> 
             CredentialErrorTypeTo.INVALID_CREDENTIAL_REQUEST to description
         }
     }
+
+context(
+    _: Raise<InvalidClientStatusExpiration>,
+    metaData: CredentialIssuerMetaData,
+    clock: Clock,
+)
+private fun AuthorizationContext.checkClientStatusExpiration() {
+    val preferredClientStatusPeriod = metaData.preferredClientStatusPeriod.value
+    ensure((clientStatus.expiresAt - clock.now()) >= preferredClientStatusPeriod) {
+        InvalidClientStatusExpiration("Client Status expires before preferred client status period")
+    }
+}
+
+context(
+    _: Raise<InvalidClientStatus>,
+    getStatusListTokenStatus: GetStatusListTokenStatus,
+)
+private suspend fun AuthorizationContext.checkClientStatusIsValid() {
+    val status =
+        withError({ error: GetStatusListTokenStatus.Error ->
+            InvalidClientStatus("Unable to verify Client Status", error.value)
+        }) {
+            getStatusListTokenStatus(clientStatus.status.statusList, VerificationContext.WalletOrKeyStorageStatus)
+        }
+    ensure(StatusListTokenStatus.VALID == status) {
+        InvalidClientStatus("Client Status is not valid")
+    }
+}

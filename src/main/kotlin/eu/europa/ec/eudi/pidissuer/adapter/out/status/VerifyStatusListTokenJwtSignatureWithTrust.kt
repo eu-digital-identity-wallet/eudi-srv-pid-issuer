@@ -15,11 +15,9 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.status
 
-import arrow.core.toNonEmptyListOrNull
+import arrow.core.toNonEmptyListOrThrow
 import com.nimbusds.jose.crypto.factories.DefaultJWSVerifierFactory
-import com.nimbusds.jose.jwk.AsymmetricJWK
-import com.nimbusds.jose.jwk.JWK
-import com.nimbusds.jose.util.X509CertChainUtils
+import com.nimbusds.jose.util.X509CertUtils
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedIssuer
 import eu.europa.ec.eudi.pidissuer.port.out.trust.TrustResult
@@ -39,27 +37,22 @@ fun VerifyStatusListTokenJwtSignature.Companion.usingTrust(
         runCatching {
             val signedJwt = SignedJWT.parse(statusListToken)
 
-            val chain =
-                X509CertChainUtils.parse(
-                    requireNotNull(signedJwt.header.x509CertChain) {
-                        "Status list token JWT is missing the x5c header"
-                    },
-                )
-            val x5c =
-                requireNotNull(chain.toNonEmptyListOrNull()) {
-                    "Status list token JWT x5c chain is empty"
-                }
+            val x5c = signedJwt.header.x509CertChain
+            require(!x5c.isNullOrEmpty()) { "Status list token must contain a valid certificate chain" }
 
-            // Verify the JWS signature using the leaf certificate's public key
-            val jwk = JWK.parse(x5c.head)
-            val publicKey = (jwk as AsymmetricJWK).toPublicKey()
+            val chain =
+                x5c.map { certificate ->
+                    X509CertUtils.parseWithException(certificate.decode())
+                }
+            val publicKey = chain.first().publicKey
+
             val verifier = DefaultJWSVerifierFactory().createJWSVerifier(signedJwt.header, publicKey)
             check(signedJwt.verify(verifier)) {
                 "Status list token JWT signature is invalid"
             }
 
             // Check that the issuer is trusted
-            val trustResult = isTrustedIssuer(x5c, verificationContext)
+            val trustResult = isTrustedIssuer(chain.toNonEmptyListOrThrow(), verificationContext)
             check(trustResult is TrustResult.IsTrusted) {
                 "Status list token issuer is not trusted"
             }

@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.port.out.trust
 
 import arrow.core.NonEmptyList
+import kotlinx.serialization.Serializable
 import java.security.cert.TrustAnchor
 import java.security.cert.X509Certificate
 
@@ -27,6 +28,7 @@ sealed interface TrustResult {
     object IsUntrusted : TrustResult
 }
 
+@Serializable
 enum class VerificationContext {
     WalletProviderAttestation,
     WalletOrKeyStorageStatus,

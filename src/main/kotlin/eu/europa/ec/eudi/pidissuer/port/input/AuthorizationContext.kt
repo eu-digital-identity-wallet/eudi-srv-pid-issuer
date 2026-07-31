@@ -16,19 +16,9 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.NonEmptySet
-import arrow.core.raise.Raise
-import arrow.core.raise.context.ensure
-import arrow.core.raise.context.withError
 import com.nimbusds.oauth2.sdk.token.DPoPAccessToken
 import eu.europa.ec.eudi.pidissuer.domain.ClientStatus
-import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.Scope
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidClientStatus
-import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError.InvalidClientStatusExpiration
-import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
-import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
-import eu.europa.ec.eudi.pidissuer.port.out.trust.VerificationContext
-import kotlin.time.Clock
 
 typealias Username = String
 typealias ClientId = String
@@ -40,31 +30,3 @@ data class AuthorizationContext(
     val clientId: ClientId? = null,
     val clientStatus: ClientStatus,
 )
-
-context(
-    _: Raise<InvalidClientStatusExpiration>,
-    metaData: CredentialIssuerMetaData,
-    clock: Clock,
-)
-fun AuthorizationContext.checkClientStatusExpiration() {
-    val preferredClientStatusPeriod = metaData.preferredClientStatusPeriod.value
-    ensure((clientStatus.expiresAt - clock.now()) >= preferredClientStatusPeriod) {
-        InvalidClientStatusExpiration("Client Status expires before preferred client status period")
-    }
-}
-
-context(
-    _: Raise<InvalidClientStatus>,
-    getStatusListTokenStatus: GetStatusListTokenStatus,
-)
-suspend fun AuthorizationContext.checkClientStatusIsValid() {
-    val status =
-        withError({ error: GetStatusListTokenStatus.Error ->
-            InvalidClientStatus("Unable to verify Client Status", error.value)
-        }) {
-            getStatusListTokenStatus(clientStatus.status.statusList, VerificationContext.WalletOrKeyStorageStatus)
-        }
-    ensure(StatusListTokenStatus.VALID == status) {
-        InvalidClientStatus("Client Status is not valid")
-    }
-}
