@@ -105,6 +105,7 @@ internal class AppBeans :
                 httpClient,
                 clock = bean(),
                 allowedClockSkew = 5.seconds,
+                bean(),
             )
         }
         registerBean {
@@ -198,7 +199,13 @@ internal class AppBeans :
                     bean(),
                     env,
                     credentialIssuerId = issuerPublicUrl,
-                    validateProof = validateProof(issuerPublicUrl, bean(), bean()),
+                    validateProof =
+                        validateProof(
+                            issuerPublicUrl,
+                            bean(),
+                            bean(),
+                            bean(),
+                        ),
                     storeIssuedCredential = bean(),
                     allocateStatus = bean(),
                     generateNotificationId = bean(),
@@ -286,6 +293,7 @@ internal class AppBeans :
                 credentialIssuerMetadata = bean(),
                 encryptCredentialResponse = bean(),
                 clock = bean(),
+                getStatusListTokenStatus = bean(),
             )
         }
         registerBean {

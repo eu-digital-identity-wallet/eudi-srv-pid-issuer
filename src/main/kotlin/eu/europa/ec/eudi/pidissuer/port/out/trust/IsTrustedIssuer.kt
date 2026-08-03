@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.pidissuer.port.out.trust
 
 import arrow.core.NonEmptyList
+import kotlinx.serialization.Serializable
 import java.security.cert.TrustAnchor
 import java.security.cert.X509Certificate
 
@@ -27,8 +28,17 @@ sealed interface TrustResult {
     object IsUntrusted : TrustResult
 }
 
-fun interface IsTrustedKeyAttestationIssuer {
-    suspend operator fun invoke(x5c: NonEmptyList<X509Certificate>): TrustResult
+@Serializable
+enum class VerificationContext {
+    WalletProviderAttestation,
+    WalletOrKeyStorageStatus,
+}
+
+fun interface IsTrustedIssuer {
+    suspend operator fun invoke(
+        x5c: NonEmptyList<X509Certificate>,
+        verificationContext: VerificationContext,
+    ): TrustResult
 
     companion object
 }

@@ -26,6 +26,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.persistence.GetNonExpiredIssuedCrede
 import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.MarkStatusAsRevoked
 import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
+import eu.europa.ec.eudi.pidissuer.port.out.trust.VerificationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -107,8 +108,7 @@ class RevokeCredentialsWithRevokedStatus(
         statusListToken: StatusListToken,
     ): Boolean =
         effect {
-            val (uri, index) = statusListToken
-            val statusToken = getStatusListTokenStatus(uri, index)
+            val statusToken = getStatusListTokenStatus(statusListToken, VerificationContext.WalletOrKeyStorageStatus)
             statusToken == StatusListTokenStatus.INVALID
         }.fold(
             transform = { it },

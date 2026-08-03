@@ -18,9 +18,11 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.status
 import arrow.core.raise.Raise
 import arrow.core.raise.catch
 import arrow.core.raise.context.raise
-import com.eygraber.uri.Uri
+import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.out.status.GetStatusListTokenStatus
 import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
+import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.trust.VerificationContext
 import eu.europa.ec.eudi.statium.*
 import io.ktor.client.*
 import org.slf4j.LoggerFactory
@@ -33,49 +35,43 @@ private val logger = LoggerFactory.getLogger(GetStatusListTokenWithStatium::clas
  * Checks the status of a single entry in a Token Status List using the statium library.
  */
 class GetStatusListTokenWithStatium(
-    private val getStatus: GetStatus,
+    val httpClient: HttpClient,
+    val clock: Clock,
+    val allowedClockSkew: Duration,
+    val isTrustedIssuer: IsTrustedIssuer,
 ) : GetStatusListTokenStatus {
     context(_: Raise<GetStatusListTokenStatus.Error>)
     override suspend fun invoke(
-        uri: Uri,
-        index: UInt,
-    ): StatusListTokenStatus = catch({ getStatus.read(uri, index) }) { raise(GetStatusListTokenStatus.Error(it)) }
+        statusListToken: StatusListToken,
+        verificationContext: VerificationContext,
+    ): StatusListTokenStatus = catch({ read(statusListToken, verificationContext) }) { raise(GetStatusListTokenStatus.Error(it)) }
 
-    companion object {
-        val NotValidating: VerifyStatusListTokenJwtSignature = { _, _ ->
-            logger.warn("Not validating status list token signature!!!")
-            Result.success(Unit)
-        }
-
-        operator fun invoke(
-            httpClient: HttpClient,
-            clock: Clock,
-            verifyStatusListTokenSignature: VerifyStatusListTokenJwtSignature = NotValidating,
-            allowedClockSkew: Duration,
-        ): GetStatusListTokenWithStatium {
-            val getStatusListToken: GetStatusListToken =
-                GetStatusListToken.usingJwt(clock, httpClient, verifyStatusListTokenSignature)
-            val getStatus = GetStatus(getStatusListToken)
-            return GetStatusListTokenWithStatium(getStatus)
-        }
-
-        private suspend fun GetStatus.read(
-            uri: Uri,
-            index: UInt,
-        ): StatusListTokenStatus {
+    private suspend fun read(
+        statusListToken: StatusListToken,
+        verificationContext: VerificationContext,
+    ): StatusListTokenStatus {
+        val verifyStatusListTokenSignature =
+            VerifyStatusListTokenJwtSignature.usingTrust(
+                isTrustedIssuer,
+                verificationContext,
+            )
+        val getStatusListToken: GetStatusListToken =
+            GetStatusListToken.usingJwt(clock, httpClient, verifyStatusListTokenSignature, allowedClockSkew)
+        with(GetStatus(getStatusListToken)) {
             val statusReference =
                 StatusReference(
-                    index = StatusIndex(index.toInt()),
-                    uri = uri.toString(),
+                    index = StatusIndex(statusListToken.index.toInt()),
+                    uri = statusListToken.statusList.toString(),
                 )
+
             return statusReference.status(at = null).map { it.mapped() }.getOrThrow()
         }
-
-        private fun Status.mapped(): StatusListTokenStatus =
-            when (this) {
-                Status.Valid -> StatusListTokenStatus.VALID
-                Status.Invalid -> StatusListTokenStatus.INVALID
-                else -> error("Token status list contains an unsupported status $this")
-            }
     }
+
+    private fun Status.mapped(): StatusListTokenStatus =
+        when (this) {
+            Status.Valid -> StatusListTokenStatus.VALID
+            Status.Invalid -> StatusListTokenStatus.INVALID
+            else -> error("Token status list contains an unsupported status $this")
+        }
 }

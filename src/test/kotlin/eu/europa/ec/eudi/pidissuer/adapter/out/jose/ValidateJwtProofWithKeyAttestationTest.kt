@@ -37,7 +37,8 @@ import eu.europa.ec.eudi.pidissuer.adapter.out.proof.VerifyKeyAttestation
 import eu.europa.ec.eudi.pidissuer.adapter.out.trust.Ignored
 import eu.europa.ec.eudi.pidissuer.domain.*
 import eu.europa.ec.eudi.pidissuer.loadResource
-import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedKeyAttestationIssuer
+import eu.europa.ec.eudi.pidissuer.port.out.status.StatusListTokenStatus
+import eu.europa.ec.eudi.pidissuer.port.out.trust.IsTrustedIssuer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
@@ -54,8 +55,15 @@ internal class ValidateJwtProofWithKeyAttestationTest {
     private val issuer = CredentialIssuerId.unsafe("https://eudi.ec.europa.eu/issuer")
     private val clock = Clock.System
     private val verifyKeyAttestation =
-        VerifyKeyAttestation(isTrustedKeyAttestationIssuer = IsTrustedKeyAttestationIssuer.Ignored)
-    private val validateJwtProofWithKeyAttestation = ValidateJwtProofWithKeyAttestation(issuer, verifyKeyAttestation)
+        VerifyKeyAttestation(
+            isTrustedIssuer = IsTrustedIssuer.Ignored,
+            getStatusListTokenStatus = { _, _ -> StatusListTokenStatus.VALID },
+        )
+    private val validateJwtProofWithKeyAttestation =
+        ValidateJwtProofWithKeyAttestation(
+            issuer,
+            verifyKeyAttestation,
+        )
     private val credentialConfiguration =
         mdlV1Cfg(
             CoseAlgorithm(-7),
