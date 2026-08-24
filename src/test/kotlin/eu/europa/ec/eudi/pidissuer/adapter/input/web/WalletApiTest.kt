@@ -192,7 +192,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
         runTest {
             client()
                 .post()
-                .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(requestByCredentialConfigurationId())
                 .accept(MediaType.APPLICATION_JSON)
@@ -215,7 +215,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(
                         requestByCredentialConfigurationId(
@@ -247,7 +247,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
             client()
                 .mutateWith(mockAuthentication(authentication))
                 .post()
-                .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(
                     requestByCredentialConfigurationId(
@@ -275,7 +275,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(
                         requestByCredentialConfigurationId(
@@ -310,7 +310,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestByCredentialConfigurationId())
                     .accept(MediaType.APPLICATION_JSON)
@@ -344,7 +344,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(
                         requestByCredentialConfigurationId(
@@ -381,7 +381,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
@@ -422,7 +422,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
@@ -453,7 +453,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
@@ -486,7 +486,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
@@ -513,7 +513,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(
                         CredentialRequestTO(
@@ -544,7 +544,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsNotRequiredTest : BaseW
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.parseMediaType("application/jwt"))
                     .bodyValue(
                         requestByCredentialConfigurationId(proofs = proofs)
@@ -607,7 +607,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
@@ -648,7 +648,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
@@ -697,7 +697,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
@@ -735,7 +735,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
@@ -774,7 +774,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
@@ -812,7 +812,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
@@ -852,7 +852,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
@@ -889,7 +889,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
@@ -930,7 +930,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
@@ -963,7 +963,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestByCredentialConfigurationId(proofs = keyAttestationJwt.toAttestationProofs()))
                     .accept(MediaType.APPLICATION_JSON)
@@ -1009,7 +1009,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.parseMediaType("application/jwt"))
                     .bodyValue(
                         requestByCredentialConfigurationId(proofs = proofs)
@@ -1053,7 +1053,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
@@ -1093,7 +1093,7 @@ internal class WalletApiEncryptionOptionalKeyAttestationsRequiredTest : BaseWall
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestByCredentialConfigurationId(proofs = proofs))
                     .accept(MediaType.APPLICATION_JSON)
@@ -1150,7 +1150,7 @@ internal class WalletApiResponseEncryptionRequiredTest : BaseWalletApiTest() {
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.parseMediaType("application/jwt"))
                     .bodyValue(
                         requestByCredentialConfigurationId(proofs = proofs)
@@ -1193,7 +1193,7 @@ internal class WalletApiResponseEncryptionRequiredTest : BaseWalletApiTest() {
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.parseMediaType("application/jwt"))
                     .bodyValue(
                         requestByCredentialConfigurationId(
@@ -1251,7 +1251,7 @@ internal class WalletApiResponseEncryptionRequiredTest : BaseWalletApiTest() {
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.parseMediaType("application/jwt"))
                     .bodyValue(
                         requestByCredentialConfigurationId(
@@ -1305,7 +1305,7 @@ internal class WalletApiResponseEncryptionRequiredTest : BaseWalletApiTest() {
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(
                         requestByCredentialConfigurationId(
@@ -1345,7 +1345,7 @@ internal class WalletApiDeferredIssuanceResponseEncryptionOptionalTest : BaseWal
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(
                         requestDeferredByCredentialIdentifier(
@@ -1367,7 +1367,7 @@ internal class WalletApiDeferredIssuanceResponseEncryptionOptionalTest : BaseWal
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.DEFERRED_ENDPOINT)
+                    .uri { it.path(WalletApi.DEFERRED_ENDPOINT).build() }
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(DeferredCredentialRequestTO(transactionId))
                     .accept(MediaType.APPLICATION_JSON)
@@ -1406,7 +1406,7 @@ internal class WalletApiDeferredIssuanceResponseEncryptionRequiredTest : BaseWal
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.CREDENTIAL_ENDPOINT)
+                    .uri { it.path(WalletApi.CREDENTIAL_ENDPOINT).build() }
                     .contentType(MediaType.parseMediaType("application/jwt"))
                     .bodyValue(
                         requestDeferredByCredentialIdentifier(
@@ -1445,7 +1445,7 @@ internal class WalletApiDeferredIssuanceResponseEncryptionRequiredTest : BaseWal
                 client()
                     .mutateWith(mockAuthentication(authentication))
                     .post()
-                    .uri(WalletApi.DEFERRED_ENDPOINT)
+                    .uri { it.path(WalletApi.DEFERRED_ENDPOINT).build() }
                     .contentType(MediaType.parseMediaType("application/jwt"))
                     .bodyValue(
                         DeferredCredentialRequestTO(
