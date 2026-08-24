@@ -39,7 +39,7 @@ class IssuerUiTest {
         runTest {
             client()
                 .get()
-                .uri(IssuerUi.GENERATE_CREDENTIALS_OFFER)
+                .uri { it.path(IssuerUi.GENERATE_CREDENTIALS_OFFER).build() }
                 .exchange()
                 .expectStatus()
                 .isOk

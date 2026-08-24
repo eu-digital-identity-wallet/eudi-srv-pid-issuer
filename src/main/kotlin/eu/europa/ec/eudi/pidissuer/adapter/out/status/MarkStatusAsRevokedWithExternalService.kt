@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.pidissuer.adapter.out.status
 import arrow.core.raise.Raise
 import arrow.core.raise.context.ensure
 import com.eygraber.uri.Url
+import com.eygraber.uri.toURI
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.port.out.status.MarkStatusAsRevoked
 import org.springframework.util.LinkedMultiValueMap
@@ -34,7 +35,7 @@ internal class MarkStatusAsRevokedWithExternalService(
     override suspend fun invoke(status: StatusListToken) {
         webClient
             .post()
-            .uri(serviceUrl.toString())
+            .uri(serviceUrl.toURI())
             .headers { it.set(API_KEY_HEADER, apiKey) }
             .body(
                 BodyInserters.fromFormData(

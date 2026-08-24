@@ -43,7 +43,7 @@ internal class MetaDataApiTest {
         runTest {
             client()
                 .get()
-                .uri(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER)
+                .uri { it.path(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER).build() }
                 .accept(MediaType.ALL)
                 .exchange()
                 .expectNoContentSecurityPolicy()
@@ -59,7 +59,7 @@ internal class MetaDataApiTest {
         runTest {
             client()
                 .get()
-                .uri(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER)
+                .uri { it.path(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER).build() }
                 .exchange()
                 .expectNoContentSecurityPolicy()
                 .expectStatus()
@@ -74,7 +74,7 @@ internal class MetaDataApiTest {
         runTest {
             client()
                 .get()
-                .uri(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER)
+                .uri { it.path(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER).build() }
                 .accept(applicationJwt)
                 .exchange()
                 .expectNoContentSecurityPolicy()
@@ -90,7 +90,7 @@ internal class MetaDataApiTest {
         runTest {
             client()
                 .get()
-                .uri(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER)
+                .uri { it.path(MetaDataApi.WELL_KNOWN_OPENID_CREDENTIAL_ISSUER).build() }
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectNoContentSecurityPolicy()

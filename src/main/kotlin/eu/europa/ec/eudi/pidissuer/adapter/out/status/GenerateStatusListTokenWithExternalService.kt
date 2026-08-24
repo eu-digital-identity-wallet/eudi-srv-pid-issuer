@@ -20,6 +20,7 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import com.eygraber.uri.Uri
 import com.eygraber.uri.Url
+import com.eygraber.uri.toURI
 import eu.europa.ec.eudi.pidissuer.domain.StatusListToken
 import eu.europa.ec.eudi.pidissuer.domain.toZonedDateTime
 import eu.europa.ec.eudi.pidissuer.port.out.status.AllocateStatus
@@ -57,7 +58,7 @@ class GenerateStatusListTokenWithExternalService(
         val statusTokens =
             webClient
                 .post()
-                .uri(serviceUrl.toString())
+                .uri(serviceUrl.toURI())
                 .headers {
                     it.contentType = MediaType.APPLICATION_FORM_URLENCODED
                     it.accept = listOf(MediaType.APPLICATION_JSON)

@@ -19,6 +19,7 @@ import arrow.core.nonEmptyListOf
 import arrow.core.raise.Raise
 import arrow.core.raise.context.ensure
 import com.eygraber.uri.Url
+import com.eygraber.uri.toURI
 import com.nimbusds.oauth2.sdk.token.AccessToken
 import com.nimbusds.oauth2.sdk.util.JSONObjectUtils
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.OidcAssurancePlaceOfBirth
@@ -190,7 +191,7 @@ class GetPidDataFromKeyCloak(
         val users =
             webClient
                 .get()
-                .uri(url.toString())
+                .uri(url.toURI())
                 .accept(MediaType.APPLICATION_JSON)
                 .headers {
                     it[HttpHeaders.AUTHORIZATION] = accessToken.toAuthorizationHeader()
@@ -217,7 +218,7 @@ class GetPidDataFromKeyCloak(
         val response =
             webClient
                 .post()
-                .uri(tokenEndpoint.toString())
+                .uri(tokenEndpoint.toURI())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .accept(MediaType.APPLICATION_JSON)
                 .body(
