@@ -190,7 +190,7 @@ internal class AppBeans :
         //
 
         registerBean {
-            getPidDataFromKeyCloak(bean(), bean(), env, webClient = bean())
+            getPidDataFromKeyCloak(env, webClient = bean())
         }
         registerBean {
             val ctx =

@@ -28,12 +28,9 @@ import eu.europa.ec.eudi.pidissuer.port.input.AuthorizationContext
 import eu.europa.ec.eudi.pidissuer.port.input.IssueCredentialError
 import eu.europa.ec.eudi.pidissuer.port.input.Username
 import eu.europa.ec.eudi.pidissuer.port.out.attestation.GetAttestationAttributes
-import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonIgnoreUnknownKeys
@@ -45,9 +42,6 @@ import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
 import java.util.*
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.days
-import kotlin.time.Instant
 
 private val log = LoggerFactory.getLogger(GetPidDataFromKeyCloak::class.java)
 
@@ -78,8 +72,6 @@ data class AdministrationClient(
 class GetPidDataFromKeyCloak(
     private val issuerCountry: IsoCountry,
     private val issuingJurisdiction: IsoCountrySubdivision?,
-    private val clock: Clock,
-    private val timeZone: TimeZone,
     private val webClient: WebClient,
     private val keyCloak: Url,
     private val administrationClient: AdministrationClient,
@@ -106,21 +98,19 @@ class GetPidDataFromKeyCloak(
     private suspend fun userInfo(username: Username): UserInfo {
         fun UserRepresentation.address(): AddressData? {
             val street = attributes["street"]?.firstOrNull()
-            val houseNumber = attributes["address_house_number"]?.firstOrNull()
             val locality = attributes["locality"]?.firstOrNull()
             val region = attributes["region"]?.firstOrNull()
             val postalCode = attributes["postal_code"]?.firstOrNull()
             val country = attributes["country"]?.firstOrNull()
             val formatted = attributes["formatted"]?.firstOrNull()
 
-            return if (street != null || houseNumber != null ||
+            return if (street != null ||
                 locality != null || region != null ||
                 postalCode != null || country != null ||
                 formatted != null
             ) {
                 AddressData(
                     streetAddress = street,
-                    houseNumber = houseNumber,
                     locality = locality,
                     region = region,
                     postalCode = postalCode,
@@ -166,6 +156,8 @@ class GetPidDataFromKeyCloak(
             picture = null,
             nationality = user.attributes["nationality"]?.firstOrNull(),
             personalAdministrativeNumber = user.attributes["personal_administrative_number"]?.firstOrNull(),
+            administrativeValidityStartDate = user.attributes["administrative_validity_start_date"]?.firstOrNull(),
+            administrativeValidityEndDate = user.attributes["administrative_validity_end_date"]?.firstOrNull(),
         )
     }
 
@@ -240,18 +232,16 @@ class GetPidDataFromKeyCloak(
         }
     }
 
-    private fun genPidMetaData(): PidMetaData {
-        fun Instant.toLocalDate(): LocalDate = toLocalDateTime(timeZone).date
-        val issuanceDate = clock.now()
-        val expiryDate = issuanceDate + 100.days
+    private fun genPidMetaData(userInfo: UserInfo): PidMetaData {
+        val issuanceDate = userInfo.administrativeValidityStartDate?.let { LocalDate.parse(it) }
+        val expiryDate = userInfo.administrativeValidityEndDate?.let { LocalDate.parse(it) }
         return PidMetaData(
-            expiryDate = expiryDate.toLocalDate(),
+            expiryDate = expiryDate,
             issuingAuthority = IssuingAuthority.AdministrativeAuthority("${issuerCountry.value} Administrative authority"),
             issuingCountry = issuerCountry,
             documentNumber = DocumentNumber(UUID.randomUUID().toString()),
             issuingJurisdiction = issuingJurisdiction,
-            issuanceDate = issuanceDate.toLocalDate(),
-            trustAnchor = null,
+            issuanceDate = issuanceDate,
             attestationLegalCategory = null,
         )
     }
@@ -293,7 +283,6 @@ class GetPidDataFromKeyCloak(
                 residentCity = userInfo.address?.locality?.let { City(it) },
                 residentPostalCode = userInfo.address?.postalCode?.let { PostalCode(it) },
                 residentStreet = userInfo.address?.streetAddress?.let { Street(it) },
-                residentHouseNumber = userInfo.address?.houseNumber,
                 portrait = PortraitImage.JPEG(portrait),
                 familyNameBirth = userInfo.birthFamilyName?.let { FamilyName(it) },
                 givenNameBirth = userInfo.birthGivenName?.let { GivenName(it) },
@@ -306,7 +295,7 @@ class GetPidDataFromKeyCloak(
                     },
             )
 
-        val pidMetaData = genPidMetaData()
+        val pidMetaData = genPidMetaData(userInfo)
         return PidAttributes(pid, pidMetaData)
     }
 }
@@ -336,6 +325,8 @@ private data class UserInfo(
     val picture: String? = null,
     val nationality: String? = null,
     val personalAdministrativeNumber: String? = null,
+    val administrativeValidityStartDate: String? = null,
+    val administrativeValidityEndDate: String? = null,
 )
 
 private data class AddressData(
@@ -345,5 +336,4 @@ private data class AddressData(
     val postalCode: String? = null,
     val country: String? = null,
     val formatted: String? = null,
-    val houseNumber: String? = null,
 )

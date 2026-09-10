@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid
 
 import arrow.core.NonEmptyList
-import com.eygraber.uri.Uri
 import kotlinx.datetime.LocalDate
 import java.util.regex.Pattern
 
@@ -125,7 +124,6 @@ data class PlaceOfBirth(
  * @param residentPostalCode The postal code of the area where the PID User
  * currently resides.
  * @param residentStreet The street name where the PID User currently resides.
- * @param residentHouseNumber The house number where the PID User currently resides.
  * @param portrait Facial image of the PID user compliant with ISO 19794-5 or ISO 39794 specifications.
  * @param familyNameBirth First name(s), including middle name(s), of the PID User at the
  * time of birth.
@@ -149,7 +147,6 @@ data class Pid(
     val residentCity: City? = null,
     val residentPostalCode: PostalCode? = null,
     val residentStreet: Street? = null,
-    val residentHouseNumber: String? = null,
     val portrait: PortraitImage? = null,
     val familyNameBirth: FamilyName? = null,
     val givenNameBirth: GivenName? = null,
@@ -157,6 +154,8 @@ data class Pid(
     val emailAddress: EmailAddress? = null,
     val mobilePhoneNumber: PhoneNumber? = null,
     val personalAdministrativeNumber: AdministrativeNumber? = null,
+    val administrativeValidityStartDate: LocalDate? = null,
+    val administrativeValidityEndDate: LocalDate? = null,
 )
 
 /**
@@ -229,23 +228,21 @@ typealias AttestationLegalCategory = String
  * @param issuingJurisdiction Country subdivision code of the jurisdiction that issued the PID, as defined
  * in ISO 3166-2:2020, Clause 8. The first part of the code SHALL be the same as the value for issuing_country.
  * @param issuanceDate Date (and possibly time) when the PID was issued.
- * @param trustAnchor This attribute indicates at least the URL at which a machine-readable version of the trust
  * anchor to be used for verifying the PID can be found or looked up
  * @param attestationLegalCategory This attribute indicates that a PID has indeed been issued as a PID.
  */
 data class PidMetaData(
-    val expiryDate: LocalDate,
+    val expiryDate: LocalDate? = null,
     val issuingAuthority: IssuingAuthority,
     val issuingCountry: IsoCountry,
     val documentNumber: DocumentNumber? = null,
     val issuingJurisdiction: IsoCountrySubdivision? = null,
     val issuanceDate: LocalDate? = null,
-    val trustAnchor: Uri? = null,
     val attestationLegalCategory: AttestationLegalCategory? = null,
 ) {
     init {
-        issuanceDate?.let {
-            require(it < expiryDate) { "Issuance date should be before expiry date" }
+        if (expiryDate != null && issuanceDate != null) {
+            require(issuanceDate < expiryDate) { "Issuance date should be before expiry date" }
         }
 
         if (issuingAuthority is IssuingAuthority.MemberState) {

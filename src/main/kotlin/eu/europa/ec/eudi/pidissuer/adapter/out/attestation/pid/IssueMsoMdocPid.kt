@@ -137,7 +137,6 @@ private fun MDocBuilder.addItemsToSign(pid: Pid) {
     pid.residentCity?.let { addItemToSign(MsoMdocPidClaims.ResidenceCity, it.value.toDataElement()) }
     pid.residentPostalCode?.let { addItemToSign(MsoMdocPidClaims.ResidencePostalCode, it.value.toDataElement()) }
     pid.residentStreet?.let { addItemToSign(MsoMdocPidClaims.ResidenceStreet, it.value.toDataElement()) }
-    pid.residentHouseNumber?.let { addItemToSign(MsoMdocPidClaims.ResidenceHouseNumber, it.toDataElement()) }
     pid.portrait?.let {
         val value =
             when (it) {
@@ -160,7 +159,7 @@ private fun MDocBuilder.addItemsToSign(pid: Pid) {
 }
 
 private fun MDocBuilder.addItemsToSign(metaData: PidMetaData) {
-    addItemToSign(MsoMdocPidClaims.ExpiryDate, metaData.expiryDate.toDataElement())
+    metaData.expiryDate?.let { addItemToSign(MsoMdocPidClaims.ExpiryDate, it.toDataElement()) }
     when (val issuingAuthority = metaData.issuingAuthority) {
         is IssuingAuthority.MemberState -> {
             addItemToSign(MsoMdocPidClaims.IssuingAuthority, issuingAuthority.code.value.toDataElement())
