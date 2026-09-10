@@ -20,6 +20,8 @@ import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
+import com.eygraber.uri.Uri
+import com.eygraber.uri.Url
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestationAttributes
@@ -126,8 +128,20 @@ class IssueLearningCredential(
             validateProof: ValidateProof,
             generateNotificationId: GenerateNotificationId?,
             storeIssuedCredential: StoreIssuedCredential,
+            issuerPublicUrl: Url,
         ): IssueLearningCredential {
+            fun Uri.toUrl(): Url = Url.parse(toString())
+
             val credentialConfiguration = cfg(deviceBinding, credentialReusePolicy, validity, issuerSigningKey)
+
+            val x5u =
+                issuerPublicUrl
+                    .buildUpon()
+                    .appendPath("signing-keys")
+                    .appendPath(credentialConfiguration.type.value)
+                    .build()
+                    .toUrl()
+
             return IssueLearningCredential(
                 credentialConfiguration,
                 clock,
@@ -142,6 +156,7 @@ class IssueLearningCredential(
                     vct = credentialConfiguration.type,
                     generateJwtId = { Uuid.random().toHexDashString() },
                     build = { learningCredential(it) },
+                    x5u = x5u,
                 ),
             )
         }

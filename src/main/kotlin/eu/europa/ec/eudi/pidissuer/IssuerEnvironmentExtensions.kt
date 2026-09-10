@@ -461,6 +461,7 @@ internal object IssuerFactory {
     context(ctx: Ctx)
     fun pidInSdJwtVc(
         issuerSigningKey: IssuerSigningKey,
+        issuerPublicUrl: Url,
         getAttestationAttributes: GetAttestationAttributes<PidAttributes>,
     ): IssueSdJwtVcPid {
         val expiresIn = ctx.env.duration("issuer.pid.sd_jwt_vc.duration") ?: 31.days
@@ -493,12 +494,14 @@ internal object IssuerFactory {
             storeIssuedCredential = ctx.storeIssuedCredential,
             allocateStatus = ctx.allocateStatus,
             calculateNotUseBefore = notUseBefore?.let { duration -> { iat -> iat + duration } },
+            issuerPublicUrl = issuerPublicUrl,
         )
     }
 
     context(ctx: Ctx)
     fun learningCredentialInSdJwtVc(
         issuerSigningKey: IssuerSigningKey,
+        issuerPublicUrl: Url,
         getPidData: GetAttestationAttributes<PidAttributes>,
     ): IssueLearningCredential {
         val proofsSupportedSigningAlgorithms =
@@ -537,6 +540,7 @@ internal object IssuerFactory {
             validateProof = ctx.validateProof,
             generateNotificationId = ctx.generateNotificationId.takeIf { notificationsEnabled },
             storeIssuedCredential = ctx.storeIssuedCredential,
+            issuerPublicUrl = issuerPublicUrl,
         )
     }
 }

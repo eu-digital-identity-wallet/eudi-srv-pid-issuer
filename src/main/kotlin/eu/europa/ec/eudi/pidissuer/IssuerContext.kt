@@ -227,6 +227,10 @@ internal class AppBeans :
                             val issueSdJwtVcPid =
                                 IssuerFactory.pidInSdJwtVc(
                                     issuerSigningKey = getIssuerSigningKey("issuer.pid.sd_jwt_vc.signing-key"),
+                                    issuerPublicUrl =
+                                        Url.parse(
+                                            ctx.env.getRequiredProperty("issuer.public-url"),
+                                        ),
                                     getAttestationAttributes = bean(),
                                 )
                             add(issueSdJwtVcPid)
@@ -242,6 +246,10 @@ internal class AppBeans :
                             val issueLearningCredential =
                                 IssuerFactory.learningCredentialInSdJwtVc(
                                     issuerSigningKey = getIssuerSigningKey("issuer.learningCredential.signing-key"),
+                                    issuerPublicUrl =
+                                        Url.parse(
+                                            ctx.env.getRequiredProperty("issuer.public-url"),
+                                        ),
                                     getPidData = bean(),
                                 )
                             add(issueLearningCredential)
@@ -315,6 +323,18 @@ internal class AppBeans :
                 dPoPConfigurationProperties = bean(),
             )
         }
+        registerBean {
+            GetSigningKeys(
+                signingKeys =
+                    bean<CredentialIssuerMetaData>()
+                        .attestationIssuers
+                        .map { it.configuration }
+                        .filterIsInstance<SdJwtVcCredentialConfiguration>()
+                        .associate { configuration ->
+                            configuration.type to configuration.publicKey.parsedX509CertChain.toNonEmptyListOrNull()
+                        },
+            )
+        }
 
         //
         // Routes
@@ -325,7 +345,7 @@ internal class AppBeans :
                     .typeMetadata
                     .associateBy { Vct(it.vct) }
                     .mapValues { it.value.resource }
-            val metaDataApi = MetaDataApi(bean(), bean(), typeMetadata, bean())
+            val metaDataApi = MetaDataApi(bean(), bean(), typeMetadata, bean(), bean())
             val walletApi = WalletApi(bean(), bean(), bean(), bean())
             val issuerUi = IssuerUi(bean(), bean(), bean())
             val issuerApi = IssuerApi(bean())
