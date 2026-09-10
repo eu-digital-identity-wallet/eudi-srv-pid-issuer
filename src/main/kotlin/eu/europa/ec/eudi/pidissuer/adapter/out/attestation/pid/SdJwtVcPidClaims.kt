@@ -86,7 +86,7 @@ internal object SdJwtVcPidClaims {
     val DateOfExpiry =
         ClaimDefinition(
             path = ClaimPath.claim("date_of_expiry"),
-            mandatory = true,
+            mandatory = false,
             display = mapOf(Locale.ENGLISH to "Expiry Date"),
         )
     val DateOfIssuance =

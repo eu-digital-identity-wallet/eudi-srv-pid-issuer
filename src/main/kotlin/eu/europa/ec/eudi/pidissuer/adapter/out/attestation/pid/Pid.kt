@@ -154,8 +154,6 @@ data class Pid(
     val emailAddress: EmailAddress? = null,
     val mobilePhoneNumber: PhoneNumber? = null,
     val personalAdministrativeNumber: AdministrativeNumber? = null,
-    val administrativeValidityStartDate: LocalDate? = null,
-    val administrativeValidityEndDate: LocalDate? = null,
 )
 
 /**
