@@ -152,7 +152,7 @@ class IssueSdJwtVcPid private constructor(
             storeIssuedCredential: StoreIssuedCredential,
             allocateStatus: AllocateStatus,
             calculateNotUseBefore: TimeDependant<Instant>?,
-            x5u: (SdJwtVcType) -> Url,
+            buildX5u: (SdJwtVcType) -> Url,
         ): IssueSdJwtVcPid {
             val publicKey = issuerSigningKey.key.toPublicJWK()
             val configuration =
@@ -173,7 +173,7 @@ class IssueSdJwtVcPid private constructor(
                     issuerSigningKey,
                     vct = configuration.type,
                     issuer = credentialIssuerId,
-                    x5u = x5u(configuration.type),
+                    x5u = buildX5u(configuration.type),
                     build = { pid(it) },
                 ),
                 validateProof,

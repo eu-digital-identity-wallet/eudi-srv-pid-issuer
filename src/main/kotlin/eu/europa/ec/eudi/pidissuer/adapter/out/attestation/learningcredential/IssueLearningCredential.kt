@@ -40,7 +40,6 @@ import eu.europa.ec.eudi.pidissuer.port.out.proof.ValidateProof
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import eu.europa.ec.eudi.sdjwt.RFC7519
 import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObjectBuilder
-import eu.europa.ec.eudi.sdjwt.vc.Vct
 import kotlinx.coroutines.Dispatchers
 import org.slf4j.LoggerFactory
 import java.time.ZoneOffset
@@ -128,7 +127,7 @@ class IssueLearningCredential(
             validateProof: ValidateProof,
             generateNotificationId: GenerateNotificationId?,
             storeIssuedCredential: StoreIssuedCredential,
-            x5u: (SdJwtVcType) -> Url,
+            buildX5u: (SdJwtVcType) -> Url,
         ): IssueLearningCredential {
             val credentialConfiguration = cfg(deviceBinding, credentialReusePolicy, validity, issuerSigningKey)
 
@@ -146,7 +145,7 @@ class IssueLearningCredential(
                     vct = credentialConfiguration.type,
                     generateJwtId = { Uuid.random().toHexDashString() },
                     build = { learningCredential(it) },
-                    x5u = x5u(credentialConfiguration.type),
+                    x5u = buildX5u(credentialConfiguration.type),
                 ),
             )
         }

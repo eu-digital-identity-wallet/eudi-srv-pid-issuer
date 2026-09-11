@@ -68,7 +68,7 @@ class MetaDataApi(
             GET(WELL_KNOWN_PROTECTED_RESOURCE_METADATA, accept(MediaType.APPLICATION_JSON)) {
                 handleGetProtectedResourceMetadata()
             }
-            GET(SDJWTVC_SIGNING_CERTIFICATES, accept(MediaType.TEXT_PLAIN), ::handleGetSigningCertificates)
+            GET(SDJWTVC_SIGNING_CERTIFICATES, accept(MediaType.ALL), ::handleGetSigningCertificates)
         }
 
     private suspend fun handleGetUnsignedCredentialIssuerMetaData(): ServerResponse =
