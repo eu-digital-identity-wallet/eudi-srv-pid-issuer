@@ -21,7 +21,6 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
-import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.X509CertUtils
 import com.nimbusds.jwt.SignedJWT

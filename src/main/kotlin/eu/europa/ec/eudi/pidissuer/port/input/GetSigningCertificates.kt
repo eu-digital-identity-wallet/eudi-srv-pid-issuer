@@ -16,9 +16,9 @@
 package eu.europa.ec.eudi.pidissuer.port.input
 
 import arrow.core.NonEmptyList
-import com.nimbusds.jose.util.X509CertChainUtils
+import arrow.core.toNonEmptyListOrNull
 import com.nimbusds.jose.util.X509CertUtils
-import com.nimbusds.oauth2.sdk.util.X509CertificateUtils
+import eu.europa.ec.eudi.pidissuer.adapter.out.x509.dropRootCA
 import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType
 import java.security.cert.X509Certificate
 
@@ -26,18 +26,14 @@ import java.security.cert.X509Certificate
  * Use case that returns all active signing keys, each identified by its vct and
  * represented by its full certificate chain (leaf + root) in PEM.
  */
-class GetSigningKeys(
+class GetSigningCertificates(
     private val signingKeys: Map<SdJwtVcType, NonEmptyList<X509Certificate>?>,
 ) {
-    operator fun invoke(identifier: String): String? {
-        val certificateChain =
-            signingKeys
-                .filter { it.key.value == identifier }
-                .values
-                .firstOrNull()
-
-        return certificateChain?.toPem()
-    }
+    operator fun invoke(sdJwtVcType: SdJwtVcType): String? =
+        signingKeys[sdJwtVcType]
+            ?.dropRootCA()
+            ?.toNonEmptyListOrNull()
+            ?.toPem()
 }
 
 private fun NonEmptyList<X509Certificate>.toPem(): String =

@@ -210,6 +210,17 @@ internal class AppBeans :
                     allocateStatus = bean(),
                     generateNotificationId = bean(),
                 )
+            val x5u: (SdJwtVcType) -> Url = { sdJwtVcType ->
+                Url.parse(
+                    Url
+                        .parse(ctx.env.getRequiredProperty("issuer.public-url"))
+                        .buildUpon()
+                        .appendPath("signing-certificates/sd-jwt-vc")
+                        .appendPath(sdJwtVcType.value)
+                        .build()
+                        .toString(),
+                )
+            }
             val attestationIssuers =
                 context(ctx) {
                     buildList {
@@ -227,10 +238,7 @@ internal class AppBeans :
                             val issueSdJwtVcPid =
                                 IssuerFactory.pidInSdJwtVc(
                                     issuerSigningKey = getIssuerSigningKey("issuer.pid.sd_jwt_vc.signing-key"),
-                                    issuerPublicUrl =
-                                        Url.parse(
-                                            ctx.env.getRequiredProperty("issuer.public-url"),
-                                        ),
+                                    x5u = x5u,
                                     getAttestationAttributes = bean(),
                                 )
                             add(issueSdJwtVcPid)
@@ -246,10 +254,7 @@ internal class AppBeans :
                             val issueLearningCredential =
                                 IssuerFactory.learningCredentialInSdJwtVc(
                                     issuerSigningKey = getIssuerSigningKey("issuer.learningCredential.signing-key"),
-                                    issuerPublicUrl =
-                                        Url.parse(
-                                            ctx.env.getRequiredProperty("issuer.public-url"),
-                                        ),
+                                    x5u = x5u,
                                     getPidData = bean(),
                                 )
                             add(issueLearningCredential)
@@ -324,7 +329,7 @@ internal class AppBeans :
             )
         }
         registerBean {
-            GetSigningKeys(
+            GetSigningCertificates(
                 signingKeys =
                     bean<CredentialIssuerMetaData>()
                         .attestationIssuers

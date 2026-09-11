@@ -20,7 +20,6 @@ import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
-import com.eygraber.uri.Uri
 import com.eygraber.uri.Url
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
 import eu.europa.ec.eudi.pidissuer.adapter.out.attestation.pid.PidAttributes
@@ -41,6 +40,7 @@ import eu.europa.ec.eudi.pidissuer.port.out.proof.ValidateProof
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import eu.europa.ec.eudi.sdjwt.RFC7519
 import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObjectBuilder
+import eu.europa.ec.eudi.sdjwt.vc.Vct
 import kotlinx.coroutines.Dispatchers
 import org.slf4j.LoggerFactory
 import java.time.ZoneOffset
@@ -128,19 +128,9 @@ class IssueLearningCredential(
             validateProof: ValidateProof,
             generateNotificationId: GenerateNotificationId?,
             storeIssuedCredential: StoreIssuedCredential,
-            issuerPublicUrl: Url,
+            x5u: (SdJwtVcType) -> Url,
         ): IssueLearningCredential {
-            fun Uri.toUrl(): Url = Url.parse(toString())
-
             val credentialConfiguration = cfg(deviceBinding, credentialReusePolicy, validity, issuerSigningKey)
-
-            val x5u =
-                issuerPublicUrl
-                    .buildUpon()
-                    .appendPath("signing-keys")
-                    .appendPath(credentialConfiguration.type.value)
-                    .build()
-                    .toUrl()
 
             return IssueLearningCredential(
                 credentialConfiguration,
@@ -156,7 +146,7 @@ class IssueLearningCredential(
                     vct = credentialConfiguration.type,
                     generateJwtId = { Uuid.random().toHexDashString() },
                     build = { learningCredential(it) },
-                    x5u = x5u,
+                    x5u = x5u(credentialConfiguration.type),
                 ),
             )
         }
