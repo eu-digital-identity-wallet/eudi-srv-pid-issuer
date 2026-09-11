@@ -225,7 +225,6 @@ fun SdJwtObjectBuilder.pid(attributes: PidAttributes) {
     pid.oidcAddressClaim()?.let { address ->
         sdObjClaim(SdJwtVcPidClaims.Address.attribute.name) {
             address.formatted?.let { sdClaim(SdJwtVcPidClaims.Address.Formatted.name, it) }
-            address.houseNumber?.let { sdClaim(SdJwtVcPidClaims.Address.HouseNumber.name, it) }
             address.streetAddress?.let { sdClaim(SdJwtVcPidClaims.Address.Street.name, it) }
             address.locality?.let { sdClaim(SdJwtVcPidClaims.Address.Locality.name, it) }
             address.region?.let { sdClaim(SdJwtVcPidClaims.Address.Region.name, it) }
@@ -254,7 +253,7 @@ fun SdJwtObjectBuilder.pid(attributes: PidAttributes) {
     pid.emailAddress?.let { sdClaim(SdJwtVcPidClaims.Email.name, it) }
     pid.mobilePhoneNumber?.let { sdClaim(SdJwtVcPidClaims.PhoneNumber.name, it.value) }
 
-    sdClaim(SdJwtVcPidClaims.DateOfExpiry.name, pidMetaData.expiryDate.toString())
+    pidMetaData.expiryDate?.let { sdClaim(SdJwtVcPidClaims.DateOfExpiry.name, it.toString()) }
     sdClaim(SdJwtVcPidClaims.IssuingAuthority.name, pidMetaData.issuingAuthority.valueAsString())
     sdClaim(SdJwtVcPidClaims.IssuingCountry.name, pidMetaData.issuingCountry.value)
     pidMetaData.documentNumber?.let { sdClaim(SdJwtVcPidClaims.DocumentNumber.name, it.value) }
@@ -265,7 +264,7 @@ fun SdJwtObjectBuilder.pid(attributes: PidAttributes) {
 
 private fun Pid.oidcAddressClaim(): OidcAddressClaim? =
     if (
-        residentHouseNumber != null || residentStreet != null || residentPostalCode != null ||
+        residentStreet != null || residentPostalCode != null ||
         residentCity != null || residentState != null || residentCountry != null ||
         residentAddress != null
     ) {
@@ -276,7 +275,6 @@ private fun Pid.oidcAddressClaim(): OidcAddressClaim? =
             locality = residentCity?.value,
             postalCode = residentPostalCode?.value,
             streetAddress = residentStreet?.value,
-            houseNumber = residentHouseNumber,
         )
     } else {
         null

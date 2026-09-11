@@ -82,7 +82,7 @@ internal object MsoMdocPidClaims {
         ClaimDefinition(
             nameSpace,
             "expiry_date",
-            mandatory = true,
+            mandatory = false,
             display = mapOf(ENGLISH to "Expiry Date"),
         )
     val IssuingAuthority =
@@ -141,13 +141,6 @@ internal object MsoMdocPidClaims {
             mandatory = false,
             display = mapOf(ENGLISH to "Resident Street"),
         )
-    val ResidenceHouseNumber =
-        ClaimDefinition(
-            nameSpace,
-            "resident_house_number",
-            mandatory = false,
-            display = mapOf(ENGLISH to "Resident House Number"),
-        )
     val DocumentNumber =
         ClaimDefinition(
             nameSpace,
@@ -197,16 +190,6 @@ internal object MsoMdocPidClaims {
             mandatory = false,
             display = mapOf(ENGLISH to "Mobile Phone Number"),
         )
-    val TrustAnchor =
-        ClaimDefinition(
-            nameSpace,
-            "trust_anchor",
-            mandatory = false,
-            display =
-                mapOf(
-                    ENGLISH to "Trust Anchor",
-                ),
-        )
     val AttestationLegalCategory =
         ClaimDefinition(
             nameSpace,
@@ -231,7 +214,6 @@ internal object MsoMdocPidClaims {
             ResidenceCity,
             ResidencePostalCode,
             ResidenceStreet,
-            ResidenceHouseNumber,
             PersonalAdministrativeNumber,
             Portrait,
             FamilyNameBirth,
@@ -245,7 +227,6 @@ internal object MsoMdocPidClaims {
             DocumentNumber,
             IssuingJurisdiction,
             IssuanceDate,
-            TrustAnchor,
             AttestationLegalCategory,
         )
 }

@@ -196,20 +196,6 @@
     {
       "path": [
         "address",
-        "house_number"
-      ],
-      "display": [
-        {
-          "locale": "en",
-          "label": "House Number"
-        }
-      ],
-      "mandatory": false,
-      "sd": "always"
-    },
-    {
-      "path": [
-        "address",
         "street_address"
       ],
       "display": [
@@ -392,7 +378,7 @@
           "label": "Expiry Date"
         }
       ],
-      "mandatory": true,
+      "mandatory": false,
       "sd": "always"
     },
     {
@@ -455,19 +441,6 @@
         {
           "locale": "en",
           "label": "Issuance Date"
-        }
-      ],
-      "mandatory": false,
-      "sd": "always"
-    },
-    {
-      "path": [
-        "trust_anchor"
-      ],
-      "display": [
-        {
-          "locale": "en",
-          "label": "Trust Anchor"
         }
       ],
       "mandatory": false,

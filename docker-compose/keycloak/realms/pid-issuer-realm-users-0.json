@@ -22,10 +22,7 @@
           "1955-04-12"
         ],
         "street": [
-          "Trauner"
-        ],
-        "address_house_number": [
-          "101"
+          "101 Trauner"
         ],
         "locality": [
           "Gemeinde Biberbach"
@@ -56,6 +53,12 @@
         ],
         "birth_given_name": [
           "Tyler"
+        ],
+        "administrative_validity_start_date": [
+          "2024-05-21"
+        ],
+        "administrative_validity_end_date": [
+          "2034-05-20"
         ]
       },
       "credentials": [

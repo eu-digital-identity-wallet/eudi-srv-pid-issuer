@@ -86,7 +86,7 @@ internal object SdJwtVcPidClaims {
     val DateOfExpiry =
         ClaimDefinition(
             path = ClaimPath.claim("date_of_expiry"),
-            mandatory = true,
+            mandatory = false,
             display = mapOf(Locale.ENGLISH to "Expiry Date"),
         )
     val DateOfIssuance =
@@ -94,15 +94,6 @@ internal object SdJwtVcPidClaims {
             path = ClaimPath.claim("date_of_issuance"),
             mandatory = false,
             display = mapOf(Locale.ENGLISH to "Issuance Date"),
-        )
-    val TrustAnchor =
-        ClaimDefinition(
-            path = ClaimPath.claim("trust_anchor"),
-            mandatory = false,
-            display =
-                mapOf(
-                    Locale.ENGLISH to "Trust Anchor",
-                ),
         )
     val AttestationLegalCategory =
         ClaimDefinition(
@@ -135,7 +126,6 @@ internal object SdJwtVcPidClaims {
             DocumentNumber,
             IssuingJurisdiction,
             DateOfIssuance,
-            TrustAnchor,
             AttestationLegalCategory,
         )
 }

@@ -542,8 +542,6 @@ internal object IssuerFactory {
 }
 
 internal fun getPidDataFromKeyCloak(
-    clock: Clock,
-    timeZone: TimeZone,
     env: Environment,
     webClient: WebClient,
 ): GetAttestationAttributes<PidAttributes> {
@@ -560,8 +558,6 @@ internal fun getPidDataFromKeyCloak(
     return GetPidDataFromKeyCloak(
         issuerCountry = env.getRequiredProperty("issuer.pid.issuingCountry").let(::IsoCountry),
         issuingJurisdiction = env.getProperty("issuer.pid.issuingJurisdiction"),
-        clock = clock,
-        timeZone = timeZone,
         webClient = webClient,
         keyCloak = keycloakProperties.serverUrl,
         administrationClient =
