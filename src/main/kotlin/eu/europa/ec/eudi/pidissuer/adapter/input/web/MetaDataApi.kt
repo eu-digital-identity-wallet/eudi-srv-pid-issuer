@@ -19,8 +19,10 @@ import com.nimbusds.jose.jwk.JWKSet
 import eu.europa.ec.eudi.pidissuer.domain.CredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.domain.MsoMdocCredentialConfiguration
 import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcCredentialConfiguration
+import eu.europa.ec.eudi.pidissuer.domain.SdJwtVcType
 import eu.europa.ec.eudi.pidissuer.port.input.GetCredentialIssuerMetaData
 import eu.europa.ec.eudi.pidissuer.port.input.GetProtectedResourceMetadata
+import eu.europa.ec.eudi.pidissuer.port.input.GetSigningCertificates
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
 import eu.europa.ec.eudi.sdjwt.vc.Vct
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +42,7 @@ class MetaDataApi(
     private val credentialIssuerMetaData: CredentialIssuerMetaData,
     private val typeMetadata: Map<Vct, Resource>,
     private val getProtectedResourceMetadata: GetProtectedResourceMetadata,
+    private val getSigningCertificates: GetSigningCertificates,
 ) {
     val route =
         coRouter {
@@ -65,6 +68,7 @@ class MetaDataApi(
             GET(WELL_KNOWN_PROTECTED_RESOURCE_METADATA, accept(MediaType.APPLICATION_JSON)) {
                 handleGetProtectedResourceMetadata()
             }
+            GET(SDJWTVC_SIGNING_CERTIFICATES, accept(MediaType.ALL), ::handleGetSigningCertificates)
         }
 
     private suspend fun handleGetUnsignedCredentialIssuerMetaData(): ServerResponse =
@@ -120,12 +124,25 @@ class MetaDataApi(
             .json()
             .bodyValueAndAwait(getProtectedResourceMetadata.unsigned())
 
+    private suspend fun handleGetSigningCertificates(request: ServerRequest): ServerResponse {
+        fun String.toSdJwtVcType(): SdJwtVcType = SdJwtVcType(this)
+
+        val sdJwtVcType = request.pathVariable("vct").toSdJwtVcType()
+        return getSigningCertificates(sdJwtVcType)?.let { certChain ->
+            ServerResponse
+                .ok()
+                .contentType(MediaType.TEXT_PLAIN)
+                .bodyValueAndAwait(certChain)
+        } ?: ServerResponse.notFound().buildAndAwait()
+    }
+
     companion object {
         const val WELL_KNOWN_OPENID_CREDENTIAL_ISSUER = "/.well-known/openid-credential-issuer"
         const val WELL_KNOWN_JWT_VC_ISSUER = "/.well-known/jwt-vc-issuer"
         const val PUBLIC_KEYS = "/public_keys.jwks"
         const val TYPE_METADATA = "/type-metadata/{vct}"
         const val WELL_KNOWN_PROTECTED_RESOURCE_METADATA = "/.well-known/oauth-protected-resource"
+        const val SDJWTVC_SIGNING_CERTIFICATES = "/signing-certificates/sd-jwt-vc/{vct}"
     }
 }
 

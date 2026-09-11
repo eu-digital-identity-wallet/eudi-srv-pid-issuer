@@ -20,6 +20,7 @@ import arrow.core.nonEmptySetOf
 import arrow.core.raise.Raise
 import arrow.core.toNonEmptyListOrNull
 import arrow.fx.coroutines.parMap
+import com.eygraber.uri.Url
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
@@ -151,6 +152,7 @@ class IssueSdJwtVcPid private constructor(
             storeIssuedCredential: StoreIssuedCredential,
             allocateStatus: AllocateStatus,
             calculateNotUseBefore: TimeDependant<Instant>?,
+            buildX5u: (SdJwtVcType) -> Url,
         ): IssueSdJwtVcPid {
             val publicKey = issuerSigningKey.key.toPublicJWK()
             val configuration =
@@ -171,6 +173,7 @@ class IssueSdJwtVcPid private constructor(
                     issuerSigningKey,
                     vct = configuration.type,
                     issuer = credentialIssuerId,
+                    x5u = buildX5u(configuration.type),
                     build = { pid(it) },
                 ),
                 validateProof,

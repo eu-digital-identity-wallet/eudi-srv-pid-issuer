@@ -123,6 +123,7 @@ fun configureApiSecurity(
             authorize(MetaDataApi.PUBLIC_KEYS, permitAll)
             authorize(MetaDataApi.TYPE_METADATA, permitAll)
             authorize(MetaDataApi.WELL_KNOWN_PROTECTED_RESOURCE_METADATA, permitAll)
+            authorize(MetaDataApi.SDJWTVC_SIGNING_CERTIFICATES, permitAll)
             authorize(IssuerApi.CREATE_CREDENTIALS_OFFER, permitAll)
             authorize(anyExchange, denyAll)
         }

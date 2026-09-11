@@ -15,11 +15,16 @@
  */
 package eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc
 
+import com.eygraber.uri.Url
+import com.eygraber.uri.toURI
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.util.Base64
+import com.nimbusds.jose.util.Base64URL
+import com.nimbusds.jose.util.X509CertUtils
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.pidissuer.adapter.out.IssuerSigningKey
+import eu.europa.ec.eudi.pidissuer.adapter.out.certificate
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.AttestationAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.EncodeAttestationAttributes
 import eu.europa.ec.eudi.pidissuer.adapter.out.format.sdjwtvc.EncodeAttributesInSdJwtVcLogging.logDebug
@@ -37,6 +42,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
+import java.net.URI
 
 enum class SdJwtVcSerialization {
     Compact,
@@ -49,6 +55,7 @@ fun <Attr> encodeAttestationAttributesInSdJwtVc(
     sdJwtVcSerialization: SdJwtVcSerialization = SdJwtVcSerialization.Compact,
     digestsHashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
     issuerSigningKey: IssuerSigningKey,
+    x5u: Url,
     vct: SdJwtVcType,
     issuer: CredentialIssuerId? = null,
     generateJwtId: GenerateJwtId? = null,
@@ -58,6 +65,7 @@ fun <Attr> encodeAttestationAttributesInSdJwtVc(
         digestsHashAlgorithm,
         sdJwtVcSerialization,
         issuerSigningKey,
+        x5u,
         vct,
         issuer,
         generateJwtId,
@@ -68,6 +76,7 @@ private class EncodeAttestationAttributesInSdJwtVc<in Attr>(
     private val digestsHashAlgorithm: HashAlgorithm,
     private val sdJwtVcSerialization: SdJwtVcSerialization,
     private val issuerSigningKey: IssuerSigningKey,
+    private val x5u: Url,
     private val vct: SdJwtVcType,
     private val issuer: CredentialIssuerId?,
     private val generateJwtId: GenerateJwtId?,
@@ -98,7 +107,7 @@ private class EncodeAttestationAttributesInSdJwtVc<in Attr>(
     }
 
     private suspend fun enode(spec: SdJwtObject): JsonElement =
-        context(issuerSigningKey, digestsHashAlgorithm, sdJwtVcSerialization, NimbusSdJwtOps) {
+        context(issuerSigningKey, digestsHashAlgorithm, sdJwtVcSerialization, NimbusSdJwtOps, x5u) {
             val issuer = sdJwtVcIssuer(digestsHashAlgorithm)
             val sdJwt = issuer.issue(spec).getOrThrow().also { it.logDebug() }
             when (sdJwtVcSerialization) {
@@ -108,7 +117,7 @@ private class EncodeAttestationAttributesInSdJwtVc<in Attr>(
         }
 }
 
-context(issuerSigningKey: IssuerSigningKey)
+context(issuerSigningKey: IssuerSigningKey, x5u: Url)
 private fun sdJwtVcIssuer(digestsHashAlgorithm: HashAlgorithm): SdJwtIssuer<SignedJWT> {
     val factory = SdJwtFactory(digestsHashAlgorithm)
     val signer = ECDSASigner(issuerSigningKey.key)
@@ -116,10 +125,15 @@ private fun sdJwtVcIssuer(digestsHashAlgorithm: HashAlgorithm): SdJwtIssuer<Sign
         issuerSigningKey.key.parsedX509CertChain
             .dropRootCA()
             .map { Base64.encode(it.encoded) }
+
+    val certificateThumbprint = X509CertUtils.computeSHA256Thumbprint(issuerSigningKey.certificate)
+
     return NimbusSdJwtOps.issuer(factory, signer, issuerSigningKey.signingAlgorithm) {
         type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
         keyID(issuerSigningKey.key.keyID)
         x509CertChain(x5c)
+        x509CertURL(x5u.toURI())
+        x509CertSHA256Thumbprint(certificateThumbprint)
     }
 }
 

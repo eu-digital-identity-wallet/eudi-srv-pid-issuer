@@ -16,9 +16,12 @@
 package eu.europa.ec.eudi.pidissuer
 
 import arrow.core.toNonEmptyListOrNull
+import arrow.core.toNonEmptyListOrThrow
 import arrow.core.toNonEmptySetOrThrow
 import com.eygraber.uri.Uri
 import com.eygraber.uri.Url
+import com.eygraber.uri.toURI
+import com.eygraber.uri.toUrl
 import eu.europa.ec.eudi.pidissuer.adapter.input.scheduler.CredentialRevocationJob
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.*
 import eu.europa.ec.eudi.pidissuer.adapter.input.web.csrf.CsrfTokenSubscriberWebFilter
@@ -210,6 +213,24 @@ internal class AppBeans :
                     allocateStatus = bean(),
                     generateNotificationId = bean(),
                 )
+            val buildX5u: (SdJwtVcType) -> Url = { sdJwtVcType ->
+                val pathSegments =
+                    MetaDataApi.SDJWTVC_SIGNING_CERTIFICATES
+                        .split("/")
+                        .filter { it.isNotEmpty() }
+                        .map { part ->
+                            if (part == "{vct}") sdJwtVcType.value else part
+                        }
+
+                Url
+                    .parse(ctx.env.getRequiredProperty("issuer.public-url"))
+                    .buildUpon()
+                    .apply {
+                        pathSegments.forEach(::appendPath)
+                    }.build()
+                    .toURI()
+                    .toUrl()
+            }
             val attestationIssuers =
                 context(ctx) {
                     buildList {
@@ -227,6 +248,7 @@ internal class AppBeans :
                             val issueSdJwtVcPid =
                                 IssuerFactory.pidInSdJwtVc(
                                     issuerSigningKey = getIssuerSigningKey("issuer.pid.sd_jwt_vc.signing-key"),
+                                    buildX5u = buildX5u,
                                     getAttestationAttributes = bean(),
                                 )
                             add(issueSdJwtVcPid)
@@ -242,6 +264,7 @@ internal class AppBeans :
                             val issueLearningCredential =
                                 IssuerFactory.learningCredentialInSdJwtVc(
                                     issuerSigningKey = getIssuerSigningKey("issuer.learningCredential.signing-key"),
+                                    buildX5u = buildX5u,
                                     getPidData = bean(),
                                 )
                             add(issueLearningCredential)
@@ -315,6 +338,18 @@ internal class AppBeans :
                 dPoPConfigurationProperties = bean(),
             )
         }
+        registerBean {
+            GetSigningCertificates(
+                signingKeys =
+                    bean<CredentialIssuerMetaData>()
+                        .attestationIssuers
+                        .map { it.configuration }
+                        .filterIsInstance<SdJwtVcCredentialConfiguration>()
+                        .associate { configuration ->
+                            configuration.type to configuration.publicKey.parsedX509CertChain.toNonEmptyListOrThrow()
+                        },
+            )
+        }
 
         //
         // Routes
@@ -325,7 +360,7 @@ internal class AppBeans :
                     .typeMetadata
                     .associateBy { Vct(it.vct) }
                     .mapValues { it.value.resource }
-            val metaDataApi = MetaDataApi(bean(), bean(), typeMetadata, bean())
+            val metaDataApi = MetaDataApi(bean(), bean(), typeMetadata, bean(), bean())
             val walletApi = WalletApi(bean(), bean(), bean(), bean())
             val issuerUi = IssuerUi(bean(), bean(), bean())
             val issuerApi = IssuerApi(bean())
