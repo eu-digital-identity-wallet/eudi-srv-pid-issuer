@@ -68,11 +68,7 @@ class MetaDataApi(
             GET(WELL_KNOWN_PROTECTED_RESOURCE_METADATA, accept(MediaType.APPLICATION_JSON)) {
                 handleGetProtectedResourceMetadata()
             }
-            GET(
-                SDJWTVC_SIGNING_CERTIFICATES,
-                accept(MediaType.parseMediaType("application/pem-certificate-chain")),
-                ::handleGetSigningCertificates,
-            )
+            GET(SDJWTVC_SIGNING_CERTIFICATES, accept(MediaType.TEXT_PLAIN), ::handleGetSigningCertificates)
         }
 
     private suspend fun handleGetUnsignedCredentialIssuerMetaData(): ServerResponse =
@@ -135,6 +131,7 @@ class MetaDataApi(
         return getSigningCertificates(sdJwtVcType)?.let { certChain ->
             ServerResponse
                 .ok()
+                .contentType(MediaType.TEXT_PLAIN)
                 .bodyValueAndAwait(certChain)
         } ?: ServerResponse.notFound().buildAndAwait()
     }
