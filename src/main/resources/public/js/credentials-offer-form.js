@@ -33,20 +33,14 @@
 
             if (1 === attestationCategories.size) {
                 generateButton.disabled = false;
-                generateButton.classList.remove("btn-danger");
-                generateButton.classList.add("btn-primary");
                 errorModal.hide();
 
             } else if (0 === attestationCategories.size) {
                 generateButton.disabled = true;
-                generateButton.classList.remove("btn-primary");
-                generateButton.classList.add("btn-danger");
                 errorModal.hide();
 
             } else {
                 generateButton.disabled = true;
-                generateButton.classList.remove("btn-primary");
-                generateButton.classList.add("btn-danger");
                 errorModal.show();
 
             }

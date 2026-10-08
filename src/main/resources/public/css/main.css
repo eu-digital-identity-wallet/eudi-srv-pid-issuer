@@ -64,6 +64,8 @@
     --app-navbar-shadow: 0 1px 6px rgba(0, 45, 140, 0.05);
     --app-accent: #0048d2;
     --app-accent-dark: #003aa8;
+    --app-btn-disabled-bg: #d7dce6;
+    --app-btn-disabled-color: #8a93a6;
 
     /* Bootstrap overrides (EU logo blue as primary) */
     --bs-primary: #0048d2;
@@ -87,8 +89,12 @@
     --app-border: rgba(255, 255, 255, 0.08);
     --app-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.45);
     --app-navbar-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+    --app-btn-disabled-bg: #2a303c;
+    --app-btn-disabled-color: #8a93a6;
 
     /* Re-assert tokens the :root overrides would otherwise force in dark mode */
+    /* Brighten text-primary icons in dark mode (matches the dark link color) */
+    --bs-primary-rgb: 122, 167, 255;
     --bs-primary-bg-subtle: #0a1e3f;
     --bs-link-color: #7aa7ff;
     --bs-link-color-rgb: 122, 167, 255;
@@ -189,6 +195,29 @@ main {
  */
 .btn {
     font-weight: 500;
+}
+
+.btn-primary:disabled,
+.btn-primary.disabled {
+    background-color: var(--app-btn-disabled-bg);
+    border-color: var(--app-btn-disabled-bg);
+    color: var(--app-btn-disabled-color);
+    opacity: 1; /* explicit "off" color replaces Bootstrap's .65 fade */
+}
+
+/* Dark mode: outline-primary buttons follow the link color */
+[data-bs-theme="dark"] .btn-outline-primary {
+    --bs-btn-color: var(--bs-link-color);
+    --bs-btn-border-color: var(--bs-link-color);
+    --bs-btn-hover-color: var(--app-bg);
+    --bs-btn-hover-bg: var(--bs-link-color);
+    --bs-btn-hover-border-color: var(--bs-link-color);
+    --bs-btn-focus-shadow-rgb: var(--bs-link-color-rgb);
+    --bs-btn-active-color: var(--app-bg);
+    --bs-btn-active-bg: var(--bs-link-color);
+    --bs-btn-active-border-color: var(--bs-link-color);
+    --bs-btn-disabled-color: var(--bs-link-color);
+    --bs-btn-disabled-border-color: var(--bs-link-color);
 }
 
 /*
