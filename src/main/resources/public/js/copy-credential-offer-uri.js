@@ -18,6 +18,15 @@
 
     function initCopyCredentialOfferUri() {
         const copyButton = document.getElementById("copyOfferUri");
+        const copyHint = document.getElementById("copyOfferUriHint");
+
+        if (!window.isSecureContext || !navigator.clipboard) {
+            return;
+        }
+
+        copyButton.classList.remove("d-none");
+        copyHint.classList.remove("d-none");
+
         const uriElement = document.querySelector(".credentials-offer-uri");
         const icon = copyButton.querySelector(".bi");
         const label = copyButton.querySelector(".copy-button-label");
@@ -26,22 +35,9 @@
         const copiedLabel = copyButton.dataset.copied;
         let timer = null;
 
-        function legacyCopy(text) {
-            const textarea = document.createElement("textarea");
-            textarea.value = text;
-            textarea.setAttribute("readonly", "");
-            textarea.style.position = "absolute";
-            textarea.style.left = "-9999px";
-            document.body.appendChild(textarea);
-            textarea.select();
-            let copied = false;
-            try {
-                copied = document.execCommand("copy");
-            } catch (e) {
-                copied = false;
-            }
-            document.body.removeChild(textarea);
-            return copied;
+        function hideCopyButton() {
+            copyButton.classList.add("d-none");
+            copyHint.classList.add("d-none");
         }
 
         function showCopiedFeedback() {
@@ -61,21 +57,13 @@
 
         async function copy() {
             const text = uriElement.textContent.trim();
-            let copied = false;
-            if (window.isSecureContext && navigator.clipboard) {
-                try {
-                    await navigator.clipboard.writeText(text);
-                    copied = true;
-                } catch (e) {
-                    copied = false;
-                }
+            try {
+                await navigator.clipboard.writeText(text);
+            } catch (e) {
+                hideCopyButton();
+                return;
             }
-            if (!copied) {
-                copied = legacyCopy(text);
-            }
-            if (copied) {
-                showCopiedFeedback();
-            }
+            showCopiedFeedback();
         }
 
         copyButton.addEventListener("click", () => copy());
