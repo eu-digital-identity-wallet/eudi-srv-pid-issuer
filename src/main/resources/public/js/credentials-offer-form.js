@@ -18,9 +18,6 @@
 
     function initCredentialsOfferForm() {
         const generateButton = document.getElementById("generateButton");
-        if (!generateButton) {
-            return;
-        }
         const credentialConfigurationIds = Array.from(document.querySelectorAll(".credential-configuration-id"));
         const errorModal = new bootstrap.Modal(document.getElementById("multipleAttestationCategoriesWarningModal"));
 

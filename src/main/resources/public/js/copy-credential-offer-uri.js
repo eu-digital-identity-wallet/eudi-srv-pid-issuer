@@ -19,9 +19,6 @@
     function initCopyCredentialOfferUri() {
         const copyButton = document.getElementById("copyOfferUri");
         const uriElement = document.querySelector(".credentials-offer-uri");
-        if (!copyButton || !uriElement) {
-            return;
-        }
         const icon = copyButton.querySelector(".bi");
         const label = copyButton.querySelector(".copy-button-label");
         const liveRegion = document.querySelector("[aria-live='polite']");
@@ -48,28 +45,16 @@
         }
 
         function showCopiedFeedback() {
-            if (icon) {
-                icon.classList.replace("bi-clipboard", "bi-clipboard-check");
-            }
-            if (label) {
-                label.textContent = copiedLabel;
-            }
-            if (liveRegion) {
-                liveRegion.textContent = copiedLabel;
-            }
+            icon.classList.replace("bi-clipboard", "bi-clipboard-check");
+            label.textContent = copiedLabel;
+            liveRegion.textContent = copiedLabel;
             if (timer !== null) {
                 clearTimeout(timer);
             }
             timer = setTimeout(() => {
-                if (icon) {
-                    icon.classList.replace("bi-clipboard-check", "bi-clipboard");
-                }
-                if (label) {
-                    label.textContent = originalLabel;
-                }
-                if (liveRegion) {
-                    liveRegion.textContent = "";
-                }
+                icon.classList.replace("bi-clipboard-check", "bi-clipboard");
+                label.textContent = originalLabel;
+                liveRegion.textContent = "";
                 timer = null;
             }, 2000);
         }

@@ -48,10 +48,7 @@
 
     function applyTheme(theme) {
         document.documentElement.setAttribute("data-bs-theme", theme);
-        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-        if (metaThemeColor) {
-            metaThemeColor.setAttribute("content", theme === "dark" ? DARK_THEME_COLOR : LIGHT_THEME_COLOR);
-        }
+        document.querySelector('meta[name="theme-color"]').setAttribute("content", theme === "dark" ? DARK_THEME_COLOR : LIGHT_THEME_COLOR);
     }
 
     // Apply the theme before first paint. This script is loaded synchronously in <head>,
@@ -60,17 +57,12 @@
 
     document.addEventListener("DOMContentLoaded", () => {
         const themeToggle = document.getElementById("themeToggle");
-        if (!themeToggle) {
-            return;
-        }
         const icon = themeToggle.querySelector(".bi");
 
         function syncToggle() {
             const isDark = document.documentElement.getAttribute("data-bs-theme") === "dark";
-            if (icon) {
-                icon.classList.toggle("bi-moon-stars-fill", !isDark);
-                icon.classList.toggle("bi-sun-fill", isDark);
-            }
+            icon.classList.toggle("bi-moon-stars-fill", !isDark);
+            icon.classList.toggle("bi-sun-fill", isDark);
             themeToggle.setAttribute("aria-pressed", String(isDark));
         }
 
