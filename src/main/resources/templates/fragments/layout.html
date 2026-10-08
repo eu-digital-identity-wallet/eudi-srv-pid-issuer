@@ -7,6 +7,7 @@
     <meta name="description" th:content="${description}">
     <link rel="icon" type="image/svg+xml" th:href="@{/public/img/favicon.svg}">
     <title th:replace="${title}">EU Digital Identity Wallet</title>
+    <script type="application/javascript" th:src="@{/public/js/theme.js}"></script>
     <link rel="stylesheet" type="text/css"
           th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
     <link rel="stylesheet" type="text/css"
@@ -19,11 +20,19 @@
     <div class="container">
         <a class="navbar-brand d-flex align-items-center text-decoration-none"
            th:href="@{/issuer/credentialsOffer/generate}">
-            <img class="eudiw-logo"
+            <img class="eudiw-logo eudiw-logo-light"
                  th:src="@{/public/img/eudiw-logo.svg}"
                  alt="EU Digital Identity Wallet"
                  th:alt="#{eudiw}"/>
+            <img class="eudiw-logo eudiw-logo-dark"
+                 th:src="@{/public/img/eudiw-logo-dark.svg}"
+                 alt="EU Digital Identity Wallet"
+                 th:alt="#{eudiw}"/>
         </a>
+        <button id="themeToggle" type="button" class="btn btn-outline-secondary theme-toggle ms-auto"
+                aria-pressed="false" th:aria-label="#{theme.toggle}">
+            <i class="bi bi-moon-stars-fill" aria-hidden="true"></i>
+        </button>
     </div>
 </nav>
 <footer th:fragment="footer" class="app-footer">

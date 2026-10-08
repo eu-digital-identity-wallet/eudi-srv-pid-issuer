@@ -57,8 +57,11 @@
 :root {
     /* EU Digital Identity Wallet design tokens */
     --app-bg: #f4f6fa;
+    --app-surface: #fff;
+    --app-border: rgba(0, 45, 140, 0.08);
     --app-radius: 1rem;
     --app-shadow: 0 0.25rem 1rem rgba(0, 45, 140, 0.08);
+    --app-navbar-shadow: 0 1px 6px rgba(0, 45, 140, 0.05);
     --app-accent: #0048d2;
     --app-accent-dark: #003aa8;
 
@@ -73,6 +76,24 @@
     --bs-link-hover-color: #003aa8;
     --bs-link-hover-color-rgb: 0, 58, 168;
     --bs-font-sans-serif: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/*
+ * Dark theme (activated via data-bs-theme="dark" on <html>, see public/js/theme.js)
+ */
+[data-bs-theme="dark"] {
+    --app-bg: #12151c;
+    --app-surface: #1c212b;
+    --app-border: rgba(255, 255, 255, 0.08);
+    --app-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.45);
+    --app-navbar-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+
+    /* Re-assert tokens the :root overrides would otherwise force in dark mode */
+    --bs-primary-bg-subtle: #0a1e3f;
+    --bs-link-color: #7aa7ff;
+    --bs-link-color-rgb: 122, 167, 255;
+    --bs-link-hover-color: #a3c2ff;
+    --bs-link-hover-color-rgb: 163, 194, 255;
 }
 
 body {
@@ -97,9 +118,9 @@ main {
  */
 .app-navbar {
     flex-shrink: 0;
-    background-color: #fff;
-    border-bottom: 1px solid rgba(0, 45, 140, 0.08);
-    box-shadow: 0 1px 6px rgba(0, 45, 140, 0.05);
+    background-color: var(--app-surface);
+    border-bottom: 1px solid var(--app-border);
+    box-shadow: var(--app-navbar-shadow);
     padding-block: 0.5rem;
 }
 
@@ -112,27 +133,44 @@ main {
     width: auto;
 }
 
+.eudiw-logo-dark {
+    display: none;
+}
+
+[data-bs-theme="dark"] .eudiw-logo-light {
+    display: none;
+}
+
+[data-bs-theme="dark"] .eudiw-logo-dark {
+    display: block;
+}
+
 /*
  * Cards
  */
 .app-card {
+    --bs-card-bg: var(--app-surface);
     border: 0;
     border-radius: var(--app-radius);
     box-shadow: var(--app-shadow);
 }
 
+.app-card.list-group {
+    --bs-list-group-bg: var(--app-surface);
+}
+
 .app-card > .card-header {
     padding: 1rem;
-    background-color: #fff;
-    border-bottom: 1px solid rgba(0, 45, 140, 0.08);
+    background-color: var(--app-surface);
+    border-bottom: 1px solid var(--app-border);
     border-top-left-radius: var(--app-radius);
     border-top-right-radius: var(--app-radius);
 }
 
 .app-card > .card-footer {
     padding: 1rem;
-    background-color: #fff;
-    border-top: 1px solid rgba(0, 45, 140, 0.08);
+    background-color: var(--app-surface);
+    border-top: 1px solid var(--app-border);
     border-bottom-left-radius: var(--app-radius);
     border-bottom-right-radius: var(--app-radius);
 }
@@ -191,6 +229,8 @@ main {
     display: inline-block;
     max-width: 100%;
     padding: 1rem;
+    /* Kept white in both themes: the QR Code has a white background and
+       needs a light frame to remain scannable */
     background-color: #fff;
     border-radius: var(--app-radius);
     box-shadow: var(--app-shadow);
