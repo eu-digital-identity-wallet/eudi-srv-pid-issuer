@@ -60,6 +60,9 @@ dependencies {
     implementation(libs.bootstrap) {
         because("For inclusion in HTML templates")
     }
+    implementation(libs.bootstrap.icons) {
+        because("Iconography for the web UI")
+    }
     implementation(libs.zxing) {
         because("To generate a QR Code for Credentials Offer URI")
     }

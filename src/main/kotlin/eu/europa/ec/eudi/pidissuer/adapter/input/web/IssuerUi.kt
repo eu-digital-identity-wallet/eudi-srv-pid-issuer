@@ -162,6 +162,7 @@ private suspend fun Uri.credentialOfferSuccessResponse(): ServerResponse {
                 "uri" to uri.toString(),
                 "qrCode" to Base64.encode(qrCode),
                 "qrCodeMediaType" to "image/png",
+                "openid4VciVersion" to OpenId4VciSpec.VERSION,
             ),
         )
 }

@@ -14,6 +14,7 @@ statium = "0.5.1"
 ktor = "3.5.1"
 bouncyCastle = "1.84"
 bootstrap = "5.3.8"
+bootstrapIcons = "1.13.1"
 waltid = "0.11.0"
 uri-kmp = "0.0.21"
 zxing = "3.5.4"
@@ -38,6 +39,7 @@ nimbus-oauth2 = { module = "com.nimbusds:oauth2-oidc-sdk", version.ref = "nimbus
 eudi-sdjwt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-sdjwt-kt", version.ref = "eudiSdJwt" }
 bouncy-castle = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncyCastle" }
 bootstrap = { module = "org.webjars:bootstrap", version.ref = "bootstrap" }
+bootstrap-icons = { module = "org.webjars.npm:bootstrap-icons", version.ref = "bootstrapIcons" }
 tink = { module = "com.google.crypto.tink:tink", version.ref = "tink" }
 waltid-mdoc-credentials = { module = "id.walt.mdoc-credentials:waltid-mdoc-credentials-jvm", version.ref = "waltid" }
 uri-kmp = { module = "com.eygraber:uri-kmp", version.ref = "uri-kmp" }
