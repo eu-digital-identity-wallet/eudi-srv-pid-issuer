@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title, description)">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0048d2">
+    <meta name="description" th:content="${description}">
+    <link rel="icon" type="image/svg+xml" th:href="@{/public/img/favicon.svg}">
+    <title th:replace="${title}">EU Digital Identity Wallet</title>
+    <script type="application/javascript" th:src="@{/public/js/theme.js}"></script>
+    <link rel="stylesheet" type="text/css"
+          th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
+    <link rel="stylesheet" type="text/css"
+          th:href="@{/webjars/bootstrap-icons/font/bootstrap-icons.min.css}">
+    <link rel="stylesheet" type="text/css"
+          th:href="@{/public/css/main.css}">
+</head>
+<body>
+<nav th:fragment="header" class="navbar app-navbar sticky-top" aria-label="Primary">
+    <div class="container">
+        <a class="navbar-brand d-flex align-items-center text-decoration-none"
+           th:href="@{/issuer/credentialsOffer/generate}">
+            <img class="eudiw-logo eudiw-logo-light"
+                 th:src="@{/public/img/eudiw-logo.svg}"
+                 alt="EU Digital Identity Wallet"
+                 th:alt="#{eudiw}"/>
+            <img class="eudiw-logo eudiw-logo-dark"
+                 th:src="@{/public/img/eudiw-logo-dark.svg}"
+                 alt="EU Digital Identity Wallet"
+                 th:alt="#{eudiw}"/>
+        </a>
+        <button id="themeToggle" type="button" class="btn btn-outline-secondary theme-toggle ms-auto"
+                aria-pressed="false" th:aria-label="#{theme.toggle}">
+            <i class="bi bi-moon-stars-fill" aria-hidden="true"></i>
+        </button>
+    </div>
+</nav>
+<footer th:fragment="footer" class="app-footer">
+    <div class="container">
+        <p class="mb-0 small text-secondary"
+           th:text="#{footer.issuer}">EU Digital Identity Wallet &ndash; PID Issuer</p>
+    </div>
+</footer>
+<th:block th:fragment="scripts">
+    <script type="application/javascript" th:src="@{/webjars/bootstrap/js/bootstrap.min.js}"></script>
+</th:block>
+</body>
+</html>

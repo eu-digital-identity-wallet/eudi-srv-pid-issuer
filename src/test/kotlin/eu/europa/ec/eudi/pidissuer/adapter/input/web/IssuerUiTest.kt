@@ -21,7 +21,10 @@ import kotlinx.coroutines.test.runTest
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.ApplicationContext
 import org.springframework.test.web.reactive.server.WebTestClient
+import org.springframework.test.web.reactive.server.expectBody
 import kotlin.test.Test
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 @PidIssuerApplicationTest
 class IssuerUiTest {
@@ -44,5 +47,28 @@ class IssuerUiTest {
                 .expectStatus()
                 .isOk
                 .expectContentSecurityPolicy(enforcing = true)
+        }
+
+    @Test
+    fun `verify ui page includes theme script and toggle`() =
+        runTest {
+            client()
+                .get()
+                .uri { it.path(IssuerUi.GENERATE_CREDENTIALS_OFFER).build() }
+                .exchange()
+                .expectStatus()
+                .isOk
+                .expectBody<String>()
+                .value { body ->
+                    assertNotNull(body) { "expected a response body" }
+                    assertTrue(
+                        """src="/public/js/theme.js"""" in body,
+                        "expected the theme script to be included in the page head",
+                    )
+                    assertTrue(
+                        """id="themeToggle"""" in body,
+                        "expected the theme toggle button to be included in the page",
+                    )
+                }
         }
 }
