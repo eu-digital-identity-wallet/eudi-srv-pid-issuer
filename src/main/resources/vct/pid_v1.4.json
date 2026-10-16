@@ -13,7 +13,7 @@
       "path": [
         "iss"
       ],
-      "mandatory": true,
+      "mandatory": false,
       "sd": "never"
     },
     {
@@ -62,7 +62,7 @@
       "path": [
         "iat"
       ],
-      "mandatory": true,
+      "mandatory": false,
       "sd": "never"
     },
     {
