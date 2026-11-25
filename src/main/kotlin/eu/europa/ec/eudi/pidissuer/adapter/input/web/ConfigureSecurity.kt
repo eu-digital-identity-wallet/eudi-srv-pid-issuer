@@ -25,7 +25,6 @@ import eu.europa.ec.eudi.pidissuer.duration
 import eu.europa.ec.eudi.pidissuer.log
 import eu.europa.ec.eudi.pidissuer.port.out.nonce.GenerateNonce
 import eu.europa.ec.eudi.pidissuer.port.out.nonce.VerifyNonce
-import io.netty.handler.codec.http.cors.CorsConfigBuilder
 import org.springframework.boot.security.oauth2.server.resource.autoconfigure.OAuth2ResourceServerProperties
 import org.springframework.core.env.Environment
 import org.springframework.http.HttpHeaders
@@ -148,14 +147,26 @@ fun configureApiSecurity(
                             allowedOriginPatterns = listOf(CorsConfiguration.ALL)
                             allowedMethods = HttpMethod.values().map { it.name() }
 
-                            val headers =
+                            allowedHeaders =
                                 listOf(
                                     HttpHeaders.ACCEPT,
                                     HttpHeaders.ACCEPT_CHARSET,
                                     HttpHeaders.ACCEPT_ENCODING,
                                     HttpHeaders.ACCEPT_LANGUAGE,
-                                    HttpHeaders.ACCEPT_PATCH,
-                                    HttpHeaders.ACCEPT_RANGES,
+                                    HttpHeaders.CONTENT_ENCODING,
+                                    HttpHeaders.CONTENT_LANGUAGE,
+                                    HttpHeaders.CONTENT_LENGTH,
+                                    HttpHeaders.CONTENT_LOCATION,
+                                    HttpHeaders.CONTENT_RANGE,
+                                    HttpHeaders.CONTENT_TYPE,
+                                    HttpHeaders.CONNECTION,
+                                    HttpHeaders.AUTHORIZATION,
+                                    "DPoP",
+                                    HttpHeaders.ORIGIN,
+                                    HttpHeaders.USER_AGENT,
+                                )
+                            exposedHeaders =
+                                listOf(
                                     HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS,
                                     HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,
                                     HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS,
@@ -164,58 +175,27 @@ fun configureApiSecurity(
                                     HttpHeaders.ACCESS_CONTROL_MAX_AGE,
                                     HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS,
                                     HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD,
-                                    HttpHeaders.AGE,
-                                    HttpHeaders.ALLOW,
-                                    HttpHeaders.AUTHORIZATION,
-                                    HttpHeaders.CACHE_CONTROL,
-                                    HttpHeaders.CONNECTION,
-                                    HttpHeaders.CONTENT_ENCODING,
                                     HttpHeaders.CONTENT_DISPOSITION,
+                                    HttpHeaders.CONTENT_ENCODING,
                                     HttpHeaders.CONTENT_LANGUAGE,
                                     HttpHeaders.CONTENT_LENGTH,
                                     HttpHeaders.CONTENT_LOCATION,
                                     HttpHeaders.CONTENT_RANGE,
                                     HttpHeaders.CONTENT_TYPE,
-                                    HttpHeaders.COOKIE,
-                                    HttpHeaders.DATE,
-                                    HttpHeaders.ETAG,
-                                    HttpHeaders.EXPECT,
-                                    HttpHeaders.EXPIRES,
-                                    HttpHeaders.FROM,
-                                    HttpHeaders.HOST,
-                                    HttpHeaders.IF_MATCH,
-                                    HttpHeaders.IF_MODIFIED_SINCE,
-                                    HttpHeaders.IF_NONE_MATCH,
-                                    HttpHeaders.IF_RANGE,
-                                    HttpHeaders.IF_UNMODIFIED_SINCE,
-                                    HttpHeaders.LAST_MODIFIED,
                                     HttpHeaders.LINK,
                                     HttpHeaders.LOCATION,
-                                    HttpHeaders.MAX_FORWARDS,
-                                    HttpHeaders.ORIGIN,
-                                    HttpHeaders.PRAGMA,
-                                    HttpHeaders.PROXY_AUTHENTICATE,
-                                    HttpHeaders.PROXY_AUTHORIZATION,
-                                    HttpHeaders.RANGE,
-                                    HttpHeaders.REFERER,
-                                    HttpHeaders.RETRY_AFTER,
-                                    HttpHeaders.SERVER,
-                                    HttpHeaders.SET_COOKIE,
-                                    HttpHeaders.SET_COOKIE2,
-                                    HttpHeaders.TE,
-                                    HttpHeaders.TRAILER,
-                                    HttpHeaders.TRANSFER_ENCODING,
+                                    HttpHeaders.CONNECTION,
                                     HttpHeaders.UPGRADE,
-                                    HttpHeaders.USER_AGENT,
-                                    HttpHeaders.VIA,
-                                    HttpHeaders.WARNING,
+                                    HttpHeaders.CACHE_CONTROL,
+                                    HttpHeaders.EXPIRES,
+                                    HttpHeaders.PRAGMA,
                                     HttpHeaders.WWW_AUTHENTICATE,
+                                    "DPoP-Nonce",
+                                    HttpHeaders.SERVER,
                                 )
-                            allowedHeaders = headers
-                            exposedHeaders = headers
 
-                            allowCredentials = true
-                            allowPrivateNetwork = true
+                            allowCredentials = false
+                            allowPrivateNetwork = false
                             setMaxAge(1.hours.toJavaDuration())
                         }
                 }
