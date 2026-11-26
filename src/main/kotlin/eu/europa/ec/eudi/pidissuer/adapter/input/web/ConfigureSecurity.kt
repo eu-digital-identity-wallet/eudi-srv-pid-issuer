@@ -27,6 +27,8 @@ import eu.europa.ec.eudi.pidissuer.port.out.nonce.GenerateNonce
 import eu.europa.ec.eudi.pidissuer.port.out.nonce.VerifyNonce
 import org.springframework.boot.security.oauth2.server.resource.autoconfigure.OAuth2ResourceServerProperties
 import org.springframework.core.env.Environment
+import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder
 import org.springframework.security.config.web.server.ServerHttpSecurity
@@ -41,10 +43,14 @@ import org.springframework.security.web.server.authentication.ServerAuthenticati
 import org.springframework.security.web.server.authorization.HttpStatusServerAccessDeniedHandler
 import org.springframework.security.web.server.authorization.ServerWebExchangeDelegatingServerAccessDeniedHandler
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.reactive.CorsConfigurationSource
 import org.springframework.web.reactive.function.client.WebClient
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 fun configureUiSecurity(
     environment: Environment,
@@ -133,7 +139,66 @@ fun configureApiSecurity(
         }
 
         cors {
-            disable()
+            configurationSource =
+                CorsConfigurationSource {
+                    CorsConfiguration()
+                        .apply {
+                            allowedOrigins = null
+                            allowedOriginPatterns = listOf(CorsConfiguration.ALL)
+                            allowedMethods = HttpMethod.values().map { it.name() }
+
+                            allowedHeaders =
+                                listOf(
+                                    HttpHeaders.ACCEPT,
+                                    HttpHeaders.ACCEPT_CHARSET,
+                                    HttpHeaders.ACCEPT_ENCODING,
+                                    HttpHeaders.ACCEPT_LANGUAGE,
+                                    HttpHeaders.CONTENT_ENCODING,
+                                    HttpHeaders.CONTENT_LANGUAGE,
+                                    HttpHeaders.CONTENT_LENGTH,
+                                    HttpHeaders.CONTENT_LOCATION,
+                                    HttpHeaders.CONTENT_RANGE,
+                                    HttpHeaders.CONTENT_TYPE,
+                                    HttpHeaders.CONNECTION,
+                                    HttpHeaders.AUTHORIZATION,
+                                    "DPoP",
+                                    HttpHeaders.ORIGIN,
+                                    HttpHeaders.USER_AGENT,
+                                )
+                            exposedHeaders =
+                                listOf(
+                                    HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS,
+                                    HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,
+                                    HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS,
+                                    HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN,
+                                    HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS,
+                                    HttpHeaders.ACCESS_CONTROL_MAX_AGE,
+                                    HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS,
+                                    HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD,
+                                    HttpHeaders.CONTENT_DISPOSITION,
+                                    HttpHeaders.CONTENT_ENCODING,
+                                    HttpHeaders.CONTENT_LANGUAGE,
+                                    HttpHeaders.CONTENT_LENGTH,
+                                    HttpHeaders.CONTENT_LOCATION,
+                                    HttpHeaders.CONTENT_RANGE,
+                                    HttpHeaders.CONTENT_TYPE,
+                                    HttpHeaders.LINK,
+                                    HttpHeaders.LOCATION,
+                                    HttpHeaders.CONNECTION,
+                                    HttpHeaders.UPGRADE,
+                                    HttpHeaders.CACHE_CONTROL,
+                                    HttpHeaders.EXPIRES,
+                                    HttpHeaders.PRAGMA,
+                                    HttpHeaders.WWW_AUTHENTICATE,
+                                    "DPoP-Nonce",
+                                    HttpHeaders.SERVER,
+                                )
+
+                            allowCredentials = false
+                            allowPrivateNetwork = false
+                            setMaxAge(1.hours.toJavaDuration())
+                        }
+                }
         }
 
         log.info("Enabling DPoP AccessToken support")
